@@ -95,18 +95,23 @@ KENT: REM ************ UUSI KENTTA ****************
       VUORO = VUORO + 1: IF VUORO > 2 THEN VUORO = 1
      
       RANDOMIZE TIMER
-      RAN = INT(RND * 100): IF RAN < 50 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT "%": KEN(XXX, YYY) = 4
-      RAN = INT(RND * 100): IF RAN < 25 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT "(": KEN(XXX, YYY) = 3
-      RAN = INT(RND * 100): IF RAN < 10 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT CHR$(225): KEN(XXX, YYY) = 5
-      RAN = INT(RND * 100): IF RAN < 20 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT "\": KEN(XXX, YYY) = 6
-      RAN = INT(RND * 100): IF RAN < 55 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT ".": KEN(XXX, YYY) = 7
-      RAN = INT(RND * 100): IF RAN < 15 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT "f": KEN(XXX, YYY) = 8
-      RAN = INT(RND * 100): IF RAN < 5 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT CHR$(157): KEN(XXX, YYY) = 9
-      RAN = INT(RND * 100): IF RAN < 10 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT "o": KEN(XXX, YYY) = 10
-      RAN = INT(RND * 100): IF RAN < 5 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT ")": KEN(XXX, YYY) = 11
-      RAN = INT(RND * 100): IF RAN < 45 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT "&": KEN(XXX, YYY) = 16
-      RAN = INT(RND * 100): IF RAN < 80 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: PRINT "?": KEN(XXX, YYY) = 17
-      RAN = INT(RND * 100): IF RAN < 90 THEN XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: IF KEN(XXX, YYY) = 0 THEN LOCATE YYY, XXX: PRINT "7": KEN(XXX, YYY) = 28
+      for t=1 to 13
+      XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: ran=int(rnd*100)
+
+      if t=1 and RAN < 50 THEN PRINT "%": KEN(XXX, YYY) = 4
+      if t=2 and RAN < 25 THEN PRINT "(": KEN(XXX, YYY) = 3
+      if t=3 and RAN < 10 THEN PRINT CHR$(225): KEN(XXX, YYY) = 5
+      if t=4 and RAN < 20 THEN print "\": KEN(XXX, YYY) = 6
+      if T=5 and RAN < 55 THEN PRINT ".": KEN(XXX, YYY) = 7
+      IF T=6 AND RAN < 15 THEN PRINT "f": KEN(XXX, YYY) = 8
+      IF T=7 AND RAN < 5 THEN PRINT CHR$(157): KEN(XXX, YYY) = 9
+      IF T=8 AND RAN < 10 THEN PRINT "o": KEN(XXX, YYY) = 10
+      IF T=9 AND RAN < 5 THEN PRINT ")": KEN(XXX, YYY) = 11
+      IF T=10 AND RAN < 45 THEN PRINT "&": KEN(XXX, YYY) = 16
+      IF T=11 AND RAN < 80 THEN PRINT "?": KEN(XXX, YYY) = 17
+      IF T=12 AND RAN < 90 AND KEN(XXX,YYY)=0 THEN PRINT "7": KEN(XXX, YYY) = 28: 
+      IF T=13 AND RAN < 9 THEN PRINT "$": KEN(XXX, YYY) = 99: REM RAHAA!!
+      NEXT t
 
       LOCATE 23, 79: PRINT "^": KEN(79, 23) = 12
       COLOR 15
@@ -310,8 +315,8 @@ REAGOINTI: COLOR 12: TULO = 1
     IF KEN(X, Y) = 16 THEN LOCATE 1, 2: PRINT "Kappas, lonkan mittainen !!!": KEN(X, Y) = 0: LON = LON + 1: GOSUB TULOSTUS
     IF KEN(X, Y) = 17 THEN LOCATE 1, 2: GOSUB APU: KEN(X, Y) = 0:
     IF KEN(X, Y) = 18 THEN GOSUB ALKO: RETURN
-    IF KEN(X, Y) = 19 THEN LOCATE 1, 2: PRINT "K-RAUDAN  sein� on vahvempaa tekoa,kuin p��si.Et p��ssyt sis��n.": X = X + XX: Y = Y + YY
-    IF KEN(X, Y) = 20 THEN LOCATE 1, 2: PRINT "K-RAUTAA ei ole viel� ohjelmoitu loppuun. Kokeile uudempaa versiota.": X = X + XX: Y = Y + YY
+    IF KEN(X, Y) = 19 THEN LOCATE 1, 2: PRINT "K-RAUDAN  seina on vahvempaa tekoa,kuin paasi.Et paassyt sisaan.": X = X + XX: Y = Y + YY
+    IF KEN(X, Y) = 20 THEN LOCATE 1, 2: PRINT "K-RAUTAA ei ole viela ohjelmoitu loppuun. Kokeile uudempaa versiota.": X = X + XX: Y = Y + YY
     IF KEN(X, Y) = 23 THEN LOCATE 1, 2: RAN = INT(RND * 30): PRINT "Kukkarosi lihavoituu "; RAN; " markalla.": KEN(X, Y) = 0: MONEY = MONEY + RAN
     IF KEN(X, Y) = 22 THEN LOCATE 1, 2: GOSUB MUMMO: RETURN
     IF KEN(X, Y) = 24 THEN LOCATE 1, 2: PRINT "Divarin sein� on vankkumaton,vaikka kuinka yrit�t k�vell� sit� p�in.": X = X + XX: Y = Y + YY
@@ -328,6 +333,9 @@ KEN(KONX, KONY) = 0: LOCATE KONY, KONX: PRINT " ": ALL = ALL + 1
     IF KEN(X, Y) = 34 THEN LOCATE 1, 2: PRINT "Pusket SHITHEADia naamaan,mutta sehan murjoo myos sua."; : X = X + XX: Y = Y + YY: SPOW = SPOW - 1: RAN = INT(RND * 100): IF RAN < 50 THEN PRINT "Nakkasit �ij�� munille !!!": SPOW = SPOW - 1: IF SPOW < 1 THEN  _
 LOCATE SKIY, SKIX: PRINT " ": ALL = ALL + 1
 
+      LOCATE 1,2: 
+REM **** UUSIA EFEKTEJÄ, VERSIO 1.01 *****
+    IF KEN(X,Y)=99 THEN PRINT"Jukoliste - nyt iski tuurilla, nappaat maasta satkun taskuusi!!!!": money=money+100
 
 
 
