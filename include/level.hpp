@@ -16,7 +16,7 @@ public:
     bool addPerson(Person& person);
 
     uint32_t sizex = 80;
-    uint32_t sizey = 40;
+    uint32_t sizey = 28;
 
     std::vector<Building*> buildings;
     std::vector<Person*> persons;

@@ -2,6 +2,7 @@
 #include "pultsari.hpp"
 #include "intro.hpp"
 #include "input.hpp"
+#include "building.hpp"
 #include "level.hpp"
 #include "player.hpp"
 #include "printer.hpp"
@@ -42,7 +43,14 @@ void mainloop()
     Printer printer;
     Level level;
     PlayerNS::Player player;
-    bool added = level.addPerson(player);
+
+    Alko alko;
+    Divari divari;
+
+    level.addBuilding(alko);
+    level.addBuilding(divari);
+
+    level.addPerson(player);
 
     while(1) {
         printer.removeMessage();

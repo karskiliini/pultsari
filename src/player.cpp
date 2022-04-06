@@ -2,8 +2,11 @@
 #include "player.hpp"
 #include "input.hpp"
 #include <iostream>
+#include <string>
 
 namespace PlayerNS {
+
+using std::string;
 
 Player::Player() : Person(PersonType::pelaaja)
 {
@@ -51,24 +54,64 @@ bool Player::drink(Printer& printer)
     return true;
 }
 
+bool checkWalls(Level& level, uint32_t x, uint32_t y)
+{
+    for (auto& b : level.buildings) {
+        if (b->hitWall(x, y)) {
+            return true;
+        }
+    }
+    return false;
+}
+
+string msgWall(Level& level, uint32_t x, uint32_t y)
+{
+    for (auto& b : level.buildings) {
+        if (b->hitWall(x, y)) {
+            return b->getWalkMsg();
+        }
+    }
+    return "";
+}
+
 bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 {
     bool ret = true;
+    string msg;
+
     switch(d)
     {
         case DirectionNS::Direction::down:
-            ++y;
+            if (checkWalls(level, x, y + 1)) {
+                msg = msgWall(level, x, y + 1);
+            } else {
+                ++y;
+            }
             break;
         case DirectionNS::Direction::up:
-            --y;
+            if (checkWalls(level, x, y - 1)) {
+                msg = msgWall(level, x, y - 1);
+            } else {
+                --y;
+            }
             break;
         case DirectionNS::Direction::right:
-            ++x;
+            if (checkWalls(level, x + 1 , y)) {
+                msg = msgWall(level, x + 1, y);
+            } else {
+                ++x;
+            }
             break;
         case DirectionNS::Direction::left:
-            --x;
+            if (checkWalls(level, x - 1 , y)) {
+                msg = msgWall(level, x - 1, y);
+            } else {
+                --x;
+            }
             break;
     }
+
+    printer.showMessage(msg);
 
     if ((y >= level.sizey) || (x >= level.sizex)) {
         printer.showMessage("Ei karata pelialueelta !!");

@@ -72,7 +72,7 @@ void Printer::print(Level l)
 
     for (uint32_t y = 0; y < l.sizey; ++y) {
 
-
+        // find all people that are on this line
         vector<const Person*> persons;
         for (const auto& p : l.persons) {
             if (p->y == y) {
@@ -80,18 +80,33 @@ void Printer::print(Level l)
             }
         }
 
+        // left border
         std::cout << "|";
 
         for (uint32_t x = 0; x < l.sizex; ++x)
         {
-            const Person* p = findPerson(persons, x);
-            if (p) {
-                char c = p->typeToChar();
-                std::cout << c;
-            } else {
-                std::cout << " ";
+            bool found = false;
+            char c = ' ';
+
+            for (auto b : l.buildings)
+            {
+                c = b->typeToChar(x, y);
+                if (c != ' ') {
+                    found = true;
+                    break;
+                }
             }
+
+            if (!found) {
+                const Person* p = findPerson(persons, x);
+                if (p) {
+                    c = p->typeToChar();
+                }
+            }
+            cout << c;
         }
+
+        // right border
         std::cout << "|" << std::endl;
     }
     printBorder(l, false);
