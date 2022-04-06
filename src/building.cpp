@@ -12,7 +12,7 @@ Building::Building(BuildingType buildingType) : type(buildingType)
 {
 }
 
-char Building::typeToChar(uint32_t x, uint32_t y) const { return ' '; };
+std::string Building::typeToChar(uint32_t x, uint32_t y) const { return " "; };
 std::string Building::getName() const { return ""; }
 
 bool Building::getEnterMsg(PlayerNS::Player* player, std::string& msg) const { return false; }
@@ -91,10 +91,10 @@ bool Building::hitDoor(uint32_t x, uint32_t y) const {
     return false;
 }
 
-char Building::printChar(uint32_t x, uint32_t y) const
+string Building::printChar(uint32_t x, uint32_t y) const
 {
-    if (hitDoor(x, y)) return '#';
-    if (hitWall(x, y)) return '*';
+    if (hitDoor(x, y)) return "░";
+    if (hitWall(x, y)) return "█";
 
     if (y == (wallTop + wallBot) / 2)
     {
@@ -105,10 +105,11 @@ char Building::printChar(uint32_t x, uint32_t y) const
 
         if ((x >= left) && (x < (left + len))) {
             const auto index = x - left;
-            return name[index];
+            string ret = name.substr(index, 1);
+            return ret;
         }
     }
-    return ' ';
+    return " ";
 }
 
 Alko::Alko() : Building(BuildingType::EAlko) {
@@ -125,7 +126,7 @@ std::string Alko::getName() const
     return "ALKO";
 }
 
-char Alko::typeToChar(uint32_t x, uint32_t y) const
+string Alko::typeToChar(uint32_t x, uint32_t y) const
 {
     return printChar(x, y);
 }
@@ -190,7 +191,7 @@ std::string Divari::getName() const
     return "DIVARI";
 }
 
-char Divari::typeToChar(uint32_t x, uint32_t y) const
+string Divari::typeToChar(uint32_t x, uint32_t y) const
 {
     return printChar(x, y);
 }

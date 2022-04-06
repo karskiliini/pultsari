@@ -12,7 +12,7 @@ public:
     Item(uint32_t x, uint32_t y) : x(x), y(y) { };
     virtual ~Item() = default;
 
-    virtual char typeToChar() const { return ' '; };
+    virtual std::string typeToChar() const { return " "; };
     virtual std::string getMsg() const { return "error"; };
     virtual bool interact(PlayerNS::Player* player) { return true; };
 
@@ -25,7 +25,7 @@ public:
     Bona(uint32_t x, uint32_t y);
     virtual ~Bona() = default;
 
-    virtual char typeToChar() const;
+    virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
 };
 
@@ -34,7 +34,7 @@ public:
     Paska(uint32_t x, uint32_t y);
     virtual ~Paska() = default;
 
-    virtual char typeToChar() const;
+    virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);
 };

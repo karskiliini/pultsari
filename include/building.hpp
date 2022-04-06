@@ -20,7 +20,7 @@ class Building {
 public:
     Building(BuildingType buildingType);
 
-    virtual char typeToChar(uint32_t x, uint32_t y) const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual std::string getName() const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
@@ -35,7 +35,7 @@ public:
     bool hitRightWall(uint32_t x, uint32_t y) const;
     bool hitWall(uint32_t x, uint32_t y) const;
     bool hitDoor(uint32_t x, uint32_t y) const;
-    char printChar(uint32_t x, uint32_t y) const;
+    std::string printChar(uint32_t x, uint32_t y) const;
 
     BuildingType type;
     bool open = true;
@@ -51,7 +51,7 @@ public:
     Alko();
     virtual ~Alko() = default;
     virtual std::string getName() const;
-    virtual char typeToChar(uint32_t x, uint32_t y) const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -64,7 +64,7 @@ public:
     Divari();
     virtual ~Divari() = default;
     virtual std::string getName() const;
-    virtual char typeToChar(uint32_t x, uint32_t y) const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual std::string getWalkMsg() const;
 };

@@ -3,6 +3,7 @@
 
 #include "direction.hpp"
 #include <cstdint>
+#include <string>
 
 enum PersonType {
     pelaaja,
@@ -27,8 +28,8 @@ public:
     virtual bool move(DirectionNS::Direction d);
 
     void setLevel(Level* l);
-    virtual char typeToChar() const {
-        return 'x';
+    virtual std::string typeToChar() const {
+        return "x";
     };
 
     Level* level;

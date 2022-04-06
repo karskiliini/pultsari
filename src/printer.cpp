@@ -4,12 +4,14 @@
 #include "input.hpp"
 #include <vector>
 #include <iostream>
+#include <string>
 
 using std::vector;
 using std::cout;
 using std::endl;
 using InputNS::Input;
 using PlayerNS::Player;
+using std::string;
 
 void Printer::showMessage(std::string message, Level& level, bool waitKey)
 {
@@ -58,24 +60,33 @@ const Item* findItem(vector<const Item*> row, uint32_t x)
     return nullptr;
 }
 
+const string TOP_LEFT = "╔";
+const string BOT_LEFT = "╚";
+const string TOP_RIGHT = "╗";
+const string BOT_RIGHT = "╝";
+const string VERTICAL = "║";
+const string HORIZONTAL = "═";
+
+
 void printBorder(Level& l, bool top)
 {
     if (top) {
-        std::cout << "/";
+        std::cout << TOP_LEFT;
     } else {
-        std::cout << "\\";
+        std::cout << BOT_LEFT;
     }
 
     for (uint32_t x = 0; x < l.sizex; ++x)
-        std::cout << "-";
+        std::cout << HORIZONTAL;
 
     if (top) {
-        std::cout << "\\";
+        std::cout << TOP_RIGHT;
     } else {
-        std::cout << "/";
+        std::cout << BOT_RIGHT;
     }
     std::cout << std::endl;
 }
+
 
 void Printer::print(Level& l)
 {
@@ -102,12 +113,12 @@ void Printer::print(Level& l)
         }
 
         // left border
-        std::cout << "|";
+        std::cout << VERTICAL;
 
         for (uint32_t x = 0; x < l.sizex; ++x)
         {
             bool found = false;
-            char c = ' ';
+            string c = " ";
 
             for (auto b : l.buildings)
             {
@@ -139,7 +150,7 @@ void Printer::print(Level& l)
         }
 
         // right border
-        std::cout << "|" << std::endl;
+        std::cout << VERTICAL << std::endl;
     }
     printBorder(l, false);
 
