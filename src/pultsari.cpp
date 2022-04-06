@@ -57,8 +57,8 @@ void mainloop()
 
     level.addBuilding(alko);
     level.addBuilding(divari);
-
     level.addPerson(player);
+    level.addBonas();
 
     while(1) {
         printer.removeMessage();

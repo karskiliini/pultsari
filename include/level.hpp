@@ -13,6 +13,7 @@ public:
     Level(uint32_t difficulty);
     ~Level();
 
+    void addBonas();
     bool addBuilding(Building& building);
     bool addPerson(Person& person);
     void addItem(Item* item);
