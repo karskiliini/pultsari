@@ -50,6 +50,11 @@ void mainloop()
     Alko alko;
     Divari divari;
 
+    {
+        Paska* p = new Paska(30,10);
+        level.addItem(p);
+    }
+
     level.addBuilding(alko);
     level.addBuilding(divari);
 

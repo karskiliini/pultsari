@@ -15,6 +15,7 @@ public:
 
     bool addBuilding(Building& building);
     bool addPerson(Person& person);
+    void addItem(Item* item);
     void removeItem(Item* item);
 
     uint32_t sizex = 80;

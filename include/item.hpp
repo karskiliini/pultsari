@@ -23,11 +23,20 @@ public:
 class Bona : public Item {
 public:
     Bona(uint32_t x, uint32_t y);
-    virtual ~Bona();
+    virtual ~Bona() = default;
 
     virtual char typeToChar() const;
     virtual std::string getMsg() const;
-    // virtual bool interact(PlayerNS::Player* player);
+};
+
+class Paska : public Item {
+public:
+    Paska(uint32_t x, uint32_t y);
+    virtual ~Paska() = default;
+
+    virtual char typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
 };
 
 #endif

@@ -39,6 +39,11 @@ bool Level::addPerson(Person& person)
     return true;
 }
 
+void Level::addItem(Item* item)
+{
+    items.push_back(item);
+}
+
 void Level::removeItem(Item* item)
 {
     delete item;

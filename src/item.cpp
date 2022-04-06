@@ -2,11 +2,8 @@
 #include "player.hpp"
 #include "level.hpp"
 
-Bona::Bona(uint32_t x, uint32_t y) : Item(x, y)
-{
-}
-
-Bona::~Bona() { }
+// bona
+Bona::Bona(uint32_t x, uint32_t y) : Item(x, y) { }
 
 char Bona::typeToChar() const
 {
@@ -18,8 +15,21 @@ std::string Bona::getMsg() const
     return "Löysit bonan!";
 }
 
-/*
-void Bona::interact(Level* level, PlayerNS::Player* player)
+// paska
+Paska::Paska(uint32_t x, uint32_t y) : Item(x, y) { }
+
+char Paska::typeToChar() const
 {
+    return 'p';
 }
-*/
+
+std::string Paska::getMsg() const
+{
+    return "Huomaat sen liian myohaan... liukastut paskaan.";
+}
+
+bool Paska::interact(PlayerNS::Player* player)
+{
+    player->health -= 1;
+    return true;
+}
