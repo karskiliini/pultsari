@@ -12,15 +12,16 @@ public:
     Level(uint32_t x, uint32_t y) : sizex(x), sizey(y) {};
     ~Level() = default;
 
-    bool AddBuilding(Building& building);
-    bool AddPerson(Person& person);
+    bool addBuilding(Building& building);
+    bool addPerson(Person& person);
 
-private:
     uint32_t sizex = 80;
     uint32_t sizey = 40;
 
-    std::vector<Building> buildings;
-    std::vector<Person> persons;
+    std::vector<Building*> buildings;
+    std::vector<Person*> persons;
+
+    uint32_t turn = 0;
 };
 
 

@@ -40,6 +40,7 @@ InputType Input::getInput()
 
     InputNS::Input::noraw();
 
+    std::cout << std::endl;
     return sel;
 }
 

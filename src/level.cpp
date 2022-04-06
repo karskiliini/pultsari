@@ -1,26 +1,24 @@
 
 #include "level.hpp"
 
-bool Level::AddBuilding(Building& building)
+bool Level::addBuilding(Building& building)
 {
     for (const auto &b : buildings)
     {
-        if (b.type == building.type) return false;
+        if (b->type == building.type) return false;
     }
 
-    buildings.push_back(building);
-
+    buildings.push_back(&building);
     return true;
 }
 
-bool Level::AddPerson(Person& person)
+bool Level::addPerson(Person& person)
 {
     for (const auto &p : persons)
     {
-        if ((p.x == person.x) && (p.y == person.y)) return false;
+        if ((p->x == person.x) && (p->y == person.y)) return false;
     }
 
-    persons.push_back(person);
-
+    persons.push_back(&person);
     return true;
 }

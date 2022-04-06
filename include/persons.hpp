@@ -27,12 +27,16 @@ public:
     virtual bool move(DirectionNS::Direction d);
 
     void setLevel(Level* l);
+    virtual char typeToChar() const {
+        return 'x';
+    };
 
     Level* level;
-    uint32_t x = 0;
-    uint32_t y = 0;
+    uint32_t x = 30;
+    uint32_t y = 20;
     PersonType type;
     uint32_t health = 1;
+
 };
 
 #endif

@@ -7,51 +7,53 @@ namespace PlayerNS {
 
 Player::Player() : Person(PersonType::pelaaja)
 {
+    x = 10;
+    y = 10;
 }
 
-bool Player::drink()
+bool Player::drink(Printer& printer)
 {
     if ((inventory.kalja > 0) && (inventory.lonkka > 0))
     {
-        std::cout << "Kumpaakos horaat, kaljaa vai lonkkaa (1,2)?" << std::endl;
+        printer.showMessage("Kumpaakos horaat, kaljaa vai lonkkaa (1,2)?");
         auto type = InputNS::Input::getDrink();
-        // drink
         switch(type)
         {
             case InputNS::kalja:
                 --inventory.kalja;
-                std::cout << "Glub glub glub glub ..... Burb !!!" << std::endl;
+                printer.showMessage("Glub glub glub glub ..... Burb !!!");
                 promillet += 2;
                 break;
             case InputNS::lonkka:
                 --inventory.lonkka;
-                std::cout << "Glub glub glub glub ..... Burb !!!" << std::endl;
+                printer.showMessage("Glub glub glub glub ..... Burb !!!");
                 promillet += 4;
                 break;
             default:
-                std::cout << "Päätit olla juomatta mitään." << std::endl;
+                printer.showMessage("Päätit olla juomatta mitään.");
                 return false;
         }
     }
     else if (inventory.lonkka > 0) {
-        std::cout << "Glub glub .. gulb gulu... ooorbbbs.\n" << std::endl;
+        printer.showMessage("Glub glub .. gulb gulu... ooorbbbs.\n");
         --inventory.lonkka;
         promillet += 4;
     }
     else if (inventory.kalja > 0) {
-        std::cout << "<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh\n" << std::endl;
+        printer.showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh\n");
         --inventory.kalja;
         promillet += 3;
     } else {
-        std::cout << "Ei oo ehtaa tavaraa.\n";
+        printer.showMessage("Ei oo ehtaa tavaraa.");
         return false;
     }
 
     return true;
 }
 
-bool Player::move(DirectionNS::Direction d)
+bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 {
+    bool ret = true;
     switch(d)
     {
         case DirectionNS::Direction::down:
@@ -66,10 +68,19 @@ bool Player::move(DirectionNS::Direction d)
         case DirectionNS::Direction::left:
             --x;
             break;
-
     }
-    std::cout << "player: x: " << x << "y: " << y << std::endl;
-    return true;
+
+    if ((y >= level.sizey) || (x >= level.sizex)) {
+        printer.showMessage("Ei karata pelialueelta !!");
+        ret = false;
+    }
+
+    x = (x == level.sizex) ? level.sizex-1 : x;
+    x = (x > level.sizex) ? 0 : x;
+    y = (y == level.sizey) ? level.sizey-1 : y;
+    y = (y > level.sizey) ? 0 : y;
+
+    return ret;
 }
 
 }
