@@ -21,6 +21,11 @@ void Building::interact(PlayerNS::Player* player, std::string& msg) { msg = "err
 
 std::string Building::getWalkMsg() const { return ""; }
 
+bool Building::hitBuilding(uint32_t x, uint32_t y) const
+{
+    return ((x >= wallLeft) && (x <= wallRight) && (y >= wallTop) && (y <= wallBot));
+}
+
 bool Building::hitTopWall(uint32_t x, uint32_t y) const {
     return ((x >= wallLeft) && (x <= wallRight) && (y == wallTop));
 }

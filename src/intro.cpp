@@ -1,4 +1,5 @@
 #include "intro.hpp"
+#include "input.hpp"
 #include <string>
 #include <iostream>
 
@@ -6,20 +7,27 @@ namespace IntroNS {
 
 using std::string;
 using std::cout;
+using std::endl;
 using std::cin;
 
-string name = "(C) By Mika  Maaranen\n\
+string names = "(C) By Mika  Maaranen\n\
        Jari  Maaranen\n\
        Tero  Maaranen\n\
        Kimmo Korhonen\n";
 
 void Intro::show()
 {
-    cout << name;
-    auto c = getchar();
+    for (uint32_t i = 0; i < 10; ++i) {
+        cout << endl;
+    }
 
-    // suppress compiler warning
-    c = c;
+    cout << names;
+
+    for (uint32_t i = 0; i < 14; ++i) {
+        cout << endl;
+    }
+
+    InputNS::Input::waitKey();
 }
 
 }

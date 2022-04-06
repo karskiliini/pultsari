@@ -75,11 +75,24 @@ Building* checkWalls(Level& level, uint32_t x, uint32_t y)
     return nullptr;
 }
 
+Item* checkItems(Level& level, uint32_t x, uint32_t y)
+{
+    for (auto& i : level.items) {
+        if ((i->x == x) && (i->y == y)) {
+            return i;
+        }
+    }
+    return nullptr;
+}
+
+
 bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 {
+    // spend turn
     bool ret = true;
+    // prevent movement
     bool blocked = false;
-    string msg;
+
 
     uint32_t checkx = x;
     uint32_t checky = y;
@@ -100,6 +113,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
             break;
     }
 
+    string msg;
     Building* b = checkDoor(level, checkx, checky);
     if (b) {
         // step into building
@@ -115,12 +129,26 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
             b->interact(this, msg);
             printer.showMessage(msg, level, false);
         }
-    } else {
-        b = checkWalls(level, checkx , checky);
+    }
+
+    if (!b) {
+        b = checkWalls(level, checkx, checky);
         if (b)
         {
             msg = b->getWalkMsg();
             blocked = true;
+        }
+    }
+
+    Item* i = nullptr;
+    if (!b) {
+        i = checkItems(level, checkx, checky);
+        if (i) {
+            msg = i->getMsg();
+            auto consume = i->interact(this);
+            if (consume) {
+                level.removeItem(i);
+            }
         }
     }
 

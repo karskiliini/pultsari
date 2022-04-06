@@ -68,10 +68,8 @@ void mainloop()
     }
 }
 
-
 int main(int argc, char *argv[])
 {
-
     IntroNS::Intro i;
     i.show();
 

@@ -1,6 +1,10 @@
 
 #include "level.hpp"
 #include "item.hpp"
+#include <algorithm>
+#include <iostream>
+
+using std::find;
 
 Level::Level(uint32_t difficulty) : stage(difficulty)
 {
@@ -8,8 +12,8 @@ Level::Level(uint32_t difficulty) : stage(difficulty)
     {
         uint32_t x = rand() % sizex;
         uint32_t y = rand() % sizey;
-        Bona b(x, y);
-        bonat.push_back(b);
+        auto b = new Bona(x, y);
+        items.push_back(b);
     }
 }
 
@@ -33,4 +37,14 @@ bool Level::addPerson(Person& person)
 
     persons.push_back(&person);
     return true;
+}
+
+void Level::removeItem(Item* item)
+{
+    delete item;
+    auto it = find(items.begin(), items.end(), item);
+    if (it != items.end())
+    {
+        items.erase(it);
+    }
 }

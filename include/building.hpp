@@ -28,6 +28,7 @@ public:
 
     virtual std::string getWalkMsg() const;
 
+    bool hitBuilding(uint32_t x, uint32_t y) const;
     bool hitTopWall(uint32_t x, uint32_t y) const;
     bool hitBotWall(uint32_t x, uint32_t y) const;
     bool hitLeftWall(uint32_t x, uint32_t y) const;

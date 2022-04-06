@@ -3,6 +3,10 @@
 
 #include <string>
 
+namespace PlayerNS {
+    class Player;
+}
+
 class Item {
 public:
     Item(uint32_t x, uint32_t y) : x(x), y(y) { };
@@ -10,6 +14,7 @@ public:
 
     virtual char typeToChar() const { return ' '; };
     virtual std::string getMsg() const { return "error"; };
+    virtual bool interact(PlayerNS::Player* player) { return true; };
 
     uint32_t x;
     uint32_t y;
@@ -22,6 +27,7 @@ public:
 
     virtual char typeToChar() const;
     virtual std::string getMsg() const;
+    // virtual bool interact(PlayerNS::Player* player);
 };
 
 #endif

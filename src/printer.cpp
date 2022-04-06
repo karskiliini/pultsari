@@ -79,8 +79,6 @@ void printBorder(Level l, bool top)
 
 void Printer::print(Level& l)
 {
-    // raw();
-
     std::cout << "turn: " << l.turn << " " << "x: " << player->x << " " << "y: " << player->y << " " << msg << endl;
 
     printBorder(l, true);
@@ -96,10 +94,10 @@ void Printer::print(Level& l)
         }
 
         vector<const Item*> items;
-        for (const auto& i : l.bonat)
+        for (const auto& i : l.items)
         {
-            if (i.y == y) {
-                items.push_back(&i);
+            if (i->y == y) {
+                items.push_back(i);
             }
         }
 
@@ -113,8 +111,9 @@ void Printer::print(Level& l)
 
             for (auto b : l.buildings)
             {
-                c = b->typeToChar(x, y);
-                if (c != ' ') {
+                if (b->hitBuilding(x, y))
+                {
+                    c = b->typeToChar(x, y);
                     found = true;
                     break;
                 }
@@ -145,6 +144,4 @@ void Printer::print(Level& l)
     printBorder(l, false);
 
     msgShown = false;
-
-    // noraw();
 }

@@ -15,13 +15,14 @@ public:
 
     bool addBuilding(Building& building);
     bool addPerson(Person& person);
+    void removeItem(Item* item);
 
     uint32_t sizex = 80;
     uint32_t sizey = 28;
 
     std::vector<Building*> buildings;
     std::vector<Person*> persons;
-    std::vector<Bona> bonat;
+    std::vector<Item*> items;
 
     uint32_t turn = 0;
     uint32_t stage = 1;
