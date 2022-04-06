@@ -7,6 +7,7 @@
 namespace PlayerNS {
 
 using std::string;
+using InputNS::Input;
 
 Player::Player() : Person(PersonType::pelaaja)
 {
@@ -14,107 +15,124 @@ Player::Player() : Person(PersonType::pelaaja)
     y = 10;
 }
 
-bool Player::drink(Printer& printer)
+bool Player::drink(Printer& printer, Level& level)
 {
     if ((inventory.kalja > 0) && (inventory.lonkka > 0))
     {
-        printer.showMessage("Kumpaakos horaat, kaljaa vai lonkkaa (1,2)?");
+        printer.showMessage("Kumpaakos horaat, kaljaa vai lonkkaa (1,2)?", level);
         auto type = InputNS::Input::getDrink();
         switch(type)
         {
             case InputNS::kalja:
                 --inventory.kalja;
-                printer.showMessage("Glub glub glub glub ..... Burb !!!");
-                promillet += 2;
+                printer.showMessage("Glub glub glub glub ..... Burb !!!", level);
+                promilles += 2;
                 break;
             case InputNS::lonkka:
                 --inventory.lonkka;
-                printer.showMessage("Glub glub glub glub ..... Burb !!!");
-                promillet += 4;
+                printer.showMessage("Glub glub glub glub ..... Burb !!!", level);
+                promilles += 4;
                 break;
             default:
-                printer.showMessage("Päätit olla juomatta mitään.");
+                printer.showMessage("Päätit olla juomatta mitään.", level);
                 return false;
         }
     }
     else if (inventory.lonkka > 0) {
-        printer.showMessage("Glub glub .. gulb gulu... ooorbbbs.\n");
+        printer.showMessage("Glub glub .. gulb gulu... ooorbbbs.\n", level);
         --inventory.lonkka;
-        promillet += 4;
+        promilles += 4;
     }
     else if (inventory.kalja > 0) {
-        printer.showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh\n");
+        printer.showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh\n", level);
         --inventory.kalja;
-        promillet += 3;
+        promilles += 3;
     } else {
-        printer.showMessage("Ei oo ehtaa tavaraa.");
+        printer.showMessage("Ei oo ehtaa tavaraa.", level);
         return false;
     }
 
     return true;
 }
 
-bool checkWalls(Level& level, uint32_t x, uint32_t y)
+Building* checkDoor(Level& level, uint32_t x, uint32_t y)
 {
     for (auto& b : level.buildings) {
-        if (b->hitWall(x, y)) {
-            return true;
+        if (b->hitDoor(x, y)) {
+            return b;
         }
     }
-    return false;
+    return nullptr;
 }
 
-string msgWall(Level& level, uint32_t x, uint32_t y)
+Building* checkWalls(Level& level, uint32_t x, uint32_t y)
 {
     for (auto& b : level.buildings) {
         if (b->hitWall(x, y)) {
-            return b->getWalkMsg();
+            return b;
         }
     }
-    return "";
+    return nullptr;
 }
 
 bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 {
     bool ret = true;
+    bool blocked = false;
     string msg;
+
+    uint32_t checkx = x;
+    uint32_t checky = y;
 
     switch(d)
     {
         case DirectionNS::Direction::down:
-            if (checkWalls(level, x, y + 1)) {
-                msg = msgWall(level, x, y + 1);
-            } else {
-                ++y;
-            }
+            ++checky;
             break;
         case DirectionNS::Direction::up:
-            if (checkWalls(level, x, y - 1)) {
-                msg = msgWall(level, x, y - 1);
-            } else {
-                --y;
-            }
+            --checky;
             break;
         case DirectionNS::Direction::right:
-            if (checkWalls(level, x + 1 , y)) {
-                msg = msgWall(level, x + 1, y);
-            } else {
-                ++x;
-            }
+            ++checkx;
             break;
         case DirectionNS::Direction::left:
-            if (checkWalls(level, x - 1 , y)) {
-                msg = msgWall(level, x - 1, y);
-            } else {
-                --x;
-            }
+            --checkx;
             break;
     }
 
-    printer.showMessage(msg);
+    Building* b = checkDoor(level, checkx, checky);
+    if (b) {
+        // step into building
+        blocked = true;
+
+        bool entered = b->getEnterMsg(this, msg);
+        printer.showMessage(msg, level);
+        if (entered)
+        {
+            b->getInteractMsg(this, msg);
+            printer.showMessage(msg, level);
+
+            b->interact(this, msg);
+            printer.showMessage(msg, level, false);
+        }
+    } else {
+        b = checkWalls(level, checkx , checky);
+        if (b)
+        {
+            msg = b->getWalkMsg();
+            blocked = true;
+        }
+    }
+
+    if (!blocked) {
+        x = checkx;
+        y = checky;
+    }
+
+    printer.showMessage(msg, level);
 
     if ((y >= level.sizey) || (x >= level.sizex)) {
-        printer.showMessage("Ei karata pelialueelta !!");
+        printer.showMessage("Ei karata pelialueelta !!", level);
         ret = false;
     }
 

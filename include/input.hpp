@@ -21,6 +21,13 @@ enum DrinkType {
     lonkka
 };
 
+enum InputAlkoType {
+    alkopending,
+    ostakalja,
+    ostalonkka,
+    poistualko
+};
+
 class Input {
 public:
     Input() = default;
@@ -29,8 +36,10 @@ public:
     static void raw();
     static void noraw();
 
+    static void waitKey();
     static InputType getInput();
     static DrinkType getDrink();
+    static InputAlkoType getInputAlko();
 };
 
 }

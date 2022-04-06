@@ -1,18 +1,25 @@
 #include "printer.hpp"
 #include "player.hpp"
+#include "item.hpp"
+#include "input.hpp"
 #include <vector>
 #include <iostream>
 
 using std::vector;
 using std::cout;
 using std::endl;
+using InputNS::Input;
+using PlayerNS::Player;
 
-void Printer::showMessage(std::string message)
+void Printer::showMessage(std::string message, Level& level, bool waitKey)
 {
-    if (msgShown) {
+    if (msgShown && waitKey) {
         // wait for keypress
+        Input::waitKey();
     }
     msg = message;
+    msgShown = true;
+    print(level);
 }
 
 void Printer::removeMessage()
@@ -35,7 +42,15 @@ void Printer::noraw()
 
 const Person* findPerson(vector<const Person*> row, uint32_t x)
 {
-    if (row.size() == 0) return nullptr;
+    for (const auto& p : row) {
+        if (p->x == x) return p;
+    }
+
+    return nullptr;
+}
+
+const Item* findItem(vector<const Item*> row, uint32_t x)
+{
     for (const auto& p : row) {
         if (p->x == x) return p;
     }
@@ -62,11 +77,11 @@ void printBorder(Level l, bool top)
     std::cout << std::endl;
 }
 
-void Printer::print(Level l)
+void Printer::print(Level& l)
 {
     // raw();
 
-    std::cout << "turn: " << l.turn << " " << msg << endl;
+    std::cout << "turn: " << l.turn << " " << "x: " << player->x << " " << "y: " << player->y << " " << msg << endl;
 
     printBorder(l, true);
 
@@ -77,6 +92,14 @@ void Printer::print(Level l)
         for (const auto& p : l.persons) {
             if (p->y == y) {
                 persons.push_back(p);
+            }
+        }
+
+        vector<const Item*> items;
+        for (const auto& i : l.bonat)
+        {
+            if (i.y == y) {
+                items.push_back(&i);
             }
         }
 
@@ -101,8 +124,18 @@ void Printer::print(Level l)
                 const Person* p = findPerson(persons, x);
                 if (p) {
                     c = p->typeToChar();
+                    found = true;
                 }
             }
+
+            if (!found) {
+                const Item* i = findItem(items, x);
+                if (i) {
+                    c = i->typeToChar();
+                    found = true;
+                }
+            }
+
             cout << c;
         }
 
@@ -111,6 +144,7 @@ void Printer::print(Level l)
     }
     printBorder(l, false);
 
+    msgShown = false;
 
     // noraw();
 }

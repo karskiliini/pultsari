@@ -4,18 +4,25 @@
 #include "level.hpp"
 #include <string>
 
+namespace PlayerNS {
+    class Player;
+}
+
 class Printer {
 public:
     static void raw();
     static void noraw();
 
-    void showMessage(std::string message);
+    void showMessage(std::string message, Level& level, bool waitKey = true);
     void removeMessage();
 
-    void print(Level l);
+    void print(Level& l);
 
     std::string msg = "";
     bool msgShown = false;
+
+    // debug
+    PlayerNS::Player* player;
 };
 
 #endif

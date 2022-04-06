@@ -15,10 +15,18 @@ void Input::noraw()
     system("stty -raw");
 }
 
+void Input::waitKey()
+{
+    Input::raw();
+
+    getchar();
+
+    Input::noraw();
+}
+
 InputType Input::getInput()
 {
-
-    InputNS::Input::raw();
+    Input::raw();
 
     InputType sel = inputpending;
     while(sel == inputpending)
@@ -38,15 +46,37 @@ InputType Input::getInput()
         }
     }
 
-    InputNS::Input::noraw();
+    Input::noraw();
 
     std::cout << std::endl;
     return sel;
 }
 
+InputAlkoType Input::getInputAlko()
+{
+    Input::raw();
+
+    InputAlkoType sel = alkopending;
+    while(sel == alkopending)
+    {
+        auto c = getchar();
+        switch(c)
+        {
+            case '1': sel = InputAlkoType::ostakalja; break;
+            case '2': sel = InputAlkoType::ostalonkka; break;
+            case '3': sel = InputAlkoType::poistualko; break;
+            default: break;
+        }
+    }
+
+    Input::noraw();
+    return sel;
+}
+
+
 DrinkType Input::getDrink()
 {
-    InputNS::Input::raw();
+    Input::raw();
 
     DrinkType sel = drinkpending;
     while(sel == drinkpending)

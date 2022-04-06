@@ -28,7 +28,7 @@ bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
             ret = player.move(DirectionNS::right, level, printer);
             break;
         case InputNS::drinking:
-            ret = player.drink(printer);
+            ret = player.drink(printer, level);
             break;
         default:
         case InputNS::quit:
@@ -41,8 +41,11 @@ bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
 void mainloop()
 {
     Printer printer;
-    Level level;
+    Level level(3);
     PlayerNS::Player player;
+
+    //debug
+    printer.player = &player;
 
     Alko alko;
     Divari divari;

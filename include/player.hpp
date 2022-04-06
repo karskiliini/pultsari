@@ -16,11 +16,12 @@ public:
     virtual ~Player() = default;
 
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
-    virtual bool drink(Printer& printer);
+    virtual bool drink(Printer& printer, Level& level);
     virtual char typeToChar() const { return '@'; };
 
     Inventory inventory;
-    uint32_t promillet = 0.2;
+    uint32_t promilles = 0.2;
+    uint32_t money = 20;
 };
 
 }

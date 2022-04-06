@@ -5,11 +5,12 @@
 #include <vector>
 #include "persons.hpp"
 #include "building.hpp"
+#include "item.hpp"
 
 class Level {
 public:
     Level() = default;
-    Level(uint32_t x, uint32_t y) : sizex(x), sizey(y) {};
+    Level(uint32_t difficulty);
     ~Level() = default;
 
     bool addBuilding(Building& building);
@@ -20,8 +21,10 @@ public:
 
     std::vector<Building*> buildings;
     std::vector<Person*> persons;
+    std::vector<Bona> bonat;
 
     uint32_t turn = 0;
+    uint32_t stage = 1;
 };
 
 
