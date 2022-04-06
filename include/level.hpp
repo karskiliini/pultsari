@@ -13,6 +13,8 @@ public:
     Level(uint32_t difficulty);
     ~Level();
 
+    bool hit(uint32_t x, uint32_t y) const;
+
     void addBonas();
     bool addBuilding(Building& building);
     bool addPerson(Person& person);
