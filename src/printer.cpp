@@ -58,7 +58,7 @@ const Item* findItem(vector<const Item*> row, uint32_t x)
     return nullptr;
 }
 
-void printBorder(Level l, bool top)
+void printBorder(Level& l, bool top)
 {
     if (top) {
         std::cout << "/";

@@ -11,7 +11,7 @@ class Level {
 public:
     Level() = default;
     Level(uint32_t difficulty);
-    ~Level() = default;
+    ~Level();
 
     bool addBuilding(Building& building);
     bool addPerson(Person& person);

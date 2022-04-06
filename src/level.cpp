@@ -17,6 +17,14 @@ Level::Level(uint32_t difficulty) : stage(difficulty)
     }
 }
 
+Level::~Level() {
+    for (auto& i : items)
+    {
+        delete i;
+    }
+    items.clear();
+}
+
 bool Level::addBuilding(Building& building)
 {
     for (const auto &b : buildings)
