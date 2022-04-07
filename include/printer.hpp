@@ -21,7 +21,6 @@ public:
     std::string msg = "";
     bool msgShown = false;
 
-    // debug
     PlayerNS::Player* player;
 };
 

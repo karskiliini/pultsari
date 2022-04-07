@@ -67,9 +67,14 @@ const string BOT_RIGHT = "╝";
 const string VERTICAL = "║";
 const string HORIZONTAL = "═";
 
+void printLeftBorderSpaces()
+{
+    cout << "             ";
+}
 
 void printBorder(Level& l, bool top)
 {
+    printLeftBorderSpaces();
     if (top) {
         std::cout << TOP_LEFT;
     } else {
@@ -87,6 +92,41 @@ void printBorder(Level& l, bool top)
     std::cout << std::endl;
 }
 
+string inventoryAligned(uint32_t value)
+{
+    if (value < 10) {
+        char str[10];
+        sprintf( str, "%d", value);
+        return string(str) + "  ";
+    } else if (value < 100) {
+        char str[10];
+        sprintf(str, "%d", value);
+        return string(str) + " ";
+    } else {
+        return ".. ";
+    }
+}
+
+void printInventory(uint32_t y, Player* player)
+{
+    auto& i = player->inventory;
+    constexpr uint32_t ROW = 1;
+
+    switch(y) {
+        case ROW +  0: cout << "KALJAA  = " << inventoryAligned(i.kalja); break;
+        case ROW +  1: cout << "LONKKA  = " << inventoryAligned(i.lonkka); break;
+        case ROW +  2: cout << "LENKKI  = " << inventoryAligned(i.lenkki); break;
+        case ROW +  3: cout << "KETJUT  = " << inventoryAligned(i.ketjut); break;
+        case ROW +  4: cout << "VEITSET = " << inventoryAligned(i.veitset); break;
+        case ROW +  5: cout << "KIVET   = " << inventoryAligned(i.kivet); break;
+        case ROW +  6: cout << "PAMPUT  = " << inventoryAligned(i.pamput); break;
+        case ROW +  7: cout << "BOOTSIT = " << inventoryAligned(i.bootsit); break;
+        case ROW +  8: cout << "KALAT   = " << inventoryAligned(i.kalat); break;
+        case ROW +  9: cout << "OMPPO   = " << inventoryAligned(i.omppo); break;
+        case ROW + 10: cout << "BANSKU  = " << inventoryAligned(i.bansku); break;
+        default: printLeftBorderSpaces(); break;
+    }
+}
 
 void Printer::print(Level& l)
 {
@@ -95,6 +135,8 @@ void Printer::print(Level& l)
     printBorder(l, true);
 
     for (uint32_t y = 0; y < l.sizey; ++y) {
+
+        printInventory(y, player);
 
         // find all people that are on this line
         vector<const Person*> persons;
