@@ -1,4 +1,5 @@
 1 DIM KEN(80, 28), XXXX(100), YYYY(100), ELO(30), ZZXX(40): RANDOMIZE TIMER
+  DIM TASKU(10)
 CLS : SCREEN 13: COLOR 32
 
 A$ = "(C) By Mika  Maaranen  "
@@ -15,20 +16,41 @@ FOR T = 16 TO 24: LOCATE 1, T: P$ = LEFT$(A$, T - 15): COL = INT(RND * 30) + 30:
 FOR TT = 1 TO 500: NEXT TT, T
 
 COLOR 10: LOCATE 23, 1: PRINT "28.12.1991 - 14.1.1992 (Valilla paussi)"
-LOCATE 10, 1
+LOCATE 12, 1
+COLOR 33:apu=0:t=1 
+PRINT "       C ... Credits"
+print "       I ... Instructions"
+efekti: 
+color 14: locate 16,6:
+      if t=1 then 
+            Print " Press other keys to play"
+            ELSE
+            print "                         "
+            end if
+apu=apu+1: 
+if apu>1000 then t=t+1:apu=0
+if t>2 then t=1:apu=0
+a$=inkey$
+if a$="" then goto efekti
 
-PRINT : PRINT : COLOR 34: PRINT "Press any key to continue"
-GOSUB pause:
+if a$="c" or a$="C" then gosub credits: goto 1
+if a$="i" or a$="I" then gosub ohje: goto 1
+goto 2
 
+
+credits:
 REM --- yksi lisäefekti vanhalla koodilla (versio 1.01) ---
 COLOR 33: CLS
 A$ = "Pulsu$oftware (TM), By Mika Maaranen": k = 23: GOSUB vers1: COLOR 14
-A$ = "    Versio 1.02  6.4.2022": k = 22: GOSUB vers1:
-A$ = "(C) Versio 1.01  5.4.2022": k = 21: GOSUB vers1: COLOR 12
-A$ = "Better late than never, yes ?": k = 19: GOSUB vers1:
 
+A$ = "(C) Versio 1.01  5.4.2022": k = 22: GOSUB vers1: COLOR 12
+A$ = "    Versio 1.02  6.4.2022": k = 21: GOSUB vers1:
+A$ = "    Versio 1.03  7.4.2022": k = 20: GOSUB vers1:
 
-GOTO 2
+A$ = "Better late than never, yes ?": k = 10: GOSUB vers1:
+gosub pause:
+return
+
 pause:
       A$ = INKEY$: IF A$ = "" THEN GOTO pause
 RETURN
@@ -40,7 +62,7 @@ vers1:
       NEXT TT, T
 RETURN
 
-2 A$ = INKEY$: IF A$ = "" THEN GOTO 2
+2 
 CONMAN = 0
 CLS : RANDOMIZE TIMER
 SCREEN 12:
@@ -49,7 +71,16 @@ FOR T = 2 TO 24: LOCATE T, 13: PRINT CHR$(186): LOCATE T, 80: PRINT CHR$(186): N
 LOCATE 2, 13: PRINT CHR$(201): LOCATE 2, 80: PRINT CHR$(187)
 LOCATE 24, 13: PRINT CHR$(200): LOCATE 24, 80: PRINT CHR$(188):
 MONEY = 0: VOIMA = 10: PROM = 2: WALK = 0: BEER = 1: LON = 0: MAK = 0: BA = 0: OM = 1: PU = 0: KA = 0: KI = 2: KNI = 0: KET = 0: MAK = 1: LEV = 1: VUORO = 0
-SIMO = 0
+SIMO = 0:eki=0: FOR T=1 TO 10:TASKU(T)=0:NEXT: 
+      REM TASKU ------- TAULUKKOMUUTTUJAAN LISÄTÄÄN ERIKOISTAVARAT, MITA VOI LÖYTYÄ tai omistaa -------------------
+      REM TASKU(1)=KRISTALLIAVAIN  KEN=94
+      REM TASKU(2)=MOOTTORISAHA    
+      REM TASKU(3)=KIRVES          KEN=93
+      REM TASKU(4)=5l bensagallona 
+      REM TASKU(5)=leffalippu      ken=92
+      REM TASKU(6)=Retkijakkara    ken=91
+      REM TASKU(7)=
+      
 GOTO ALKU
 TULOSTUS: REM ******** TULOSTUS *********
 
@@ -70,6 +101,22 @@ LOCATE 3, 1: PRINT "KALJAA ="; BEER
              PRINT "KALAT  ="; PU
              PRINT "OMPPO  ="; OM
              PRINT "BANSKU ="; BA
+
+      tt=0:locate 15,1:color 12:print"Special":color 10
+      for t=1 to 10:
+      locate 16+tt,1
+      if tasku(t)>0 then
+            if t=1 then print"Kristal key "
+            if t=2 then print"Moottorisaha"
+            if t=3 then print"Kirves      "
+            if t=4 then print"Bensagallona"
+            if t=5 then print"leffalippu  "
+            if t=6 then print"Retkijakkara"
+            tt=tt+1
+            end IF
+      locate 16+tt+1: print"            "
+      locate 16+tt+2: print"            "
+      next
 RETURN
 PIIRRAKAUPPA: REM --- TÄSSÄ PIIRRETÄÄN KENTTÄÄN KUULUVA KAUPPARAKENNUS ---
       IF VUORO = 1 THEN
@@ -100,8 +147,8 @@ KENT: REM ************ UUSI KENTTA ****************
       VUORO = VUORO + 1: IF VUORO > 2 THEN VUORO = 1
      
       RANDOMIZE TIMER
-      FOR T = 1 TO 16
-      XXX = INT(RND * 64) + 14: YYY = INT(RND * 20) + 2: LOCATE YYY, XXX: RAN = INT(RND * 100)
+      FOR T = 1 TO 20
+      XXX = INT(RND * 64) + 14: YYY = INT(RND * 14) + 6: LOCATE YYY, XXX: RAN = INT(RND * 100)
 
       IF T = 1 AND RAN < 50 THEN PRINT "%": KEN(XXX, YYY) = 4
       IF T = 2 AND RAN < 25 THEN PRINT "(": KEN(XXX, YYY) = 3
@@ -117,6 +164,14 @@ KENT: REM ************ UUSI KENTTA ****************
       IF T = 12 AND RAN < 90 AND KEN(XXX, YYY) = 0 THEN PRINT "p": KEN(XXX, YYY) = 28: REM paskaa maassa
       IF T = 13 AND RAN < 19 THEN PRINT "$": KEN(XXX, YYY) = 99: REM RAHAA!!
       IF T = 16 AND RAN < 9 THEN PRINT "T": KEN(XXX, YYY) = 96: REM Bätin ja ryydin taikaviitta
+
+      if t =17 and lev>1 and ran<29 then  
+            rem *** taivaallisen rauhan aukion piirtäminen ***
+
+            end IF
+      if t=18 and ran<5 then print"F":ken(xxx,yyy)=94
+      if T=19 AND RAN<5 THEN PRINT"7":KEN(XXX,YYY)=93
+      IF T=20 AND RAN<5 THEN PRINT"=":KEN(XXX,YYY)=92
       IF T = 14 AND RAN < 39 THEN
             SIMO = 1: sx = INT(RND * 64 + 14): sy = INT(RND * 15) + 6
             IF KEN(sx, sy) <> 0 THEN
@@ -132,7 +187,7 @@ KENT: REM ************ UUSI KENTTA ****************
                   EKI = 0
                   ELSE
                   EX = 69: EY = 10: LOCATE EY, EX: COLOR 14: PRINT "E": COLOR 12: REM ------ vari 14=keltainen 12 = punainen, 10=vihreä
-                  FOR T = 64 TO 76: LOCATE 5, T: PRINT CHR$(219): KEN(T, 5) = 98: NEXT
+                  FOR TT = 64 TO 76: LOCATE 5, TT: PRINT CHR$(219): KEN(TT, 5) = 98: NEXT TT
                   LOCATE 4, 64: PRINT CHR$(219); "           "; CHR$(219): KEN(64, 4) = 98: KEN(76, 4) = 98: KEN(64, 3) = 98: KEN(76, 3) = 98: KEN(70, 5) = 97
                   LOCATE 3, 64: PRINT CHR$(219); " Huttuskat "; CHR$(219): LOCATE 5, 70: PRINT CHR$(177)
                   END IF
@@ -170,8 +225,17 @@ MMUU: XXX = INT(RND * 64) + 14: YYY = INT(RND * 12) + 5: IF KEN(XXX, YYY) <> 0 T
       IF LEV > 4 THEN RAN = INT(RND * 100): IF RAN < 50 THEN RAN = 1 ELSE RAN = 2
       IF RAN = 1 THEN DIVARI = 1: ISKU = 0
       IF RAN = 2 THEN DIVARI = 0: ISKU = 1
+      
+      
       IF DIVARI = 1 THEN FOR T = 14 TO 25: LOCATE 20, T: KEN(T, 20) = 24: PRINT CHR$(219): NEXT: FOR T = 20 TO 23: LOCATE T, 25: PRINT CHR$(219): KEN(25, T) = 24: NEXT: LOCATE 20, 20: PRINT CHR$(177): KEN(20, 20) = 25: LOCATE 23, 15: PRINT "DIVARI"
-      IF ISKU = 1 THEN FOR T = 14 TO 25: LOCATE 20, T: KEN(T, 20) = 26: PRINT CHR$(219): NEXT: FOR T = 20 TO 23: LOCATE T, 25: PRINT CHR$(219): KEN(25, T) = 26: NEXT: LOCATE 20, 20: PRINT CHR$(177): KEN(20, 20) = 27: LOCATE 23, 15: PRINT "ISKU"
+      IF ISKU = 1 THEN 
+            FOR T = 14 TO 25: LOCATE 20, T: KEN(T, 20) = 26: PRINT CHR$(219): NEXT: 
+            FOR T = 20 TO 23: LOCATE T, 25: PRINT CHR$(219): KEN(25, T) = 26: KEN((T-5),23)=26:NEXT
+            LOCATE 20, 20: PRINT CHR$(177): KEN(20, 20) = 27: LOCATE 23, 15: PRINT "ISKU"
+            color 12:locate 22,17:print"J":KEN(17,22)=91
+
+            end if
+      
       REM *** POLIISIASEMA+VANKILA ***
       RAN = 0
       RAN = INT(RND * 100): IF RAN < 50 THEN RAN = 0 ELSE RAN = 1
@@ -258,6 +322,8 @@ TARK: REM *********** ETSITaaN, MIK'a' TAVARA OSUI SEINaaN ***************
       IF AA = 8 THEN PRINT "F"
       IF AA = 9 THEN PRINT "o"
       IF AA = 10 THEN PRINT ")"
+
+      
       RETURN
      
 ELOTON: REM ***** ETSITaaN KUOLLUT POLLARI *****
@@ -335,6 +401,7 @@ NAP:  LOCATE Y, X: PRINT " "
       IF SIMO = 1 THEN GOSUB SIMPPA
       IF EKI = 1 THEN GOSUB EKITYS
 
+      REM LOCATE 2,40:COLOR 10:PRINT"X=";X;"Y=";Y;"KEN(X,Y)=";KEN(X,Y);" "
 NAAP: A$ = INKEY$:
       IF VOIMA < 1 THEN LOCATE 1, 1: COLOR 14: PRINT "Terveytesi pettaa... kemahdat tantereeseen pitkaksesi .........": GOTO GOVER
 
@@ -497,13 +564,19 @@ REAGOINTI: COLOR 12: TULO = 1: LOCATE 1, 2
     IF KEN(X, Y) = 17 THEN GOSUB APU: KEN(X, Y) = 0: REM LUETAAN TAIVAALLISET TEKSTIT
     IF KEN(X, Y) = 18 THEN GOSUB ALKO: RETURN
     IF KEN(X, Y) = 19 THEN PRINT "K-RAUDAN  seina on vahvempaa tekoa,kuin paasi.Et paassyt sisaan.": X = X + XX: Y = Y + YY
-    IF KEN(X, Y) = 20 THEN PRINT "K-RAUTAA ei ole viela ohjelmoitu loppuun. Kokeile uudempaa versiota.": X = X + XX: Y = Y + YY
+    IF KEN(X, Y) = 20 THEN PRINT "K-RAUTAA ei ole viela ohjelmoitu loppuun. Kokeile uudempaa versiota. <lisaa>": X = X + XX: Y = Y + YY:gosub krauta:
     IF KEN(X, Y) = 23 THEN RAN = INT(RND * 30): PRINT "Kukkarosi lihavoituu "; RAN; " markalla.": KEN(X, Y) = 0: MONEY = MONEY + RAN
     IF KEN(X, Y) = 22 THEN GOSUB MUMMO: RETURN
     IF KEN(X, Y) = 24 THEN PRINT "Divarin seina on vankkumaton,vaikka kuinka yritat kavella sita pain.": X = X + XX: Y = Y + YY
     IF KEN(X, Y) = 25 THEN GOSUB DIVARI
     IF KEN(X, Y) = 26 THEN PRINT "Iskun seina on iskunkestava,et paassyt sisaan.": X = X + XX: Y = Y + YY
-    IF KEN(X, Y) = 27 THEN PRINT "Emme myy juopoille.": X = X + XX: Y = Y + YY
+    IF KEN(X, Y) = 27 THEN 
+            if tasku(3)<1 then 
+                  PRINT "Emme myy juopoille.": X = X + XX: Y = Y + YY
+                  ELSE
+                  print "Iskussa on paskaa palvelua. Hakkaat kirveella lasioven pillun pareiksi!":ken(x,y)=0:tasku(3)=0
+                  end if
+            end IF
     IF KEN(X, Y) = 28 THEN PRINT "Huomaat sen liian myohaan... liukastut paskaan.": VOIMA = VOIMA - 1: KEN(X, Y) = 0
     IF KEN(X, Y) = 29 THEN PRINT "Lyot paatasi seinaan.": X = X + XX: Y = Y + YY
     IF KEN(X, Y) = 30 THEN PRINT "Putkaan otetaan kylla juoppoja, tuletko (K/E) ?": GOSUB PUTKA
@@ -520,6 +593,10 @@ REM **** UUSIA EFEKTEJÄ, VERSIO 1.01 *****
       IF KEN(X, Y) = 97 THEN PRINT "Huttusilla ei ole ketaan kotona.": WALK = WALK - 1: X = X + XX: XX = 0: Y = Y + YY: YY = 0
       IF KEN(X, Y) = 99 THEN PRINT "Jukoliste - nyt iski tuurilla, nappaat maasta satkun taskuusi!!!!": MONEY = MONEY + 100: KEN(X, Y) = 0
       IF KEN(X, Y) = 96 THEN PRINT "Nappaat maasta batin ja rydin taikaviitan! Tunnet voimiesi kohoavan!": KEN(X, Y) = 0: VOIMA = VOIMA + 15
+      IF KEN(X, Y) = 94 THEN PRINT "Loydat maasta kristalliavaimen !": KEN(X, Y) = 0: tasku(1)=1
+      IF KEN(X, Y) = 93 THEN PRINT "Kirves !!! Sille kylla loytyy kayttokohde.": KEN(X, Y) = 0:tasku(3)=1
+      IF KEN(X, Y) = 92 THEN PRINT "Poimit taskuusi leffalipun.": KEN(X, Y) = 0:tasku(5)=1
+      IF KEN(X, Y) = 91 THEN PRINT "No mutta retkijakkarahan se lojuu siina.": KEN(X, Y) = 0:tasku(6)=1
       
       
 
@@ -556,7 +633,19 @@ POLL: REM ********* POLLARIN HAKKAUS **********
       R = INT(RND * 3) + 1: VOIMA = VOIMA - R: GOSUB TULOSTUS
 RETURN
        
+krauta: rem ------- K-raudan kauppa: versio 1.03 tämä ONKIN ohjelmoitu loppuun =) ----------------
+      gosub pause: locate 1,1:color 10: print"Hetkinen, tamahan on uusi versio ja K-Rauta on kuin onkin ohjelmoitu!! =)"; tab(80)
+      gosub pause: locate 1,1: Print "Mitas saisi olla: 1=Moottorisaha, 120mk, 2=kirves, 50mk 3=ulos";tab(80)
 
+110:  gosub pause
+      locate 1,1
+      if a$<>"1" and a$<>"2" and a$<>"3" then goto 110
+      if a$="1" and money<120 then print "Rahasi eivät riitä, Sthil maksaa!";tab(80)
+      if a$="1" and money>119 then print "Rrrrrnnn !!! Kohta sahaillaan!";tab(80): tasku(2)=1: money=money-120
+      if a$="2" and money<50 then print "Kirves maksaa enemman, mihin sinulla on varaa.";tab(80)
+      if a$="2" and money>49 then print "Jumankauta miten terava kirves!";tab(80):tasku(3)=1:money=money-50
+      if a$="3" then print "Tule sitten takaisin kun sulla on rahaa ostaa jotain. ";tab(80)
+RETURN
 
 
 GOVER: A$ = "": REM ************************************** GAME OVER ***********************************************
@@ -827,4 +916,33 @@ SONTA:    REM ************** MINNE TULEE YRJo *****************
 JEPULIS:
           KEN(X + ZX, Y + ZY) = 28: LOCATE Y + ZY, X + ZX: COLOR 14: PRINT "�"
           RETURN
+
+
+
+
+
+
+ohje:
+screen 12:color 10
+CLS:print "                   Pultsari   "
+print:
+print"Olet pelin sankari, pikku myotalaitaisessa vaeltava puliukko." 
+print"Tehtavanasi on loytaa suuri valaistuminen tai ehka voidaan"
+print"myos puhua kirkastumisesta. Et saa taysin selvita pohnasta"
+print"koska silloin iskee rapulapaholainen. "
+print:Print"Matkallasi koet monia vaaroja. Jotkut uhkat suorastaan"
+print"hyokkaavat paallesi. Toiset ovat kiinnostuneet rahoistasi"
+print"tai takkisi sisalla olevista juomista. Kytat haluavat"
+print"vieda sinut putkaan, ja pamputtavat, jos retteloit pahasti."
+color 14
+print:print "    Pultsariasi ohjailet numero nappaimistolla: ":print
+print" Vasen ylaviisto = 7    8=Ylos      9=Oikea ylaviisto"
+print:
+print" Vasemmalle = 4                     6 = Oikealle"
+print:
+print" Vasen alaviisto = 1   5, 2= alas   3 = Oikealle alaviistoon"
+print:print"Q = juopottele. E = syo. Z = lopeta. H = Heita":color 12
+print:print"                     Good luck!!"
+gosub pause:
+return
 
