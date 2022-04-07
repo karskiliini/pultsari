@@ -6,22 +6,19 @@ namespace InputNS {
 void Input::raw()
 {
     // Set terminal to raw mode
-    system("stty raw");
+    system("stty raw -echo");
 }
 
 void Input::noraw()
 {
     // Set terminal to cooked mode
-    system("stty -raw");
+    system("stty -raw echo");
 }
 
 void Input::waitKey()
 {
     Input::raw();
-
     getchar();
-    std::cout << "\b \b";
-
     Input::noraw();
 }
 
@@ -46,7 +43,6 @@ InputType Input::getInput()
             default:
                 break;
         }
-        std::cout << "\b \b";
     }
 
     Input::noraw();
@@ -69,7 +65,6 @@ InputAlkoType Input::getInputAlko()
             case '2': sel = InputAlkoType::ostalonkka; break;
             default: sel = InputAlkoType::poistualko; break;
         }
-        std::cout << "\b \b";
     }
 
     Input::noraw();
@@ -90,7 +85,6 @@ DrinkType Input::getDrink()
             case '2': sel = DrinkType::lonkka; break;
             default: sel = DrinkType::nodrink; break;
         }
-        std::cout << "\b \b";
     }
 
     InputNS::Input::noraw();
@@ -113,7 +107,6 @@ FoodType Input::getFood()
             case '4': sel = FoodType::foodbansku; break;
             default: sel = FoodType::nofood; break;
         }
-        std::cout << "\b \b";
     }
 
     InputNS::Input::noraw();

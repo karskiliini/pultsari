@@ -43,12 +43,12 @@ bool Player::drink(Printer& printer, Level& level)
         }
     }
     else if (inventory.lonkka > 0) {
-        printer.showMessage("Glub glub .. gulb gulu... ooorbbbs.\n", level);
+        printer.showMessage("Glub glub .. gulb gulu... ooorbbbs.", level);
         --inventory.lonkka;
         promilles += 4;
     }
     else if (inventory.kalja > 0) {
-        printer.showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh\n", level);
+        printer.showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", level);
         --inventory.kalja;
         promilles += 3;
     } else {

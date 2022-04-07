@@ -86,7 +86,9 @@ void mainloop()
     uint32_t stage = 1;
     PlayerNS::Player player;
 
-    while (1) {
+    bool quit = false;
+
+    while (!quit) {
         player.resetPosition();
 
         Level level(stage);
@@ -116,12 +118,17 @@ void mainloop()
         printer.print(level);
 
         bool nextLevel = false;
-        while(!nextLevel) {
+        while(!nextLevel && !quit) {
             // printer.removeMessage();
 
-            bool turn = handleInput(player, level, printer);
-            if (turn) {
-                ++player.turn;
+            try {
+                bool turn = handleInput(player, level, printer);
+                if (turn) {
+                    ++player.turn;
+                }
+            } catch(...) {
+                quit = true;
+                break;
             }
 
             printer.print(level);
@@ -139,8 +146,23 @@ void mainloop()
     }
 }
 
+
+void show_console_cursor(const bool show) {
+#if defined(_WIN32)
+    static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cci;
+    GetConsoleCursorInfo(handle, &cci);
+    cci.bVisible = show; // show/hide cursor
+    SetConsoleCursorInfo(handle, &cci);
+#elif defined(__linux__)
+    std::cout << (show ? "\033[?25h" : "\033[?25l"); // show/hide cursor
+#endif // Windows/Linux
+}
+
 int main(int argc, char *argv[])
 {
+    show_console_cursor(false);
+
     IntroNS::Intro i;
     i.show();
 
@@ -156,6 +178,8 @@ int main(int argc, char *argv[])
     {
         std::cout << "unknown exception caught, exit!" << std::endl;
     }
+
+    show_console_cursor(true);
 
     return 0;
 }
