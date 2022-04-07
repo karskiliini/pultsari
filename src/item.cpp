@@ -76,7 +76,7 @@ bool Veitsi::interact(PlayerNS::Player* player)
 
 // ketjut
 Ketjut::Ketjut(uint32_t x, uint32_t y) : Item(x, y) { }
-std::string Ketjut::typeToChar() const { return "/"; }
+std::string Ketjut::typeToChar() const { return "¨"; }
 std::string Ketjut::getMsg() const {
     return "Kutkuta pollaria riimuilla.";
 }
@@ -106,7 +106,7 @@ std::string Bootsit::getMsg() const {
 }
 bool Bootsit::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.kivet;
+    ++player->inventory.bootsit;
     return true;
 }
 

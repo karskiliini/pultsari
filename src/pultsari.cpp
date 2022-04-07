@@ -137,7 +137,7 @@ void mainloop()
     bool welcome = true;
 
     Printer printer;
-    uint32_t stage = 1;
+    uint32_t stage = 9;
     PlayerNS::Player player;
 
     bool quit = false;

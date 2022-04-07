@@ -1,6 +1,8 @@
 #ifndef INPUT_HPP
 #define INPUT_HPP
 
+#include <cstdint>
+
 namespace InputNS {
 
 enum InputType {
@@ -52,6 +54,7 @@ public:
     static FoodType getFood();
     static InputAlkoType getInputAlko();
     static bool getInputPutka();
+    static uint32_t getInputDivari();
 };
 
 }

@@ -235,8 +235,78 @@ string Divari::typeToChar(uint32_t x, uint32_t y) const
 
 bool Divari::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "divari on suljettu";
-    return false;
+    if (player->promilles > 15) {
+        msg = "Tehän olette sikakännissä. Ulos täältä !";
+        return false;
+    }
+    else if ((player->inventory.bootsit == 0) &&
+             (player->inventory.pamput == 0) &&
+             (player->inventory.ketjut == 0) &&
+             (player->inventory.veitset == 0)) {
+           msg = "Emme osta teilta mitaan. Out.";
+           return false;
+    }
+    return true;
+}
+
+bool Divari::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Mitas myisit ? Bootsit=1  Pamppu=2  Ketjut=3  Veitsi=4";
+    return true;
+}
+
+void Divari::interact(PlayerNS::Player* player, std::string& msg) {
+    auto item = InputNS::Input::getInputDivari();
+
+    bool retry = true;
+    while (retry)
+    {
+        retry = false;
+
+        switch(item) {
+            case 1:
+                if (player->inventory.bootsit < 1) {
+                    msg = "Eihän teillä ole kenkia edes jaloissanne.";
+                } else {
+                    --player->inventory.bootsit;
+                    player->money += 100;
+                    msg = "Bootsit meni satasella.";
+                }
+                break;
+            case 2:
+                if (player->inventory.pamput < 1) {
+                    msg = "Joo, montahan noita pamppuja sinulla onkin.";
+                } else {
+                    --player->inventory.pamput;
+                    uint32_t price = rand() % 40 + 1;
+                    player->money += price;
+                    msg = "Pamppu hurahti " + std::to_string(price) + " markalla.";
+                }
+                break;
+            case 3:
+                if (player->inventory.ketjut < 1) {
+                    msg = "Mutta, kun sinulla ei ole yhtikäs yhtään ketjun patkääkään.";
+                } else {
+                    --player->inventory.ketjut;
+                    player->money += 30;
+                    msg = "Ketjut onnistuit myymaan kolmella kympilla.";
+                }
+                break;
+            case 4:
+                if (player->inventory.veitset < 1) {
+                    msg = "Et omista veitsiä.";
+                } else {
+                    --player->inventory.veitset;
+                    uint32_t price = rand() % 50 + 1;
+                    player->money += price;
+                    msg = "Voitit veitellas " + std::to_string(price) + " markkaa.";
+                }
+                break;
+            default:
+                retry = true;
+                break;
+        }
+    }
 }
 
 std::string Divari::getWalkMsg() const { return "Divarin seinä on vankkumaton,vaikka kuinka yrität kävellä sitä päin."; }
@@ -344,6 +414,7 @@ bool PoliisiAsema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 
 bool PoliisiAsema::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
+    msg = "";
     return true;
 }
 

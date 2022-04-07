@@ -82,6 +82,8 @@ public:
     virtual std::string getName() const;
     virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
 };
 

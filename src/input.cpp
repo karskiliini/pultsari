@@ -94,6 +94,28 @@ bool Input::getInputPutka()
     return sel;
 }
 
+uint32_t Input::getInputDivari()
+{
+    Input::raw();
+
+    uint32_t sel = 0;
+    while (sel == 0)
+    {
+        auto c = getchar();
+        switch(c)
+        {
+            case '1': sel = 1; break;
+            case '2': sel = 2; break;
+            case '3': sel = 3; break;
+            case '4': sel = 4; break;
+            default: sel = 0; break;
+        }
+    }
+
+    Input::noraw();
+    return sel;
+}
+
 DrinkType Input::getDrink()
 {
     Input::raw();
