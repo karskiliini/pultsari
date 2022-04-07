@@ -14,7 +14,8 @@ enum BuildingType {
     EIsku,
     EKRauta,
     EVankila,
-    EDivari
+    EDivari,
+    EPoliisiAsema,
 };
 
 class Building {
@@ -85,6 +86,30 @@ class KRauta : public Building {
 public:
     KRauta();
     virtual ~KRauta() = default;
+    virtual std::string getName() const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+};
+
+class Vankila : public Building {
+public:
+    Vankila();
+    virtual ~Vankila() = default;
+    virtual std::string getName() const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+};
+
+class PoliisiAsema : public Building {
+public:
+    PoliisiAsema();
+    virtual ~PoliisiAsema() = default;
     virtual std::string getName() const;
     virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
