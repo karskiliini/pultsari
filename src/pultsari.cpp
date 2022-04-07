@@ -186,7 +186,7 @@ void mainloop()
                 break;
             } else if (player.health < 1) {
                 quit = true;
-                printer.showMessage("Paasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!", level);
+                printer.showMessage("Terveytesi pettaa... kemahdat tantereeseen pitkaksesi .........", level);
             }
 
             printer.print(level);

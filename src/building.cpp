@@ -202,51 +202,16 @@ string Isku::typeToChar(uint32_t x, uint32_t y) const
 
 bool Isku::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    if (player->promilles > 14) {
-        msg = "Vartija heitti sinut pihalle. Olet juopunut.";
-        return false;
-    } else if ((player->promilles < 5) &&  (player->money >= 15)) {
-        msg = "Tehan olette selvä. Meillä sen voi korjata.";
-        return true;
-    } else if (player->money < 15) {
-        msg = "Putiikki on kiinni.";
-        return false;
-    }
-    msg = "";
+    msg = "Putiikki on kiinni.";
     return true;
 }
 
 bool Isku::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Ja mitas herra ostaa ,kalja vai lonkka (1/2)?";
-    return true;
+    return false;
 }
-
-void Isku::interact(PlayerNS::Player* player, std::string& msg)
-{
-/*
-    auto purchase = Input::getInputIsku();
-    switch(purchase)
-    {
-        case InputNS::ostakalja:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (kalja)";
-            ++player->inventory.kalja;
-            player->money -= 10;
-            break;
-        case InputNS::ostalonkka:
-            ++player->inventory.lonkka;
-            player->money -= 15;
-            msg = "Kiitos,ja hyvää päivän jatkoa. (lonkka)";
-            break;
-        default:
-        case InputNS::poistualko:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (ulos)";
-            break;
-    }
-    */
-}
-
-std::string Isku::getWalkMsg() const { return "Isket paasi Iskun seinaan. Mielenkiintoista."; }
+void Isku::interact(PlayerNS::Player* player, std::string& msg) { }
+std::string Isku::getWalkMsg() const { return "Iskun seina on iskunkestava,et paassyt sisaan."; }
 
 // DIVARI
 Divari::Divari() : Building(BuildingType::EDivari) {
@@ -309,31 +274,8 @@ bool KRauta::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
     return true;
 }
 
-void KRauta::interact(PlayerNS::Player* player, std::string& msg)
-{
-/*
-    auto purchase = Input::getInputIsku();
-    switch(purchase)
-    {
-        case InputNS::ostakalja:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (kalja)";
-            ++player->inventory.kalja;
-            player->money -= 10;
-            break;
-        case InputNS::ostalonkka:
-            ++player->inventory.lonkka;
-            player->money -= 15;
-            msg = "Kiitos,ja hyvää päivän jatkoa. (lonkka)";
-            break;
-        default:
-        case InputNS::poistualko:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (ulos)";
-            break;
-    }
-    */
-}
-
-std::string KRauta::getWalkMsg() const { return "Isket paasi K-Raudan seinaan. Mielenkiintoista."; }
+void KRauta::interact(PlayerNS::Player* player, std::string& msg) { }
+std::string KRauta::getWalkMsg() const { return "K-RAUDAN  seina on vahvempaa tekoa,kuin paasi.Et paassyt sisaan."; }
 
 
 // VANKILA
