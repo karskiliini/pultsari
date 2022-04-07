@@ -20,7 +20,8 @@ enum ItemType {
     EOmppo,
     EBanaani,
     ERaha,
-    EPaska
+    EPaska,
+    EViesti
 };
 
 class Item {
@@ -157,6 +158,15 @@ class Paska : public Item {
 public:
     Paska(uint32_t x, uint32_t y);
     virtual ~Paska() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+class Viesti : public Item {
+public:
+    Viesti(uint32_t x, uint32_t y);
+    virtual ~Viesti() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);

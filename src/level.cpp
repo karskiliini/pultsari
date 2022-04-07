@@ -121,8 +121,13 @@ void Level::addItem(ItemType item)
         case EPaska:
             i = new Paska(x, y);
             break;
+        case EViesti:
+            i = new Viesti(x, y);
+            break;
     }
-    addItem(i);
+    if (i) {
+        addItem(i);
+    }
 }
 
 bool Level::addBuilding(Building& building)

@@ -56,9 +56,11 @@ void initLevel(Level& level)
     if (random(10))  level.addItem(EOmppo);
     if (random(5))   level.addItem(EBanaani);
     if (random(45))  level.addItem(EPamppu);
+    if (random(80))  level.addItem(EViesti);
     if (random(80))  level.addItem(ELonkka);
     if (random(90))  level.addItem(ERaha);
     if (random(19))  level.addItem(EPaska);
+
 }
 
 void mainloop()

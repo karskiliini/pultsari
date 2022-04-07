@@ -85,7 +85,6 @@ Item* checkItems(Level& level, uint32_t x, uint32_t y)
     return nullptr;
 }
 
-
 bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 {
     // spend turn

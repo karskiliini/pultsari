@@ -2,8 +2,10 @@
 #include "player.hpp"
 #include "level.hpp"
 #include <string>
+#include <vector>
 
 using std::string;
+using std::vector;
 
 // bona
 Bona::Bona(uint32_t x, uint32_t y) : Item(x, y) { }
@@ -174,5 +176,86 @@ std::string Paska::getMsg() const {
 bool Paska::interact(PlayerNS::Player* player)
 {
     player->health -= 1;
+    return true;
+}
+
+// taivaallinen viesti
+#include  <random>
+#include  <iterator>
+
+template<typename Iter, typename RandomGenerator>
+Iter select_randomly(Iter start, Iter end, RandomGenerator& g) {
+    std::uniform_int_distribution<> dis(0, std::distance(start, end) - 1);
+    std::advance(start, dis(g));
+    return start;
+}
+
+template<typename Iter>
+Iter select_randomly(Iter start, Iter end) {
+    static std::random_device rd;
+    static std::mt19937 gen(rd());
+
+    return select_randomly(start, end, gen);
+}
+
+Viesti::Viesti(uint32_t x, uint32_t y) : Item(x, y) { }
+std::string Viesti::typeToChar() const { return "?"; }
+std::string Viesti::getMsg() const {
+    const vector<string> viestit = {
+        "Mummoilla on rahaa.",
+        "Poliisit on kayny punttisalilla.",
+        "Alcossa myydaan tavaraa.",
+        "Varkaille kannattaa antaa pamppua.",
+        "Sven Olof on niita miehia .",
+        "Vankikarkuri kupsahtaa vasta kolmannella pampulla",
+        "PULTSARI   -  Written By Mika Maaranen                          28.12.1991",
+        "Kalaa kannatta syoda harkiten.",
+        "Sinulla on 50 % mahdollisuus,siihen,etta omena on herkullinen",
+        "Poliisien kanssa ei ole leikkimista. ",
+        "Mummot saattavat huitaista kasilaukulla.",
+        "Tassakin pelissa alco ottaa ylihintaa.",
+        "Varkaat voi nuijia vain heittamalla.",
+        "Vauhtia siihen peliin !!",
+        "Mitas oikein kuppaat ? Olet hakannut vasta pari mummoa !",
+        "Mummelit vaistelevat heittoja.",
+        "Skinhead on saattanut sekoontua elaimiin...",
+        "Kankkusta kannatta valtella. Tai ainakin tassa pelissa.",
+        "K-RAUTAa ei ole ohjelmoitu loppuun.",
+        "Tavatessasi kaljapullon etikettia , tavaat: L-A-H-D-E-N IIIIIIIIIIIIIIII",
+        "Varo paskaa.Siihen liukastuu.",
+        "Oispa tassa pelissa vessa.",
+        "Alco ei myy humaltuneille.",
+        "Divari ei osta juopuneilta.",
+        "PULTSARI:  -  Idea By Mika -,Jari -,Tero Maaranen and Kimmo Korhonen.",
+        "Mummot on vaarallisia.",
+        "AIDS tappaa.",
+        "Jos otat,et aja.",
+        "Poliisi asemalla on putka,kokeile sita(vasta viidennen levelin jalkeen)",
+        "Burb !!",
+        "Tama ohjelma on laadittu kayttamalla Qbasic 4.5 - ohjelmaa.",
+        "Vankikarkurit ne heittelleepi ilkeesti kivilla - jos ne loytaa sellasen.",
+        "By Miksu Soft. Eikun pulsusoftware 5.4.2022.",
+        "Tiesitteko,etta radiota kuunnellessa on hyva ohjelmoida ?",
+        "Konekirjoitustaidosta on hyotya.",
+        "Mietit viimeoista untasi,ja sitten muistat,ettet nukkunut ollenkaan.",
+        "kakakakalaa.",
+        "Muistat KIROSANAN,jonka joku joskus sulle selitti : P E L I  K O N S O L I",
+        "Ultima 6 onnesi uus",
+        "Kysy uudempaa versiota,soita 12345... (hp vain vaivaiset 999999999999999 mk.)",
+        "We wish you a merry cristmas and a happy new year...1992.",
+        "Zak McKracken voisi olla tan pelin kunkku.",
+        "Leisuresuit Larryssa on puhtia.",
+        "Putkassa mieli sekoaa.",
+        "Punaista pain !!!",
+        "Vinkki :poliisit vaarantavat terveytesi !!!",
+        "The Last Zone...sorry soor, The Last Bone."
+        };
+
+    auto r = *select_randomly(viestit.begin(), viestit.end());
+    return r;
+}
+
+bool Viesti::interact(PlayerNS::Player* player)
+{
     return true;
 }
