@@ -16,6 +16,8 @@ enum BuildingType {
     EVankila,
     EDivari,
     EPoliisiAsema,
+    EAsema,
+    ESeina
 };
 
 class Building {
@@ -42,6 +44,7 @@ public:
 
     BuildingType type;
     DirectionNS::Direction door = DirectionNS::Direction::up;
+    bool hasDoor = true;
     uint32_t wallRight;
     uint32_t wallTop;
     uint32_t wallLeft;
@@ -115,6 +118,27 @@ public:
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+};
+
+class Asema : public Building {
+public:
+    Asema();
+    virtual ~Asema() = default;
+    virtual std::string getName() const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+};
+
+class Seina : public Building {
+public:
+    Seina();
+    virtual ~Seina() = default;
+    virtual std::string getName() const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual std::string getWalkMsg() const;
 };
 

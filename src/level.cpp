@@ -62,7 +62,6 @@ void Level::freePosition(uint32_t& x, uint32_t& y) const
 
 void Level::addBonas()
 {
-    srand(time(NULL));
     for (uint32_t i = 0; i < stage; ++i)
     {
         uint32_t x;

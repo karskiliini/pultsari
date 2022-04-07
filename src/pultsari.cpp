@@ -10,6 +10,9 @@
 #include <iostream>
 #include <exception>
 
+using std::cout;
+using std::endl;
+
 void show_console_cursor(const bool show) {
 #if defined(_WIN32)
     static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -91,11 +94,29 @@ static void populateBuildings(Level& level)
     level.addBuilding(b);
 
     if (level.stage % 2) {
-        b = new KRauta();
-    } else {
         b = new Alko();
+    } else {
+        b = new KRauta();
     }
     level.addBuilding(b);
+
+    if ((level.stage > 6) && random(50)) {
+        b = new Vankila();
+        auto ret = level.addBuilding(b);
+        b = new PoliisiAsema();
+        ret = level.addBuilding(b);
+    }
+
+    if (level.stage > 8)
+    {
+        // asema
+        b = new Asema();
+        level.addBuilding(b);
+
+        b = new Seina();
+        level.addBuilding(b);
+    }
+
 }
 
 static bool checkExit(const Level& level)
@@ -116,19 +137,17 @@ void mainloop()
     bool welcome = true;
 
     Printer printer;
-    uint32_t stage = 1;
+    uint32_t stage = 9;
     PlayerNS::Player player;
 
     bool quit = false;
 
     while (!quit) {
         player.resetPosition();
-
         Level level(stage);
 
         //debug
         printer.player = &player;
-
 
         {
             NextLevel* next = new NextLevel(79,27, &level);
@@ -178,7 +197,9 @@ void mainloop()
 
 int main(int argc, char *argv[])
 {
+    srand(time(NULL));
     show_console_cursor(false);
+
 
     IntroNS::Intro i;
     i.show();

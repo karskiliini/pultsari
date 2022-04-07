@@ -17,7 +17,7 @@ std::string Building::getName() const { return ""; }
 
 bool Building::getEnterMsg(PlayerNS::Player* player, std::string& msg) const { return false; }
 bool Building::getInteractMsg(PlayerNS::Player* player, std::string& msg) const { return false; }
-void Building::interact(PlayerNS::Player* player, std::string& msg) { msg = "error"; }
+void Building::interact(PlayerNS::Player* player, std::string& msg) { }
 
 std::string Building::getWalkMsg() const { return ""; }
 
@@ -54,6 +54,8 @@ bool Building::hitWall(uint32_t x, uint32_t y) const {
 }
 
 bool Building::hitDoor(uint32_t x, uint32_t y) const {
+    if (!hasDoor) return false;
+
     if (hitWall(x, y))
     {
         if ((x >= wallLeft) && (x <= wallRight) && ((y == wallTop) || (y == wallBot))) {
@@ -93,7 +95,7 @@ bool Building::hitDoor(uint32_t x, uint32_t y) const {
 
 string Building::printChar(uint32_t x, uint32_t y) const
 {
-    if (hitDoor(x, y)) return "░";
+    if (hasDoor && hitDoor(x, y)) return "░";
     if (hitWall(x, y)) return "█";
 
     if (y == (wallTop + wallBot) / 2)
@@ -180,10 +182,10 @@ std::string Alko::getWalkMsg() const { return "Isket paasi alkon seinaan. Mielen
 
 // ISKU
 Isku::Isku() : Building(BuildingType::EIsku) {
-    wallRight = 25;
-    wallTop = 28;
-    wallLeft = 14;
-    wallBot = 20;
+    wallRight = 20;
+    wallTop = 23;
+    wallLeft = 0;
+    wallBot = 27;
 
     door = DirectionNS::up;
 }
@@ -248,12 +250,12 @@ std::string Isku::getWalkMsg() const { return "Isket paasi Iskun seinaan. Mielen
 
 // DIVARI
 Divari::Divari() : Building(BuildingType::EDivari) {
-    wallRight = 25;
-    wallTop = 0;
-    wallLeft = 14;
-    wallBot = 8;
+    wallRight = 20;
+    wallTop = 23;
+    wallLeft = 0;
+    wallBot = 27;
 
-    door = DirectionNS::down;
+    door = DirectionNS::up;
 }
 
 std::string Divari::getName() const
@@ -345,18 +347,18 @@ std::string KRauta::getWalkMsg() const { return "Isket paasi K-Raudan seinaan. M
 
 
 // VANKILA
-Vankila::Vankila() : Building(BuildingType::EKRauta) {
-    wallRight = 40;
-    wallTop = 0;
-    wallLeft = 20;
-    wallBot = 4;
+Vankila::Vankila() : Building(BuildingType::EVankila) {
+    wallRight = 58;
+    wallTop = 23;
+    wallLeft = 48;
+    wallBot = 27;
 
-    door = DirectionNS::down;
+    door = DirectionNS::up;
 }
 
 std::string Vankila::getName() const
 {
-    return "VANKILA";
+    return "PUTKA";
 }
 
 string Vankila::typeToChar(uint32_t x, uint32_t y) const
@@ -414,13 +416,13 @@ std::string Vankila::getWalkMsg() const { return "Isket paasi Vankilan seinaan. 
 
 
 // POLIISIASEMA
-PoliisiAsema::PoliisiAsema() : Building(BuildingType::EKRauta) {
-    wallRight = 40;
-    wallTop = 0;
-    wallLeft = 20;
-    wallBot = 4;
+PoliisiAsema::PoliisiAsema() : Building(BuildingType::EPoliisiAsema) {
+    wallRight = 46;
+    wallTop = 23;
+    wallLeft = 34;
+    wallBot = 27;
 
-    door = DirectionNS::down;
+    door = DirectionNS::up;
 }
 
 std::string PoliisiAsema::getName() const
@@ -435,17 +437,7 @@ string PoliisiAsema::typeToChar(uint32_t x, uint32_t y) const
 
 bool PoliisiAsema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    if (player->promilles > 14) {
-        msg = "Vartija heitti sinut pihalle. Olet juopunut.";
-        return false;
-    } else if ((player->promilles < 5) &&  (player->money >= 15)) {
-        msg = "Tehan olette selvä. Meillä sen voi korjata.";
-        return true;
-    } else if (player->money < 15) {
-        msg = "Putiikki on kiinni.";
-        return false;
-    }
-    msg = "";
+    msg = "Poliisiasema vaikuttaa olevan kiinni";
     return true;
 }
 
@@ -480,3 +472,66 @@ void PoliisiAsema::interact(PlayerNS::Player* player, std::string& msg)
 }
 
 std::string PoliisiAsema::getWalkMsg() const { return "Isket paasi Vankilan seinaan. Mielenkiintoista."; }
+
+
+// ASEMA
+Asema::Asema() : Building(BuildingType::EAsema) {
+    wallRight = 76;
+    wallTop = 25;
+    wallLeft = 68;
+    wallBot = 27;
+
+    door = DirectionNS::left;
+}
+
+std::string Asema::getName() const
+{
+    return "ASEMA";
+}
+
+string Asema::typeToChar(uint32_t x, uint32_t y) const
+{
+    return printChar(x, y);
+}
+
+bool Asema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Asemalla voi saada turpaansa!";
+    return false;
+}
+
+bool Asema::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Asemalla voi saada turpaansa!";
+    return true;
+}
+
+void Asema::interact(PlayerNS::Player* player, std::string& msg)
+{
+}
+
+std::string Asema::getWalkMsg() const { return "Isket paasi aseman seinaan. Mielenkiintoista."; }
+
+
+// ASEMAN SEINÄ
+Seina::Seina() : Building(BuildingType::ESeina) {
+    wallRight = 68;
+    wallTop = 25;
+    wallLeft = 62;
+    wallBot = 25;
+
+    door = DirectionNS::down;
+    hasDoor = false;
+}
+
+std::string Seina::getName() const
+{
+    return "";
+}
+
+string Seina::typeToChar(uint32_t x, uint32_t y) const
+{
+    return printChar(x, y);
+}
+
+std::string Seina::getWalkMsg() const { return "Isket paasi aseman seinaan. Mielenkiintoista."; }
