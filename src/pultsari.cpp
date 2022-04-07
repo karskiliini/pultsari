@@ -6,6 +6,7 @@
 #include "level.hpp"
 #include "player.hpp"
 #include "printer.hpp"
+#include "item.hpp"
 #include <iostream>
 #include <exception>
 
@@ -38,9 +39,32 @@ bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
     return ret;
 }
 
+bool random(uint32_t pct)
+{
+    return (uint32_t)(rand() % 100) <= pct;
+}
+
+void initLevel(Level& level)
+{
+    level.addBonas();
+    if (random(50))  level.addItem(EKalja);
+    if (random(250)) level.addItem(EKetjut);
+    if (random(10))  level.addItem(EVeitsi);
+    if (random(55))  level.addItem(EKivi);
+    if (random(15))  level.addItem(EBootsit);
+    if (random(5))   level.addItem(EKala);
+    if (random(10))  level.addItem(EOmppo);
+    if (random(5))   level.addItem(EBanaani);
+    if (random(45))  level.addItem(EPamppu);
+    if (random(80))  level.addItem(ELonkka);
+    if (random(90))  level.addItem(ERaha);
+    if (random(19))  level.addItem(EPaska);
+}
+
 void mainloop()
 {
     Printer printer;
+
     Level level(3);
     PlayerNS::Player player;
 
@@ -58,7 +82,8 @@ void mainloop()
     level.addBuilding(alko);
     level.addBuilding(divari);
     level.addPerson(player);
-    level.addBonas();
+
+    initLevel(level);
 
     while(1) {
         printer.removeMessage();

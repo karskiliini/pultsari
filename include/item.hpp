@@ -7,6 +7,22 @@ namespace PlayerNS {
     class Player;
 }
 
+enum ItemType {
+    EKalja,
+    ELonkka,
+    ELenkki,
+    EPamppu,
+    EVeitsi,
+    EKetjut,
+    EKivi,
+    EBootsit,
+    EKala,
+    EOmppo,
+    EBanaani,
+    ERaha,
+    EPaska
+};
+
 class Item {
 public:
     Item(uint32_t x, uint32_t y) : x(x), y(y) { };

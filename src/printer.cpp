@@ -184,8 +184,6 @@ string promilleAligned(uint32_t value)
 
 void printStats(Level& l, Player* player)
 {
-    auto& i = player->inventory;
-
     std::cout << "RAHAA: "    << moneyAligned(player->money);
     std::cout << "  VOIMA: "    << moneyAligned(player->health);
     std::cout << "  PROMILLE: " << promilleAligned(player->promilles);

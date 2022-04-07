@@ -14,10 +14,13 @@ public:
     ~Level();
 
     bool hit(uint32_t x, uint32_t y) const;
+    void freePosition(uint32_t& x, uint32_t& y) const;
 
     void addBonas();
     bool addBuilding(Building& building);
     bool addPerson(Person& person);
+
+    void addItem(ItemType item);
     void addItem(Item* item);
     void removeItem(Item* item);
 
