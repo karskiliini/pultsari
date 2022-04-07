@@ -41,9 +41,11 @@ InputType Input::getInput()
             case 'z': sel = InputType::quit; break;
             case 't': sel = throwing; break;
             case 'q': sel = drinking; break;
+            case 'e': sel = eating; break;
             default:
                 break;
         }
+        std::cout << "\b \b";
     }
 
     Input::noraw();
@@ -67,12 +69,12 @@ InputAlkoType Input::getInputAlko()
             case '3': sel = InputAlkoType::poistualko; break;
             default: break;
         }
+        std::cout << "\b \b";
     }
 
     Input::noraw();
     return sel;
 }
-
 
 DrinkType Input::getDrink()
 {
@@ -88,6 +90,30 @@ DrinkType Input::getDrink()
             case '2': sel = DrinkType::lonkka; break;
             default: sel = DrinkType::nodrink; break;
         }
+        std::cout << "\b \b";
+    }
+
+    InputNS::Input::noraw();
+    return sel;
+}
+
+FoodType Input::getFood()
+{
+    Input::raw();
+
+    FoodType sel = foodpending;
+    while(sel == foodpending)
+    {
+        auto c = getchar();
+        switch(c)
+        {
+            case '1': sel = FoodType::foodlenkki; break;
+            case '2': sel = FoodType::foodkala; break;
+            case '3': sel = FoodType::foodomppo; break;
+            case '4': sel = FoodType::foodbansku; break;
+            default: sel = FoodType::nofood; break;
+        }
+        std::cout << "\b \b";
     }
 
     InputNS::Input::noraw();

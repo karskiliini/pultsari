@@ -55,6 +55,108 @@ bool Player::drink(Printer& printer, Level& level)
     return true;
 }
 
+bool random(uint32_t pct)
+{
+    return (uint32_t)(rand() % 100) <= pct;
+}
+
+bool Player::eat(Printer& printer, Level& level)
+{
+    if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
+        printer.showMessage("Ei syötävää.", level);
+    } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.lenkki == 0)) {
+        --inventory.bansku;
+        if (random(50)) {
+            printer.showMessage("Ei vaikutusta.", level);
+        } else {
+            health += 1;
+            printer.showMessage("Bansku teki teraa !!!", level);
+        }
+    } else if ((inventory.kalat == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
+        --inventory.omppo;
+        if (random(50)) {
+            health -= 1;
+            printer.showMessage("Omppo oli pilaantunut,oksennat.", level);
+        } else {
+            health += 2;
+            printer.showMessage("Omena oli herkullinen !!!", level);
+        }
+    } else if ((inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
+        --inventory.kalat;
+        if (random(70)) {
+            health -= 2;
+            printer.showMessage("Syomasi kala sisalsi matoja...", level);
+        } else {
+            health += 4;
+            printer.showMessage("Kala antaa sinulle uutta puhtia !!!", level);
+        }
+    } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0)) {
+        health += 1;
+        --inventory.lenkki;
+        printer.showMessage("Oispa edes kossua kaveriksi.", level);
+    } else {
+        printer.showMessage("Mitas...1=makkara 2=kala 3=omppo 4=bansku ???", level);
+        auto type = InputNS::Input::getFood();
+
+        switch(type) {
+            case InputNS::foodlenkki:
+                if (inventory.lenkki == 0) {
+                    printer.showMessage("Ei ole niitä.", level);
+                } else {
+                    --inventory.lenkki;
+                    printer.showMessage("Mamamamakkaraa.", level);
+                }
+                break;
+            case InputNS::foodkala:
+                if (inventory.kalat == 0) {
+                    printer.showMessage("Kalat loppu.", level);
+                } else {
+                    --inventory.kalat;
+                    if (random(70)) {
+                        health -= 2;
+                        printer.showMessage("Syomasi kala sisalsi matoja...", level);
+                    } else {
+                        health += 4;
+                        printer.showMessage("Kaloreja kalasta.", level);
+                    }
+                }
+                break;
+            case InputNS::foodomppo:
+                if (inventory.omppo == 0) {
+                    printer.showMessage("EE OO OMMPPOJA.", level);
+                } else {
+                    --inventory.omppo;
+                    if (random(50)) {
+                        health -= 1;
+                        printer.showMessage("Joku oli kaytellyt keski keppiaan omppoosi.", level);
+                    } else {
+                        health += 2;
+                        printer.showMessage("orb.", level);
+                    }
+                }
+                break;
+            case InputNS::foodbansku:
+                if (inventory.bansku == 0) {
+                    printer.showMessage("Bailu ilman banskuu?", level);
+                } else {
+                    --inventory.bansku;
+                    if (random(50)) {
+                        printer.showMessage("Bansku ei vaikuttanut.", level);
+                    } else {
+                        health += 1;
+                        printer.showMessage("Babababananiii", level);
+                    }
+                }
+                break;
+            default:
+                printer.showMessage("Päätit olla syömättä mitään.", level);
+                return false;
+
+        }
+    }
+    return true;
+}
+
 Building* checkDoor(Level& level, uint32_t x, uint32_t y)
 {
     for (auto& b : level.buildings) {

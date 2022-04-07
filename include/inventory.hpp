@@ -12,9 +12,9 @@ struct Inventory {
     uint32_t kivet = 0;
     uint32_t pamput = 0;
     uint32_t bootsit = 0;
-    uint32_t kalat = 0;
-    uint32_t omppo = 0;
-    uint32_t bansku = 0;
+    uint32_t kalat = 1;
+    uint32_t omppo = 1;
+    uint32_t bansku = 1;
 };
 
 #endif

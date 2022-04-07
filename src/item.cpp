@@ -124,7 +124,7 @@ bool Kala::interact(PlayerNS::Player* player)
 
 // omppo
 Omppo::Omppo(uint32_t x, uint32_t y) : Item(x, y) { }
-std::string Omppo::typeToChar() const { return "¥"; }
+std::string Omppo::typeToChar() const { return "o"; }
 std::string Omppo::getMsg() const {
     return "Omppo.Sen voi syoda, jos uskaltaa.";
 }

@@ -11,6 +11,7 @@ enum InputType {
     up,
     throwing,
     drinking,
+    eating,
     quit
 };
 
@@ -19,6 +20,15 @@ enum DrinkType {
     nodrink,
     kalja,
     lonkka
+};
+
+enum FoodType {
+    foodpending,
+    nofood,
+    foodlenkki,
+    foodomppo,
+    foodbansku,
+    foodkala
 };
 
 enum InputAlkoType {
@@ -39,6 +49,7 @@ public:
     static void waitKey();
     static InputType getInput();
     static DrinkType getDrink();
+    static FoodType getFood();
     static InputAlkoType getInputAlko();
 };
 

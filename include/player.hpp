@@ -18,6 +18,7 @@ public:
 
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
     virtual bool drink(Printer& printer, Level& level);
+    virtual bool eat(Printer& printer, Level& level);
     virtual std::string typeToChar() const { return "@"; };
 
     Inventory inventory;

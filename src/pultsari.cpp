@@ -31,6 +31,9 @@ bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
         case InputNS::drinking:
             ret = player.drink(printer, level);
             break;
+        case InputNS::eating:
+            ret = player.eat(printer, level);
+            break;
         default:
         case InputNS::quit:
             throw std::out_of_range("quit!");
@@ -60,7 +63,6 @@ void initLevel(Level& level)
     if (random(80))  level.addItem(ELonkka);
     if (random(90))  level.addItem(ERaha);
     if (random(19))  level.addItem(EPaska);
-
 }
 
 void mainloop()
@@ -87,6 +89,8 @@ void mainloop()
 
     initLevel(level);
 
+
+    printer.showMessage("Tervetuloa Pultsariin!", level);
     while(1) {
         printer.removeMessage();
 
