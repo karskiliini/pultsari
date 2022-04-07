@@ -71,6 +71,29 @@ InputAlkoType Input::getInputAlko()
     return sel;
 }
 
+bool Input::getInputPutka()
+{
+    Input::raw();
+
+    bool sel = false;
+    bool done = false;
+    while(!done)
+    {
+        auto c = getchar();
+        switch(c)
+        {
+            case 'E':
+            case 'e': sel = false; done = true; break;
+            case 'K':
+            case 'k': sel = true; done = true; break;
+            default:  break;
+        }
+    }
+
+    Input::noraw();
+    return sel;
+}
+
 DrinkType Input::getDrink()
 {
     Input::raw();

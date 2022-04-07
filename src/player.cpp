@@ -8,6 +8,8 @@ namespace PlayerNS {
 
 using std::string;
 using InputNS::Input;
+using std::cout;
+using std::endl;
 
 Player::Player() : Person(PersonType::pelaaja)
 {
@@ -29,16 +31,16 @@ bool Player::drink(Printer& printer, Level& level)
         {
             case InputNS::kalja:
                 --inventory.kalja;
-                printer.showMessage("Glub glub glub glub ..... Burb !!!", level);
+                printer.showMessage("Glub glub glub glub ..... Burb !!!", level, false);
                 promilles += 2;
                 break;
             case InputNS::lonkka:
                 --inventory.lonkka;
-                printer.showMessage("Glub glub glub glub ..... Burb !!!", level);
+                printer.showMessage("Glub glub glub glub ..... Burb !!!", level, false);
                 promilles += 4;
                 break;
             default:
-                printer.showMessage("Päätit olla juomatta mitään.", level);
+                printer.showMessage("Päätit olla juomatta mitään.", level, false);
                 return false;
         }
     }
@@ -105,55 +107,55 @@ bool Player::eat(Printer& printer, Level& level)
         switch(type) {
             case InputNS::foodlenkki:
                 if (inventory.lenkki == 0) {
-                    printer.showMessage("Ei ole niitä.", level);
+                    printer.showMessage("Ei ole niitä.", level, false);
                 } else {
                     --inventory.lenkki;
-                    printer.showMessage("Mamamamakkaraa.", level);
+                    printer.showMessage("Mamamamakkaraa.", level, false);
                 }
                 break;
             case InputNS::foodkala:
                 if (inventory.kalat == 0) {
-                    printer.showMessage("Kalat loppu.", level);
+                    printer.showMessage("Kalat loppu.", level, false);
                 } else {
                     --inventory.kalat;
                     if (random(70)) {
                         health -= 2;
-                        printer.showMessage("Syomasi kala sisalsi matoja...", level);
+                        printer.showMessage("Syomasi kala sisalsi matoja...", level, false);
                     } else {
                         health += 4;
-                        printer.showMessage("Kaloreja kalasta.", level);
+                        printer.showMessage("Kaloreja kalasta.", level, false);
                     }
                 }
                 break;
             case InputNS::foodomppo:
                 if (inventory.omppo == 0) {
-                    printer.showMessage("EE OO OMMPPOJA.", level);
+                    printer.showMessage("EE OO OMMPPOJA.", level, false);
                 } else {
                     --inventory.omppo;
                     if (random(50)) {
                         health -= 1;
-                        printer.showMessage("Joku oli kaytellyt keski keppiaan omppoosi.", level);
+                        printer.showMessage("Joku oli kaytellyt keski keppiaan omppoosi.", level, false);
                     } else {
                         health += 2;
-                        printer.showMessage("orb.", level);
+                        printer.showMessage("orb.", level, false);
                     }
                 }
                 break;
             case InputNS::foodbansku:
                 if (inventory.bansku == 0) {
-                    printer.showMessage("Bailu ilman banskuu?", level);
+                    printer.showMessage("Bailu ilman banskuu?", level, false);
                 } else {
                     --inventory.bansku;
                     if (random(50)) {
-                        printer.showMessage("Bansku ei vaikuttanut.", level);
+                        printer.showMessage("Bansku ei vaikuttanut.", level, false);
                     } else {
                         health += 1;
-                        printer.showMessage("Babababananiii", level);
+                        printer.showMessage("Babababananiii", level, false);
                     }
                 }
                 break;
             default:
-                printer.showMessage("Päätit olla syömättä mitään.", level);
+                printer.showMessage("Päätit olla syömättä mitään.", level, false);
                 return false;
 
         }
@@ -221,15 +223,16 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     string msg;
     Building* b = checkDoor(level, checkx, checky);
     if (b) {
-        // step into building
         blocked = true;
 
+        // check whether can enter
         bool entered = b->getEnterMsg(this, msg);
-        printer.showMessage(msg, level);
+        printer.showMessage(msg, level, entered);
         if (entered)
         {
+            // step into building
             b->getInteractMsg(this, msg);
-            printer.showMessage(msg, level);
+            printer.showMessage(msg, level, true);
 
             b->interact(this, msg);
             printer.showMessage(msg, level, false);
@@ -262,7 +265,9 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
         y = checky;
     }
 
-    printer.showMessage(msg, level);
+    // printer.showMessage(msg, level, false);
+    printer.setMessage(msg);
+    printer.print(level);
 
     if ((y >= level.sizey) || (x >= level.sizex)) {
         printer.showMessage("Ei karata pelialueelta !!", level);

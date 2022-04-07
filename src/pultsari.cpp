@@ -102,9 +102,9 @@ static void populateBuildings(Level& level)
 
     if ((level.stage > 6) && random(50)) {
         b = new Vankila();
-        auto ret = level.addBuilding(b);
+        level.addBuilding(b);
         b = new PoliisiAsema();
-        ret = level.addBuilding(b);
+        level.addBuilding(b);
     }
 
     if (level.stage > 8)
@@ -137,7 +137,7 @@ void mainloop()
     bool welcome = true;
 
     Printer printer;
-    uint32_t stage = 9;
+    uint32_t stage = 1;
     PlayerNS::Player player;
 
     bool quit = false;
@@ -168,7 +168,7 @@ void mainloop()
 
         bool nextLevel = false;
         while(!nextLevel && !quit) {
-            // printer.removeMessage();
+            printer.removeMessage();
 
             try {
                 bool turn = handleInput(player, level, printer);
@@ -180,10 +180,20 @@ void mainloop()
                 break;
             }
 
+            if (player.inJail) {
+                quit = true;
+                printer.showMessage("Paasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!", level);
+                break;
+            } else if (player.health < 1) {
+                quit = true;
+                printer.showMessage("Paasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!", level);
+            }
+
             printer.print(level);
             if (checkExit(level))
             {
-                printer.showMessage("Seuraavaan kenttaan...", level);
+                printer.showMessage("Seuraavaan kenttaan...", level, false);
+                printer.removeMessage();
 
                 InputNS::Input::waitKey();
 

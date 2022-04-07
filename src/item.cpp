@@ -252,7 +252,7 @@ std::string Viesti::getMsg() const {
         };
 
     auto r = *select_randomly(viestit.begin(), viestit.end());
-    return r;
+    return "Ilma alkaa vareilla ja kuulet taivaallisen aanen :       <LISaa>\n" + r;
 }
 
 bool Viesti::interact(PlayerNS::Player* player)

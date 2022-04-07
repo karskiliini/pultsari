@@ -13,15 +13,58 @@ using InputNS::Input;
 using PlayerNS::Player;
 using std::string;
 
+static void cursorHome()
+{
+    cout << "\e[f\e[K";
+}
+
+static string tokenizeStr(string& str)
+{
+    auto it = str.find("\n");
+    if (it != std::string::npos) {
+        string token = str.substr(0, it);
+        str = str.substr(it+1);
+        return token;
+    }
+    return str;
+}
+
+void Printer::setMessage(std::string message)
+{
+    msg = message;
+}
+
 void Printer::showMessage(std::string message, Level& level, bool waitKey)
 {
-    if (msgShown && waitKey) {
-        // wait for keypress
-        Input::waitKey();
+    if (msg == "") return;
+
+    bool tokenize = true;
+    uint32_t limit = 3;
+
+    while (tokenize && limit-- > 0) {
+        tokenize = false;
+
+        // see if message is multiline
+        auto it = message.find("\n");
+        if (it != std::string::npos) {
+            tokenize = true;
+        }
+
+        if (msgShown && waitKey) {
+            Input::waitKey();
+        }
+
+        msg = tokenizeStr(message);
+        msgShown = true;
+
+        cursorHome();
+        cout << "  " << msg << endl;
+
+        if (tokenize)
+        {
+            Input::waitKey();
+        }
     }
-    msg = message;
-    msgShown = true;
-    print(level);
 }
 
 void Printer::removeMessage()
@@ -180,11 +223,6 @@ void printStats(Level& l, Player* player)
     std::cout << endl << endl;
 }
 
-static void cursorHome()
-{
-    cout << "\e[f\e[K";
-}
-
 static void printLine(Level& l, uint32_t y)
 {
     // find all people that are on this line
@@ -242,7 +280,8 @@ void Printer::print(Level& l)
 {
     cursorHome();
 
-    cout << "  " << msg << endl;
+    cout << endl;
+    // cout << "  " << msg << endl;
     printBorder(l, true);
 
     for (uint32_t y = 0; y < l.sizey; ++y) {
@@ -260,6 +299,10 @@ void Printer::print(Level& l)
     printBorder(l, false);
 
     printStats(l, player);
+
+    showMessage(msg, l, false);
+    // cursorHome();
+    // cout << "  " << msg << endl;
 
     msgShown = false;
 }

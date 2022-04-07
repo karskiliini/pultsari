@@ -51,6 +51,7 @@ public:
     static DrinkType getDrink();
     static FoodType getFood();
     static InputAlkoType getInputAlko();
+    static bool getInputPutka();
 };
 
 }

@@ -368,48 +368,17 @@ string Vankila::typeToChar(uint32_t x, uint32_t y) const
 
 bool Vankila::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    if (player->promilles > 14) {
-        msg = "Vartija heitti sinut pihalle. Olet juopunut.";
-        return false;
-    } else if ((player->promilles < 5) &&  (player->money >= 15)) {
-        msg = "Tehan olette selvä. Meillä sen voi korjata.";
-        return true;
-    } else if (player->money < 15) {
-        msg = "Putiikki on kiinni.";
-        return false;
-    }
-    msg = "";
-    return true;
+    msg = "Jos haluat putkaan,mene poliisiaseman ovesta.";
+    return false;
 }
 
 bool Vankila::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Ja mitas herra ostaa ,kalja vai lonkka (1/2)?";
-    return true;
+    return false;
 }
 
 void Vankila::interact(PlayerNS::Player* player, std::string& msg)
 {
-/*
-    auto purchase = Input::getInputIsku();
-    switch(purchase)
-    {
-        case InputNS::ostakalja:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (kalja)";
-            ++player->inventory.kalja;
-            player->money -= 10;
-            break;
-        case InputNS::ostalonkka:
-            ++player->inventory.lonkka;
-            player->money -= 15;
-            msg = "Kiitos,ja hyvää päivän jatkoa. (lonkka)";
-            break;
-        default:
-        case InputNS::poistualko:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (ulos)";
-            break;
-    }
-    */
 }
 
 std::string Vankila::getWalkMsg() const { return "Isket paasi Vankilan seinaan. Mielenkiintoista."; }
@@ -437,38 +406,24 @@ string PoliisiAsema::typeToChar(uint32_t x, uint32_t y) const
 
 bool PoliisiAsema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Poliisiasema vaikuttaa olevan kiinni";
+    msg = "Putkaan otetaan kylla juoppoja, tuletko (K/E) ?";
     return true;
 }
 
 bool PoliisiAsema::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Ja mitas herra ostaa ,kalja vai lonkka (1/2)?";
     return true;
 }
 
 void PoliisiAsema::interact(PlayerNS::Player* player, std::string& msg)
 {
-/*
-    auto purchase = Input::getInputIsku();
-    switch(purchase)
-    {
-        case InputNS::ostakalja:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (kalja)";
-            ++player->inventory.kalja;
-            player->money -= 10;
-            break;
-        case InputNS::ostalonkka:
-            ++player->inventory.lonkka;
-            player->money -= 15;
-            msg = "Kiitos,ja hyvää päivän jatkoa. (lonkka)";
-            break;
-        default:
-        case InputNS::poistualko:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (ulos)";
-            break;
+    auto enter = Input::getInputPutka();
+    if (enter) {
+        player->inJail = true;
+        msg = "Putkassa istuskellessasi huomaat parin tunnin paasta miten          <LISää>";
+    } else {
+        msg = "No haivy sitten !!!";
     }
-    */
 }
 
 std::string PoliisiAsema::getWalkMsg() const { return "Isket paasi Vankilan seinaan. Mielenkiintoista."; }
@@ -502,8 +457,8 @@ bool Asema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 
 bool Asema::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Asemalla voi saada turpaansa!";
-    return true;
+    msg = "";
+    return false;
 }
 
 void Asema::interact(PlayerNS::Player* player, std::string& msg)

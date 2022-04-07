@@ -26,6 +26,7 @@ public:
     uint32_t promilles = 0.2;
     uint32_t money = 20;
     uint32_t turn = 1;
+    bool inJail = false;
 };
 
 }

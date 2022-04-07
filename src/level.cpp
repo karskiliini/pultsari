@@ -144,8 +144,6 @@ bool Level::addBuilding(Building* building)
         if (b->type == building->type) return false;
     }
 
-    cout << "addbuilding: " << building << endl;
-
     buildings.push_back(building);
     return true;
 }

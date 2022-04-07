@@ -13,6 +13,7 @@ public:
     static void raw();
     static void noraw();
 
+    void setMessage(std::string message);
     void showMessage(std::string message, Level& level, bool waitKey = true);
     void removeMessage();
 
