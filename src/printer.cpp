@@ -96,7 +96,7 @@ string inventoryAligned(uint32_t value)
 {
     if (value < 10) {
         char str[10];
-        sprintf( str, "%d", value);
+        sprintf(str, "%d", value);
         return string(str) + "  ";
     } else if (value < 100) {
         char str[10];
@@ -128,9 +128,76 @@ void printInventory(uint32_t y, Player* player)
     }
 }
 
+string moneyAligned(uint32_t value)
+{
+    if (value < 10) {
+        char str[10];
+        sprintf(str, "%d", value);
+        return string(str) + "    ";
+    } else if (value < 100) {
+        char str[10];
+        sprintf(str, "%d", value);
+        return string(str) + "   ";
+    } else if (value < 1000) {
+        char str[10];
+        sprintf(str, "%d", value);
+        return string(str) + "  ";
+    } else if (value < 10000) {
+        char str[10];
+        sprintf(str, "%d", value);
+        return string(str) + " ";
+    } else if (value < 100000) {
+        char str[10];
+        sprintf(str, "%d", value);
+        return string(str) + "";
+    } else {
+        return " oo  ";
+    }
+}
+
+string promilleAligned(uint32_t value)
+{
+    string ret = "";
+    uint32_t full = value / 10;
+    if (full == 0)
+    {
+        ret = "  .";
+    } else if (full < 10)
+    {
+        char str[10];
+        sprintf(str, "%d", full);
+        ret = " " + string(str) + ".";
+    } else if (full < 100) {
+        char str[10];
+        sprintf(str, "%d", full);
+        ret = "" + string(str) + ".";
+    } else return "KÄNNI";
+
+    uint32_t parts = value % 10;
+    {
+        char str[10];
+        sprintf(str, "%d", parts);
+        ret += string(str);
+    }
+    return ret;
+}
+
+void printStats(Level& l, Player* player)
+{
+    auto& i = player->inventory;
+
+    std::cout << "RAHAA: "    << moneyAligned(player->money);
+    std::cout << "  VOIMA: "    << moneyAligned(player->health);
+    std::cout << "  PROMILLE: " << promilleAligned(player->promilles);
+    std::cout << "  KÄPPÄILY: " << l.turn << " ";
+    std::cout << "  LEVEL: "  << l.stage << " ";
+    std::cout << endl << endl;
+}
+
 void Printer::print(Level& l)
 {
-    std::cout << "turn: " << l.turn << " " << "x: " << player->x << " " << "y: " << player->y << " " << msg << endl;
+    // cout << "  " << "x: " << player->x << " " << "y: " << player->y << " ";
+    cout << "  " << msg << endl;
 
     printBorder(l, true);
 
@@ -195,6 +262,8 @@ void Printer::print(Level& l)
         std::cout << VERTICAL << std::endl;
     }
     printBorder(l, false);
+
+    printStats(l, player);
 
     msgShown = false;
 }
