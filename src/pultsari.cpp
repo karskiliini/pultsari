@@ -10,6 +10,18 @@
 #include <iostream>
 #include <exception>
 
+void show_console_cursor(const bool show) {
+#if defined(_WIN32)
+    static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    CONSOLE_CURSOR_INFO cci;
+    GetConsoleCursorInfo(handle, &cci);
+    cci.bVisible = show; // show/hide cursor
+    SetConsoleCursorInfo(handle, &cci);
+#elif defined(__linux__)
+    std::cout << (show ? "\033[?25h" : "\033[?25l"); // show/hide cursor
+#endif // Windows/Linux
+}
+
 static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
 {
     bool ret;
@@ -47,7 +59,7 @@ static bool random(uint32_t pct)
     return (uint32_t)(rand() % 100) <= pct;
 }
 
-static void initLevel(Level& level)
+static void populateItems(Level& level)
 {
     level.addBonas();
     if (random(50))  level.addItem(EKalja);
@@ -63,6 +75,27 @@ static void initLevel(Level& level)
     if (random(80))  level.addItem(ELonkka);
     if (random(90))  level.addItem(ERaha);
     if (random(19))  level.addItem(EPaska);
+}
+
+static void populateBuildings(Level& level)
+{
+    Building* b = nullptr;
+    // divari tai isku
+    if (level.stage > 4) {
+        if (random(50)) {
+            b = new Divari();
+        } else {
+            b = new Isku();
+        }
+    }
+    level.addBuilding(b);
+
+    if (level.stage % 2) {
+        b = new KRauta();
+    } else {
+        b = new Alko();
+    }
+    level.addBuilding(b);
 }
 
 static bool checkExit(const Level& level)
@@ -96,19 +129,16 @@ void mainloop()
         //debug
         printer.player = &player;
 
-        Alko alko;
-        Divari divari;
 
         {
             NextLevel* next = new NextLevel(79,27, &level);
             level.addItem(next);
         }
 
-        level.addBuilding(alko);
-        level.addBuilding(divari);
         level.addPerson(player);
 
-        initLevel(level);
+        populateBuildings(level);
+        populateItems(level);
 
         if (welcome) {
             welcome = false;
@@ -144,19 +174,6 @@ void mainloop()
             }
         }
     }
-}
-
-
-void show_console_cursor(const bool show) {
-#if defined(_WIN32)
-    static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_CURSOR_INFO cci;
-    GetConsoleCursorInfo(handle, &cci);
-    cci.bVisible = show; // show/hide cursor
-    SetConsoleCursorInfo(handle, &cci);
-#elif defined(__linux__)
-    std::cout << (show ? "\033[?25h" : "\033[?25l"); // show/hide cursor
-#endif // Windows/Linux
 }
 
 int main(int argc, char *argv[])

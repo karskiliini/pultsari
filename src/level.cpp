@@ -14,6 +14,12 @@ Level::Level(uint32_t difficulty) : stage(difficulty)
 }
 
 Level::~Level() {
+    for (auto& b : buildings)
+    {
+        delete b;
+    }
+    buildings.clear();
+
     for (auto& i : items)
     {
         delete i;
@@ -130,14 +136,18 @@ void Level::addItem(ItemType item)
     }
 }
 
-bool Level::addBuilding(Building& building)
+bool Level::addBuilding(Building* building)
 {
+    if (!building) return false;
+
     for (const auto &b : buildings)
     {
-        if (b->type == building.type) return false;
+        if (b->type == building->type) return false;
     }
 
-    buildings.push_back(&building);
+    cout << "addbuilding: " << building << endl;
+
+    buildings.push_back(building);
     return true;
 }
 

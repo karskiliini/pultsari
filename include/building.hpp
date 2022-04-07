@@ -11,6 +11,7 @@ namespace PlayerNS {
 
 enum BuildingType {
     EAlko,
+    EIsku,
     EKRauta,
     EVankila,
     EDivari
@@ -19,6 +20,7 @@ enum BuildingType {
 class Building {
 public:
     Building(BuildingType buildingType);
+    virtual ~Building() = default;
 
     virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual std::string getName() const;
@@ -38,7 +40,6 @@ public:
     std::string printChar(uint32_t x, uint32_t y) const;
 
     BuildingType type;
-    bool open = true;
     DirectionNS::Direction door = DirectionNS::Direction::up;
     uint32_t wallRight;
     uint32_t wallTop;
@@ -58,6 +59,17 @@ public:
     virtual std::string getWalkMsg() const;
 };
 
+class Isku : public Building {
+public:
+    Isku();
+    virtual ~Isku() = default;
+    virtual std::string getName() const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+};
 
 class Divari : public Building {
 public:
@@ -66,6 +78,18 @@ public:
     virtual std::string getName() const;
     virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual std::string getWalkMsg() const;
+};
+
+class KRauta : public Building {
+public:
+    KRauta();
+    virtual ~KRauta() = default;
+    virtual std::string getName() const;
+    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
 };
 
