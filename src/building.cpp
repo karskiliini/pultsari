@@ -299,18 +299,8 @@ string KRauta::typeToChar(uint32_t x, uint32_t y) const
 
 bool KRauta::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    if (player->promilles > 14) {
-        msg = "Vartija heitti sinut pihalle. Olet juopunut.";
-        return false;
-    } else if ((player->promilles < 5) &&  (player->money >= 15)) {
-        msg = "Tehan olette selvä. Meillä sen voi korjata.";
-        return true;
-    } else if (player->money < 15) {
-        msg = "Putiikki on kiinni.";
-        return false;
-    }
-    msg = "";
-    return true;
+    msg = "K-RAUTAa ei ole ohjelmoitu loppuun.";
+    return false;
 }
 
 bool KRauta::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
