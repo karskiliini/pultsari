@@ -180,10 +180,16 @@ void printStats(Level& l, Player* player)
     std::cout << endl << endl;
 }
 
+static void cursorHome()
+{
+    cout << "\e[f\e[K";
+}
+
 void Printer::print(Level& l)
 {
+    cursorHome();
     // cout << "  " << "x: " << player->x << " " << "y: " << player->y << " ";
-    cout << "\[\e[f\e[K\]";
+
     cout << "  " << msg << endl;
 
     printBorder(l, true);

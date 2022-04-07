@@ -17,13 +17,13 @@ string names = "(C) By Mika  Maaranen\n\
 
 void Intro::show()
 {
-    for (uint32_t i = 0; i < 10; ++i) {
+    for (uint32_t i = 0; i < 20; ++i) {
         cout << endl;
     }
 
     cout << names;
 
-    for (uint32_t i = 0; i < 14; ++i) {
+    for (uint32_t i = 0; i < 24; ++i) {
         cout << endl;
     }
 
