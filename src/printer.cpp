@@ -185,74 +185,77 @@ static void cursorHome()
     cout << "\e[f\e[K";
 }
 
+static void printLine(Level& l, uint32_t y)
+{
+    // find all people that are on this line
+    vector<const Person*> persons;
+    for (const auto& p : l.persons) {
+        if (p->y == y) {
+            persons.push_back(p);
+        }
+    }
+
+    vector<const Item*> items;
+
+    for (const auto& i : l.items)
+    {
+        if (i->y == y) {
+            items.push_back(i);
+        }
+    }
+
+    for (uint32_t x = 0; x < l.sizex; ++x)
+    {
+        bool found = false;
+        string c = " ";
+
+        for (auto b : l.buildings)
+        {
+            if (b->hitBuilding(x, y))
+            {
+                c = b->typeToChar(x, y);
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
+            const Person* p = findPerson(persons, x);
+            if (p) {
+                c = p->typeToChar();
+                found = true;
+            }
+        }
+
+        if (!found) {
+            const Item* i = findItem(items, x);
+            if (i) {
+                c = i->typeToChar();
+                found = true;
+            }
+        }
+        cout << c;
+    }
+}
+
 void Printer::print(Level& l)
 {
     cursorHome();
-    // cout << "  " << "x: " << player->x << " " << "y: " << player->y << " ";
 
     cout << "  " << msg << endl;
-
     printBorder(l, true);
 
     for (uint32_t y = 0; y < l.sizey; ++y) {
 
         printInventory(y, player);
 
-        // find all people that are on this line
-        vector<const Person*> persons;
-        for (const auto& p : l.persons) {
-            if (p->y == y) {
-                persons.push_back(p);
-            }
-        }
-
-        vector<const Item*> items;
-        for (const auto& i : l.items)
-        {
-            if (i->y == y) {
-                items.push_back(i);
-            }
-        }
-
         // left border
         std::cout << VERTICAL;
 
-        for (uint32_t x = 0; x < l.sizex; ++x)
-        {
-            bool found = false;
-            string c = " ";
-
-            for (auto b : l.buildings)
-            {
-                if (b->hitBuilding(x, y))
-                {
-                    c = b->typeToChar(x, y);
-                    found = true;
-                    break;
-                }
-            }
-
-            if (!found) {
-                const Person* p = findPerson(persons, x);
-                if (p) {
-                    c = p->typeToChar();
-                    found = true;
-                }
-            }
-
-            if (!found) {
-                const Item* i = findItem(items, x);
-                if (i) {
-                    c = i->typeToChar();
-                    found = true;
-                }
-            }
-
-            cout << c;
-        }
+        printLine(l, y);
 
         // right border
-        std::cout << VERTICAL << std::endl;
+        std::cout << VERTICAL << " " << std::endl;
     }
     printBorder(l, false);
 
