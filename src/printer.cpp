@@ -187,7 +187,7 @@ void printStats(Level& l, Player* player)
     std::cout << "RAHAA: "    << moneyAligned(player->money);
     std::cout << "  VOIMA: "    << moneyAligned(player->health);
     std::cout << "  PROMILLE: " << promilleAligned(player->promilles);
-    std::cout << "  KÄPPÄILY: " << l.turn << " ";
+    std::cout << "  KÄPPÄILY: " << player->turn << " ";
     std::cout << "  LEVEL: "  << l.stage << " ";
     std::cout << endl << endl;
 }

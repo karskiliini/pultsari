@@ -11,6 +11,10 @@ using InputNS::Input;
 
 Player::Player() : Person(PersonType::pelaaja)
 {
+}
+
+void Player::resetPosition()
+{
     x = 10;
     y = 10;
 }

@@ -15,6 +15,7 @@ class Player : public Person {
 public:
     Player();
     virtual ~Player() = default;
+    void resetPosition();
 
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
     virtual bool drink(Printer& printer, Level& level);
@@ -24,6 +25,7 @@ public:
     Inventory inventory;
     uint32_t promilles = 0.2;
     uint32_t money = 20;
+    uint32_t turn = 1;
 };
 
 }

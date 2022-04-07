@@ -10,7 +10,7 @@
 #include <iostream>
 #include <exception>
 
-bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
+static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
 {
     bool ret;
     auto input = InputNS::Input::getInput();
@@ -42,12 +42,12 @@ bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
     return ret;
 }
 
-bool random(uint32_t pct)
+static bool random(uint32_t pct)
 {
     return (uint32_t)(rand() % 100) <= pct;
 }
 
-void initLevel(Level& level)
+static void initLevel(Level& level)
 {
     level.addBonas();
     if (random(50))  level.addItem(EKalja);
@@ -65,42 +65,77 @@ void initLevel(Level& level)
     if (random(19))  level.addItem(EPaska);
 }
 
+static bool checkExit(const Level& level)
+{
+    bool ok = true;
+    for (const auto& i : level.items) {
+        if (i->typeToChar() == "^")
+        {
+            ok = false;
+            break;
+        }
+    }
+    return ok;
+}
+
 void mainloop()
 {
-    Printer printer;
+    bool welcome = true;
 
-    Level level(3);
+    Printer printer;
+    uint32_t stage = 1;
     PlayerNS::Player player;
 
-    //debug
-    printer.player = &player;
+    while (1) {
+        player.resetPosition();
 
-    Alko alko;
-    Divari divari;
+        Level level(stage);
 
-    {
-        Paska* p = new Paska(30,10);
-        level.addItem(p);
-    }
+        //debug
+        printer.player = &player;
 
-    level.addBuilding(alko);
-    level.addBuilding(divari);
-    level.addPerson(player);
+        Alko alko;
+        Divari divari;
 
-    initLevel(level);
-
-
-    printer.showMessage("Tervetuloa Pultsariin!", level);
-    while(1) {
-        printer.removeMessage();
-
-        bool turn = handleInput(player, level, printer);
-
-        if (turn) {
-            // next turn
-            ++level.turn;
+        {
+            NextLevel* next = new NextLevel(79,27, &level);
+            level.addItem(next);
         }
+
+        level.addBuilding(alko);
+        level.addBuilding(divari);
+        level.addPerson(player);
+
+        initLevel(level);
+
+        if (welcome) {
+            welcome = false;
+            printer.showMessage("Tervetuloa Pultsariin!", level);
+        }
+
         printer.print(level);
+
+        bool nextLevel = false;
+        while(!nextLevel) {
+            // printer.removeMessage();
+
+            bool turn = handleInput(player, level, printer);
+            if (turn) {
+                ++player.turn;
+            }
+
+            printer.print(level);
+            if (checkExit(level))
+            {
+                printer.showMessage("Seuraavaan kenttaan...", level);
+
+                InputNS::Input::waitKey();
+
+                // next level
+                stage++;
+                nextLevel = true;
+            }
+        }
     }
 }
 

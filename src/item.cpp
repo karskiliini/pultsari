@@ -259,3 +259,35 @@ bool Viesti::interact(PlayerNS::Player* player)
 {
     return true;
 }
+
+static bool checkBonas(Level* level)
+{
+    bool ok = true;
+    for (const auto& i : level->items) {
+        if (i->typeToChar() == "°")
+        {
+            ok = false;
+            break;
+        }
+    }
+    return ok;
+}
+
+// next level
+NextLevel::NextLevel(uint32_t x, uint32_t y, Level* level) : Item(x, y), level(level) { }
+std::string NextLevel::typeToChar() const { return "^"; }
+std::string NextLevel::getMsg() const {
+
+    bool ok = checkBonas(level);
+    if (ok) {
+        return "Seuraavaan kenttaan...";
+    } else {
+        return "Keraa pisteet ensin....";
+    }
+}
+
+bool NextLevel::interact(PlayerNS::Player* player)
+{
+    bool ok = checkBonas(level);
+    return ok;
+}

@@ -24,6 +24,8 @@ enum ItemType {
     EViesti
 };
 
+class Level;
+
 class Item {
 public:
     Item(uint32_t x, uint32_t y) : x(x), y(y) { };
@@ -172,4 +174,15 @@ public:
     virtual bool interact(PlayerNS::Player* player);
 };
 
+class NextLevel : public Item {
+public:
+    NextLevel(uint32_t x, uint32_t y, Level* level);
+    virtual ~NextLevel() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+
+    void setLevel(Level* l) { level = l; }
+    Level* level;
+};
 #endif

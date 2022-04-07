@@ -31,7 +31,6 @@ public:
     std::vector<Person*> persons;
     std::vector<Item*> items;
 
-    uint32_t turn = 0;
     uint32_t stage = 1;
 };
 

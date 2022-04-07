@@ -20,6 +20,7 @@ void Input::waitKey()
     Input::raw();
 
     getchar();
+    std::cout << "\b \b";
 
     Input::noraw();
 }
@@ -66,8 +67,7 @@ InputAlkoType Input::getInputAlko()
         {
             case '1': sel = InputAlkoType::ostakalja; break;
             case '2': sel = InputAlkoType::ostalonkka; break;
-            case '3': sel = InputAlkoType::poistualko; break;
-            default: break;
+            default: sel = InputAlkoType::poistualko; break;
         }
         std::cout << "\b \b";
     }
