@@ -5,6 +5,9 @@
 #include <iostream>
 
 using std::find;
+using std::cout;
+using std::endl;
+
 
 Level::Level(uint32_t difficulty) : stage(difficulty)
 {
@@ -43,6 +46,7 @@ bool Level::hit(uint32_t x, uint32_t y) const
 
 void Level::addBonas()
 {
+    srand(time(NULL));
     for (uint32_t i = 0; i < stage; ++i)
     {
         uint32_t x;
@@ -50,7 +54,6 @@ void Level::addBonas()
 
         bool recheck;
         do {
-            srand(time(NULL));
             x = rand() % sizex;
             y = rand() % sizey;
             recheck = hit(x, y);
