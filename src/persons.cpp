@@ -176,30 +176,56 @@ bool Varas::move(Direction d)
     return false;
 }
 
-void Varas::npcAct(string& msg)
+bool Varas::move(Direction d, std::string& msg)
 {
-#if 0
-    if (!attack)
+    Coord check {coord.x, coord.y};
+    switch(d)
     {
-        Player* p = level->findPlayer();
-        if (distance(coord.x, coord.y, p->coord.x, p->coord.y) == 1)
-        {
-            msg = "Pollari varoittaa!";
-        }
-    } else {
-        Player* p = level->findPlayer();
-        target = p->coord;
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
 
-        if (distance(coord.x, coord.y, target.x, target.y) == 1)
+    if (!level->hit(check))
+    {
+        coord = check;
+    } else {
+        auto p = level->getPerson(check);
+        if (p)
         {
-            msg = "Pollari pamputtaa !!!";
-            p->damage(rand()%2+1);
-        } else {
-            Direction d = getMoveDirection(target);
-            move(d, msg);
+            if (p->type == varas) {
+                msg = "Poliisi pidätti varkaan!";
+                p->health = 0;
+            }
         }
     }
-#endif
+    checkBounds(level->sizex, level->sizey);
+    return true;
+}
+
+void Varas::npcAct(string& msg)
+{
+    Player* p = level->findPlayer();
+    target = p->coord;
+
+    if (distance(coord.x, coord.y, target.x, target.y) == 1)
+    {
+        msg = "Varas hipelöi sinua !!!";
+
+        if (rand()%2)
+        {
+            uint32_t sum = rand() % 16 + 1;
+            if (sum > p->money) sum = p->money;
+            p->money -= sum;
+            msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
+            health = 0;
+        }
+    } else {
+        Direction d = getMoveDirection(target);
+        move(d, msg);
+    }
 }
 
 bool Varas::interact(std::string& message, Person* source)

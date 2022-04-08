@@ -217,8 +217,9 @@ void mainloop()
 
             try {
                 bool turn = handleInput(player, level, printer);
-
                 level.cleanDead();
+                printer.print(level);
+
                 level.npcTurn(&printer);
                 level.cleanDead();
 

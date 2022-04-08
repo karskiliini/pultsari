@@ -83,6 +83,7 @@ public:
     virtual ~Varas() = default;
 
     virtual bool move(DirectionNS::Direction d);
+    bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
     virtual std::string typeToChar() const { return "V"; };
