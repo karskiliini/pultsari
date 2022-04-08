@@ -104,7 +104,7 @@ bool Level::hit(uint32_t x, uint32_t y) const
 
     for (const auto& p : persons)
     {
-        if ((p->x == x) && (p->y == y) && (p->health > 0))
+        if ((p->coord.x == x) && (p->coord.y == y) && (p->health > 0))
             return true;
     }
 
@@ -130,7 +130,7 @@ void Level::freePosition(uint32_t& x, uint32_t& y) const
 Person* Level::checkPerson(uint32_t checkx, uint32_t checky)
 {
     for (auto& p : persons){
-        if ((p->x == checkx) && (p->y == checky))
+        if ((p->coord.x == checkx) && (p->coord.y == checky))
         {
             return p;
         }
@@ -230,7 +230,8 @@ bool Level::addPerson(Person* person)
 {
     for (const auto &p : persons)
     {
-        if ((p->x == person->x) && (p->y == person->y)) return false;
+        if ((p->coord.x == person->coord.x) && (p->coord.y == person->coord.y))
+            return false;
     }
 
     persons.push_back(person);

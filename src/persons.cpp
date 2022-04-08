@@ -20,8 +20,8 @@ static bool random(uint32_t pct)
 // MUMMO
 Mummo::Mummo(uint32_t x, uint32_t y) : Person(mummo)
 {
-    Person::x = x;
-    Person::y = y;
+    Person::coord.x = x;
+    Person::coord.y = y;
 }
 
 bool Mummo::interact(std::string& message, Person* source)
@@ -43,21 +43,21 @@ bool Mummo::interact(std::string& message, Person* source)
 
 Item* Mummo::dropItem()
 {
-    return new Raha(x, y, rand()%25 + 1);
+    return new Raha(coord.x, coord.y, rand()%25 + 1);
 }
 
 
 // COP
 Cop::Cop(uint32_t x, uint32_t y) : Person(poliisi)
 {
-    Person::x = x;
-    Person::y = y;
+    Person::coord.x = x;
+    Person::coord.y = y;
 }
 
 bool Cop::move(DirectionNS::Direction d)
 {
-    uint32_t checkx = x;
-    uint32_t checky = y;
+    uint32_t checkx = coord.x;
+    uint32_t checky = coord.y;
     switch(d)
     {
         case DirectionNS::up: --checky; break;
@@ -68,8 +68,8 @@ bool Cop::move(DirectionNS::Direction d)
     }
     if (!level->hit(checkx, checky))
     {
-        x = checkx;
-        y = checky;
+        coord.x = checkx;
+        coord.y = checky;
     }
     checkBounds(level->sizex, level->sizey);
     return true;
@@ -80,38 +80,38 @@ void Cop::npcAct(string& msg)
     if (!attack)
     {
         Player* p = level->findPlayer();
-        if (distance(x, y, p->x, p->y) == 1)
+        if (distance(coord.x, coord.y, p->coord.x, p->coord.y) == 1)
         {
             msg = "Pollari varoittaa!";
         }
     } else {
         Player* p = level->findPlayer();
-        if (distance(x, y, p->x, p->y) < 2)
+        if (distance(coord.x, coord.y, p->coord.x, p->coord.y) < 2)
         {
             msg = "Pollari pamputtaa !!!";
             p->damage(rand()%2+1);
         } else {
-            auto dx = max(x, p->x) - (min(x, p->x));
-            auto dy = max(y, p->y) - (min(y, p->y));
+            auto dx = max(coord.x, p->coord.x) - (min(coord.x, p->coord.x));
+            auto dy = max(coord.y, p->coord.y) - (min(coord.y, p->coord.y));
 
             if (dx > dy) {
-                if (x > p->x) {
+                if (coord.x > p->coord.x) {
                     move(DirectionNS::left);
-                } else if (x < p->x) {
+                } else if (coord.x < p->coord.x) {
                     move(DirectionNS::right);
-                } else if (y > p->y) {
+                } else if (coord.y > p->coord.y) {
                     move(DirectionNS::up);
-                } else if (y < p->y) {
+                } else if (coord.y < p->coord.y) {
                     move(DirectionNS::down);
                 }
             } else {
-                if (y < p->y) {
+                if (coord.y < p->coord.y) {
                     move(DirectionNS::down);
-                } else if (y > p->y) {
+                } else if (coord.y > p->coord.y) {
                     move(DirectionNS::up);
-                } else if (x > p->x) {
+                } else if (coord.x > p->coord.x) {
                     move(DirectionNS::left);
-                } else if (x < p->x) {
+                } else if (coord.x < p->coord.x) {
                     move(DirectionNS::right);
                 }
             }
@@ -137,5 +137,5 @@ bool Cop::interact(std::string& message, Person* source)
 
 Item* Cop::dropItem()
 {
-    return new Pamppu(x, y);
+    return new Pamppu(coord.x, coord.y);
 }

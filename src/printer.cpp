@@ -78,7 +78,7 @@ void Printer::removeMessage()
 const Person* findPerson(vector<const Person*> row, uint32_t x)
 {
     for (const auto& p : row) {
-        if (p->x == x) return p;
+        if (p->coord.x == x) return p;
     }
 
     return nullptr;
@@ -230,7 +230,7 @@ static void printLine(Level& l, uint32_t y)
     // find all people that are on this line
     vector<const Person*> persons;
     for (const auto& p : l.persons) {
-        if (p->y == y) {
+        if (p->coord.y == y) {
             persons.push_back(p);
         }
     }

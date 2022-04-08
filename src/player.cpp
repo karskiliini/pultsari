@@ -33,8 +33,8 @@ bool Player::interact(std::string& message, Person* source)
 
 void Player::resetPosition()
 {
-    x = 10;
-    y = 10;
+    coord.x = 10;
+    coord.y = 10;
 }
 
 bool Player::drink(Printer& printer, Level& level)
@@ -217,8 +217,8 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     bool blocked = false;
 
 
-    uint32_t checkx = x;
-    uint32_t checky = y;
+    uint32_t checkx = coord.x;
+    uint32_t checky = coord.y;
 
     switch(d)
     {
@@ -286,7 +286,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
             i = checkItems(level, checkx, checky);
             if (i) {
                 msg = i->getMsg();
-                printer.showMessage(msg, level, true);
+                printer.showMessage(msg, level, false);
                 auto consume = i->interact(this);
 
                 if (consume) {
@@ -297,16 +297,14 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     }
 
     if (!blocked) {
-        x = checkx;
-        y = checky;
+        coord.x = checkx;
+        coord.y = checky;
     }
 
-    if ((y >= level.sizey) || (x >= level.sizex)) {
+    if (checkBounds(level.sizex, level.sizey)) {
         printer.showMessage("Ei karata pelialueelta !!", level, true);
         ret = false;
     }
-
-    checkBounds(level.sizex, level.sizey);
 
     return ret;
 }
