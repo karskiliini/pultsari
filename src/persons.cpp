@@ -195,9 +195,9 @@ bool Varas::move(Direction d, std::string& msg)
         auto p = level->getPerson(check);
         if (p)
         {
-            if (p->type == varas) {
+            if (p->type == poliisi) {
                 msg = "Poliisi pidätti varkaan!";
-                p->health = 0;
+                health = 0;
             }
         }
     }

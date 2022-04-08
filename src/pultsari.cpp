@@ -136,7 +136,7 @@ static void populatePersons(Level& level)
 
 
     {
-        Cop* p = new Cop({15, 15});
+        Cop* p = new Cop({13, 12});
         p->setLevel(&level);
         level.addPerson(p);
     }
