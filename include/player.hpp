@@ -18,6 +18,10 @@ public:
     void resetPosition();
 
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
+    virtual void npcAct();
+    virtual bool interact(std::string& message, Person* source);
+    virtual void damage(uint32_t damage);
+
     virtual bool drink(Printer& printer, Level& level);
     virtual bool eat(Printer& printer, Level& level);
     virtual std::string typeToChar() const { return "@"; };

@@ -13,6 +13,8 @@ public:
     Level(uint32_t difficulty);
     ~Level();
 
+    void npcTurn();
+
     bool hit(uint32_t x, uint32_t y) const;
     void freePosition(uint32_t& x, uint32_t& y) const;
 

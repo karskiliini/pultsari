@@ -15,6 +15,23 @@ Player::Player() : Person(PersonType::pelaaja)
 {
 }
 
+void Player::npcAct() { }
+
+void Player::damage(uint32_t damage)  {
+    if (damage > health)
+    {
+        health = 0;
+    } else {
+        health -= damage;
+    }
+}
+
+bool Player::interact(std::string& message, Person* source)
+{
+    if (health == 0) return true;
+    return false;
+}
+
 void Player::resetPosition()
 {
     x = 10;

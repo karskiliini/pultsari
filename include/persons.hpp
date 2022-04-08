@@ -6,6 +6,7 @@
 #include <string>
 
 enum PersonType {
+    invalidPerson,
     pelaaja,
     poliisi,
     Kake,
@@ -21,23 +22,28 @@ class Level;
 class Person {
 public:
     Person(PersonType personType) : type(personType) { }
-    Person(const Person &obj);  // copy constructor
-
     virtual ~Person() = default;
 
-    virtual bool move(DirectionNS::Direction d);
+    virtual bool move(DirectionNS::Direction d) { return false; };
+    virtual void npcAct() { }
+    virtual bool interact(std::string& message, Person* source) { return false; };
+    virtual void damage(uint32_t damage) { };
+    virtual std::string typeToChar() const { return "x"; };
 
-    void setLevel(Level* l);
-    virtual std::string typeToChar() const {
-        return "x";
-    };
-
-    Level* level;
     uint32_t x = 30;
     uint32_t y = 20;
-    PersonType type;
+    PersonType type = invalidPerson;
     uint32_t health = 1;
+};
 
+class Mummo : public Person {
+public:
+    Mummo();
+    virtual ~Mummo() = default;
+
+    virtual void npcAct();
+    virtual bool interact(std::string& message, Person* source);
+    virtual std::string typeToChar() const { return "M"; };
 };
 
 #endif

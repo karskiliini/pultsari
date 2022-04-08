@@ -1,17 +1,27 @@
 #include "persons.hpp"
 #include "level.hpp"
 
-Person::Person(const Person &obj)
+static bool random(uint32_t pct)
 {
-
+    return (uint32_t)(rand() % 100) <= pct;
 }
 
-void Person::setLevel(Level* l)
+Mummo::Mummo() : Person(mummo)
 {
-    level = l;
 }
 
-bool Person::move(DirectionNS::Direction d)
+void Mummo::npcAct() { }
+
+bool Mummo::interact(std::string& message, Person* source)
 {
-    return false;
+    if (random(50))
+    {
+        message = "Eläkellääinen hakkaa sua käsilaukullaan !!!";
+        uint32_t damage = rand() % 1 + 1;
+        source->damage(damage);
+        return false;
+    } else {
+        message = "Mukiloit mummon kumoon. Haa,lompsa !!!";
+        return true;
+    }
 }

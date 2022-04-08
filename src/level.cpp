@@ -14,17 +14,34 @@ Level::Level(uint32_t difficulty) : stage(difficulty)
 }
 
 Level::~Level() {
-    for (auto& b : buildings)
+    for (auto& p : buildings)
     {
-        delete b;
+        delete p;
     }
     buildings.clear();
 
-    for (auto& i : items)
+    for (auto& p : persons)
     {
-        delete i;
+        // player needs to remain from level to level
+        if (p->type != PersonType::pelaaja) {
+            delete p;
+        }
+    }
+    persons.clear();
+
+    for (auto& p : items)
+    {
+        delete p;
     }
     items.clear();
+}
+
+void Level::npcTurn()
+{
+    for(auto& p : persons)
+    {
+        p->npcAct();
+    }
 }
 
 bool Level::hit(uint32_t x, uint32_t y) const

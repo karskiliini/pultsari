@@ -172,6 +172,9 @@ void mainloop()
 
             try {
                 bool turn = handleInput(player, level, printer);
+
+                level.npcTurn();
+
                 if (turn) {
                     ++player.turn;
                 }
