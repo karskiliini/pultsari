@@ -121,12 +121,35 @@ static void populateBuildings(Level& level)
 
 static void populatePersons(Level& level)
 {
-    // if (random(60))
+    // at least one granny / level
     {
-        uint32_t x, y;
-        level.freePosition(x, y);
-        Person* p = new Mummo(x, y);
-        level.addPerson(p);
+        bool once = true;
+        if (once) {
+            once = random(10);
+
+            uint32_t x, y;
+            level.freePosition(x, y);
+            Person* p = new Mummo(x, y);
+            p->setLevel(&level);
+            level.addPerson(p);
+        }
+    }
+
+    // at least one cop / level
+    {
+        bool once = true;
+        if (once) {
+            once = random(60);
+
+for (uint32_t i = 0; i < 3; ++i)
+{
+            uint32_t x, y;
+            level.freePosition(x, y);
+            Cop* p = new Cop(x, y);
+            p->setLevel(&level);
+            level.addPerson(p);
+}
+        }
     }
 }
 
@@ -172,7 +195,7 @@ void mainloop()
 
         if (welcome) {
             welcome = false;
-            printer.showMessage("Tervetuloa Pultsariin!", level);
+            printer.showMessage("Tervetuloa Pultsariin!", level, false);
         }
 
         printer.print(level);
@@ -183,9 +206,9 @@ void mainloop()
 
             try {
                 bool turn = handleInput(player, level, printer);
-                level.cleanDead();
 
-                level.npcTurn();
+                level.cleanDead();
+                level.npcTurn(&printer);
 
                 if (turn) {
                     ++player.turn;

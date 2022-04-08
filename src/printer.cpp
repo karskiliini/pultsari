@@ -52,14 +52,15 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
         }
 
         if (msgShown && waitKey) {
+            // cout << "     <LISÄÄ>";
             Input::waitKey();
         }
 
         msg = tokenizeStr(message);
-        msgShown = true;
+        if (!msgShown) msgShown = true;
 
         cursorHome();
-        cout << "  " << msg << endl;
+        cout << "  " << msg; // << endl;
 
         if (tokenize)
         {
@@ -71,7 +72,7 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
 void Printer::removeMessage()
 {
     msg = "";
-    msgShown = false;
+    if (msgShown) msgShown = false;
 }
 
 const Person* findPerson(vector<const Person*> row, uint32_t x)
@@ -298,12 +299,8 @@ void Printer::print(Level& l)
         std::cout << VERTICAL << " " << std::endl;
     }
     printBorder(l, false);
-
     printStats(l, player);
 
     showMessage(msg, l, false);
-    // cursorHome();
-    // cout << "  " << msg << endl;
-
-    msgShown = false;
+    // removeMessage();
 }

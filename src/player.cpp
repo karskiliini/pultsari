@@ -16,8 +16,6 @@ Player::Player() : Person(PersonType::pelaaja)
 {
 }
 
-void Player::npcAct() { }
-
 void Player::damage(uint32_t damage)  {
     if (damage > health)
     {
@@ -273,12 +271,12 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
         if (p)
         {
             blocked = p->interact(msg, this);
+            printer.showMessage(msg, level);
+
             if (p->health == 0) {
                 Item* i = p->dropItem();
                 level.addItem(i);
             }
-
-            printer.showMessage(msg, level);
         }
     }
 
@@ -288,7 +286,9 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
             i = checkItems(level, checkx, checky);
             if (i) {
                 msg = i->getMsg();
+                printer.showMessage(msg, level, true);
                 auto consume = i->interact(this);
+
                 if (consume) {
                     level.removeItem(i);
                 }
@@ -301,19 +301,12 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
         y = checky;
     }
 
-    // printer.showMessage(msg, level, false);
-    printer.setMessage(msg);
-    printer.print(level);
-
     if ((y >= level.sizey) || (x >= level.sizex)) {
-        printer.showMessage("Ei karata pelialueelta !!", level);
+        printer.showMessage("Ei karata pelialueelta !!", level, true);
         ret = false;
     }
 
-    x = (x == level.sizex) ? level.sizex-1 : x;
-    x = (x > level.sizex) ? 0 : x;
-    y = (y == level.sizey) ? level.sizey-1 : y;
-    y = (y > level.sizey) ? 0 : y;
+    checkBounds(level.sizex, level.sizey);
 
     return ret;
 }

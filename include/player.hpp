@@ -18,7 +18,7 @@ public:
     void resetPosition();
 
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
-    virtual void npcAct();
+    virtual void npcAct(std::string& msg) {};
     virtual bool interact(std::string& message, Person* source);
     virtual void damage(uint32_t damage);
 

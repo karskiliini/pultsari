@@ -2,14 +2,17 @@
 #include "level.hpp"
 #include "item.hpp"
 #include "persons.hpp"
+#include "player.hpp"
 #include "building.hpp"
+#include "printer.hpp"
 #include <algorithm>
 #include <iostream>
 
 using std::find;
 using std::cout;
 using std::endl;
-
+using std::string;
+using PlayerNS::Player;
 
 Level::Level(uint32_t difficulty) : stage(difficulty)
 {
@@ -39,36 +42,56 @@ Level::~Level() {
     items.clear();
 }
 
-void Level::npcTurn()
+void Level::npcTurn(Printer* printer)
 {
+    string msg;
     for(auto& p : persons)
     {
-        p->npcAct();
+        p->npcAct(msg);
+        printer->showMessage(msg, *this, true);
+    }
+}
+
+void Level::alertCops()
+{
+    for (auto& p : persons)
+    {
+        if (p->type == poliisi)
+        {
+            dynamic_cast<Cop*>(p)->attack = true;
+        }
     }
 }
 
 void Level::cleanDead()
 {
     bool restart = true;
-    while(restart)
-    {
-        cout << "cleandead: ---" << endl;
+    while(restart) {
         restart = false;
 
         for (auto& p : persons)
         {
             if ((p->health == 0) && (p->type != pelaaja))
             {
+                delete p;
+                p = nullptr;
+
                 auto it = find(persons.begin(), persons.end(), p);
                 persons.erase(it);
 
-                delete p;
                 restart = true;
-
                 break;
             }
         }
     }
+}
+
+Player* Level::findPlayer()
+{
+    for (const auto& p : persons) {
+        if (p->type == pelaaja) return dynamic_cast<Player*>(p);
+    }
+    return nullptr;
 }
 
 bool Level::hit(uint32_t x, uint32_t y) const

@@ -8,6 +8,11 @@
 class Person;
 class Building;
 class Item;
+class Printer;
+
+namespace PlayerNS{
+    class Player;
+};
 
 class Level {
 public:
@@ -15,9 +20,11 @@ public:
     Level(uint32_t difficulty);
     ~Level();
 
-    void npcTurn();
+    void npcTurn(Printer* printer);
 
+    void alertCops();
     void cleanDead();
+    PlayerNS::Player* findPlayer();
     bool hit(uint32_t x, uint32_t y) const;
     void freePosition(uint32_t& x, uint32_t& y) const;
     Person* checkPerson(uint32_t checkx, uint32_t checky);
