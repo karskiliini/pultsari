@@ -4,6 +4,7 @@
 namespace DirectionNS {
 
 enum Direction {
+    none,
     up,
     down,
     left,

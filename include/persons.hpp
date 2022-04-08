@@ -23,10 +23,11 @@ class Level;
 
 class Person {
 public:
-    Person(PersonType personType) : type(personType) { coord.x = 30; coord.y = 20; }
+    Person(PersonType personType, const Coord& pos) : type(personType), coord(pos) { }
     virtual ~Person() = default;
 
-    virtual bool move(DirectionNS::Direction d) { return false; };
+    virtual DirectionNS::Direction getMoveDirection(const Coord& target) const;
+    virtual bool move(DirectionNS::Direction d);
     virtual void npcAct(std::string& msg) { msg = ""; }
     virtual bool interact(std::string& message, Person* source) { return false; };
     virtual void damage(uint32_t damage) { };
@@ -47,14 +48,14 @@ public:
     void setLevel(Level* level) { Person::level = level; }
 
     Level* level;
-    Coord coord = { 30, 20 };
     PersonType type = invalidPerson;
+    Coord coord = { 30, 20 };
     uint32_t health = 1;
 };
 
 class Mummo : public Person {
 public:
-    Mummo(uint32_t x, uint32_t y);
+    Mummo(const Coord& pos);
     virtual ~Mummo() = default;
     virtual bool interact(std::string& message, Person* source);
     Item* dropItem();
@@ -63,15 +64,30 @@ public:
 
 class Cop : public Person {
 public:
-    Cop(uint32_t x, uint32_t y);
+    Cop(const Coord& pos);
     virtual ~Cop() = default;
 
     virtual bool move(DirectionNS::Direction d);
+    bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
     Item* dropItem();
     virtual std::string typeToChar() const { return "C"; };
     bool attack = false;
+    Coord target;
 };
+
+class Varas : public Person {
+public:
+    Varas(const Coord& pos);
+    virtual ~Varas() = default;
+
+    virtual bool move(DirectionNS::Direction d);
+    virtual void npcAct(std::string& msg);
+    virtual bool interact(std::string& message, Person* source);
+    virtual std::string typeToChar() const { return "V"; };
+    Coord target;
+};
+
 
 #endif

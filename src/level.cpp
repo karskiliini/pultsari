@@ -5,6 +5,7 @@
 #include "player.hpp"
 #include "building.hpp"
 #include "printer.hpp"
+#include "coord.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -44,19 +45,34 @@ Level::~Level() {
 
 void Level::npcTurn(Printer* printer)
 {
-    string msg;
-    for(auto& p : persons)
-    {
-        msg = "";
-        p->npcAct(msg);
-        printer->showMessage(msg, *this, true);
+    for(auto& p : persons) {
+        string msg = "";
+        if ((p->health > 0) && (p->type != pelaaja))
+        {
+            p->npcAct(msg);
+            printer->showMessage(msg, *this, true);
+        }
     }
+}
+
+Person* Level::getPerson(uint32_t x, uint32_t y) const
+{
+    for (auto& p : persons) {
+        if ((p->coord.x == x) && (p->coord.y == y)) {
+            return p;
+        }
+    }
+    return nullptr;
+}
+
+Person* Level::getPerson(const Coord& coord) const
+{
+    return getPerson(coord.x, coord.y);
 }
 
 void Level::alertCops()
 {
-    for (auto& p : persons)
-    {
+    for (auto& p : persons) {
         if (p->type == poliisi)
         {
             dynamic_cast<Cop*>(p)->attack = true;
@@ -70,10 +86,8 @@ void Level::cleanDead()
     while(restart) {
         restart = false;
 
-        for (auto& p : persons)
-        {
-            if ((p->health == 0) && (p->type != pelaaja))
-            {
+        for (auto& p : persons) {
+            if ((p->health == 0) && (p->type != pelaaja)) {
                 delete p;
                 p = nullptr;
 
@@ -118,6 +132,11 @@ bool Level::hit(uint32_t x, uint32_t y) const
     return false;
 }
 
+bool Level::hit(const Coord& coord) const
+{
+    return hit(coord.x, coord.y);
+}
+
 void Level::freePosition(uint32_t& x, uint32_t& y) const
 {
     bool recheck;
@@ -126,6 +145,13 @@ void Level::freePosition(uint32_t& x, uint32_t& y) const
         y = rand() % sizey;
         recheck = hit(x, y);
     } while (recheck);
+}
+
+Coord Level::freePosition() const
+{
+    Coord c {0, 0};
+    freePosition(c.x, c.y);
+    return c;
 }
 
 Person* Level::checkPerson(uint32_t checkx, uint32_t checky)

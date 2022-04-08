@@ -12,7 +12,7 @@ using InputNS::Input;
 using std::cout;
 using std::endl;
 
-Player::Player() : Person(PersonType::pelaaja)
+Player::Player() : Person(PersonType::pelaaja, {0, 0})
 {
 }
 
@@ -33,8 +33,7 @@ bool Player::interact(std::string& message, Person* source)
 
 void Player::resetPosition()
 {
-    coord.x = 10;
-    coord.y = 10;
+    coord = {10, 10};
 }
 
 bool Player::drink(Printer& printer, Level& level)
@@ -216,24 +215,25 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     // prevent movement
     bool blocked = false;
 
-
     uint32_t checkx = coord.x;
     uint32_t checky = coord.y;
 
     switch(d)
     {
-        case DirectionNS::Direction::down:
+        case DirectionNS::down:
             ++checky;
             break;
-        case DirectionNS::Direction::up:
+        case DirectionNS::up:
             --checky;
             break;
-        case DirectionNS::Direction::right:
+        case DirectionNS::right:
             ++checkx;
             break;
-        case DirectionNS::Direction::left:
+        case DirectionNS::left:
             --checkx;
             break;
+        case DirectionNS::none:
+            return false;
     }
 
     string msg;
@@ -275,7 +275,9 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 
             if (p->health == 0) {
                 Item* i = p->dropItem();
-                level.addItem(i);
+                if (i) {
+                    level.addItem(i);
+                }
             }
         }
     }

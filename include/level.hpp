@@ -2,6 +2,7 @@
 #define LEVEL_HPP
 
 #include "item.hpp"
+#include "coord.hpp"
 #include <cstdint>
 #include <vector>
 
@@ -22,11 +23,16 @@ public:
 
     void npcTurn(Printer* printer);
 
+    Person* getPerson(uint32_t x, uint32_t y) const;
+    Person* getPerson(const Coord& coord) const;
+    void removePerson(Person* person);
     void alertCops();
     void cleanDead();
     PlayerNS::Player* findPlayer();
     bool hit(uint32_t x, uint32_t y) const;
+    bool hit(const Coord& coord) const;
     void freePosition(uint32_t& x, uint32_t& y) const;
+    Coord freePosition() const;
     Person* checkPerson(uint32_t checkx, uint32_t checky);
 
     void addBonas();

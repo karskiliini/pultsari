@@ -6,6 +6,7 @@
 #include "level.hpp"
 #include "player.hpp"
 #include "printer.hpp"
+#include "coord.hpp"
 #include "item.hpp"
 #include <iostream>
 #include <exception>
@@ -127,13 +128,25 @@ static void populatePersons(Level& level)
         if (once) {
             once = random(10);
 
-            uint32_t x, y;
-            level.freePosition(x, y);
-            Person* p = new Mummo(x, y);
+            Person* p = new Mummo(level.freePosition());
             p->setLevel(&level);
             level.addPerson(p);
         }
     }
+
+
+    {
+        Cop* p = new Cop({15, 15});
+        p->setLevel(&level);
+        level.addPerson(p);
+    }
+
+    {
+        Varas* p = new Varas({13, 15});
+        p->setLevel(&level);
+        level.addPerson(p);
+    }
+
 
     // at least one cop / level
     {
@@ -143,9 +156,7 @@ static void populatePersons(Level& level)
 
 for (uint32_t i = 0; i < 3; ++i)
 {
-            uint32_t x, y;
-            level.freePosition(x, y);
-            Cop* p = new Cop(x, y);
+            Cop* p = new Cop(level.freePosition());
             p->setLevel(&level);
             level.addPerson(p);
 }
@@ -209,6 +220,7 @@ void mainloop()
 
                 level.cleanDead();
                 level.npcTurn(&printer);
+                level.cleanDead();
 
                 if (turn) {
                     ++player.turn;

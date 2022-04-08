@@ -12,7 +12,10 @@ public:
 
     virtual ~Coordinate() = default;
 
-    Coordinate& operator=(const Coordinate& c) { x = c.x; y = c.y; }
+    Coordinate& operator=(const Coordinate& c) {
+        x = c.x; y = c.y;
+        return *this;
+    }
     bool operator==(const Coordinate& c) { return ((x == c.x) && (y == c.y)); }
 
     T distance(const Coordinate& c)
