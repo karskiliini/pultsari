@@ -52,7 +52,7 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
         }
 
         if (msgShown && waitKey) {
-            // cout << "     <LISÄÄ>";
+            cout << "     <LISÄÄ>";
             Input::waitKey();
         }
 
@@ -64,6 +64,7 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
 
         if (tokenize)
         {
+            cout << "     <LISÄÄ>";
             Input::waitKey();
         }
     }

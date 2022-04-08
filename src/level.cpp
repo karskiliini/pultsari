@@ -47,6 +47,7 @@ void Level::npcTurn(Printer* printer)
     string msg;
     for(auto& p : persons)
     {
+        msg = "";
         p->npcAct(msg);
         printer->showMessage(msg, *this, true);
     }
