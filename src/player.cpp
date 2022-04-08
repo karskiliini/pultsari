@@ -201,7 +201,7 @@ Building* checkWalls(Level& level, uint32_t x, uint32_t y)
 Item* checkItems(Level& level, uint32_t x, uint32_t y)
 {
     for (auto& i : level.items) {
-        if ((i->x == x) && (i->y == y)) {
+        if ((i->coord.x == x) && (i->coord.y == y)) {
             return i;
         }
     }

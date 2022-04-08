@@ -1,6 +1,7 @@
 #ifndef ITEM_HPP
 #define ITEM_HPP
 
+#include "coord.hpp"
 #include <string>
 
 namespace PlayerNS {
@@ -8,6 +9,7 @@ namespace PlayerNS {
 }
 
 enum ItemType {
+    EBona,
     EKalja,
     ELonkka,
     ELenkki,
@@ -21,22 +23,24 @@ enum ItemType {
     EBanaani,
     ERaha,
     EPaska,
-    EViesti
+    EViesti,
+    ENextLevel
 };
 
 class Level;
 
 class Item {
 public:
-    Item(uint32_t x, uint32_t y) : x(x), y(y) { };
+    Item(uint32_t x, uint32_t y, ItemType t) : coord({x, y}), type(t) { };
     virtual ~Item() = default;
 
     virtual std::string typeToChar() const { return " "; };
     virtual std::string getMsg() const { return "error"; };
     virtual bool interact(PlayerNS::Player* player) { return true; };
 
-    uint32_t x;
-    uint32_t y;
+    Coord coord;
+    ItemType type;
+    bool discard = false;
 };
 
 class Bona : public Item {

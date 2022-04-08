@@ -198,8 +198,24 @@ bool Varas::move(Direction d, std::string& msg)
             if (p->type == poliisi) {
                 msg = "Poliisi pidätti varkaan!";
                 health = 0;
+            } else if (p->type == mummo) {
+                msg = "Mummo jäi varkaan kynsiin!";
+                p->health = 0;
             }
         }
+
+        auto i = level->getItem(check);
+        if (i)
+        {
+            if (i->type == EPaska)
+            {
+                msg += (msg == "") ? "" : "\n";
+                msg += "Varas liukastui paskaan, ja kuoli.";
+                i->discard = true;
+                health = 0;
+            }
+        }
+
     }
     checkBounds(level->sizex, level->sizey);
     return true;

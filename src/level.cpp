@@ -101,6 +101,27 @@ void Level::cleanDead()
     }
 }
 
+void Level::cleanDiscardedItems()
+{
+    bool restart = true;
+    while(restart) {
+        restart = false;
+
+        for (auto& i : items) {
+            if (i->discard) {
+                delete i;
+                i = nullptr;
+
+                auto it = find(items.begin(), items.end(), i);
+                items.erase(it);
+
+                restart = true;
+                break;
+            }
+        }
+    }
+}
+
 Player* Level::findPlayer()
 {
     for (const auto& p : persons) {
@@ -125,7 +146,7 @@ bool Level::hit(uint32_t x, uint32_t y) const
 
     for (const auto& i : items)
     {
-        if ((i->x == x) && (i->y == y))
+        if ((i->coord.x == x) && (i->coord.y == y))
             return true;
     }
 
@@ -135,6 +156,14 @@ bool Level::hit(uint32_t x, uint32_t y) const
 bool Level::hit(const Coord& coord) const
 {
     return hit(coord.x, coord.y);
+}
+
+Item* Level::getItem(const Coord& c) const
+{
+    for (auto& i : items) {
+        if (i->coord == c) return i;
+    }
+    return nullptr;
 }
 
 void Level::freePosition(uint32_t& x, uint32_t& y) const

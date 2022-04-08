@@ -136,7 +136,12 @@ static void populatePersons(Level& level)
 
 
     {
-        Cop* p = new Cop({13, 12});
+        auto p = new Paska({13, 12});
+        level.addItem(p);
+    }
+
+    {
+        Cop* p = new Cop({11, 12});
         p->setLevel(&level);
         level.addPerson(p);
     }
@@ -218,10 +223,13 @@ void mainloop()
             try {
                 bool turn = handleInput(player, level, printer);
                 level.cleanDead();
+                level.cleanDiscardedItems();
+
                 printer.print(level);
 
                 level.npcTurn(&printer);
                 level.cleanDead();
+                level.cleanDiscardedItems();
 
                 if (turn) {
                     ++player.turn;

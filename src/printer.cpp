@@ -88,7 +88,7 @@ const Person* findPerson(vector<const Person*> row, uint32_t x)
 const Item* findItem(vector<const Item*> row, uint32_t x)
 {
     for (const auto& p : row) {
-        if (p->x == x) return p;
+        if (p->coord.x == x) return p;
     }
 
     return nullptr;
@@ -240,7 +240,7 @@ static void printLine(Level& l, uint32_t y)
 
     for (const auto& i : l.items)
     {
-        if (i->y == y) {
+        if (i->coord.y == y) {
             items.push_back(i);
         }
     }

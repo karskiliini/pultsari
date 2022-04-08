@@ -28,9 +28,11 @@ public:
     void removePerson(Person* person);
     void alertCops();
     void cleanDead();
+    void cleanDiscardedItems();
     PlayerNS::Player* findPlayer();
     bool hit(uint32_t x, uint32_t y) const;
     bool hit(const Coord& coord) const;
+    Item* getItem(const Coord& c) const;
     void freePosition(uint32_t& x, uint32_t& y) const;
     Coord freePosition() const;
     Person* checkPerson(uint32_t checkx, uint32_t checky);
