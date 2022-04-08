@@ -181,12 +181,15 @@ void mainloop()
             }
 
             if (player.inJail) {
+                printer.setMessage("Putkassa istuskellessasi huomaat parin tunnin paasta miten          <LISää>\nPaasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!");
+                printer.print(level);
                 quit = true;
-                printer.showMessage("Paasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!", level);
                 break;
             } else if (player.health < 1) {
                 quit = true;
-                printer.showMessage("Terveytesi pettaa... kemahdat tantereeseen pitkaksesi .........", level);
+                printer.setMessage("Terveytesi pettaa... kemahdat tantereeseen pitkaksesi .........");
+                printer.print(level);
+                break;
             }
 
             printer.print(level);

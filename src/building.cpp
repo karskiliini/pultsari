@@ -423,7 +423,7 @@ void PoliisiAsema::interact(PlayerNS::Player* player, std::string& msg)
     auto enter = Input::getInputPutka();
     if (enter) {
         player->inJail = true;
-        msg = "Putkassa istuskellessasi huomaat parin tunnin paasta miten          <LISää>";
+        msg = "";
     } else {
         msg = "No haivy sitten !!!";
     }
