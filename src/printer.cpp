@@ -2,6 +2,7 @@
 #include "player.hpp"
 #include "item.hpp"
 #include "input.hpp"
+#include "building.hpp"
 #include <vector>
 #include <iostream>
 #include <string>

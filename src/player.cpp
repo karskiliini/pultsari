@@ -1,6 +1,7 @@
 
 #include "player.hpp"
 #include "input.hpp"
+#include "building.hpp"
 #include <iostream>
 #include <string>
 
@@ -256,23 +257,41 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
         }
     }
 
-    if (!b) {
-        b = checkWalls(level, checkx, checky);
-        if (b)
-        {
-            msg = b->getWalkMsg();
-            blocked = true;
+    if (!blocked) {
+        if (!b) {
+            b = checkWalls(level, checkx, checky);
+            if (b)
+            {
+                msg = b->getWalkMsg();
+                blocked = true;
+            }
         }
     }
 
-    Item* i = nullptr;
-    if (!b) {
-        i = checkItems(level, checkx, checky);
-        if (i) {
-            msg = i->getMsg();
-            auto consume = i->interact(this);
-            if (consume) {
-                level.removeItem(i);
+    if (!blocked) {
+        Person* p = level.checkPerson(checkx, checky);
+        if (p)
+        {
+            blocked = p->interact(msg, this);
+            if (p->health == 0) {
+                Item* i = p->dropItem();
+                level.addItem(i);
+            }
+
+            printer.showMessage(msg, level);
+        }
+    }
+
+    if (!blocked) {
+        Item* i = nullptr;
+        if (!b) {
+            i = checkItems(level, checkx, checky);
+            if (i) {
+                msg = i->getMsg();
+                auto consume = i->interact(this);
+                if (consume) {
+                    level.removeItem(i);
+                }
             }
         }
     }

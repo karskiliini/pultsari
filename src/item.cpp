@@ -150,6 +150,12 @@ bool Banaani::interact(PlayerNS::Player* player)
 Raha::Raha(uint32_t x, uint32_t y) : Item(x, y) {
     value = rand() % 29 + 1;
 }
+
+Raha::Raha(uint32_t x, uint32_t y, uint32_t value)  : Item(x, y)
+{
+    Raha::value = value;
+}
+
 std::string Raha::typeToChar() const { return "$"; }
 std::string Raha::getMsg() const {
     string raha;

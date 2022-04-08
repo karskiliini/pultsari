@@ -149,11 +149,12 @@ public:
 class Raha : public Item {
 public:
     Raha(uint32_t x, uint32_t y);
+    Raha(uint32_t x, uint32_t y, uint32_t value);
     virtual ~Raha() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);
-    uint32_t value;
+    uint32_t value = 1;
 };
 
 class Paska : public Item {

@@ -1,6 +1,8 @@
 
 #include "level.hpp"
 #include "item.hpp"
+#include "persons.hpp"
+#include "building.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -25,6 +27,7 @@ Level::~Level() {
         // player needs to remain from level to level
         if (p->type != PersonType::pelaaja) {
             delete p;
+
         }
     }
     persons.clear();
@@ -44,6 +47,30 @@ void Level::npcTurn()
     }
 }
 
+void Level::cleanDead()
+{
+    bool restart = true;
+    while(restart)
+    {
+        cout << "cleandead: ---" << endl;
+        restart = false;
+
+        for (auto& p : persons)
+        {
+            if ((p->health == 0) && (p->type != pelaaja))
+            {
+                auto it = find(persons.begin(), persons.end(), p);
+                persons.erase(it);
+
+                delete p;
+                restart = true;
+
+                break;
+            }
+        }
+    }
+}
+
 bool Level::hit(uint32_t x, uint32_t y) const
 {
     for (const auto& b : buildings)
@@ -54,7 +81,7 @@ bool Level::hit(uint32_t x, uint32_t y) const
 
     for (const auto& p : persons)
     {
-        if ((p->x == x) && (p->y == y))
+        if ((p->x == x) && (p->y == y) && (p->health > 0))
             return true;
     }
 
@@ -75,6 +102,17 @@ void Level::freePosition(uint32_t& x, uint32_t& y) const
         y = rand() % sizey;
         recheck = hit(x, y);
     } while (recheck);
+}
+
+Person* Level::checkPerson(uint32_t checkx, uint32_t checky)
+{
+    for (auto& p : persons){
+        if ((p->x == checkx) && (p->y == checky))
+        {
+            return p;
+        }
+    }
+    return nullptr;
 }
 
 void Level::addBonas()
@@ -165,14 +203,14 @@ bool Level::addBuilding(Building* building)
     return true;
 }
 
-bool Level::addPerson(Person& person)
+bool Level::addPerson(Person* person)
 {
     for (const auto &p : persons)
     {
-        if ((p->x == person.x) && (p->y == person.y)) return false;
+        if ((p->x == person->x) && (p->y == person->y)) return false;
     }
 
-    persons.push_back(&person);
+    persons.push_back(person);
     return true;
 }
 

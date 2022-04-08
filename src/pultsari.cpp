@@ -119,6 +119,17 @@ static void populateBuildings(Level& level)
 
 }
 
+static void populatePersons(Level& level)
+{
+    // if (random(60))
+    {
+        uint32_t x, y;
+        level.freePosition(x, y);
+        Person* p = new Mummo(x, y);
+        level.addPerson(p);
+    }
+}
+
 static bool checkExit(const Level& level)
 {
     bool ok = true;
@@ -137,7 +148,7 @@ void mainloop()
     bool welcome = true;
 
     Printer printer;
-    uint32_t stage = 9;
+    uint32_t stage = 1;
     PlayerNS::Player player;
 
     bool quit = false;
@@ -146,7 +157,6 @@ void mainloop()
         player.resetPosition();
         Level level(stage);
 
-        //debug
         printer.player = &player;
 
         {
@@ -154,9 +164,10 @@ void mainloop()
             level.addItem(next);
         }
 
-        level.addPerson(player);
+        level.addPerson(&player);
 
         populateBuildings(level);
+        populatePersons(level);
         populateItems(level);
 
         if (welcome) {
@@ -172,6 +183,7 @@ void mainloop()
 
             try {
                 bool turn = handleInput(player, level, printer);
+                level.cleanDead();
 
                 level.npcTurn();
 
@@ -225,6 +237,7 @@ int main(int argc, char *argv[])
     }
     catch(const std::out_of_range& e)
     {
+        // reset terminal
         InputNS::Input::noraw();
         std::cout << e.what() << std::endl;
     }
