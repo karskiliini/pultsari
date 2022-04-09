@@ -41,6 +41,7 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
 
     bool tokenize = true;
     uint32_t limit = 3;
+    bool waited = false;
 
     while (tokenize && limit-- > 0) {
         tokenize = false;
@@ -51,7 +52,7 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
             tokenize = true;
         }
 
-        if (msgShown && waitKey) {
+        if (msgShown && waitKey && !waited) {
             cout << "     <LISÄÄ>";
             Input::waitKey();
         }
@@ -60,12 +61,13 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
         if (!msgShown) msgShown = true;
 
         cursorHome();
-        cout << "  " << msg; // << endl;
+        cout << "  " << msg;
 
-        if (tokenize)
+        if (tokenize && !waited)
         {
             cout << "     <LISÄÄ>";
             Input::waitKey();
+            waited = true;
         }
     }
 }
@@ -237,7 +239,6 @@ static void printLine(Level& l, uint32_t y)
     }
 
     vector<const Item*> items;
-
     for (const auto& i : l.items) {
         if (i->coord.y == y) {
             items.push_back(i);

@@ -235,7 +235,7 @@ void mainloop()
             }
 
             if (player.inJail) {
-                printer.setMessage("Putkassa istuskellessasi huomaat parin tunnin paasta miten          <LISää>\nPaasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!");
+                printer.setMessage("Putkassa istuskellessasi huomaat parin tunnin paasta miten\nPaasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!");
                 printer.print(level);
                 quit = true;
                 break;

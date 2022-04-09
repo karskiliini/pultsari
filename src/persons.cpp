@@ -376,7 +376,7 @@ bool Vanki::interact(std::string& message, Person* source)
 
     if (health == 0)
     {
-        message = message + " Vanki kellahtaa ketoon !!!";
+        message = message + "\n Vanki kellahtaa ketoon !!!";
         health = 0;
     }
 

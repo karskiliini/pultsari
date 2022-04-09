@@ -14,7 +14,7 @@ using std::endl;
 
 Player::Player() : Person(PersonType::pelaaja, {0, 0})
 {
-    health = 10;
+    health = 20;
 }
 
 void Player::damage(uint32_t damage)  {
