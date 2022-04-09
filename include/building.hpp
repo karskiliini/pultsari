@@ -2,6 +2,7 @@
 #define BUILDING_HPP
 
 #include "direction.hpp"
+#include "coord.hpp"
 #include <cstdint>
 #include <string>
 
@@ -45,6 +46,9 @@ public:
     bool hitWall(uint32_t x, uint32_t y) const;
     bool hitDoor(uint32_t x, uint32_t y) const;
     std::string printChar(uint32_t x, uint32_t y) const;
+
+    Coord getDoor() const;
+    Coord getSpawn() const;
 
     BuildingType type;
     DirectionNS::Direction door = DirectionNS::Direction::up;
@@ -119,6 +123,8 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+
+    bool emitted = false;
 };
 
 class PoliisiAsema : public Building {

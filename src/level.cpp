@@ -182,21 +182,18 @@ Item* Level::getItem(const Coord& c) const
     return nullptr;
 }
 
-void Level::freePosition(uint32_t& x, uint32_t& y) const
-{
-    bool recheck;
-    do {
-        x = rand() % sizex;
-        y = rand() % sizey;
-        recheck = hit(x, y);
-    } while (recheck);
-}
-
 Coord Level::freePosition() const
 {
-    Coord c {0, 0};
-    freePosition(c.x, c.y);
-    return c;
+    Coord coord;
+
+    bool recheck;
+    do {
+        coord.x = rand() % sizex;
+        coord.y = rand() % sizey;
+        recheck = hit(coord);
+    } while (recheck);
+
+    return coord;
 }
 
 Person* Level::checkPerson(uint32_t checkx, uint32_t checky)
@@ -214,21 +211,15 @@ void Level::addBonas()
 {
     for (uint32_t i = 0; i < stage; ++i)
     {
-        uint32_t x;
-        uint32_t y;
-
-        freePosition(x, y);
-
-        auto b = new Bona(x, y);
+        Coord c = freePosition();
+        auto b = new Bona(c);
         items.push_back(b);
     }
 }
 
 void Level::addItem(ItemType item)
 {
-    uint32_t x;
-    uint32_t y;
-    freePosition(x, y);
+    Coord c = freePosition();
 
     Item* i;
     switch(item)
@@ -238,46 +229,46 @@ void Level::addItem(ItemType item)
             i = nullptr;
             break;
         case EKalja:
-            i = new Kalja(x, y);
+            i = new Kalja(c);
             break;
         case ELonkka:
-            i = new Lonkka(x, y);
+            i = new Lonkka(c);
             break;
         case ELenkki:
-            i = new Lenkki(x, y);
+            i = new Lenkki(c);
             break;
         case EPamppu:
-            i = new Pamppu(x, y);
+            i = new Pamppu(c);
             break;
         case EVeitsi:
-            i = new Veitsi(x, y);
+            i = new Veitsi(c);
             break;
         case EKetjut:
-            i = new Ketjut(x, y);
+            i = new Ketjut(c);
             break;
         case EKivi:
-            i = new Kivi(x, y);
+            i = new Kivi(c);
             break;
         case EBootsit:
-            i = new Bootsit(x, y);
+            i = new Bootsit(c);
             break;
         case EKala:
-            i = new Kala(x, y);
+            i = new Kala(c);
             break;
         case EOmppo:
-            i = new Omppo(x, y);
+            i = new Omppo(c);
             break;
         case EBanaani:
-            i = new Banaani(x, y);
+            i = new Banaani(c);
             break;
         case ERaha:
-            i = new Raha(x, y);
+            i = new Raha(c);
             break;
         case EPaska:
-            i = new Paska(x, y);
+            i = new Paska(c);
             break;
         case EViesti:
-            i = new Viesti(x, y);
+            i = new Viesti(c);
             break;
     }
     if (i) {

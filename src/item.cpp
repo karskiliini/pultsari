@@ -8,14 +8,14 @@ using std::string;
 using std::vector;
 
 // bona
-Bona::Bona(uint32_t x, uint32_t y) : Item(x, y, EBona) { }
+Bona::Bona(const Coord& c) : Item(c, EBona) { }
 std::string Bona::typeToChar() const { return "°"; }
 std::string Bona::getMsg() const {
     return "Löysit bonan!";
 }
 
 // kalja
-Kalja::Kalja(uint32_t x, uint32_t y) : Item(x, y, EKalja) { }
+Kalja::Kalja(const Coord& c) : Item(c, EKalja) { }
 std::string Kalja::typeToChar() const { return "%"; }
 std::string Kalja::getMsg() const {
     return "Katohhan, miehen mittainen.";
@@ -27,7 +27,7 @@ bool Kalja::interact(PlayerNS::Player* player)
 }
 
 // lonkka
-Lonkka::Lonkka(uint32_t x, uint32_t y) : Item(x, y, ELonkka) { }
+Lonkka::Lonkka(const Coord& c) : Item(c, ELonkka) { }
 std::string Lonkka::typeToChar() const { return "%"; }
 std::string Lonkka::getMsg() const {
     return "Kappas, lonkan mittainen !!!";
@@ -39,7 +39,7 @@ bool Lonkka::interact(PlayerNS::Player* player)
 }
 
 // lenkki
-Lenkki::Lenkki(uint32_t x, uint32_t y) : Item(x, y, ELenkki) { }
+Lenkki::Lenkki(const Coord& c) : Item(c, ELenkki) { }
 std::string Lenkki::typeToChar() const { return "("; }
 std::string Lenkki::getMsg() const {
     return "Nam, lenkki makkaraa.";
@@ -51,7 +51,7 @@ bool Lenkki::interact(PlayerNS::Player* player)
 }
 
 // pamppu
-Pamppu::Pamppu(uint32_t x, uint32_t y) : Item(x, y, EPamppu) { }
+Pamppu::Pamppu(const Coord& c) : Item(c, EPamppu) { }
 std::string Pamppu::typeToChar() const { return "!"; }
 std::string Pamppu::getMsg() const {
     return "Pamppu. Mahtaakohan tama olla kadoksissa joltain poltsulta ?";
@@ -63,7 +63,7 @@ bool Pamppu::interact(PlayerNS::Player* player)
 }
 
 // veitset
-Veitsi::Veitsi(uint32_t x, uint32_t y) : Item(x, y, EVeitsi) { }
+Veitsi::Veitsi(const Coord& c) : Item(c, EVeitsi) { }
 std::string Veitsi::typeToChar() const { return "/"; }
 std::string Veitsi::getMsg() const {
     return "Teroita veitsesi mummoihin.";
@@ -75,7 +75,7 @@ bool Veitsi::interact(PlayerNS::Player* player)
 }
 
 // ketjut
-Ketjut::Ketjut(uint32_t x, uint32_t y) : Item(x, y, EKetjut) { }
+Ketjut::Ketjut(const Coord& c) : Item(c, EKetjut) { }
 std::string Ketjut::typeToChar() const { return "¨"; }
 std::string Ketjut::getMsg() const {
     return "Kutkuta pollaria riimuilla.";
@@ -87,7 +87,7 @@ bool Ketjut::interact(PlayerNS::Player* player)
 }
 
 // kivi
-Kivi::Kivi(uint32_t x, uint32_t y) : Item(x, y, EKivi) { }
+Kivi::Kivi(const Coord& c) : Item(c, EKivi) { }
 std::string Kivi::typeToChar() const { return "."; }
 std::string Kivi::getMsg() const {
     return "Löysit kiven. Onnitteluni.";
@@ -99,7 +99,7 @@ bool Kivi::interact(PlayerNS::Player* player)
 }
 
 // Bootsit
-Bootsit::Bootsit(uint32_t x, uint32_t y) : Item(x, y, EBootsit) { }
+Bootsit::Bootsit(const Coord& c) : Item(c, EBootsit) { }
 std::string Bootsit::typeToChar() const { return "B"; }
 std::string Bootsit::getMsg() const {
     return "Camel boots,miehille,jotka kusevat omille jaloileen.";
@@ -111,7 +111,7 @@ bool Bootsit::interact(PlayerNS::Player* player)
 }
 
 // Kala
-Kala::Kala(uint32_t x, uint32_t y) : Item(x, y, EKala) { }
+Kala::Kala(const Coord& c) : Item(c, EKala) { }
 std::string Kala::typeToChar() const { return "¥"; }
 std::string Kala::getMsg() const {
     return "Kalasi lemuaa.";
@@ -123,7 +123,7 @@ bool Kala::interact(PlayerNS::Player* player)
 }
 
 // omppo
-Omppo::Omppo(uint32_t x, uint32_t y) : Item(x, y, EOmppo) { }
+Omppo::Omppo(const Coord& c) : Item(c, EOmppo) { }
 std::string Omppo::typeToChar() const { return "o"; }
 std::string Omppo::getMsg() const {
     return "Omppo.Sen voi syoda, jos uskaltaa.";
@@ -135,7 +135,7 @@ bool Omppo::interact(PlayerNS::Player* player)
 }
 
 // banaani
-Banaani::Banaani(uint32_t x, uint32_t y) : Item(x, y, EBanaani) { }
+Banaani::Banaani(const Coord& c) : Item(c, EBanaani) { }
 std::string Banaani::typeToChar() const { return ")"; }
 std::string Banaani::getMsg() const {
     return "Loysit banaanin. Kokeileppas syoda se.";
@@ -147,11 +147,11 @@ bool Banaani::interact(PlayerNS::Player* player)
 }
 
 // Raha
-Raha::Raha(uint32_t x, uint32_t y) : Item(x, y, ERaha) {
+Raha::Raha(const Coord& c) : Item(c, ERaha) {
     value = rand() % 29 + 1;
 }
 
-Raha::Raha(uint32_t x, uint32_t y, uint32_t value) : Item(x, y, ERaha)
+Raha::Raha(const Coord& c, uint32_t value) : Item(c, ERaha)
 {
     Raha::value = value;
 }
@@ -173,7 +173,7 @@ bool Raha::interact(PlayerNS::Player* player)
 }
 
 // paska
-Paska::Paska(uint32_t x, uint32_t y) : Item(x, y, EPaska) { }
+Paska::Paska(const Coord& c) : Item(c, EPaska) { }
 std::string Paska::typeToChar() const { return "p"; }
 std::string Paska::getMsg() const {
     return "Huomaat sen liian myohaan... liukastut paskaan.";
@@ -181,7 +181,7 @@ std::string Paska::getMsg() const {
 
 bool Paska::interact(PlayerNS::Player* player)
 {
-    player->health -= 1;
+    player->damage(1);
     return true;
 }
 
@@ -204,7 +204,7 @@ Iter select_randomly(Iter start, Iter end) {
     return select_randomly(start, end, gen);
 }
 
-Viesti::Viesti(uint32_t x, uint32_t y) : Item(x, y, EViesti) { }
+Viesti::Viesti(const Coord& c) : Item(c, EViesti) { }
 std::string Viesti::typeToChar() const { return "?"; }
 std::string Viesti::getMsg() const {
     const vector<string> viestit = {
@@ -280,7 +280,7 @@ static bool checkBonas(Level* level)
 }
 
 // next level
-NextLevel::NextLevel(uint32_t x, uint32_t y, Level* level) : Item(x, y, ENextLevel), level(level) { }
+NextLevel::NextLevel(const Coord& c, Level* level) : Item(c, ENextLevel), level(level) { }
 std::string NextLevel::typeToChar() const { return "^"; }
 std::string NextLevel::getMsg() const {
 

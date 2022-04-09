@@ -90,6 +90,8 @@ public:
     virtual bool interact(std::string& message, Person* source);
     virtual std::string typeToChar() const { return "E"; };
     Coord target;
+    bool kivi = false;
+    bool firstMove = true;
 };
 
 

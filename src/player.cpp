@@ -14,11 +14,11 @@ using std::endl;
 
 Player::Player() : Person(PersonType::pelaaja, {0, 0})
 {
+    health = 10;
 }
 
 void Player::damage(uint32_t damage)  {
-    if (damage > health)
-    {
+    if (damage > health) {
         health = 0;
     } else {
         health -= damage;
@@ -96,7 +96,7 @@ bool Player::eat(Printer& printer, Level& level)
     } else if ((inventory.kalat == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
         --inventory.omppo;
         if (random(50)) {
-            health -= 1;
+            damage(1);
             printer.showMessage("Omppo oli pilaantunut,oksennat.", level);
         } else {
             health += 2;
@@ -105,7 +105,7 @@ bool Player::eat(Printer& printer, Level& level)
     } else if ((inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
         --inventory.kalat;
         if (random(70)) {
-            health -= 2;
+            damage(2);
             printer.showMessage("Syomasi kala sisalsi matoja...", level);
         } else {
             health += 4;
@@ -134,7 +134,7 @@ bool Player::eat(Printer& printer, Level& level)
                 } else {
                     --inventory.kalat;
                     if (random(70)) {
-                        health -= 2;
+                        damage(2);
                         printer.showMessage("Syomasi kala sisalsi matoja...", level, false);
                     } else {
                         health += 4;
@@ -148,7 +148,7 @@ bool Player::eat(Printer& printer, Level& level)
                 } else {
                     --inventory.omppo;
                     if (random(50)) {
-                        health -= 1;
+                        damage(1);
                         printer.showMessage("Joku oli kaytellyt keski keppiaan omppoosi.", level, false);
                     } else {
                         health += 2;

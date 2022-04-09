@@ -98,7 +98,8 @@ static void populateBuildings(Level& level)
     }
     level.addBuilding(b);
 
-    if ((level.stage > 6) && random(50)) {
+    if ((level.stage > 6) && random(50))
+    {
         b = new Vankila();
         level.addBuilding(b);
         b = new PoliisiAsema();
@@ -192,7 +193,7 @@ void mainloop()
         printer.player = &player;
 
         {
-            NextLevel* next = new NextLevel(79,27, &level);
+            NextLevel* next = new NextLevel(Coord(79,27), &level);
             level.addItem(next);
         }
 
@@ -220,6 +221,7 @@ void mainloop()
 
                 printer.print(level);
 
+                level.buildingTurn();
                 level.npcTurn(&printer);
                 level.cleanDead();
                 level.cleanDiscardedItems();

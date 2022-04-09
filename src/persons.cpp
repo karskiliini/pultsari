@@ -76,7 +76,7 @@ bool Mummo::interact(std::string& message, Person* source)
 
 Item* Mummo::dropItem()
 {
-    return new Raha(coord.x, coord.y, rand()%25 + 1);
+    return new Raha(coord, rand()%25 + 1);
 }
 
 
@@ -163,7 +163,7 @@ bool Cop::interact(std::string& message, Person* source)
 
 Item* Cop::dropItem()
 {
-    return new Pamppu(coord.x, coord.y);
+    return new Pamppu(coord);
 }
 
 
@@ -263,7 +263,7 @@ bool Varas::interact(std::string& message, Person* source)
 
 
 // VANKI
-Vanki::Vanki(const Coord& pos) : Person(varas, pos), target(pos)
+Vanki::Vanki(const Coord& pos) : Person(vanki, pos), target(pos)
 {
     health = 4;
 }
@@ -321,6 +321,12 @@ bool Vanki::move(Direction d, std::string& msg)
                     ++health;
                     i->discard = true;
                     break;
+                case EKivi:
+                    msg += (msg == "") ? "" : "\n";
+                    msg += "Vankikarkuri nappaa kiven.";
+                    i->discard = true;
+                    kivi = true;
+                    break;
                 default:
                     break;
             }
@@ -333,24 +339,30 @@ bool Vanki::move(Direction d, std::string& msg)
 
 void Vanki::npcAct(string& msg)
 {
+    if (firstMove)
+    {
+        firstMove = false;
+        return;
+    }
+
     Player* p = level->findPlayer();
     target = p->coord;
 
     if (coord.distance(target) == 1)
     {
-        msg = "Vankikarkuri murjoo sinua!";
+        msg = "Vankikarkuri kurmottaa sinua!";
 
-        if (rand()%2)
-        {
-            uint32_t sum = rand() % 16 + 1;
-            if (sum > p->money) sum = p->money;
-            p->money -= sum;
-            msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
-            health = 0;
-        }
+        uint32_t damage = rand()%3 + 1;
+        p->damage(damage);
     } else {
-        Direction d = getMoveDirection(target);
-        move(d, msg);
+        if (kivi && ((coord.x == p->coord.x) || (coord.y == p->coord.y)))
+        {
+            msg = "Vankikarkuri heittää kivellä !!!";
+            kivi = false;
+        } else {
+            Direction d = getMoveDirection(target);
+            move(d, msg);
+        }
     }
 }
 
@@ -364,7 +376,7 @@ bool Vanki::interact(std::string& message, Person* source)
 
     if (health == 0)
     {
-        message = message + "\nVARAS kellahtaa ketoon !!!";
+        message = message + " Vanki kellahtaa ketoon !!!";
         health = 0;
     }
 

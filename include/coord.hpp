@@ -6,7 +6,7 @@
 template<typename T>
 class Coordinate {
 public:
-    Coordinate();
+    Coordinate() {};
     Coordinate(T ax, T ay) : x(ax), y(ay) { }
     Coordinate(const Coordinate& c) { x = c.x; y = c.y; }
 
@@ -16,8 +16,12 @@ public:
         x = c.x; y = c.y;
         return *this;
     }
-    bool operator==(const Coordinate& c) { return ((x == c.x) && (y == c.y)); }
-    bool operator!=(const Coordinate& c) { return !((x == c.x) && (y == c.y)); }
+    bool operator==(const Coordinate& c) const { return ((x == c.x) && (y == c.y)); }
+    bool operator!=(const Coordinate& c) const { return !(*this == c); }
+    Coordinate operator+(const Coordinate& c) const { return Coordinate { x + c.x, y + c.y }; }
+    Coordinate operator-(const Coordinate& c) const { return Coordinate { x - c.x, y - c.y }; }
+    Coordinate& operator+=(const Coordinate& c) { x += c.x; y += c.y; return *this; }
+    Coordinate& operator-=(const Coordinate& c) { x -= c.x; y -= c.y; return *this; }
 
     T distance(const Coordinate& c) const
     {

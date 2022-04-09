@@ -31,7 +31,7 @@ class Level;
 
 class Item {
 public:
-    Item(uint32_t x, uint32_t y, ItemType t) : coord({x, y}), type(t) { };
+    Item(const Coord& c, ItemType t) : coord(c), type(t) { };
     virtual ~Item() = default;
 
     virtual std::string typeToChar() const { return " "; };
@@ -45,7 +45,7 @@ public:
 
 class Bona : public Item {
 public:
-    Bona(uint32_t x, uint32_t y);
+    Bona(const Coord& c);
     virtual ~Bona() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -53,7 +53,7 @@ public:
 
 class Kalja : public Item {
 public:
-    Kalja(uint32_t x, uint32_t y);
+    Kalja(const Coord& c);
     virtual ~Kalja() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -62,7 +62,7 @@ public:
 
 class Lonkka : public Item {
 public:
-    Lonkka(uint32_t x, uint32_t y);
+    Lonkka(const Coord& c);
     virtual ~Lonkka() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -71,7 +71,7 @@ public:
 
 class Lenkki : public Item {
 public:
-    Lenkki(uint32_t x, uint32_t y);
+    Lenkki(const Coord& c);
     virtual ~Lenkki() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -80,7 +80,7 @@ public:
 
 class Pamppu : public Item {
 public:
-    Pamppu(uint32_t x, uint32_t y);
+    Pamppu(const Coord& c);
     virtual ~Pamppu() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -89,7 +89,7 @@ public:
 
 class Veitsi : public Item {
 public:
-    Veitsi(uint32_t x, uint32_t y);
+    Veitsi(const Coord& c);
     virtual ~Veitsi() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -98,7 +98,7 @@ public:
 
 class Ketjut : public Item {
 public:
-    Ketjut(uint32_t x, uint32_t y);
+    Ketjut(const Coord& c);
     virtual ~Ketjut() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -107,7 +107,7 @@ public:
 
 class Kivi : public Item {
 public:
-    Kivi(uint32_t x, uint32_t y);
+    Kivi(const Coord& c);
     virtual ~Kivi() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -116,7 +116,7 @@ public:
 
 class Bootsit : public Item {
 public:
-    Bootsit(uint32_t x, uint32_t y);
+    Bootsit(const Coord& c);
     virtual ~Bootsit() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -125,7 +125,7 @@ public:
 
 class Kala : public Item {
 public:
-    Kala(uint32_t x, uint32_t y);
+    Kala(const Coord& c);
     virtual ~Kala() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -134,7 +134,7 @@ public:
 
 class Omppo : public Item {
 public:
-    Omppo(uint32_t x, uint32_t y);
+    Omppo(const Coord& c);
     virtual ~Omppo() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -143,7 +143,7 @@ public:
 
 class Banaani : public Item {
 public:
-    Banaani(uint32_t x, uint32_t y);
+    Banaani(const Coord& c);
     virtual ~Banaani() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -152,8 +152,8 @@ public:
 
 class Raha : public Item {
 public:
-    Raha(uint32_t x, uint32_t y);
-    Raha(uint32_t x, uint32_t y, uint32_t value);
+    Raha(const Coord& c);
+    Raha(const Coord& c, uint32_t value);
     virtual ~Raha() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -163,7 +163,7 @@ public:
 
 class Paska : public Item {
 public:
-    Paska(uint32_t x, uint32_t y);
+    Paska(const Coord& c);
     virtual ~Paska() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -172,7 +172,7 @@ public:
 
 class Viesti : public Item {
 public:
-    Viesti(uint32_t x, uint32_t y);
+    Viesti(const Coord& c);
     virtual ~Viesti() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
@@ -181,7 +181,7 @@ public:
 
 class NextLevel : public Item {
 public:
-    NextLevel(uint32_t x, uint32_t y, Level* level);
+    NextLevel(const Coord& c, Level* level);
     virtual ~NextLevel() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;

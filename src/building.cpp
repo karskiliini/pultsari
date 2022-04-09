@@ -7,8 +7,11 @@
 #include "level.hpp"
 #include <string>
 #include <iostream>
+#include <exception>
 
 using std::string;
+using std::cout;
+using std::endl;
 using InputNS::Input;
 
 Building::Building(BuildingType buildingType) : type(buildingType)
@@ -120,6 +123,56 @@ string Building::printChar(uint32_t x, uint32_t y) const
     }
     return " ";
 }
+
+Coord Building::getDoor() const
+{
+    cout << "getDoor: wallRight : " << wallRight << endl;
+    cout << "getDoor: wallleft : " << wallLeft << endl;
+    cout << "getDoor: walltop : " << wallTop << endl;
+    cout << "getDoor: wallBot : " << wallBot << endl;
+    switch(door) {
+        case DirectionNS::Direction::up:
+        {
+            Coord c { ((wallRight + wallLeft) / 2), wallTop };
+            cout << "getDoor: x : " << c.x << " y: " << c.y << endl;
+
+                return Coord { ((wallRight + wallLeft) / 2), wallTop };
+        }
+        case DirectionNS::Direction::down:
+                return Coord { ((wallRight + wallLeft) / 2), wallBot };
+        case DirectionNS::Direction::right:
+                return Coord { (wallTop + wallBot) / 2, wallRight };
+        case DirectionNS::Direction::left:
+                return Coord { (wallTop + wallBot) / 2, wallLeft };
+        default:
+            throw std::out_of_range("no door!");
+    }
+}
+
+Coord Building::getSpawn() const
+{
+    Coord c = getDoor();
+
+    switch(door) {
+        case DirectionNS::Direction::up:
+                c -= { 0, 1 };
+                break;
+        case DirectionNS::Direction::down:
+                c += { 0, 1 };
+                break;
+        case DirectionNS::Direction::right:
+                c += { 1, 0 };
+                break;
+        case DirectionNS::Direction::left:
+                c -= { 1, 0 };
+                break;
+        default:
+            throw std::out_of_range("no door!");
+    }
+
+    return c;
+}
+
 
 // ALKO
 Alko::Alko() : Building(BuildingType::EAlko) {
@@ -367,14 +420,24 @@ Vankila::Vankila() : Building(BuildingType::EVankila) {
 
 void Vankila::npcAct()
 {
-    ++turn;
-    if (!level->PersonExists(vanki)) {
-        if (type == EVankila) {
-            if (turn > 50) {
-                if (common::random(50)) {
-                    Vanki* p = new Vanki(level->freePosition());
-                    p->setLevel(level);
-                    level->addPerson(p);
+    if (!emitted)
+    {
+        ++turn;
+        if (turn > 50) {
+            if (!level->PersonExists(vanki)) {
+                if (type == EVankila) {
+                    if (common::random(50)) {
+                        Coord spawn = getSpawn();
+
+                        if (!level->hit(spawn))
+                        {
+                            Vanki* p = new Vanki(spawn);
+                            p->setLevel(level);
+                            level->addPerson(p);
+
+                            emitted = true;
+                        }
+                    }
                 }
             }
         }
