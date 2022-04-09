@@ -110,20 +110,20 @@ void printBorder(Level& l, bool top)
 {
     printLeftBorderSpaces();
     if (top) {
-        std::cout << TOP_LEFT;
+        cout << TOP_LEFT;
     } else {
-        std::cout << BOT_LEFT;
+        cout << BOT_LEFT;
     }
 
     for (uint32_t x = 0; x < l.sizex; ++x)
-        std::cout << HORIZONTAL;
+        cout << HORIZONTAL;
 
     if (top) {
-        std::cout << TOP_RIGHT;
+        cout << TOP_RIGHT;
     } else {
-        std::cout << BOT_RIGHT;
+        cout << BOT_RIGHT;
     }
-    std::cout << std::endl;
+    cout << endl;
 }
 
 string inventoryAligned(uint32_t value)
@@ -218,12 +218,12 @@ string promilleAligned(uint32_t value)
 
 void printStats(Level& l, Player* player)
 {
-    std::cout << "RAHAA: "    << moneyAligned(player->money);
-    std::cout << "  VOIMA: "    << moneyAligned(player->health);
-    std::cout << "  PROMILLE: " << promilleAligned(player->promilles);
-    std::cout << "  KÄPPÄILY: " << player->turn << " ";
-    std::cout << "  LEVEL: "  << l.stage << " ";
-    std::cout << endl << endl;
+    cout << "RAHAA: "    << moneyAligned(player->money);
+    cout << "  VOIMA: "    << moneyAligned(player->health);
+    cout << "  PROMILLE: " << promilleAligned(player->promilles);
+    cout << "  KÄPPÄILY: " << player->turn << " ";
+    cout << "  LEVEL: "  << l.stage << " ";
+    cout << endl << endl;
 }
 
 static void printLine(Level& l, uint32_t y)
@@ -276,29 +276,27 @@ static void printLine(Level& l, uint32_t y)
     }
 }
 
-void Printer::print(Level& l)
+void Printer::print(Level& level)
 {
     cursorHome();
-
     cout << endl;
-    // cout << "  " << msg << endl;
-    printBorder(l, true);
 
-    for (uint32_t y = 0; y < l.sizey; ++y) {
+    printBorder(level, true);
+
+    for (uint32_t y = 0; y < level.sizey; ++y) {
 
         printInventory(y, player);
 
         // left border
-        std::cout << VERTICAL;
+        cout << VERTICAL;
 
-        printLine(l, y);
+        printLine(level, y);
 
         // right border
-        std::cout << VERTICAL << " " << std::endl;
+        cout << VERTICAL << " " << endl;
     }
-    printBorder(l, false);
-    printStats(l, player);
+    printBorder(level, false);
+    printStats(level, player);
 
-    showMessage(msg, l, false);
-    // removeMessage();
+    showMessage(msg, level, false);
 }

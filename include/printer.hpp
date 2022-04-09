@@ -17,7 +17,7 @@ public:
     void showMessage(std::string message, Level& level, bool waitKey = true);
     void removeMessage();
 
-    void print(Level& l);
+    void print(Level& level);
 
     std::string msg = "";
     bool msgShown = false;
