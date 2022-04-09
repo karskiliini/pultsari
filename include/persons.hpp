@@ -1,23 +1,12 @@
 #ifndef PERSONS_HPP
 #define PERSONS_HPP
 
+#include "persontype.hpp"
 #include "coord.hpp"
 #include "direction.hpp"
 #include "item.hpp"
 #include <cstdint>
 #include <string>
-
-enum PersonType {
-    invalidPerson,
-    pelaaja,
-    poliisi,
-    Kake,
-    mummo,
-    juppi,
-    hippi,
-    vanki,
-    varas
-};
 
 class Level;
 

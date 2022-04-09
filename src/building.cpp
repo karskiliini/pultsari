@@ -1,8 +1,10 @@
 
 #include "building.hpp"
+#include "persons.hpp"
 #include "player.hpp"
 #include "input.hpp"
 #include "common.hpp"
+#include "level.hpp"
 #include <string>
 #include <iostream>
 
@@ -366,13 +368,14 @@ Vankila::Vankila() : Building(BuildingType::EVankila) {
 void Vankila::npcAct()
 {
     ++turn;
-    if (type == EVankila) {
-        if (turn > 50)
-        {
-
-            if (common::random(50))
-            {
-
+    if (!level->PersonExists(vanki)) {
+        if (type == EVankila) {
+            if (turn > 50) {
+                if (common::random(50)) {
+                    Vanki* p = new Vanki(level->freePosition());
+                    p->setLevel(level);
+                    level->addPerson(p);
+                }
             }
         }
     }

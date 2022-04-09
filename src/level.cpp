@@ -78,6 +78,14 @@ Person* Level::getPerson(const Coord& coord) const
     return getPerson(coord.x, coord.y);
 }
 
+bool Level::PersonExists(PersonType type) const
+{
+    for (auto& p : persons) {
+        if (p->type == type) return true;
+    }
+    return false;
+}
+
 void Level::alertCops()
 {
     for (auto& p : persons) {
@@ -286,6 +294,7 @@ bool Level::addBuilding(Building* building)
         if (b->type == building->type) return false;
     }
 
+    building->level = this;
     buildings.push_back(building);
     return true;
 }

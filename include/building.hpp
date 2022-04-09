@@ -20,6 +20,8 @@ enum BuildingType {
     ESeina
 };
 
+class Level;
+
 class Building {
 public:
     Building(BuildingType buildingType);
@@ -53,6 +55,7 @@ public:
     uint32_t wallBot;
 
     uint32_t turn = 0;
+    Level* level;
 };
 
 class Alko : public Building {

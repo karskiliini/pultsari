@@ -3,6 +3,7 @@
 
 #include "item.hpp"
 #include "coord.hpp"
+#include "persontype.hpp"
 #include <cstdint>
 #include <vector>
 
@@ -26,6 +27,7 @@ public:
 
     Person* getPerson(uint32_t x, uint32_t y) const;
     Person* getPerson(const Coord& coord) const;
+    bool PersonExists(PersonType type) const;
     void removePerson(Person* person);
     void alertCops();
     void cleanDead();
