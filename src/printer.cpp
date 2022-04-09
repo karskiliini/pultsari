@@ -238,23 +238,20 @@ static void printLine(Level& l, uint32_t y)
 
     vector<const Item*> items;
 
-    for (const auto& i : l.items)
-    {
+    for (const auto& i : l.items) {
         if (i->coord.y == y) {
             items.push_back(i);
         }
     }
 
-    for (uint32_t x = 0; x < l.sizex; ++x)
-    {
+    for (uint32_t x = 0; x < l.sizex; ++x) {
+        Coord coord { x, y };
         bool found = false;
         string c = " ";
 
-        for (auto b : l.buildings)
-        {
-            if (b->hitBuilding(Coord { x, y }))
-            {
-                c = b->typeToChar(Coord { x, y });
+        for (auto b : l.buildings) {
+            if (b->hitBuilding(coord)) {
+                c = b->typeToChar(coord);
                 found = true;
                 break;
             }
