@@ -146,32 +146,27 @@ Player* Level::findPlayer()
     return nullptr;
 }
 
-bool Level::hit(uint32_t x, uint32_t y) const
+bool Level::hit(const Coord& c) const
 {
     for (const auto& b : buildings)
     {
-        if (b->hitBuilding(x, y))
+        if (b->hitBuilding(c))
             return true;
     }
 
     for (const auto& p : persons)
     {
-        if ((p->coord.x == x) && (p->coord.y == y) && (p->health > 0))
+        if ((p->coord == c) && (p->health > 0))
             return true;
     }
 
     for (const auto& i : items)
     {
-        if ((i->coord.x == x) && (i->coord.y == y))
+        if ((i->coord == c))
             return true;
     }
 
     return false;
-}
-
-bool Level::hit(const Coord& coord) const
-{
-    return hit(coord.x, coord.y);
 }
 
 Item* Level::getItem(const Coord& c) const
@@ -196,11 +191,10 @@ Coord Level::freePosition() const
     return coord;
 }
 
-Person* Level::checkPerson(uint32_t checkx, uint32_t checky)
+Person* Level::checkPerson(const Coord& c)
 {
-    for (auto& p : persons){
-        if ((p->coord.x == checkx) && (p->coord.y == checky))
-        {
+    for (auto& p : persons) {
+        if (p->coord == c) {
             return p;
         }
     }
@@ -209,8 +203,7 @@ Person* Level::checkPerson(uint32_t checkx, uint32_t checky)
 
 void Level::addBonas()
 {
-    for (uint32_t i = 0; i < stage; ++i)
-    {
+    for (uint32_t i = 0; i < stage; ++i) {
         Coord c = freePosition();
         auto b = new Bona(c);
         items.push_back(b);

@@ -178,30 +178,30 @@ bool Player::eat(Printer& printer, Level& level)
     return true;
 }
 
-Building* checkDoor(Level& level, uint32_t x, uint32_t y)
+static Building* checkDoor(Level& level, const Coord& c)
 {
     for (auto& b : level.buildings) {
-        if (b->hitDoor(x, y)) {
+        if (b->hitDoor(c)) {
             return b;
         }
     }
     return nullptr;
 }
 
-Building* checkWalls(Level& level, uint32_t x, uint32_t y)
+static Building* checkWalls(Level& level, const Coord& c)
 {
     for (auto& b : level.buildings) {
-        if (b->hitWall(x, y)) {
+        if (b->hitWall(c)) {
             return b;
         }
     }
     return nullptr;
 }
 
-Item* checkItems(Level& level, uint32_t x, uint32_t y)
+static Item* checkItems(Level& level, const Coord& c)
 {
     for (auto& i : level.items) {
-        if ((i->coord.x == x) && (i->coord.y == y)) {
+        if (i->coord == c) {
             return i;
         }
     }
@@ -215,29 +215,28 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     // prevent movement
     bool blocked = false;
 
-    uint32_t checkx = coord.x;
-    uint32_t checky = coord.y;
+    Coord check { coord.x, coord.y };
 
     switch(d)
     {
         case DirectionNS::down:
-            ++checky;
+            check += Coord { 0, 1 };
             break;
         case DirectionNS::up:
-            --checky;
+            check -= Coord { 0, 1 };
             break;
         case DirectionNS::right:
-            ++checkx;
+            check += Coord { 1, 0 };
             break;
         case DirectionNS::left:
-            --checkx;
+            check -= Coord { 1, 0 };
             break;
         case DirectionNS::none:
             return false;
     }
 
     string msg;
-    Building* b = checkDoor(level, checkx, checky);
+    Building* b = checkDoor(level, check);
     if (b) {
         blocked = true;
 
@@ -257,7 +256,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 
     if (!blocked) {
         if (!b) {
-            b = checkWalls(level, checkx, checky);
+            b = checkWalls(level, check);
             if (b)
             {
                 msg = b->getWalkMsg();
@@ -267,7 +266,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     }
 
     if (!blocked) {
-        Person* p = level.checkPerson(checkx, checky);
+        Person* p = level.checkPerson(check);
         if (p)
         {
             blocked = p->interact(msg, this);
@@ -285,7 +284,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     if (!blocked) {
         Item* i = nullptr;
         if (!b) {
-            i = checkItems(level, checkx, checky);
+            i = checkItems(level, check);
             if (i) {
                 msg = i->getMsg();
                 printer.showMessage(msg, level, false);
@@ -299,8 +298,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     }
 
     if (!blocked) {
-        coord.x = checkx;
-        coord.y = checky;
+        coord = check;
     }
 
     if (checkBounds(level.sizex, level.sizey)) {

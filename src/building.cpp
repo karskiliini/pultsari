@@ -22,7 +22,7 @@ void Building::npcAct()
 {
 }
 
-std::string Building::typeToChar(uint32_t x, uint32_t y) const { return " "; };
+std::string Building::typeToChar(const Coord& c) const { return printChar(c); };
 std::string Building::getName() const { return ""; }
 
 bool Building::getEnterMsg(PlayerNS::Player* player, std::string& msg) const { return false; }
@@ -31,42 +31,45 @@ void Building::interact(PlayerNS::Player* player, std::string& msg) { }
 
 std::string Building::getWalkMsg() const { return ""; }
 
-bool Building::hitBuilding(uint32_t x, uint32_t y) const
+bool Building::hitBuilding(const Coord& c) const
 {
-    return ((x >= wallLeft) && (x <= wallRight) && (y >= wallTop) && (y <= wallBot));
+    return ((c.x >= wallLeft) && (c.x <= wallRight) && (c.y >= wallTop) && (c.y <= wallBot));
 }
 
-bool Building::hitTopWall(uint32_t x, uint32_t y) const {
-    return ((x >= wallLeft) && (x <= wallRight) && (y == wallTop));
+bool Building::hitTopWall(const Coord& c) const {
+    return ((c.x >= wallLeft) && (c.x <= wallRight) && (c.y == wallTop));
 }
 
-bool Building::hitBotWall(uint32_t x, uint32_t y) const {
-    return ((x >= wallLeft) && (x <= wallRight) && (y == wallBot));
+bool Building::hitBotWall(const Coord& c) const {
+    return ((c.x >= wallLeft) && (c.x <= wallRight) && (c.y == wallBot));
 }
 
-bool Building::hitLeftWall(uint32_t x, uint32_t y) const {
-    return ((x == wallLeft) && (y >= wallTop) && (y <= wallBot));
+bool Building::hitLeftWall(const Coord& c) const {
+    return ((c.x == wallLeft) && (c.y >= wallTop) && (c.y <= wallBot));
 }
 
-bool Building::hitRightWall(uint32_t x, uint32_t y) const {
-    return ((x == wallRight) && (y >= wallTop) && (y <= wallBot));
+bool Building::hitRightWall(const Coord& c) const {
+    return ((c.x == wallRight) && (c.y >= wallTop) && (c.y <= wallBot));
 }
 
-bool Building::hitWall(uint32_t x, uint32_t y) const {
-    if (hitTopWall(x, y) ||
-        hitRightWall(x, y) ||
-        hitBotWall(x, y) ||
-        hitLeftWall(x, y))
+bool Building::hitWall(const Coord& c) const {
+    if (hitTopWall(c)   ||
+        hitRightWall(c) ||
+        hitBotWall(c)   ||
+        hitLeftWall(c))
     {
         return true;
     }
     return false;
 }
 
-bool Building::hitDoor(uint32_t x, uint32_t y) const {
+bool Building::hitDoor(const Coord& c) const {
     if (!hasDoor) return false;
 
-    if (hitWall(x, y))
+    uint32_t x = c.x;
+    uint32_t y = c.y;
+
+    if (hitWall(c))
     {
         if ((x >= wallLeft) && (x <= wallRight) && ((y == wallTop) || (y == wallBot))) {
             if (door == DirectionNS::Direction::up)
@@ -103,10 +106,13 @@ bool Building::hitDoor(uint32_t x, uint32_t y) const {
     return false;
 }
 
-string Building::printChar(uint32_t x, uint32_t y) const
+string Building::printChar(const Coord& c) const
 {
-    if (hasDoor && hitDoor(x, y)) return "░";
-    if (hitWall(x, y)) return "█";
+    uint32_t x = c.x;
+    uint32_t y = c.y;
+
+    if (hasDoor && hitDoor(c)) return "░";
+    if (hitWall(c)) return "█";
 
     if (y == (wallTop + wallBot) / 2)
     {
@@ -189,11 +195,6 @@ std::string Alko::getName() const
     return "ALKO";
 }
 
-string Alko::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
-}
-
 bool Alko::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     if (player->promilles > 14) {
@@ -255,11 +256,6 @@ std::string Isku::getName() const
     return "ISKU";
 }
 
-string Isku::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
-}
-
 bool Isku::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     msg = "Putiikki on kiinni.";
@@ -286,11 +282,6 @@ Divari::Divari() : Building(BuildingType::EDivari) {
 std::string Divari::getName() const
 {
     return "DIVARI";
-}
-
-string Divari::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
 }
 
 bool Divari::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
@@ -387,11 +378,6 @@ std::string KRauta::getName() const
     return "K-Rauta";
 }
 
-string KRauta::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
-}
-
 bool KRauta::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     msg = "K-RAUTAa ei ole ohjelmoitu loppuun.";
@@ -449,11 +435,6 @@ std::string Vankila::getName() const
     return "PUTKA";
 }
 
-string Vankila::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
-}
-
 bool Vankila::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     msg = "Jos haluat putkaan,mene poliisiaseman ovesta.";
@@ -485,11 +466,6 @@ PoliisiAsema::PoliisiAsema() : Building(BuildingType::EPoliisiAsema) {
 std::string PoliisiAsema::getName() const
 {
     return "POLIISI";
-}
-
-string PoliisiAsema::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
 }
 
 bool PoliisiAsema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
@@ -533,11 +509,6 @@ std::string Asema::getName() const
     return "ASEMA";
 }
 
-string Asema::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
-}
-
 bool Asema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     msg = "Asemalla voi saada turpaansa!";
@@ -571,11 +542,6 @@ Seina::Seina() : Building(BuildingType::ESeina) {
 std::string Seina::getName() const
 {
     return "";
-}
-
-string Seina::typeToChar(uint32_t x, uint32_t y) const
-{
-    return printChar(x, y);
 }
 
 std::string Seina::getWalkMsg() const { return "Isket paasi aseman seinaan. Mielenkiintoista."; }

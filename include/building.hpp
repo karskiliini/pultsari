@@ -30,7 +30,7 @@ public:
 
     virtual void npcAct();
 
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
+    virtual std::string typeToChar(const Coord& c) const;
     virtual std::string getName() const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
@@ -38,14 +38,14 @@ public:
 
     virtual std::string getWalkMsg() const;
 
-    bool hitBuilding(uint32_t x, uint32_t y) const;
-    bool hitTopWall(uint32_t x, uint32_t y) const;
-    bool hitBotWall(uint32_t x, uint32_t y) const;
-    bool hitLeftWall(uint32_t x, uint32_t y) const;
-    bool hitRightWall(uint32_t x, uint32_t y) const;
-    bool hitWall(uint32_t x, uint32_t y) const;
-    bool hitDoor(uint32_t x, uint32_t y) const;
-    std::string printChar(uint32_t x, uint32_t y) const;
+    bool hitBuilding(const Coord& c) const;
+    bool hitTopWall(const Coord& c) const;
+    bool hitBotWall(const Coord& c) const;
+    bool hitLeftWall(const Coord& c) const;
+    bool hitRightWall(const Coord& c) const;
+    bool hitWall(const Coord& c) const;
+    bool hitDoor(const Coord& c) const;
+    std::string printChar(const Coord& c) const;
 
     Coord getDoor() const;
     Coord getSpawn() const;
@@ -67,7 +67,6 @@ public:
     Alko();
     virtual ~Alko() = default;
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -79,7 +78,6 @@ public:
     Isku();
     virtual ~Isku() = default;
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -91,7 +89,6 @@ public:
     Divari();
     virtual ~Divari() = default;
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -103,7 +100,6 @@ public:
     KRauta();
     virtual ~KRauta() = default;
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -118,7 +114,6 @@ public:
     void npcAct();
 
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -132,7 +127,6 @@ public:
     PoliisiAsema();
     virtual ~PoliisiAsema() = default;
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -144,7 +138,6 @@ public:
     Asema();
     virtual ~Asema() = default;
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
@@ -156,7 +149,6 @@ public:
     Seina();
     virtual ~Seina() = default;
     virtual std::string getName() const;
-    virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual std::string getWalkMsg() const;
 };
 

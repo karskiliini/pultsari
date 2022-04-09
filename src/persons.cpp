@@ -182,10 +182,10 @@ bool Varas::move(Direction d, std::string& msg)
     Coord check {coord.x, coord.y};
     switch(d)
     {
-        case DirectionNS::up:    --check.y; break;
-        case DirectionNS::right: ++check.x; break;
-        case DirectionNS::down:  ++check.y; break;
-        case DirectionNS::left:  --check.x; break;
+        case DirectionNS::up:    check -= { 0, 1 }; break;
+        case DirectionNS::right: check += { 1, 0 }; break;
+        case DirectionNS::down:  check += { 0, 1 }; break;
+        case DirectionNS::left:  check -= { 1, 0 }; break;
         default: return false;
     }
 
