@@ -2,6 +2,7 @@
 #include "building.hpp"
 #include "player.hpp"
 #include "input.hpp"
+#include "common.hpp"
 #include <string>
 #include <iostream>
 
@@ -9,6 +10,10 @@ using std::string;
 using InputNS::Input;
 
 Building::Building(BuildingType buildingType) : type(buildingType)
+{
+}
+
+void Building::npcAct()
 {
 }
 
@@ -356,6 +361,21 @@ Vankila::Vankila() : Building(BuildingType::EVankila) {
     wallBot = 27;
 
     door = DirectionNS::up;
+}
+
+void Vankila::npcAct()
+{
+    ++turn;
+    if (type == EVankila) {
+        if (turn > 50)
+        {
+
+            if (common::random(50))
+            {
+
+            }
+        }
+    }
 }
 
 std::string Vankila::getName() const

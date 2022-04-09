@@ -1,5 +1,6 @@
 
 #include "pultsari.hpp"
+#include "common.hpp"
 #include "intro.hpp"
 #include "input.hpp"
 #include "building.hpp"
@@ -13,6 +14,7 @@
 
 using std::cout;
 using std::endl;
+using common::random;
 
 void show_console_cursor(const bool show) {
 #if defined(_WIN32)
@@ -56,11 +58,6 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
     }
 
     return ret;
-}
-
-static bool random(uint32_t pct)
-{
-    return (uint32_t)(rand() % 100) <= pct;
 }
 
 static void populateItems(Level& level)
@@ -117,7 +114,6 @@ static void populateBuildings(Level& level)
         b = new Seina();
         level.addBuilding(b);
     }
-
 }
 
 static void populatePersons(Level& level)
@@ -127,6 +123,11 @@ static void populatePersons(Level& level)
         bool once = true;
         if (once) {
             once = random(10);
+
+            Coord freePos { 0, 0 };
+            while ((freePos.x < 14) || (freePos.y < 5)) {
+                freePos = level.freePosition();
+            }
 
             Person* p = new Mummo(level.freePosition());
             p->setLevel(&level);
@@ -159,7 +160,6 @@ static void populatePersons(Level& level)
             level.addPerson(v);
         }
     }
-
 }
 
 static bool checkExit(const Level& level)

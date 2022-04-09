@@ -43,6 +43,14 @@ Level::~Level() {
     items.clear();
 }
 
+void Level::buildingTurn()
+{
+    for (auto& b : buildings)
+    {
+        b->npcAct();
+    }
+}
+
 void Level::npcTurn(Printer* printer)
 {
     for(auto& p : persons) {

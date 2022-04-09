@@ -90,5 +90,19 @@ public:
     Coord target;
 };
 
+class Vanki : public Person {
+public:
+    Vanki(const Coord& pos);
+    virtual ~Vanki() = default;
+
+    virtual bool move(DirectionNS::Direction d);
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct(std::string& msg);
+    virtual bool interact(std::string& message, Person* source);
+    virtual std::string typeToChar() const { return "E"; };
+    Coord target;
+};
+
+
 
 #endif

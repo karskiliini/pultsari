@@ -25,6 +25,8 @@ public:
     Building(BuildingType buildingType);
     virtual ~Building() = default;
 
+    virtual void npcAct();
+
     virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual std::string getName() const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
@@ -49,6 +51,8 @@ public:
     uint32_t wallTop;
     uint32_t wallLeft;
     uint32_t wallBot;
+
+    uint32_t turn = 0;
 };
 
 class Alko : public Building {
@@ -103,6 +107,9 @@ class Vankila : public Building {
 public:
     Vankila();
     virtual ~Vankila() = default;
+
+    void npcAct();
+
     virtual std::string getName() const;
     virtual std::string typeToChar(uint32_t x, uint32_t y) const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;

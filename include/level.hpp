@@ -21,6 +21,7 @@ public:
     Level(uint32_t difficulty);
     ~Level();
 
+    void buildingTurn();
     void npcTurn(Printer* printer);
 
     Person* getPerson(uint32_t x, uint32_t y) const;

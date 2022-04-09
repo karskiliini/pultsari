@@ -17,15 +17,22 @@ public:
         return *this;
     }
     bool operator==(const Coordinate& c) { return ((x == c.x) && (y == c.y)); }
+    bool operator!=(const Coordinate& c) { return !((x == c.x) && (y == c.y)); }
 
-    T distance(const Coordinate& c)
+    T distance(const Coordinate& c) const
+    {
+        return distance(*this, c);
+    }
+
+    static T distance(Coordinate c1, const Coordinate& c2)
     {
         T distance = 0;
-        while(*this != c) {
-            if (x < c.x) ++x;
-            else if (x > c.x) --x;
-            if (y < c.y) ++y;
-            else if (y > c.x) --y;
+
+        while(c1 != c2) {
+            if (c1.x < c2.x) ++c1.x;
+            else if (c1.x > c2.x) --c1.x;
+            if (c1.y < c2.y) ++c1.y;
+            else if (c1.y > c2.y) --c1.y;
 
             ++distance;
         }
