@@ -134,39 +134,32 @@ static void populatePersons(Level& level)
         }
     }
 
-
-    {
-        auto p = new Paska({13, 12});
-        level.addItem(p);
-    }
-
-    {
-        Cop* p = new Cop({11, 12});
-        p->setLevel(&level);
-        level.addPerson(p);
-    }
-
-    {
-        Varas* p = new Varas({13, 15});
-        p->setLevel(&level);
-        level.addPerson(p);
-    }
-
-
     // at least one cop / level
+    for (int i = 0; i < rand() % 9 + 1; ++i)
     {
-        bool once = true;
-        if (once) {
-            once = random(60);
-
-for (uint32_t i = 0; i < 3; ++i)
-{
+        bool create = true;
+        if (create) {
+            create = random(60);
             Cop* p = new Cop(level.freePosition());
             p->setLevel(&level);
             level.addPerson(p);
-}
         }
     }
+
+    // varas
+    {
+        if ((level.stage > 2) && random(60)) {
+            Coord freePos { 0, 0 };
+            while ((freePos.x < 14) || (freePos.y < 6)) {
+                freePos = level.freePosition();
+            }
+
+            Varas* v = new Varas(freePos);
+            v->setLevel(&level);
+            level.addPerson(v);
+        }
+    }
+
 }
 
 static bool checkExit(const Level& level)
