@@ -4,11 +4,13 @@
 #include "building.hpp"
 #include <iostream>
 #include <string>
+#include <exception>
 
 namespace PlayerNS {
 
 using std::string;
 using InputNS::Input;
+using InputNS::InputType;
 using std::cout;
 using std::endl;
 
@@ -178,6 +180,175 @@ bool Player::eat(Printer& printer, Level& level)
     return true;
 }
 
+static InputType validateDirection(InputType in) {
+    switch(in) {
+        case InputNS::up:
+        case InputNS::right:
+        case InputNS::down:
+        case InputNS::left:
+            return in;
+        default:
+            return InputNS::inputpending;
+    }
+}
+
+static DirectionNS::Direction getDirection(Printer& printer, Level* level)
+{
+    printer.showMessage("Anna suunta: ", *level, false);
+
+    InputType direction = InputNS::inputpending;
+    while(direction == InputNS::inputpending) {
+        direction = Input::getInput();
+        direction = validateDirection(direction);
+    }
+
+    switch(direction) {
+        default:
+        case InputNS::up:
+            return DirectionNS::up;
+        case InputNS::right:
+            return DirectionNS::right;
+        case InputNS::down:
+            return DirectionNS::down;
+        case InputNS::left:
+            return DirectionNS::left;
+    }
+}
+
+bool Player::decrementInventory(uint32_t index, Printer& printer)
+{
+    switch(index) {
+        case 1:
+            if (inventory.kalja == 0) {
+                printer.showMessage("Ei ole kaljaa...", *level, false);
+                return false;
+            } else {
+                --inventory.kalja;
+            }
+            break;
+        case 2:
+            if (inventory.lonkka == 0) {
+                printer.showMessage("Ei ole giniä...", *level, false);
+                return false;
+            } else {
+                --inventory.lonkka;
+            }
+            break;
+        case 3:
+            if (inventory.lenkki == 0) {
+                printer.showMessage("Ei ole kiekuralenkkiä...", *level, false);
+                return false;
+            } else {
+                --inventory.lenkki;
+            }
+            break;
+        case 4:
+            if (inventory.ketjut == 0) {
+                printer.showMessage("Ei ole kettinkiä...", *level, false);
+                return false;
+            } else {
+                --inventory.ketjut;
+            }
+            break;
+        case 5:
+            if (inventory.veitset == 0) {
+                printer.showMessage("Ei ole puukkoja...", *level, false);
+                return false;
+            } else {
+                --inventory.veitset;
+            }
+            break;
+        case 6:
+            if (inventory.kivet == 0) {
+                printer.showMessage("Ei ole kiviä...", *level, false);
+                return false;
+            } else {
+                --inventory.kivet;
+            }
+            break;
+        case 7:
+            if (inventory.pamput == 0) {
+                printer.showMessage("Ei ole pamppuja...", *level, false);
+                return false;
+            } else {
+                --inventory.pamput;
+            }
+            break;
+        case 8:
+            if (inventory.bootsit == 0) {
+                printer.showMessage("Ei ole camel bootseja...", *level, false);
+                return false;
+            } else {
+                --inventory.bootsit;
+            }
+            break;
+        case 9:
+            if (inventory.kalat == 0) {
+                printer.showMessage("Ei ole turskaa...", *level, false);
+                return false;
+            } else {
+                --inventory.kalat;
+            }
+            break;
+        case 10:
+            if (inventory.omppo == 0) {
+                printer.showMessage("Ei ole omenia...", *level, false);
+                return false;
+            } else {
+                --inventory.omppo;
+            }
+            break;
+        case 11:
+            if (inventory.veitset == 0) {
+                printer.showMessage("Ei ole banskuja...", *level, false);
+                return false;
+            } else {
+                --inventory.veitset;
+            }
+            break;
+    }
+    return true;
+}
+
+static Coordinate<int> DirToCoord(DirectionNS::Direction d) {
+    switch(d)
+    {
+        case DirectionNS::up:
+            return { 0, -1 };
+        case DirectionNS::right:
+            return { 1, 0 };
+        case DirectionNS::down:
+            return { 0, 1 };
+        case DirectionNS::left:
+            return { -1, 0 };
+        default:
+            throw std::out_of_range("invalid direction!");
+    }
+}
+
+bool Player::throwItem(Printer& printer)
+{
+    printer.showMessage("ANNA NUMERO ..", *level, false);
+    auto number = InputNS::Input::getThrow();
+    if (!decrementInventory(number, printer))
+    {
+        return false;
+    }
+    auto dir = getDirection(printer, level);
+
+    {
+        Coordinate<int> c { coord.x, coord.y };
+        Person* hit = level->raycast(c, DirToCoord(dir));
+
+
+        if (!hit) printer.showMessage("nothing", *level, false);
+        else
+        printer.showMessage("somethign", *level, false);
+    }
+
+    return true;
+}
+
 static Building* checkDoor(Level& level, const Coord& c)
 {
     for (auto& b : level.buildings) {
@@ -301,7 +472,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
         coord = check;
     }
 
-    if (checkBounds(level.sizex, level.sizey)) {
+    if (common::checkBounds(coord)) {
         printer.showMessage("Ei karata pelialueelta !!", level, true);
         ret = false;
     }

@@ -3,6 +3,7 @@
 
 #include "item.hpp"
 #include "coord.hpp"
+#include "common.hpp"
 #include "persontype.hpp"
 #include <cstdint>
 #include <vector>
@@ -25,7 +26,6 @@ public:
     void buildingTurn();
     void npcTurn(Printer* printer);
 
-    Person* getPerson(uint32_t x, uint32_t y) const;
     Person* getPerson(const Coord& coord) const;
     bool PersonExists(PersonType type) const;
     void removePerson(Person* person);
@@ -46,8 +46,10 @@ public:
     void addItem(Item* item);
     void removeItem(Item* item);
 
-    uint32_t sizex = 80;
-    uint32_t sizey = 28;
+    Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
+
+    uint32_t sizex = common::SIZEX;
+    uint32_t sizey = common::SIZEY;
 
     std::vector<Building*> buildings;
     std::vector<Person*> persons;

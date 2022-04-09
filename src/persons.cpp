@@ -115,7 +115,7 @@ bool Cop::move(Direction d, std::string& msg)
             }
         }
     }
-    checkBounds(level->sizex, level->sizey);
+    common::checkBounds(coord);
     return true;
 }
 
@@ -218,7 +218,7 @@ bool Varas::move(Direction d, std::string& msg)
         }
 
     }
-    checkBounds(level->sizex, level->sizey);
+    common::checkBounds(coord);
     return true;
 }
 
@@ -333,7 +333,7 @@ bool Vanki::move(Direction d, std::string& msg)
         }
 
     }
-    checkBounds(level->sizex, level->sizey);
+    common::checkBounds(coord);
     return true;
 }
 

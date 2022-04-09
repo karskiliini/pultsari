@@ -5,6 +5,7 @@
 #include "coord.hpp"
 #include "direction.hpp"
 #include "item.hpp"
+#include "printer.hpp"
 #include <cstdint>
 #include <string>
 
@@ -22,18 +23,7 @@ public:
     virtual void damage(uint32_t damage) { };
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
-
-    bool checkBounds(uint32_t sizex, uint32_t sizey) {
-        auto ox = coord.x;
-        auto oy = coord.y;
-
-        coord.x = (coord.x == sizex) ? sizex-1 : coord.x;
-        coord.x = (coord.x > sizex) ? 0 : coord.x;
-        coord.y = (coord.y == sizey) ? sizey-1 : coord.y;
-        coord.y = (coord.y > sizey) ? 0 : coord.y;
-
-        return !((ox == coord.x) && (oy == coord.y));
-    }
+    virtual bool throwItem(Printer& printer) { return false; };
     void setLevel(Level* level) { Person::level = level; }
 
     Level* level;

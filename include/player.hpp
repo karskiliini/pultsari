@@ -17,6 +17,7 @@ public:
     virtual ~Player() = default;
     void resetPosition();
 
+
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
     virtual void npcAct(std::string& msg) {};
     virtual bool interact(std::string& message, Person* source);
@@ -24,6 +25,8 @@ public:
 
     virtual bool drink(Printer& printer, Level& level);
     virtual bool eat(Printer& printer, Level& level);
+    virtual bool throwItem(Printer& printer);
+
     virtual std::string typeToChar() const { return "@"; };
 
     Inventory inventory;
@@ -31,6 +34,9 @@ public:
     uint32_t money = 20;
     uint32_t turn = 1;
     bool inJail = false;
+
+private:
+    bool decrementInventory(uint32_t index, Printer& printer);
 };
 
 }

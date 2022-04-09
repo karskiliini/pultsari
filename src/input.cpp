@@ -46,8 +46,38 @@ InputType Input::getInput()
     }
 
     Input::noraw();
+    return sel;
+}
 
-    std::cout << std::endl;
+uint32_t InputNS::Input::getThrow()
+{
+     Input::raw();
+
+    uint32_t sel = 0;
+    while(sel == 0)
+    {
+        auto c = getchar();
+        switch(c)
+        {
+            case '1': sel = 1; break;
+            case '2': sel = 2; break;
+            case '3': sel = 3; break;
+            case '4': sel = 4; break;
+            case '5': sel = 5; break;
+            case '6': sel = 6; break;
+            case '7': sel = 7; break;
+            case '8': sel = 8; break;
+            case '9': sel = 9; break;
+            case 'A':
+            case 'a': sel = 10; break;
+            case 'B':
+            case 'b': sel = 11; break;
+            default:
+                break;
+        }
+    }
+
+    Input::noraw();
     return sel;
 }
 

@@ -52,6 +52,7 @@ public:
     static InputType getInput();
     static DrinkType getDrink();
     static FoodType getFood();
+    static uint32_t getThrow();
     static InputAlkoType getInputAlko();
     static bool getInputPutka();
     static uint32_t getInputDivari();

@@ -31,30 +31,39 @@ void show_console_cursor(const bool show) {
 static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
 {
     bool ret;
-    auto input = InputNS::Input::getInput();
-    switch(input)
+    bool retry = true;
+    while (retry)
     {
-        case InputNS::up:
-            ret = player.move(DirectionNS::up, level, printer);
-            break;
-        case InputNS::down:
-            ret = player.move(DirectionNS::down, level, printer);
-            break;
-        case InputNS::left:
-            ret = player.move(DirectionNS::left, level, printer);
-            break;
-        case InputNS::right:
-            ret = player.move(DirectionNS::right, level, printer);
-            break;
-        case InputNS::drinking:
-            ret = player.drink(printer, level);
-            break;
-        case InputNS::eating:
-            ret = player.eat(printer, level);
-            break;
-        default:
-        case InputNS::quit:
-            throw std::out_of_range("quit!");
+        auto input = InputNS::Input::getInput();
+
+        retry = false;
+        switch(input)
+        {
+            case InputNS::up:
+                ret = player.move(DirectionNS::up, level, printer);
+                break;
+            case InputNS::down:
+                ret = player.move(DirectionNS::down, level, printer);
+                break;
+            case InputNS::left:
+                ret = player.move(DirectionNS::left, level, printer);
+                break;
+            case InputNS::right:
+                ret = player.move(DirectionNS::right, level, printer);
+                break;
+            case InputNS::drinking:
+                ret = player.drink(printer, level);
+                break;
+            case InputNS::eating:
+                ret = player.eat(printer, level);
+                break;
+            case InputNS::throwing:
+                ret = player.throwItem(printer);
+                break;
+            default:
+            case InputNS::quit:
+                throw std::out_of_range("quit!");
+        }
     }
 
     return ret;
@@ -98,7 +107,7 @@ static void populateBuildings(Level& level)
     }
     level.addBuilding(b);
 
-    if ((level.stage > 6) && random(50))
+    // if ((level.stage > 6) && random(50))
     {
         b = new Vankila();
         level.addBuilding(b);

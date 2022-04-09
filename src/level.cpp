@@ -6,6 +6,7 @@
 #include "building.hpp"
 #include "printer.hpp"
 #include "coord.hpp"
+#include "common.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -63,19 +64,15 @@ void Level::npcTurn(Printer* printer)
     }
 }
 
-Person* Level::getPerson(uint32_t x, uint32_t y) const
+Person* Level::getPerson(const Coord& coord) const
 {
     for (auto& p : persons) {
-        if ((p->coord.x == x) && (p->coord.y == y)) {
+        cout << "person: " << this << endl;
+        if (p->coord == coord) {
             return p;
         }
     }
     return nullptr;
-}
-
-Person* Level::getPerson(const Coord& coord) const
-{
-    return getPerson(coord.x, coord.y);
 }
 
 bool Level::PersonExists(PersonType type) const
@@ -291,6 +288,7 @@ bool Level::addPerson(Person* person)
             return false;
     }
 
+    person->setLevel(this);
     persons.push_back(person);
     return true;
 }
@@ -308,4 +306,21 @@ void Level::removeItem(Item* item)
     {
         items.erase(it);
     }
+}
+
+Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const
+{
+    Person* p = nullptr;
+    while (p == nullptr) {
+        Coord c { (uint32_t)from.x, (uint32_t)from.y };
+        p = getPerson(c);
+
+        {
+            Coord copy { c.x, c.y };
+            if (!common::checkBounds(copy)) {
+                return nullptr;
+            }
+        }
+    }
+    return p;
 }
