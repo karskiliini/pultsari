@@ -310,7 +310,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
     return true;
 }
 
-static Coordinate<int> DirToCoord(DirectionNS::Direction d) {
+static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
     switch(d)
     {
         case DirectionNS::up:
@@ -336,14 +336,17 @@ bool Player::throwItem(Printer& printer)
     }
     auto dir = getDirection(printer, level);
 
+
     {
         Coordinate<int> c { coord.x, coord.y };
-        Person* hit = level->raycast(c, DirToCoord(dir));
+        auto d = dirToCoord(dir);
+        printer.showMessage("raycast " + std::to_string(d.x) + " " + std::to_string(d.y), *level);
 
-
-        if (!hit) printer.showMessage("nothing", *level, false);
-        else
-        printer.showMessage("somethign", *level, false);
+        Person* hit = level->raycast(c, dirToCoord(dir));
+        if (!hit)
+        {
+            Building* bhit = level->raycastBuilding(c, dirToCoord(dir));
+        }
     }
 
     return true;

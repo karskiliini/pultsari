@@ -47,6 +47,7 @@ public:
     void removeItem(Item* item);
 
     Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
+    Building* raycastBuilding(const Coordinate<int>& from, const Coordinate<int>& vector) const;
 
     uint32_t sizex = common::SIZEX;
     uint32_t sizey = common::SIZEY;

@@ -67,7 +67,6 @@ void Level::npcTurn(Printer* printer)
 Person* Level::getPerson(const Coord& coord) const
 {
     for (auto& p : persons) {
-        cout << "person: " << this << endl;
         if (p->coord == coord) {
             return p;
         }
@@ -310,11 +309,15 @@ void Level::removeItem(Item* item)
 
 Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const
 {
+    if (vector == Coordinate<int>(0, 0)) return nullptr;
+
+
     Person* p = nullptr;
     while (p == nullptr) {
         Coord c { (uint32_t)from.x, (uint32_t)from.y };
         p = getPerson(c);
 
+        if (!p)
         {
             Coord copy { c.x, c.y };
             if (!common::checkBounds(copy)) {
@@ -323,4 +326,9 @@ Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vecto
         }
     }
     return p;
+}
+
+Building* Level::raycastBuilding(const Coordinate<int>& from, const Coordinate<int>& vector) const
+{
+    return nullptr;
 }
