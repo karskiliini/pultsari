@@ -1,5 +1,7 @@
 
 #include "player.hpp"
+#include "common.hpp"
+#include "item.hpp"
 #include "input.hpp"
 #include "building.hpp"
 #include <iostream>
@@ -8,6 +10,7 @@
 
 namespace PlayerNS {
 
+using common::random;
 using std::string;
 using InputNS::Input;
 using InputNS::InputType;
@@ -76,11 +79,6 @@ bool Player::drink(Printer& printer, Level& level)
     }
 
     return true;
-}
-
-bool random(uint32_t pct)
-{
-    return (uint32_t)(rand() % 100) <= pct;
 }
 
 bool Player::eat(Printer& printer, Level& level)
@@ -334,19 +332,17 @@ bool Player::throwItem(Printer& printer)
     {
         return false;
     }
+
     auto dir = getDirection(printer, level);
-
-
     {
-        Coordinate<int> c { coord.x, coord.y };
+        Coordinate<int> c { static_cast<int>(coord.x), static_cast<int>(coord.y) };
         auto d = dirToCoord(dir);
-        printer.showMessage("raycast " + std::to_string(d.x) + " " + std::to_string(d.y), *level);
 
-        Person* hit = level->raycast(c, dirToCoord(dir));
-        if (!hit)
-        {
-            Building* bhit = level->raycastBuilding(c, dirToCoord(dir));
-        }
+        Item* i = new Kalja(coord);
+        i->thrown = true;
+        i->throwVec = d;
+        level->addThrownItem(i);
+        level->actThrow(&printer);
     }
 
     return true;

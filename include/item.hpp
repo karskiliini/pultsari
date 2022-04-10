@@ -28,6 +28,7 @@ enum ItemType {
 };
 
 class Level;
+class Printer;
 
 class Item {
 public:
@@ -38,9 +39,14 @@ public:
     virtual std::string getMsg() const { return "error"; };
     virtual bool interact(PlayerNS::Player* player) { return true; };
 
+    virtual void actThrow(Printer* printer, Level* level);
+
     Coord coord;
     ItemType type;
     bool discard = false;
+
+    bool thrown = false;
+    Coordinate<int> throwVec { 0, 0 };
 };
 
 class Bona : public Item {

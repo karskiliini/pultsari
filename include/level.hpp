@@ -25,6 +25,7 @@ public:
 
     void buildingTurn();
     void npcTurn(Printer* printer);
+    void actThrow(Printer* printer);
 
     Person* getPerson(const Coord& coord) const;
     bool PersonExists(PersonType type) const;
@@ -33,7 +34,12 @@ public:
     void cleanDead();
     void cleanDiscardedItems();
     PlayerNS::Player* findPlayer();
+
+    bool hitBuilding(const Coord& c) const;
+    bool hitPerson(const Coord& c) const;
+    bool hitItem(const Coord& c) const;
     bool hit(const Coord& coord) const;
+
     Item* getItem(const Coord& c) const;
     Coord freePosition() const;
     Person* checkPerson(const Coord& c);
@@ -44,6 +50,7 @@ public:
 
     void addItem(ItemType item);
     void addItem(Item* item);
+    void addThrownItem(Item* item);
     void removeItem(Item* item);
 
     Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
@@ -55,6 +62,7 @@ public:
     std::vector<Building*> buildings;
     std::vector<Person*> persons;
     std::vector<Item*> items;
+    Item* thrownItem = nullptr;
 
     uint32_t stage = 1;
 };

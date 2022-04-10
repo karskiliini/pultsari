@@ -20,6 +20,7 @@ public:
     virtual bool move(DirectionNS::Direction d);
     virtual void npcAct(std::string& msg) { msg = ""; }
     virtual bool interact(std::string& message, Person* source) { return false; };
+    virtual void interactThrow(Item* item, std::string& msg) { msg = "Osuit henkilöön, joka kupsahti."; health = 0; };
     virtual void damage(uint32_t damage) { };
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };

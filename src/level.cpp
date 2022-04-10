@@ -64,6 +64,34 @@ void Level::npcTurn(Printer* printer)
     }
 }
 
+void Level::actThrow(Printer* printer)
+{
+    bool hit = false;
+    while (!hit) {
+        thrownItem->actThrow(printer, this);
+
+        auto p = getPerson(thrownItem->coord);
+        if (p) {
+            string msg = "";
+            p->interactThrow(thrownItem, msg);
+            printer->showMessage(msg, *this);
+            hit = true;
+        } else {
+            if (hitBuilding(thrownItem->coord))
+            {
+                printer->showMessage("Osuit seinään.", *this);
+                hit = true;
+            } else {
+                Coord copy { thrownItem->coord.x, thrownItem->coord.y };
+                if (common::checkBounds(copy)) {
+                    printer->showMessage("Huti meni.", *this);
+                    hit = true;
+                }
+            }
+        }
+    }
+}
+
 Person* Level::getPerson(const Coord& coord) const
 {
     for (auto& p : persons) {
@@ -142,27 +170,45 @@ Player* Level::findPlayer()
     return nullptr;
 }
 
-bool Level::hit(const Coord& c) const
+bool Level::hitBuilding(const Coord& c) const
 {
     for (const auto& b : buildings)
     {
         if (b->hitBuilding(c))
             return true;
     }
+    return false;
+}
 
+bool Level::hitPerson(const Coord& c) const
+{
     for (const auto& p : persons)
     {
         if ((p->coord == c) && (p->health > 0))
             return true;
     }
+    return false;
+}
 
+bool Level::hitItem(const Coord& c) const
+{
     for (const auto& i : items)
     {
         if ((i->coord == c))
             return true;
     }
-
     return false;
+}
+
+bool Level::hit(const Coord& c) const
+{
+    bool hit = hitBuilding(c);
+    if (hit) return true;
+
+    hit = hitPerson(c);
+    if (hit) return true;
+
+    return hitItem(c);
 }
 
 Item* Level::getItem(const Coord& c) const
@@ -297,6 +343,11 @@ void Level::addItem(Item* item)
     items.push_back(item);
 }
 
+void Level::addThrownItem(Item* item)
+{
+    thrownItem = item;
+}
+
 void Level::removeItem(Item* item)
 {
     delete item;
@@ -310,7 +361,6 @@ void Level::removeItem(Item* item)
 Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const
 {
     if (vector == Coordinate<int>(0, 0)) return nullptr;
-
 
     Person* p = nullptr;
     while (p == nullptr) {
