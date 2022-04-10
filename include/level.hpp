@@ -25,7 +25,7 @@ public:
 
     void buildingTurn();
     void npcTurn(Printer* printer);
-    void actThrow(Printer* printer, Person* source);
+    void actThrow(Person* source);
 
     Person* getPerson(const Coord& coord) const;
     bool PersonExists(PersonType type) const;
@@ -65,6 +65,7 @@ public:
     Item* thrownItem = nullptr;
 
     Person* attack = nullptr;
+    Printer* printer = nullptr;
 
     uint32_t stage = 1;
 };

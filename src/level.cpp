@@ -64,11 +64,11 @@ void Level::npcTurn(Printer* printer)
     }
 }
 
-void Level::actThrow(Printer* printer, Person* source)
+void Level::actThrow(Person* source)
 {
     bool hit = false;
     while (!hit) {
-        thrownItem->actThrow(printer, this);
+        thrownItem->actThrow(this);
 
         auto p = getPerson(thrownItem->coord);
         if (p) {

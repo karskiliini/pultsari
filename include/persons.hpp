@@ -66,6 +66,7 @@ public:
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
+    virtual void interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "V"; };
     Coord target;
 };

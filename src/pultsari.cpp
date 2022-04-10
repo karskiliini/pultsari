@@ -198,6 +198,7 @@ void mainloop()
     while (!quit) {
         player.resetPosition();
         Level level(stage);
+        level.printer = &printer;
 
         printer.player = &player;
 

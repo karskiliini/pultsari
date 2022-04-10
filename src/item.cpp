@@ -7,7 +7,7 @@
 using std::string;
 using std::vector;
 
-void Item::actThrow(Printer* printer, Level* level)
+void Item::actThrow(Level* level)
 {
     coord.x += throwVec.x;
     coord.y += throwVec.y;

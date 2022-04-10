@@ -28,6 +28,17 @@ bool Player::interact(std::string& message, Person* source)
     return false;
 }
 
+void Player::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    if ((item->type == EKivi) && (source->type == vanki))
+    {
+        msg = "Vankikarkuri nakkasi sinua kivellä!";
+    } else {
+        msg = "Sinua viskattiin jollain, ouch!";
+    }
+    damage(1);
+}
+
 void Player::resetPosition()
 {
     coord = {10, 10};
@@ -334,7 +345,7 @@ bool Player::throwItem(Printer& printer)
         i->thrown = true;
         i->throwVec = d;
         level->addThrownItem(i);
-        level->actThrow(&printer, this);
+        level->actThrow(this);
     }
 
     return true;

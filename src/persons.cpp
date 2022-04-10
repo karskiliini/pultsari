@@ -256,6 +256,17 @@ bool Varas::move(Direction d, std::string& msg)
     return true;
 }
 
+void Varas::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    if (common::random(30))
+    {
+        msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
+    } else {
+        msg = "Osuit varkaaseen, joka kupsahti.";
+    }
+    damage(health);
+}
+
 void Varas::npcAct(string& msg)
 {
     Player* p = level->findPlayer();
@@ -392,8 +403,26 @@ void Vanki::npcAct(string& msg)
     } else {
         if (kivi && ((coord.x == p->coord.x) || (coord.y == p->coord.y)))
         {
-            msg = "Vankikarkuri heittää kivellä !!!";
             kivi = false;
+
+            {
+                int dx = coord.x - p->coord.x;
+                int dy = coord.y - p->coord.y;
+                dx = (dx < 0) ? 1 : (dx > 0) ? -1 : 0;
+                dy = (dy < 0) ? 1 : (dy > 0) ? -1 : 0;
+
+                {
+                    Coordinate<int> c { static_cast<int>(dx), static_cast<int>(dy) };
+
+                    // kivi
+                    Item* i = Item::createItem(6, coord);
+                    i->thrown = true;
+                    i->throwVec = c;
+                    level->addThrownItem(i);
+                    level->actThrow(this);
+                }
+            }
+
         } else {
             Direction d = getMoveDirection(target);
             move(d, msg);
