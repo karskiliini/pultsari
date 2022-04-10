@@ -230,6 +230,12 @@ void printStats(Level& l, Player* player)
 
 static void printLine(Level& l, uint32_t y)
 {
+
+    Item* thrownItem = nullptr;
+    if (l.thrownItem && l.thrownItem->coord.y == y) {
+        thrownItem = l.thrownItem;
+    }
+
     // find all people that are on this line
     vector<const Person*> persons;
     for (const auto& p : l.persons) {
@@ -249,6 +255,12 @@ static void printLine(Level& l, uint32_t y)
         Coord coord { x, y };
         bool found = false;
         string c = " ";
+
+        if (thrownItem && thrownItem->coord.x == x)
+        {
+            c = thrownItem->typeToChar();
+            found = true;
+        }
 
         for (auto b : l.buildings) {
             if (b->hitBuilding(coord)) {

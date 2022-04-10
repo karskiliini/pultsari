@@ -13,6 +13,23 @@ void Item::actThrow(Printer* printer, Level* level)
     coord.y += throwVec.y;
 }
 
+Item* Item::createItem(uint32_t index, Coord coord) {
+    switch(index) {
+        case 1: return new Kalja(coord);
+        case 2: return new Lonkka(coord);
+        case 3: return new Lenkki(coord);
+        case 4: return new Ketjut(coord);
+        case 5: return new Veitsi(coord);
+        case 6: return new Kivi(coord);
+        case 7: return new Pamppu(coord);
+        case 8: return new Bootsit(coord);
+        case 9: return new Kala(coord);
+        case 10: return new Omppo(coord);
+        case 11: return new Banaani(coord);
+        default: return nullptr;
+    }
+}
+
 // bona
 Bona::Bona(const Coord& c) : Item(c, EBona) { }
 std::string Bona::typeToChar() const { return "°"; }

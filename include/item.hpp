@@ -40,6 +40,7 @@ public:
     virtual bool interact(PlayerNS::Player* player) { return true; };
 
     virtual void actThrow(Printer* printer, Level* level);
+    static Item* createItem(uint32_t index, Coord coord);
 
     Coord coord;
     ItemType type;

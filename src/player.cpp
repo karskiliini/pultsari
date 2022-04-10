@@ -324,6 +324,7 @@ static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
     }
 }
 
+
 bool Player::throwItem(Printer& printer)
 {
     printer.showMessage("ANNA NUMERO ..", *level, false);
@@ -338,7 +339,7 @@ bool Player::throwItem(Printer& printer)
         Coordinate<int> c { static_cast<int>(coord.x), static_cast<int>(coord.y) };
         auto d = dirToCoord(dir);
 
-        Item* i = new Kalja(coord);
+        Item* i = Item::createItem(number, coord);
         i->thrown = true;
         i->throwVec = d;
         level->addThrownItem(i);

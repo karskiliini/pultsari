@@ -74,21 +74,30 @@ void Level::actThrow(Printer* printer)
         if (p) {
             string msg = "";
             p->interactThrow(thrownItem, msg);
-            printer->showMessage(msg, *this);
+            printer->showMessage(msg, *this, false);
             hit = true;
         } else {
             if (hitBuilding(thrownItem->coord))
             {
-                printer->showMessage("Osuit seinään.", *this);
+                printer->showMessage("Osuit seinään.", *this, false);
                 hit = true;
             } else {
                 Coord copy { thrownItem->coord.x, thrownItem->coord.y };
                 if (common::checkBounds(copy)) {
-                    printer->showMessage("Huti meni.", *this);
+                    printer->showMessage("Huti meni.", *this, false);
                     hit = true;
                 }
             }
         }
+
+        if (hit)
+        {
+            delete thrownItem;
+            thrownItem = nullptr;
+        }
+
+        printer->print(*this);
+        common::sleep(16);
     }
 }
 

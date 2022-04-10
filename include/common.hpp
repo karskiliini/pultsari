@@ -17,6 +17,8 @@ static bool random(uint32_t pct)
 
 bool checkBounds(Coord& coord);
 
+void sleep(uint32_t ms);
+
 } // namespace common
 
 #endif
