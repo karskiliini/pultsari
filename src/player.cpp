@@ -22,14 +22,6 @@ Player::Player() : Person(PersonType::pelaaja, {0, 0})
     health = 20;
 }
 
-void Player::damage(uint32_t damage)  {
-    if (damage > health) {
-        health = 0;
-    } else {
-        health -= damage;
-    }
-}
-
 bool Player::interact(std::string& message, Person* source)
 {
     if (health == 0) return true;
@@ -324,7 +316,6 @@ static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
     }
 }
 
-
 bool Player::throwItem(Printer& printer)
 {
     printer.showMessage("ANNA NUMERO ..", *level, false);
@@ -343,7 +334,7 @@ bool Player::throwItem(Printer& printer)
         i->thrown = true;
         i->throwVec = d;
         level->addThrownItem(i);
-        level->actThrow(&printer);
+        level->actThrow(&printer, this);
     }
 
     return true;

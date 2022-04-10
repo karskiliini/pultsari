@@ -64,7 +64,7 @@ void Level::npcTurn(Printer* printer)
     }
 }
 
-void Level::actThrow(Printer* printer)
+void Level::actThrow(Printer* printer, Person* source)
 {
     bool hit = false;
     while (!hit) {
@@ -73,7 +73,7 @@ void Level::actThrow(Printer* printer)
         auto p = getPerson(thrownItem->coord);
         if (p) {
             string msg = "";
-            p->interactThrow(thrownItem, msg);
+            p->interactThrow(thrownItem, source, msg);
             printer->showMessage(msg, *this, false);
             hit = true;
         } else {
@@ -119,14 +119,9 @@ bool Level::PersonExists(PersonType type) const
     return false;
 }
 
-void Level::alertCops()
+void Level::alertCops(Person* source)
 {
-    for (auto& p : persons) {
-        if (p->type == poliisi)
-        {
-            dynamic_cast<Cop*>(p)->attack = true;
-        }
-    }
+    attack = source;
 }
 
 void Level::cleanDead()

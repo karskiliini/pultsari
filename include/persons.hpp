@@ -20,8 +20,8 @@ public:
     virtual bool move(DirectionNS::Direction d);
     virtual void npcAct(std::string& msg) { msg = ""; }
     virtual bool interact(std::string& message, Person* source) { return false; };
-    virtual void interactThrow(Item* item, std::string& msg) { msg = "Osuit henkilöön, joka kupsahti."; health = 0; };
-    virtual void damage(uint32_t damage) { };
+    virtual void interactThrow(Item* item, Person* source, std::string& msg) { msg = "Osuit henkilöön, joka kupsahti."; health = 0; };
+    virtual void damage(uint32_t damage);
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
     virtual bool throwItem(Printer& printer) { return false; };
@@ -38,6 +38,7 @@ public:
     Mummo(const Coord& pos);
     virtual ~Mummo() = default;
     virtual bool interact(std::string& message, Person* source);
+    virtual void interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "M"; };
 };
@@ -51,10 +52,9 @@ public:
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
+    void interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "C"; };
-    bool attack = false;
-    Coord target;
 };
 
 class Varas : public Person {
@@ -79,6 +79,7 @@ public:
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
+    virtual void interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "E"; };
     Coord target;
     bool kivi = false;

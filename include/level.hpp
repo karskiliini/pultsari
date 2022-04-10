@@ -25,12 +25,12 @@ public:
 
     void buildingTurn();
     void npcTurn(Printer* printer);
-    void actThrow(Printer* printer);
+    void actThrow(Printer* printer, Person* source);
 
     Person* getPerson(const Coord& coord) const;
     bool PersonExists(PersonType type) const;
     void removePerson(Person* person);
-    void alertCops();
+    void alertCops(Person* source);
     void cleanDead();
     void cleanDiscardedItems();
     PlayerNS::Player* findPlayer();
@@ -63,6 +63,8 @@ public:
     std::vector<Person*> persons;
     std::vector<Item*> items;
     Item* thrownItem = nullptr;
+
+    Person* attack = nullptr;
 
     uint32_t stage = 1;
 };

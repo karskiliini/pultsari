@@ -132,16 +132,10 @@ string Building::printChar(const Coord& c) const
 
 Coord Building::getDoor() const
 {
-    cout << "getDoor: wallRight : " << wallRight << endl;
-    cout << "getDoor: wallleft : " << wallLeft << endl;
-    cout << "getDoor: walltop : " << wallTop << endl;
-    cout << "getDoor: wallBot : " << wallBot << endl;
     switch(door) {
         case DirectionNS::Direction::up:
         {
             Coord c { ((wallRight + wallLeft) / 2), wallTop };
-            cout << "getDoor: x : " << c.x << " y: " << c.y << endl;
-
                 return Coord { ((wallRight + wallLeft) / 2), wallTop };
         }
         case DirectionNS::Direction::down:
