@@ -274,11 +274,12 @@ bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
 {
     bool hit = random(30);
     if (!hit) {
-        msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
+        msg = "Et osunut varkaaseen.";
     } else {
-        msg = "Osuit varkaaseen, joka kupsahti.";
+        if (random(50)) msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
+        else msg = "Osuit varkaaseen, joka kupsahti.";
+        damage(health);
     }
-    damage(health);
     return hit;
 }
 
