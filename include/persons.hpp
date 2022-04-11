@@ -16,12 +16,13 @@ public:
     Person(PersonType personType, const Coord& pos) : type(personType), coord(pos) { }
     virtual ~Person() = default;
 
+    virtual void powerup(uint32_t damage);
+    virtual void damage(uint32_t damage);
+
     virtual DirectionNS::Direction getMoveDirection(const Coord& target) const;
-    virtual bool move(DirectionNS::Direction d);
     virtual void npcAct(std::string& msg) { msg = ""; }
     virtual bool interact(std::string& message, Person* source) { return false; };
-    virtual void interactThrow(Item* item, Person* source, std::string& msg) { msg = "Osuit henkilöön, joka kupsahti."; health = 0; };
-    virtual void damage(uint32_t damage);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg) { msg = "Osuit henkilöön, joka kupsahti."; health = 0; };
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
     virtual bool throwItem(Printer& printer) { return false; };
@@ -38,7 +39,7 @@ public:
     Mummo(const Coord& pos);
     virtual ~Mummo() = default;
     virtual bool interact(std::string& message, Person* source);
-    virtual void interactThrow(Item* item, Person* source, std::string& msg);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "M"; };
 };
@@ -48,11 +49,10 @@ public:
     Cop(const Coord& pos);
     virtual ~Cop() = default;
 
-    virtual bool move(DirectionNS::Direction d);
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
-    void interactThrow(Item* item, Person* source, std::string& msg);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "C"; };
 };
@@ -62,11 +62,10 @@ public:
     Varas(const Coord& pos);
     virtual ~Varas() = default;
 
-    virtual bool move(DirectionNS::Direction d);
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
-    virtual void interactThrow(Item* item, Person* source, std::string& msg);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "V"; };
     Coord target;
 };
@@ -76,15 +75,26 @@ public:
     Vanki(const Coord& pos);
     virtual ~Vanki() = default;
 
-    virtual bool move(DirectionNS::Direction d);
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(std::string& msg);
     virtual bool interact(std::string& message, Person* source);
-    virtual void interactThrow(Item* item, Person* source, std::string& msg);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "E"; };
     Coord target;
     bool kivi = false;
     bool firstMove = true;
+};
+
+class Skinhead : public Person {
+public:
+    Skinhead(const Coord& pos);
+    virtual ~Skinhead() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct(std::string& msg);
+    virtual bool interact(std::string& message, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "O"; };
 };
 
 

@@ -107,7 +107,7 @@ static void populateBuildings(Level& level)
     }
     level.addBuilding(b);
 
-    // if ((level.stage > 6) && random(50))
+    if ((level.stage > 6) && random(50))
     {
         b = new Vankila();
         level.addBuilding(b);

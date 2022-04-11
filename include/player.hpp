@@ -20,7 +20,7 @@ public:
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
     virtual void npcAct(std::string& msg) {};
     virtual bool interact(std::string& message, Person* source);
-    virtual void interactThrow(Item* item, Person* source, std::string& msg);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
 
     virtual bool drink(Printer& printer, Level& level);
     virtual bool eat(Printer& printer, Level& level);

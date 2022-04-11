@@ -28,7 +28,7 @@ bool Player::interact(std::string& message, Person* source)
     return false;
 }
 
-void Player::interactThrow(Item* item, Person* source, std::string& msg)
+bool Player::interactThrow(Item* item, Person* source, std::string& msg)
 {
     if ((item->type == EKivi) && (source->type == vanki))
     {
@@ -37,6 +37,7 @@ void Player::interactThrow(Item* item, Person* source, std::string& msg)
         msg = "Sinua viskattiin jollain, ouch!";
     }
     damage(1);
+    return true;
 }
 
 void Player::resetPosition()

@@ -73,9 +73,8 @@ void Level::actThrow(Person* source)
         auto p = getPerson(thrownItem->coord);
         if (p) {
             string msg = "";
-            p->interactThrow(thrownItem, source, msg);
+            hit = p->interactThrow(thrownItem, source, msg);
             printer->showMessage(msg, *this, false);
-            hit = true;
         } else {
             if (hitBuilding(thrownItem->coord))
             {

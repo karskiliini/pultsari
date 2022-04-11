@@ -14,6 +14,9 @@ using std::max;
 using std::min;
 using DirectionNS::Direction;
 
+void Person::powerup(uint32_t damage)  {
+    health += damage;
+}
 
 void Person::damage(uint32_t damage)  {
     if (damage >= health) {
@@ -54,11 +57,6 @@ Direction Person::getMoveDirection(const Coord& target) const
     return DirectionNS::none;
 }
 
-bool Person::move(Direction d)
-{
-    return true;
-}
-
 // MUMMO
 Mummo::Mummo(const Coord& pos) : Person(mummo, pos)
 {
@@ -84,14 +82,20 @@ bool Mummo::interact(std::string& message, Person* source)
     return true;
 }
 
-void Mummo::interactThrow(Item* item, Person* source, std::string& msg)
+bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    msg = "Mummo heitti kuperkeikan ja hukkasi käsilaukkunsa.";
-    damage(health);
-    level->alertCops(source);
+    bool hit = common::random(75);
+    if (!hit) {
+        if (source->type == pelaaja) msg = "Et osunut mummoon!";
+    } else {
+        msg = "Mummo heitti kuperkeikan ja hukkasi käsilaukkunsa.";
+        damage(health);
+        level->alertCops(source);
 
-    auto i = dropItem();
-    level->addItem(i);
+        auto i = dropItem();
+        level->addItem(i);
+    }
+    return hit;
 }
 
 Item* Mummo::dropItem()
@@ -103,11 +107,6 @@ Item* Mummo::dropItem()
 // COP
 Cop::Cop(const Coord& pos) : Person(poliisi, pos)
 {
-}
-
-bool Cop::move(Direction d)
-{
-    return false;
 }
 
 bool Cop::move(Direction d, std::string& msg)
@@ -184,7 +183,7 @@ bool Cop::interact(std::string& message, Person* source)
     return true;
 }
 
-void Cop::interactThrow(Item* item, Person* source, std::string& msg)
+bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
 {
     msg = "Poliisi kuoli ja pudotti pampun.";
     damage(1);
@@ -193,6 +192,7 @@ void Cop::interactThrow(Item* item, Person* source, std::string& msg)
 
     auto i = dropItem();
     level->addItem(i);
+    return true;
 }
 
 Item* Cop::dropItem()
@@ -204,11 +204,6 @@ Item* Cop::dropItem()
 // VARAS
 Varas::Varas(const Coord& pos) : Person(varas, pos), target(pos)
 {
-}
-
-bool Varas::move(Direction d)
-{
-    return false;
 }
 
 bool Varas::move(Direction d, std::string& msg)
@@ -256,10 +251,10 @@ bool Varas::move(Direction d, std::string& msg)
     return true;
 }
 
-void Varas::interactThrow(Item* item, Person* source, std::string& msg)
+bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    if (common::random(30))
-    {
+    bool hit = common::random(30);
+    if (!hit) {
         msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
     } else {
         msg = "Osuit varkaaseen, joka kupsahti.";
@@ -311,11 +306,6 @@ bool Varas::interact(std::string& message, Person* source)
 Vanki::Vanki(const Coord& pos) : Person(vanki, pos), target(pos)
 {
     health = 4;
-}
-
-bool Vanki::move(Direction d)
-{
-    return false;
 }
 
 bool Vanki::move(Direction d, std::string& msg)
@@ -447,16 +437,128 @@ bool Vanki::interact(std::string& message, Person* source)
     return true;
 }
 
-void Vanki::interactThrow(Item* item, Person* source, std::string& msg)
+bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    if (common::random(50)) {
+    bool hit = common::random(50);
+    if (!hit) {
         msg = "Roisto väisti heittosi !";
     } else {
         uint32_t d = rand() % 3 + 1;
         if (d >= health) {
-            msg = "Vankikarkuri tuupertuu ketoon.";
+            msg = "Vankikarkuri pokertyy heittosi ansiosta maahan...";
         } else {
             msg = "Osuit vankikarkuriin, mutta hän näyttää entistä vihaisemmalta!";
+        }
+        damage(d);
+    }
+    return hit;
+}
+
+// SKINHEAD
+Skinhead::Skinhead(const Coord& pos) : Person(vanki, pos)
+{
+    health = 7;
+}
+
+bool Skinhead::move(Direction d, std::string& msg)
+{
+    Coord check {coord.x, coord.y};
+    switch(d)
+    {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+
+    if (!level->hit(check))
+    {
+        coord = check;
+    } else {
+        auto p = level->getPerson(check);
+        if (p)
+        {
+            if (p->type == poliisi) {
+                msg = "Skinhead uhoaa poliisille!";
+            }
+        }
+
+        auto i = level->getItem(check);
+        if (i)
+        {
+            switch(i->type) {
+                case EPaska:
+                    msg += (msg == "") ? "" : "\n";
+                    msg += "Skini näkee maassa kikkareen ja päättää maistaa sitä.";
+                    damage(1);
+                    if (health == 0)
+                    {
+                        msg += "\nSkinhead tukehtui paskaan.";
+                    }
+                    break;
+                case ELenkki:
+                    msg += (msg == "") ? "" : "\n";
+                    msg += "Skinin massa kasvaa pilottitakin alla.";
+                    ++health;
+                    i->discard = true;
+                    break;
+                default:
+                    break;
+            }
+        }
+
+    }
+    common::checkBounds(coord);
+    return true;
+}
+
+void Skinhead::npcAct(string& msg)
+{
+    Player* p = level->findPlayer();
+    Coord target = p->coord;
+
+    if (coord.distance(target) == 1)
+    {
+        msg = "Skinhead murjoo sinua apinan raivolla!!";
+
+        uint32_t damage = rand()%4 + 1;
+        p->damage(damage);
+    } else {
+        Direction d = getMoveDirection(target);
+        move(d, msg);
+    }
+}
+
+bool Skinhead::interact(std::string& message, Person* source)
+{
+    if (source->type == pelaaja)
+    {
+        message = "Pusket SHITHEADia naamaan,mutta sehan murjoo myos sua.";
+        damage(1);
+    }
+
+    if (health == 0)
+    {
+        message = "Osuit skiniä kiveksiin !!!";
+        damage(health);
+    }
+
+    return true;
+}
+
+bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    bool hit = common::random(67);
+    if (!hit) {
+        msg = "Et osunut skinheadiin !";
+        return false;
+    } else {
+        uint32_t d = rand() % 5 + 1;
+        if (d >= health) {
+            msg = "Heittosi ossuupi skinukkelia vyon alle. Se koskee tuntuvasti !!!";
+        } else {
+            msg = "Osuit skiniin, mutta hän näyttää entistä vihaisemmalta!";
         }
         damage(d);
     }

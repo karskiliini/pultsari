@@ -141,9 +141,9 @@ Coord Building::getDoor() const
         case DirectionNS::Direction::down:
                 return Coord { ((wallRight + wallLeft) / 2), wallBot };
         case DirectionNS::Direction::right:
-                return Coord { (wallTop + wallBot) / 2, wallRight };
+                return Coord { wallRight, (wallTop + wallBot) / 2 };
         case DirectionNS::Direction::left:
-                return Coord { (wallTop + wallBot) / 2, wallLeft };
+                return Coord { wallLeft, (wallTop + wallBot) / 2 };
         default:
             throw std::out_of_range("no door!");
     }
@@ -164,7 +164,7 @@ Coord Building::getSpawn() const
                 c += { 1, 0 };
                 break;
         case DirectionNS::Direction::left:
-                c -= { 1, 0 };
+                // c -= { 1, 0 };
                 break;
         default:
             throw std::out_of_range("no door!");
@@ -405,18 +405,16 @@ void Vankila::npcAct()
         ++turn;
         if (turn > 50) {
             if (!level->PersonExists(vanki)) {
-                if (type == EVankila) {
-                    if (common::random(50)) {
-                        Coord spawn = getSpawn();
+                if (common::random(50)) {
+                    Coord spawn = getSpawn();
 
-                        if (!level->hit(spawn))
-                        {
-                            Vanki* p = new Vanki(spawn);
-                            p->setLevel(level);
-                            level->addPerson(p);
+                    if (!level->hit(spawn))
+                    {
+                        Vanki* p = new Vanki(spawn);
+                        p->setLevel(level);
+                        level->addPerson(p);
 
-                            emitted = true;
-                        }
+                        emitted = true;
                     }
                 }
             }
@@ -495,12 +493,29 @@ Asema::Asema() : Building(BuildingType::EAsema) {
     wallLeft = 68;
     wallBot = 27;
 
-    door = DirectionNS::left;
+    door = DirectionNS::right; //left;
 }
 
 std::string Asema::getName() const
 {
     return "ASEMA";
+}
+
+
+void Asema::npcAct()
+{
+    ++turn;
+    if (turn >= 30) {
+        Coord spawn = getSpawn();
+
+        if (!level->hit(spawn))
+        {
+            Skinhead* p = new Skinhead(spawn);
+            p->setLevel(level);
+            level->addPerson(p);
+        }
+        turn = 0;
+    }
 }
 
 bool Asema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const

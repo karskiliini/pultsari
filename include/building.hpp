@@ -110,15 +110,12 @@ class Vankila : public Building {
 public:
     Vankila();
     virtual ~Vankila() = default;
-
     void npcAct();
-
     virtual std::string getName() const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
-
     bool emitted = false;
 };
 
@@ -137,6 +134,7 @@ class Asema : public Building {
 public:
     Asema();
     virtual ~Asema() = default;
+    void npcAct();
     virtual std::string getName() const;
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
