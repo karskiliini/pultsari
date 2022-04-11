@@ -13,6 +13,7 @@ using std::string;
 using std::cout;
 using std::endl;
 using InputNS::Input;
+using common::random;
 
 Building::Building(BuildingType buildingType) : type(buildingType)
 {
@@ -405,7 +406,7 @@ void Vankila::npcAct()
         ++turn;
         if (turn > 50) {
             if (!level->PersonExists(vanki)) {
-                if (common::random(50)) {
+                if (random(50)) {
                     Coord spawn = getSpawn();
 
                     if (!level->hit(spawn))

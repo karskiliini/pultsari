@@ -13,6 +13,7 @@ using std::endl;
 using std::max;
 using std::min;
 using DirectionNS::Direction;
+using common::random;
 
 void Person::powerup(uint32_t damage)  {
     health += damage;
@@ -66,7 +67,7 @@ bool Mummo::interact(std::string& message, Person* source)
 {
     if (source->type == pelaaja)
     {
-        if (common::random(50))
+        if (random(50))
         {
             message = "Eläkellääinen hakkaa sua käsilaukullaan !!!";
             uint32_t damage = rand() % 1 + 1;
@@ -84,7 +85,7 @@ bool Mummo::interact(std::string& message, Person* source)
 
 bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    bool hit = common::random(75);
+    bool hit = random(75);
     if (!hit) {
         if (source->type == pelaaja) msg = "Et osunut mummoon!";
     } else {
@@ -170,7 +171,7 @@ bool Cop::interact(std::string& message, Person* source)
 {
     if (source->type == pelaaja)
     {
-        if (common::random(50))
+        if (random(50))
         {
             message = "Huitaiset kyylää!";
         } else {
@@ -253,7 +254,7 @@ bool Varas::move(Direction d, std::string& msg)
 
 bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    bool hit = common::random(30);
+    bool hit = random(30);
     if (!hit) {
         msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
     } else {
@@ -289,7 +290,7 @@ bool Varas::interact(std::string& message, Person* source)
 {
     if (source->type == pelaaja)
     {
-        if (common::random(50))
+        if (random(50))
         {
             message = "VARAS suuttuu sinulle!";
         } else {
@@ -439,7 +440,7 @@ bool Vanki::interact(std::string& message, Person* source)
 
 bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    bool hit = common::random(50);
+    bool hit = random(50);
     if (!hit) {
         msg = "Roisto väisti heittosi !";
     } else {
@@ -549,7 +550,7 @@ bool Skinhead::interact(std::string& message, Person* source)
 
 bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    bool hit = common::random(67);
+    bool hit = random(67);
     if (!hit) {
         msg = "Et osunut skinheadiin !";
         return false;

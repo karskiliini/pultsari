@@ -90,7 +90,7 @@ static void populateItems(Level& level)
 static void populateBuildings(Level& level)
 {
     Building* b = nullptr;
-    // divari tai isku
+
     if (level.stage > 4) {
         if (random(50)) {
             b = new Divari();
@@ -99,6 +99,7 @@ static void populateBuildings(Level& level)
         }
     }
     level.addBuilding(b);
+    b = nullptr;
 
     if (level.stage % 2) {
         b = new Alko();
@@ -106,6 +107,7 @@ static void populateBuildings(Level& level)
         b = new KRauta();
     }
     level.addBuilding(b);
+    b = nullptr;
 
     if ((level.stage > 6) && random(50))
     {
@@ -114,16 +116,17 @@ static void populateBuildings(Level& level)
         b = new PoliisiAsema();
         level.addBuilding(b);
     }
+    b = nullptr;
 
     if (level.stage > 8)
     {
-        // asema
         b = new Asema();
         level.addBuilding(b);
 
         b = new Seina();
         level.addBuilding(b);
     }
+    b = nullptr;
 }
 
 static void populatePersons(Level& level)

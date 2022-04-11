@@ -22,7 +22,7 @@ public:
     virtual DirectionNS::Direction getMoveDirection(const Coord& target) const;
     virtual void npcAct(std::string& msg) { msg = ""; }
     virtual bool interact(std::string& message, Person* source) { return false; };
-    virtual bool interactThrow(Item* item, Person* source, std::string& msg) { msg = "Osuit henkilöön, joka kupsahti."; health = 0; };
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg) = 0;
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
     virtual bool throwItem(Printer& printer) { return false; };
