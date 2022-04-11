@@ -282,7 +282,7 @@ static void printLine(Level& l, uint32_t y)
             for (auto b : l.buildings) {
                 if (b->hitBuilding(coord)) {
                     c = b->typeToChar(coord);
-                    // found = true;
+                    found = true;
                     break;
                 }
             }
