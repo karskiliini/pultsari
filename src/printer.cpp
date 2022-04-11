@@ -3,6 +3,7 @@
 #include "item.hpp"
 #include "input.hpp"
 #include "building.hpp"
+#include "animation.hpp"
 #include <vector>
 #include <iostream>
 #include <string>
@@ -230,6 +231,10 @@ void printStats(Level& l, Player* player)
 
 static void printLine(Level& l, uint32_t y)
 {
+    Animation* anim = nullptr;
+    if (l.animation && l.animation->coord.y == y) {
+        anim = l.animation;
+    }
 
     Item* thrownItem = nullptr;
     if (l.thrownItem && l.thrownItem->coord.y == y) {
@@ -256,17 +261,30 @@ static void printLine(Level& l, uint32_t y)
         bool found = false;
         string c = " ";
 
+        if (anim)
+        {
+            uint32_t len = anim->text.length();
+            if ((anim->coord.x <= x) && (anim->coord.x + len > x))
+            {
+                uint32_t index = x - anim->coord.x;
+                c = anim->text[index];
+                found = true;
+            }
+        }
+
         if (thrownItem && thrownItem->coord.x == x)
         {
             c = thrownItem->typeToChar();
             found = true;
         }
 
-        for (auto b : l.buildings) {
-            if (b->hitBuilding(coord)) {
-                c = b->typeToChar(coord);
-                found = true;
-                break;
+        if (!found) {
+            for (auto b : l.buildings) {
+                if (b->hitBuilding(coord)) {
+                    c = b->typeToChar(coord);
+                    // found = true;
+                    break;
+                }
             }
         }
 

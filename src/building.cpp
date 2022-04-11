@@ -165,7 +165,7 @@ Coord Building::getSpawn() const
                 c += { 1, 0 };
                 break;
         case DirectionNS::Direction::left:
-                // c -= { 1, 0 };
+                c -= { 1, 0 };
                 break;
         default:
             throw std::out_of_range("no door!");
@@ -407,16 +407,8 @@ void Vankila::npcAct()
         if (turn > 50) {
             if (!level->PersonExists(vanki)) {
                 if (random(50)) {
-                    Coord spawn = getSpawn();
-
-                    if (!level->hit(spawn))
-                    {
-                        Vanki* p = new Vanki(spawn);
-                        p->setLevel(level);
-                        level->addPerson(p);
-
-                        emitted = true;
-                    }
+                    level->createPerson(getSpawn(), vanki);
+                    emitted = true;
                 }
             }
         }
@@ -494,7 +486,7 @@ Asema::Asema() : Building(BuildingType::EAsema) {
     wallLeft = 68;
     wallBot = 27;
 
-    door = DirectionNS::right; //left;
+    door = DirectionNS::left;
 }
 
 std::string Asema::getName() const
@@ -507,14 +499,7 @@ void Asema::npcAct()
 {
     ++turn;
     if (turn >= 30) {
-        Coord spawn = getSpawn();
-
-        if (!level->hit(spawn))
-        {
-            Skinhead* p = new Skinhead(spawn);
-            p->setLevel(level);
-            level->addPerson(p);
-        }
+        level->createPerson(getSpawn(), skinhead);
         turn = 0;
     }
 }

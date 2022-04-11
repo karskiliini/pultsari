@@ -29,6 +29,7 @@ public:
     void setLevel(Level* level) { Person::level = level; }
 
     Level* level;
+    Printer* printer;
     PersonType type = invalidPerson;
     Coord coord = { 30, 20 };
     uint32_t health = 1;
@@ -96,6 +97,7 @@ public:
     virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "O"; };
+    bool firstMove = true;
 };
 
 class Yka : public Person {

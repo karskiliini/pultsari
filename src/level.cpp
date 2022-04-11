@@ -7,6 +7,7 @@
 #include "printer.hpp"
 #include "coord.hpp"
 #include "common.hpp"
+#include "animation.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -97,6 +98,60 @@ void Level::actThrow(Person* source)
         printer->print(*this);
         common::sleep(16);
     }
+}
+
+void Level::playAnimation()
+{
+    bool running = true;
+    while (animation && running)
+    {
+        running = animation->act();
+        printer->print(*this);
+        common::sleep(animation->delay);
+    }
+
+    delete animation;
+    animation = nullptr;
+
+    printer->print(*this);
+}
+
+Person* Level::createPerson(const Coord& coord, PersonType type)
+{
+    Person* p = nullptr;
+
+    if (!hit(coord))
+    {
+        switch(type) {
+            case vanki:
+                p = new Vanki(coord);
+                break;
+            case skinhead:
+                p = new Skinhead(coord);
+                break;
+            case yka:
+                p = new Yka(coord);
+                break;
+            case mummo:
+                p = new Mummo(coord);
+                break;
+            case poliisi:
+                p = new Cop(coord);
+                break;
+            case varas:
+                p = new Varas(coord);
+                break;
+            default:
+                break;
+        }
+    }
+
+    if (p) {
+        p->setLevel(this);
+        addPerson(p);
+    }
+
+    return p;
 }
 
 Person* Level::getPerson(const Coord& coord) const
@@ -348,6 +403,12 @@ void Level::addItem(Item* item)
 void Level::addThrownItem(Item* item)
 {
     thrownItem = item;
+}
+
+void Level::addAnimation(Animation* animation)
+{
+    Level::animation = animation;
+    playAnimation();
 }
 
 void Level::removeItem(Item* item)

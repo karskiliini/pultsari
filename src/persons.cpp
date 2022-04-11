@@ -4,6 +4,8 @@
 #include "item.hpp"
 #include "common.hpp"
 #include "coord.hpp"
+#include "animation.hpp"
+#include <string>
 #include <iostream>
 
 using std::string;
@@ -26,6 +28,16 @@ void Person::damage(uint32_t damage)  {
     } else {
         health -= damage;
     }
+
+#ifdef ANIMATIONS_ENABLED
+    string text = "-" + std::to_string(damage) + "hp";
+    uint32_t diff = text.length() / 2;
+    diff = (coord.x < diff) ? 0 : coord.x - diff;
+    Coord textCoord { diff, coord.y };
+    Animation* a = new Animation(textCoord, text, 5);
+    a->coordMove = Coordinate<int>(0, -1);
+    level->addAnimation(a);
+#endif
 }
 
 Direction Person::getMoveDirection(const Coord& target) const
@@ -111,7 +123,7 @@ Cop::Cop(const Coord& pos) : Person(poliisi, pos)
 
 bool Cop::move(Direction d, std::string& msg)
 {
-    Coord check {coord.x, coord.y};
+    Coord check = coord;
     switch(d)
     {
         case DirectionNS::up:    --check.y; break;
@@ -132,7 +144,7 @@ bool Cop::move(Direction d, std::string& msg)
                 msg = "Poliisi pidätti varkaan!";
                 p->damage(p->health);
             }
-        } else {
+        } else if (!level->hitBuilding(check)) {
             coord = check;
         }
     }
@@ -248,7 +260,7 @@ bool Varas::move(Direction d, std::string& msg)
                 msg += "Varas liukastui paskaan, ja kuoli.";
                 i->discard = true;
                 damage(health);
-            } else {
+            } else if (!level->hitBuilding(check)) {
                 coord = check;
             }
         }
@@ -348,7 +360,7 @@ bool Vanki::move(Direction d, std::string& msg)
         }
 
         auto i = level->getItem(check);
-        if (i)
+        if (!p && i)
         {
             switch(i->type) {
                 case EPaska:
@@ -377,11 +389,12 @@ bool Vanki::move(Direction d, std::string& msg)
                     coord = check;
                     break;
                 default:
-                    coord = check;
+                    if (!level->hitBuilding(check)) coord = check;
                     break;
             }
+        } else if (!level->hitBuilding(check)) {
+            coord = check;
         }
-
     }
     common::checkBounds(coord);
     return true;
@@ -532,6 +545,12 @@ bool Skinhead::move(Direction d, std::string& msg)
 
 void Skinhead::npcAct(Printer* printer)
 {
+    if (firstMove)
+    {
+        firstMove = false;
+        return;
+    }
+
     string msg = "";
     Player* p = level->findPlayer();
     Coord target = p->coord;

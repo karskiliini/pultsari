@@ -456,6 +456,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
             if (b)
             {
                 msg = b->getWalkMsg();
+                printer.showMessage(msg, level, true);
                 blocked = true;
             }
         }

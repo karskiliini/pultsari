@@ -142,9 +142,7 @@ static void populatePersons(Level& level)
                 freePos = level.freePosition();
             }
 
-            Person* p = new Mummo(level.freePosition());
-            p->setLevel(&level);
-            level.addPerson(p);
+            level.createPerson(level.freePosition(), mummo);
         }
     }
 
@@ -154,9 +152,7 @@ static void populatePersons(Level& level)
         bool create = true;
         if (create) {
             create = random(60);
-            Cop* p = new Cop(level.freePosition());
-            p->setLevel(&level);
-            level.addPerson(p);
+            level.createPerson(level.freePosition(), poliisi);
         }
     }
 
@@ -168,21 +164,17 @@ static void populatePersons(Level& level)
                 freePos = level.freePosition();
             }
 
-            Varas* v = new Varas(freePos);
-            v->setLevel(&level);
-            level.addPerson(v);
+            level.createPerson(freePos, varas);
         }
     }
 
     // ykä
     {
-        if (random(99)) {
+        if (random(50)) {
             Coord pos { common::PLAYER_START_X + 2, common::PLAYER_START_Y };
             if (!level.hit(pos))
             {
-                Yka* p = new Yka(pos);
-                p->setLevel(&level);
-                level.addPerson(p);
+                level.createPerson(pos, yka);
             }
         }
     }

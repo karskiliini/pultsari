@@ -12,6 +12,7 @@ class Person;
 class Building;
 class Item;
 class Printer;
+class Animation;
 
 namespace PlayerNS{
     class Player;
@@ -26,6 +27,9 @@ public:
     void buildingTurn();
     void npcTurn(Printer* printer);
     void actThrow(Person* source);
+    void playAnimation();
+
+    Person* createPerson(const Coord& coord, PersonType type);
 
     Person* getPerson(const Coord& coord) const;
     bool PersonExists(PersonType type) const;
@@ -51,6 +55,7 @@ public:
     void addItem(ItemType item);
     void addItem(Item* item);
     void addThrownItem(Item* item);
+    void addAnimation(Animation* animation);
     void removeItem(Item* item);
 
     Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
@@ -63,6 +68,7 @@ public:
     std::vector<Person*> persons;
     std::vector<Item*> items;
     Item* thrownItem = nullptr;
+    Animation* animation = nullptr;
 
     Person* attack = nullptr;
     Printer* printer = nullptr;
