@@ -9,6 +9,8 @@ namespace common {
 
 constexpr uint32_t SIZEX = 80;
 constexpr uint32_t SIZEY = 28;
+constexpr uint32_t PLAYER_START_X = 10;
+constexpr uint32_t PLAYER_START_Y = SIZEY/2;
 
 static bool random(uint32_t pct)
 {

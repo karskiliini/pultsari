@@ -22,9 +22,31 @@ Player::Player() : Person(PersonType::pelaaja, {0, 0})
     health = 20;
 }
 
-bool Player::interact(std::string& message, Person* source)
+bool Player::interact(std::string& msg, Person* source, Printer* printer)
 {
     if (health == 0) return true;
+
+    if (source->type == yka) {
+        msg = "Ykä pummaa yhtä kaljaa, annatko? (k/e)";
+        printer->showMessage(msg, *level);
+        char c = InputNS::Input::inputYka();
+        switch(c) {
+            default:
+            case 'k':
+            case 'K':
+                msg = "Yka kiitteleepi, ja istuu alas kittaamaan kaljaasi.";
+                --inventory.kalja;
+                return true;
+                break;
+            case 'e':
+            case 'E':
+                msg = "Yka taputteleepi palleaasi.";
+                damage(1);
+                return false;
+                break;
+        }
+    }
+
     return false;
 }
 
@@ -42,7 +64,7 @@ bool Player::interactThrow(Item* item, Person* source, std::string& msg)
 
 void Player::resetPosition()
 {
-    coord = {10, 10};
+    coord = {common::PLAYER_START_X, common::PLAYER_START_Y};
 }
 
 bool Player::drink(Printer& printer, Level& level)
@@ -443,7 +465,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
         Person* p = level.checkPerson(check);
         if (p)
         {
-            blocked = p->interact(msg, this);
+            blocked = p->interact(msg, this, &printer);
             printer.showMessage(msg, level);
 
             if (p->health == 0) {

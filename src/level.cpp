@@ -56,10 +56,9 @@ void Level::npcTurn(Printer* printer)
 {
     for(auto& p : persons) {
         string msg = "";
-        if ((p->health > 0) && (p->type != pelaaja))
+        if (p->health > 0)
         {
-            p->npcAct(msg);
-            printer->showMessage(msg, *this, true);
+            p->npcAct(printer);
         }
     }
 }

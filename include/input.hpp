@@ -56,6 +56,7 @@ public:
     static InputAlkoType getInputAlko();
     static bool getInputPutka();
     static uint32_t getInputDivari();
+    static char inputYka();
 };
 
 }

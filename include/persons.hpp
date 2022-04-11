@@ -20,8 +20,8 @@ public:
     virtual void damage(uint32_t damage);
 
     virtual DirectionNS::Direction getMoveDirection(const Coord& target) const;
-    virtual void npcAct(std::string& msg) { msg = ""; }
-    virtual bool interact(std::string& message, Person* source) { return false; };
+    virtual void npcAct(Printer* printer) = 0;
+    virtual bool interact(std::string& msg, Person* source, Printer* printer) { return false; };
     virtual bool interactThrow(Item* item, Person* source, std::string& msg) = 0;
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
@@ -38,7 +38,8 @@ class Mummo : public Person {
 public:
     Mummo(const Coord& pos);
     virtual ~Mummo() = default;
-    virtual bool interact(std::string& message, Person* source);
+    virtual void npcAct(Printer* printer) {};
+    virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "M"; };
@@ -50,8 +51,8 @@ public:
     virtual ~Cop() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
-    virtual void npcAct(std::string& msg);
-    virtual bool interact(std::string& message, Person* source);
+    virtual void npcAct(Printer* printer);
+    virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "C"; };
@@ -63,8 +64,8 @@ public:
     virtual ~Varas() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
-    virtual void npcAct(std::string& msg);
-    virtual bool interact(std::string& message, Person* source);
+    virtual void npcAct(Printer* printer);
+    virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "V"; };
     Coord target;
@@ -76,8 +77,8 @@ public:
     virtual ~Vanki() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
-    virtual void npcAct(std::string& msg);
-    virtual bool interact(std::string& message, Person* source);
+    virtual void npcAct(Printer* printer);
+    virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "E"; };
     Coord target;
@@ -91,12 +92,25 @@ public:
     virtual ~Skinhead() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
-    virtual void npcAct(std::string& msg);
-    virtual bool interact(std::string& message, Person* source);
+    virtual void npcAct(Printer* printer);
+    virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "O"; };
 };
 
+class Yka : public Person {
+public:
+    Yka(const Coord& pos);
+    virtual ~Yka() = default;
 
+    bool move(DirectionNS::Direction d, std::string& msg, Printer* printer);
+    virtual void npcAct(Printer* printer);
+    virtual bool interact(std::string& msg, Person* source, Printer* printer);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "Y"; };
+
+    bool puhallus = false;
+    uint32_t kaljaKesken = 0;
+};
 
 #endif

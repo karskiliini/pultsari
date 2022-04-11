@@ -188,4 +188,26 @@ FoodType Input::getFood()
     return sel;
 }
 
+char Input::inputYka()
+{
+    Input::raw();
+
+    char sel = '1';
+    while(sel == '1')
+    {
+        auto c = getchar();
+        switch(c)
+        {
+            case 'k':
+            case 'K': sel = 'k'; break;
+            case 'e':
+            case 'E': sel = 'e'; break;
+            default: sel = '1'; break;
+        }
+    }
+
+    InputNS::Input::noraw();
+    return sel;
+}
+
 }

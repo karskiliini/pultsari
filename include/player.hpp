@@ -17,9 +17,10 @@ public:
     virtual ~Player() = default;
     void resetPosition();
 
+    virtual void npcAct(Printer* printer) { }
+
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
-    virtual void npcAct(std::string& msg) {};
-    virtual bool interact(std::string& message, Person* source);
+    virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
 
     virtual bool drink(Printer& printer, Level& level);

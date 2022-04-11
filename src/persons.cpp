@@ -63,17 +63,17 @@ Mummo::Mummo(const Coord& pos) : Person(mummo, pos)
 {
 }
 
-bool Mummo::interact(std::string& message, Person* source)
+bool Mummo::interact(std::string& msg, Person* source, Printer* printer)
 {
     if (source->type == pelaaja)
     {
         if (random(50))
         {
-            message = "Eläkellääinen hakkaa sua käsilaukullaan !!!";
+            msg = "Eläkellääinen hakkaa sua käsilaukullaan !!!";
             uint32_t damage = rand() % 1 + 1;
             source->damage(damage);
         } else {
-            message = "Mukiloit mummon kumoon. Haa,lompsa !!!";
+            msg = "Mukiloit mummon kumoon. Haa,lompsa !!!";
             damage(health);
         }
 
@@ -104,7 +104,6 @@ Item* Mummo::dropItem()
     return new Raha(coord, rand()%25 + 1);
 }
 
-
 // COP
 Cop::Cop(const Coord& pos) : Person(poliisi, pos)
 {
@@ -133,14 +132,18 @@ bool Cop::move(Direction d, std::string& msg)
                 msg = "Poliisi pidätti varkaan!";
                 p->damage(p->health);
             }
+        } else {
+            coord = check;
         }
     }
     common::checkBounds(coord);
     return true;
 }
 
-void Cop::npcAct(string& msg)
+void Cop::npcAct(Printer* printer)
 {
+    string msg = "";
+
     if (!level->attack)
     {
         Player* p = level->findPlayer();
@@ -165,17 +168,18 @@ void Cop::npcAct(string& msg)
             move(d, msg);
         }
     }
+    printer->showMessage(msg, *level);
 }
 
-bool Cop::interact(std::string& message, Person* source)
+bool Cop::interact(std::string& msg, Person* source, Printer* printer)
 {
     if (source->type == pelaaja)
     {
         if (random(50))
         {
-            message = "Huitaiset kyylää!";
+            msg = "Huitaiset kyylää!";
         } else {
-            message = "Kyttä kellahtaa ketoon !!!";
+            msg = "Kyttä kellahtaa ketoon !!!";
             damage(health);
         }
         level->alertCops(source);
@@ -244,6 +248,8 @@ bool Varas::move(Direction d, std::string& msg)
                 msg += "Varas liukastui paskaan, ja kuoli.";
                 i->discard = true;
                 damage(health);
+            } else {
+                coord = check;
             }
         }
 
@@ -261,10 +267,12 @@ bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
         msg = "Osuit varkaaseen, joka kupsahti.";
     }
     damage(health);
+    return hit;
 }
 
-void Varas::npcAct(string& msg)
+void Varas::npcAct(Printer* printer)
 {
+    string msg = "";
     Player* p = level->findPlayer();
     target = p->coord;
 
@@ -284,17 +292,18 @@ void Varas::npcAct(string& msg)
         Direction d = getMoveDirection(target);
         move(d, msg);
     }
+    printer->showMessage(msg, *level);
 }
 
-bool Varas::interact(std::string& message, Person* source)
+bool Varas::interact(std::string& msg, Person* source, Printer* printer)
 {
     if (source->type == pelaaja)
     {
         if (random(50))
         {
-            message = "VARAS suuttuu sinulle!";
+            msg = "VARAS suuttuu sinulle!";
         } else {
-            message = "VARAS kellahtaa ketoon !!!";
+            msg = "VARAS kellahtaa ketoon !!!";
             damage(health);
         }
     }
@@ -346,6 +355,7 @@ bool Vanki::move(Direction d, std::string& msg)
                     msg += (msg == "") ? "" : "\n";
                     msg += "Vankikarkuri liukastuu paskaan";
                     i->discard = true;
+                    coord = check;
                     damage(1);
                     if (health == 0)
                     {
@@ -357,14 +367,17 @@ bool Vanki::move(Direction d, std::string& msg)
                     msg += "Vankikarkuri ahmii kiekuralenkin ja voimistuu";
                     ++health;
                     i->discard = true;
+                    coord = check;
                     break;
                 case EKivi:
                     msg += (msg == "") ? "" : "\n";
                     msg += "Vankikarkuri nappaa kiven.";
                     i->discard = true;
                     kivi = true;
+                    coord = check;
                     break;
                 default:
+                    coord = check;
                     break;
             }
         }
@@ -374,8 +387,9 @@ bool Vanki::move(Direction d, std::string& msg)
     return true;
 }
 
-void Vanki::npcAct(string& msg)
+void Vanki::npcAct(Printer* printer)
 {
+    string msg = "";
     if (firstMove)
     {
         firstMove = false;
@@ -419,19 +433,20 @@ void Vanki::npcAct(string& msg)
             move(d, msg);
         }
     }
+    printer->showMessage(msg, *level);
 }
 
-bool Vanki::interact(std::string& message, Person* source)
+bool Vanki::interact(std::string& msg, Person* source, Printer* printer)
 {
     if (source->type == pelaaja)
     {
-        message = "Hakkaat hullun lailla vankikarkuria!";
+        msg = "Hakkaat hullun lailla vankikarkuria!";
         damage(1);
     }
 
     if (health == 0)
     {
-        message = message + "\n Vanki kellahtaa ketoon !!!";
+        msg = msg + "\n Vanki kellahtaa ketoon !!!";
         damage(health);
     }
 
@@ -456,7 +471,7 @@ bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
 }
 
 // SKINHEAD
-Skinhead::Skinhead(const Coord& pos) : Person(vanki, pos)
+Skinhead::Skinhead(const Coord& pos) : Person(skinhead, pos)
 {
     health = 7;
 }
@@ -505,6 +520,7 @@ bool Skinhead::move(Direction d, std::string& msg)
                     i->discard = true;
                     break;
                 default:
+                    coord = check;
                     break;
             }
         }
@@ -514,8 +530,9 @@ bool Skinhead::move(Direction d, std::string& msg)
     return true;
 }
 
-void Skinhead::npcAct(string& msg)
+void Skinhead::npcAct(Printer* printer)
 {
+    string msg = "";
     Player* p = level->findPlayer();
     Coord target = p->coord;
 
@@ -529,19 +546,20 @@ void Skinhead::npcAct(string& msg)
         Direction d = getMoveDirection(target);
         move(d, msg);
     }
+    printer->showMessage(msg, *level);
 }
 
-bool Skinhead::interact(std::string& message, Person* source)
+bool Skinhead::interact(std::string& msg, Person* source, Printer* printer)
 {
     if (source->type == pelaaja)
     {
-        message = "Pusket SHITHEADia naamaan,mutta sehan murjoo myos sua.";
+        msg = "Pusket SHITHEADia naamaan,mutta sehan murjoo myos sua.";
         damage(1);
     }
 
     if (health == 0)
     {
-        message = "Osuit skiniä kiveksiin !!!";
+        msg = "Osuit skiniä kiveksiin !!!";
         damage(health);
     }
 
@@ -553,7 +571,6 @@ bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
     bool hit = random(67);
     if (!hit) {
         msg = "Et osunut skinheadiin !";
-        return false;
     } else {
         uint32_t d = rand() % 5 + 1;
         if (d >= health) {
@@ -563,4 +580,111 @@ bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
         }
         damage(d);
     }
+    return hit;
+}
+
+// YKÄ
+Yka::Yka(const Coord& pos) : Person(yka, pos)
+{
+    health = 1;
+}
+
+bool Yka::move(Direction d, std::string& msg, Printer* printer)
+{
+    Coord check {coord.x, coord.y};
+    switch(d)
+    {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+
+    if (!level->hit(check)) {
+        coord = check;
+    } else {
+        auto p = level->getPerson(check);
+        if (p)
+        {
+            if (p->type == pelaaja) {
+                bool received = p->interact(msg, this, printer);
+                kaljaKesken = received ? 5 : 1;
+            } else if (p->type == poliisi) {
+                if (!puhallus) {
+                    msg = "Ykä utelee poliisilta että saisikohan puhaltaa.";
+                    puhallus = true;
+                }
+            }
+        }
+
+        auto i = level->getItem(check);
+        if (i)
+        {
+            switch(i->type) {
+                case EKalja:
+                    msg += (msg == "") ? "" : "\n";
+                    msg += "Ykä löysi maasta kaljan ja lähti lipittämään sitä.";
+                    damage(1);
+                    break;
+                default:
+                    coord = check;
+                    break;
+            }
+        }
+
+    }
+    common::checkBounds(coord);
+    return true;
+}
+
+void Yka::npcAct(Printer* printer)
+{
+    string msg = "";
+
+    if (kaljaKesken > 0)
+    {
+        --kaljaKesken;
+        return;
+    }
+
+    Player* p = level->findPlayer();
+    Coord target = p->coord;
+
+    if (p->inventory.kalja > 0) {
+        Direction d = getMoveDirection(target);
+        move(d, msg, printer);
+    }
+    printer->showMessage(msg, *level);
+}
+
+bool Yka::interact(std::string& msg, Person* source, Printer* printer)
+{
+    if (source->type == pelaaja)
+    {
+        Player* p = dynamic_cast<Player*>(source);
+        if (p->inventory.kalja > 0)
+        {
+            msg = "Huitaiset ykaa,joka pollii sulta yhen kaljan.";
+            --p->inventory.kalja;
+            damage(health);
+        } else {
+            msg = "Mätät Ykää sikana naamaan!";
+        }
+    }
+
+    return true;
+}
+
+bool Yka::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    bool hit = random(67);
+    if (!hit) {
+        msg = "Ykä ihmettelee mikä ihme suhahti pään vierestä !";
+        return false;
+    } else {
+        msg = "Ykä simahtaa !";
+        damage(health);
+    }
+    return hit;
 }

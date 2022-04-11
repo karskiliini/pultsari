@@ -173,6 +173,20 @@ static void populatePersons(Level& level)
             level.addPerson(v);
         }
     }
+
+    // ykä
+    {
+        if (random(99)) {
+            Coord pos { common::PLAYER_START_X + 2, common::PLAYER_START_Y };
+            if (!level.hit(pos))
+            {
+                Yka* p = new Yka(pos);
+                p->setLevel(&level);
+                level.addPerson(p);
+            }
+        }
+    }
+
 }
 
 static bool checkExit(const Level& level)
