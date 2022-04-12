@@ -32,12 +32,12 @@ public:
     Person* createPerson(const Coord& coord, PersonType type);
 
     Person* getPerson(const Coord& coord) const;
+    PlayerNS::Player* getPlayer() const;
     bool PersonExists(PersonType type) const;
     void removePerson(Person* person);
     void alertCops(Person* source);
     void cleanDead();
     void cleanDiscardedItems();
-    PlayerNS::Player* findPlayer();
 
     bool hitBuilding(const Coord& c) const;
     bool hitPerson(const Coord& c) const;
@@ -58,6 +58,7 @@ public:
     void addAnimation(Animation* animation);
     void removeItem(Item* item);
 
+    bool raycast(Coord from, const Coord& to) const;
     Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
     Building* raycastBuilding(const Coordinate<int>& from, const Coordinate<int>& vector) const;
 

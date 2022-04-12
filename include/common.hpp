@@ -5,7 +5,9 @@
 #include <cstdint>
 #include <string>
 
+// enable features by defining these flags
 // #define ANIMATIONS_ENABLED
+// #define LOS_ENABLED
 
 namespace common {
 

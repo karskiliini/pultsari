@@ -164,6 +164,14 @@ Person* Level::getPerson(const Coord& coord) const
     return nullptr;
 }
 
+Player* Level::getPlayer() const
+{
+    for (const auto& p : persons) {
+        if (p->type == pelaaja) return dynamic_cast<Player*>(p);
+    }
+    return nullptr;
+}
+
 bool Level::PersonExists(PersonType type) const
 {
     for (auto& p : persons) {
@@ -217,14 +225,6 @@ void Level::cleanDiscardedItems()
             }
         }
     }
-}
-
-Player* Level::findPlayer()
-{
-    for (const auto& p : persons) {
-        if (p->type == pelaaja) return dynamic_cast<Player*>(p);
-    }
-    return nullptr;
 }
 
 bool Level::hitBuilding(const Coord& c) const
@@ -421,6 +421,133 @@ void Level::removeItem(Item* item)
     }
 }
 
+void moveAngle(float ang, Coord& from, const Coord& to, bool debug)
+{
+#if 1
+#else
+    if (ang > 1.f && (from.x != to.x)) {
+        if (debug)
+            cout << "ang: " << ang << " from: " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "            " << endl;
+
+        if (from.x > to.x) {
+            --from.x;
+        } else if (from.x < to.x) {
+            ++from.x;
+        }
+    } else if ((ang < 1.f) && (from.y != to.y)) {
+        if (debug)
+            cout << "ang: " << ang << " from: " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "            "<< endl;
+        if (from.y > to.y) {
+            --from.y;
+        } else if (from.y < to.y) {
+            ++from.y;
+        }
+    } else
+    {
+        if (from.x > to.x) {
+            --from.x;
+        } else if (from.x < to.x) {
+            ++from.x;
+        }
+        if (from.y > to.y) {
+            --from.y;
+        } else if (from.y < to.y) {
+            ++from.y;
+        }
+    }
+#endif
+}
+
+// return true if visibility ok
+bool Level::raycast(Coord from, const Coord& to) const
+{
+    bool originBuilding = hitBuilding(to);
+
+    bool debug = false;
+    if ((to.y == 3) && (to.x == 22)) debug = true;
+    uint32_t block = 0;
+
+    uint32_t dx = std::max(from.x, to.x) - std::min(from.x, to.x);
+    uint32_t dy = std::max(from.y, to.y) - std::min(from.y, to.y);
+
+    // todo: angle should be different if dx < 0
+    float ang = (dy == 0) ? 0.f : (float)((float)dx / (float)dy);
+    // if (debug) cout << "start: ang: " << ang << " " << from.x << ", " << from.y <<" to: " << to.x << ", " << to.y << "               " << endl;
+
+    if (ang < 1.f) {
+        bool ret = false;
+        int k1 = (ang == 0) ? 100 : 1.f / ang;
+        int k2 = (ang == 0) ? 100 : ceil(1.f / ang);
+        Coord tmp = from;
+        for (float k : { k1, k2 }) {
+            tmp = from;
+            while(from != to) {
+                // if (debug)
+                //     cout << ang << " k: " << k << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
+                for (int i = (int)k; i > 0; --i)
+                {
+                    if (from.y < to.y) ++from.y;
+                    else if (from.y > to.y) --from.y;
+                }
+                if (from.x < to.x) ++from.x;
+                else if (from.x > to.x) --from.x;
+
+                if (originBuilding) {
+                    // always show building internals
+                } else {
+                    block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+                }
+                if ((block > 0) && (from == to))
+                {
+                    ret = true;
+                    break;
+                }
+                if (block > 0) {
+                    break;
+                }
+            }
+        }
+        if (block == 0) { ret = true; }
+        return ret;
+
+    } else if (ang >= 1.f) {
+        bool ret = false;
+        float k1 = ang;
+        float k2 = ceil(ang);
+
+        Coord tmp = from;
+        for (float k : { k1, k2 }) {
+            from = tmp;
+
+            while(from != to) {
+                for (int i = (int)k; i > 0; --i)
+                {
+                    if (from.x < to.x) ++from.x;
+                    else if (from.x > to.x) --from.x;
+                }
+                if (from.y < to.y) ++from.y;
+                else if (from.y > to.y) --from.y;
+
+                if (originBuilding) {
+                    // always show building internals
+                } else {
+                    block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+                }
+                if ((block > 0) && (from == to)) {
+                    ret = true;
+                    break;
+                }
+                if (block > 0) {
+                    break;
+                }
+            }
+        }
+        if (block == 0) { ret = true; }
+        return ret;
+    }
+    return true;
+}
+
 Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const
 {
     if (vector == Coordinate<int>(0, 0)) return nullptr;
@@ -440,6 +567,7 @@ Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vecto
     }
     return p;
 }
+
 
 Building* Level::raycastBuilding(const Coordinate<int>& from, const Coordinate<int>& vector) const
 {

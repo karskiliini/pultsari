@@ -4,6 +4,7 @@
 #include "input.hpp"
 #include "building.hpp"
 #include "animation.hpp"
+#include "mask.hpp"
 #include <vector>
 #include <iostream>
 #include <string>
@@ -229,7 +230,7 @@ void printStats(Level& l, Player* player)
     cout << endl << endl;
 }
 
-static void printLine(Level& l, uint32_t y)
+static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask)
 {
     Animation* anim = nullptr;
     if (l.animation && l.animation->coord.y == y) {
@@ -270,6 +271,11 @@ static void printLine(Level& l, uint32_t y)
                 c = anim->text[index];
                 found = true;
             }
+        }
+
+        if (!mask->visible(coord)) {
+            c = ".";
+            found = true;
         }
 
         if (thrownItem && thrownItem->coord.x == x)
@@ -321,7 +327,7 @@ void Printer::print(Level& level)
         // left border
         cout << VERTICAL;
 
-        printLine(level, y);
+        printLine(level, y, mask);
 
         // right border
         cout << VERTICAL << " " << endl;

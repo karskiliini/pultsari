@@ -9,6 +9,7 @@
 #include "printer.hpp"
 #include "coord.hpp"
 #include "item.hpp"
+#include "mask.hpp"
 #include <iostream>
 #include <exception>
 
@@ -207,6 +208,13 @@ void mainloop()
     while (!quit) {
         player.resetPosition();
         Level level(stage);
+
+        VisionNS::Mask mask(&level);
+#ifdef LOS_ENABLED
+        mask.enable();
+#endif
+        printer.mask = &mask;
+
         level.printer = &printer;
 
         printer.player = &player;
@@ -217,7 +225,6 @@ void mainloop()
         }
 
         level.addPerson(&player);
-
         populateBuildings(level);
         populatePersons(level);
         populateItems(level);
@@ -227,6 +234,7 @@ void mainloop()
             printer.showMessage("Tervetuloa Pultsariin!", level, false);
         }
 
+        mask.init();
         printer.print(level);
 
         bool nextLevel = false;
@@ -235,6 +243,7 @@ void mainloop()
 
             try {
                 bool turn = handleInput(player, level, printer);
+                mask.init();
                 level.cleanDead();
                 level.cleanDiscardedItems();
 

@@ -8,6 +8,10 @@ namespace PlayerNS {
     class Player;
 }
 
+namespace VisionNS {
+    class Mask;
+}
+
 class Printer {
 public:
     static void raw();
@@ -23,6 +27,7 @@ public:
     bool msgShown = false;
 
     PlayerNS::Player* player;
+    VisionNS::Mask* mask;
 };
 
 #endif

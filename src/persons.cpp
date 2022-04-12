@@ -158,13 +158,13 @@ void Cop::npcAct(Printer* printer)
 
     if (!level->attack)
     {
-        Player* p = level->findPlayer();
+        Player* p = level->getPlayer();
         if (coord.distance(p->coord) == 1)
         {
             msg = "Pollari varoittaa!";
         }
     } else {
-        Player* p = level->findPlayer();
+        Player* p = level->getPlayer();
         if (p == level->attack)
         {
             if (coord.distance(level->attack->coord) == 1)
@@ -286,7 +286,7 @@ bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
 void Varas::npcAct(Printer* printer)
 {
     string msg = "";
-    Player* p = level->findPlayer();
+    Player* p = level->getPlayer();
     target = p->coord;
 
     if (coord.distance(target) == 1)
@@ -410,7 +410,7 @@ void Vanki::npcAct(Printer* printer)
         return;
     }
 
-    Player* p = level->findPlayer();
+    Player* p = level->getPlayer();
     target = p->coord;
 
     if (coord.distance(target) == 1)
@@ -553,7 +553,7 @@ void Skinhead::npcAct(Printer* printer)
     }
 
     string msg = "";
-    Player* p = level->findPlayer();
+    Player* p = level->getPlayer();
     Coord target = p->coord;
 
     if (coord.distance(target) == 1)
@@ -668,7 +668,7 @@ void Yka::npcAct(Printer* printer)
         return;
     }
 
-    Player* p = level->findPlayer();
+    Player* p = level->getPlayer();
     Coord target = p->coord;
 
     if (p->inventory.kalja > 0) {
