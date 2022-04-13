@@ -6,6 +6,7 @@
 #include "inventory.hpp"
 #include "direction.hpp"
 #include "printer.hpp"
+#include "scoreboard.hpp"
 #include <cstdint>
 #include <string>
 
@@ -37,6 +38,8 @@ public:
     uint32_t money = 20;
     uint32_t turn = 1;
     bool inJail = false;
+
+    ScoreBoard scoreBoard;
 
 private:
     bool decrementInventory(uint32_t index, Printer& printer);

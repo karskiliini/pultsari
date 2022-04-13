@@ -10,6 +10,7 @@
 #include "coord.hpp"
 #include "item.hpp"
 #include "mask.hpp"
+#include "scoreboard.hpp"
 #include <iostream>
 #include <exception>
 
@@ -199,6 +200,21 @@ static bool checkExit(const Level& level)
     return ok;
 }
 
+void printScore(const ScoreBoard& scoreBoard)
+{
+    cout << "                                                                " << endl;
+    cout << "                                                                " << endl;
+    cout << "                                                                " << endl;
+    cout << "Hakkaamasi mummelit  : " << scoreBoard.mummot << "              " << endl;
+    cout << "Kaikki hakatut oliot : " << scoreBoard.kaikki << "              " << endl;
+    cout << "------------------------------" <<  "              " << endl;
+    cout << "Yhteispistetilanteesi: " << scoreBoard.mummot + scoreBoard.kaikki <<  "              " << endl;
+    cout << "Kiitos Pultsarin pelaamisesta!" <<  "              " << endl;
+    cout << "                                                                " << endl;
+    cout << "                                                                " << endl;
+    cout << "                                                                " << endl;
+}
+
 void mainloop(bool losEnabled, bool animsEnabled)
 {
 #ifdef ANIMATIONS_ENABLED
@@ -300,7 +316,10 @@ void mainloop(bool losEnabled, bool animsEnabled)
                 nextLevel = true;
             }
         }
+        printScore(player.scoreBoard);
     }
+
+
 }
 
 int main(int argc, char *argv[])

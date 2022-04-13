@@ -97,6 +97,7 @@ bool Mummo::interact(std::string& msg, Person* source, Printer* printer)
         } else {
             msg = "Mukiloit mummon kumoon. Haa,lompsa !!!";
             damage(health);
+            ++dynamic_cast<Player*>(source)->scoreBoard.mummot;
         }
 
         level->alertCops(source);
@@ -107,16 +108,19 @@ bool Mummo::interact(std::string& msg, Person* source, Printer* printer)
 
 bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    bool hit = random(75);
-    if (!hit) {
-        if (source->type == pelaaja) msg = "Et osunut mummoon!";
-    } else {
-        msg = "Mummo heitti kuperkeikan ja hukkasi käsilaukkunsa.";
-        damage(health);
-        level->alertCops(source);
+    bool hit = random(50);
+    if (source->type == pelaaja) {
+        if (!hit) {
+            if (source->type == pelaaja) msg = "Et osunut mummoon!";
+        } else {
+            msg = "Mummo heitti kuperkeikan ja hukkasi käsilaukkunsa.";
+            damage(health);
+            ++dynamic_cast<Player*>(source)->scoreBoard.mummot;
+            level->alertCops(source);
 
-        auto i = dropItem();
-        level->addItem(i);
+            auto i = dropItem();
+            level->addItem(i);
+        }
     }
     return hit;
 }
@@ -203,6 +207,7 @@ bool Cop::interact(std::string& msg, Person* source, Printer* printer)
         } else {
             msg = "Kyttä kellahtaa ketoon !!!";
             damage(health);
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }
         level->alertCops(source);
     }
@@ -214,6 +219,10 @@ bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
 {
     msg = "Poliisi kuoli ja pudotti pampun.";
     damage(1);
+
+    if (source->type == pelaaja) {
+        ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    }
 
     level->alertCops(source);
 
@@ -283,12 +292,22 @@ bool Varas::move(Direction d, std::string& msg)
 bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
 {
     bool hit = random(30);
-    if (!hit) {
-        msg = "Et osunut varkaaseen.";
+    if (source->type == pelaaja) {
+        if (!hit) {
+            msg = "Et osunut varkaaseen.";
+        } else {
+            if (random(50)) msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
+            else msg = "Osuit varkaaseen, joka kupsahti.";
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+            damage(health);
+        }
     } else {
-        if (random(50)) msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
-        else msg = "Osuit varkaaseen, joka kupsahti.";
-        damage(health);
+        if (!hit) {
+        } else {
+            if (random(50)) msg = "Varas ulvahtaa kivusta kun häntä osuu munille.";
+            else msg = "Varkaaseen osui ja se kupsahti.";
+            damage(health);
+        }
     }
     return hit;
 }
@@ -327,6 +346,7 @@ bool Varas::interact(std::string& msg, Person* source, Printer* printer)
             msg = "VARAS suuttuu sinulle!";
         } else {
             msg = "VARAS kellahtaa ketoon !!!";
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
             damage(health);
         }
     }
@@ -472,6 +492,10 @@ bool Vanki::interact(std::string& msg, Person* source, Printer* printer)
     {
         msg = msg + "\n Vanki kellahtaa ketoon !!!";
         damage(health);
+
+        if (source->type == pelaaja) {
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+        }
     }
 
     return true;
@@ -488,6 +512,9 @@ bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
             msg = "Vankikarkuri pokertyy heittosi ansiosta maahan...";
         } else {
             msg = "Osuit vankikarkuriin, mutta hän näyttää entistä vihaisemmalta!";
+            if (source->type == pelaaja) {
+                ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+            }
         }
         damage(d);
     }
@@ -585,12 +612,13 @@ bool Skinhead::interact(std::string& msg, Person* source, Printer* printer)
     {
         msg = "Pusket SHITHEADia naamaan,mutta sehan murjoo myos sua.";
         damage(1);
-    }
 
-    if (health == 0)
-    {
-        msg = "Osuit skiniä kiveksiin !!!";
-        damage(health);
+        if (health == 0)
+        {
+            msg = "Osuit skiniä kiveksiin !!!";
+            damage(health);
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+        }
     }
 
     return true;
@@ -607,6 +635,9 @@ bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
             msg = "Heittosi ossuupi skinukkelia vyon alle. Se koskee tuntuvasti !!!";
         } else {
             msg = "Osuit skiniin, mutta hän näyttää entistä vihaisemmalta!";
+            if (source->type == pelaaja) {
+                ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+            }
         }
         damage(d);
     }
@@ -715,6 +746,9 @@ bool Yka::interactThrow(Item* item, Person* source, std::string& msg)
     } else {
         msg = "Ykä simahtaa !";
         damage(health);
+        if (source->type == pelaaja) {
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+        }
     }
     return hit;
 }
