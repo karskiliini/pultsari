@@ -233,8 +233,10 @@ void printStats(Level& l, Player* player)
 static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask)
 {
     Animation* anim = nullptr;
-    if (l.animation && l.animation->coord.y == y) {
-        anim = l.animation;
+    if (common::animsEnabled) {
+        if (l.animation && l.animation->coord.y == y) {
+            anim = l.animation;
+        }
     }
 
     Item* thrownItem = nullptr;
@@ -262,20 +264,24 @@ static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask)
         bool found = false;
         string c = " ";
 
-        if (anim)
-        {
-            uint32_t len = anim->text.length();
-            if ((anim->coord.x <= x) && (anim->coord.x + len > x))
+        if (common::animsEnabled) {
+            if (anim)
             {
-                uint32_t index = x - anim->coord.x;
-                c = anim->text[index];
-                found = true;
+                uint32_t len = anim->text.length();
+                if ((anim->coord.x <= x) && (anim->coord.x + len > x))
+                {
+                    uint32_t index = x - anim->coord.x;
+                    c = anim->text[index];
+                    found = true;
+                }
             }
         }
 
-        if (!mask->visible(coord)) {
-            c = ".";
-            found = true;
+        if (!found) {
+            if (!mask->visible(coord)) {
+                c = ".";
+                found = true;
+            }
         }
 
         if (thrownItem && thrownItem->coord.x == x)

@@ -17,6 +17,10 @@ using std::cout;
 using std::endl;
 using common::random;
 
+namespace common {
+    bool animsEnabled;
+}
+
 void show_console_cursor(const bool show) {
 #if defined(_WIN32)
     static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
@@ -195,8 +199,11 @@ static bool checkExit(const Level& level)
     return ok;
 }
 
-void mainloop()
+void mainloop(bool losEnabled, bool animsEnabled)
 {
+#ifdef ANIMATIONS_ENABLED
+    common::animsEnabled = animsEnabled;
+#endif
     bool welcome = true;
 
     Printer printer;
@@ -211,7 +218,8 @@ void mainloop()
 
         VisionNS::Mask mask(&level);
 #ifdef LOS_ENABLED
-        mask.enable();
+        if (losEnabled)
+            mask.enable();
 #endif
         printer.mask = &mask;
 
@@ -300,12 +308,32 @@ int main(int argc, char *argv[])
     srand(time(NULL));
     show_console_cursor(false);
 
+    bool animsEnabled = false;
+    bool losEnabled = false;
+
+    for (int i = 0; i < argc; ++i) {
+        std::string a = argv[i];
+        if (a == "--los") {
+            // enable line of sight
+            losEnabled = true;
+        } else if (a == "--anims") {
+            // enable animations
+            animsEnabled = true;
+        } else if ((a == "-h") || (a == "--help")) {
+            cout << "Pultsari help:                                    " << endl;
+            cout << "-los :   to enable line of sight mode             " << endl;
+            cout << "-anims : to enable animations support             " << endl;
+            cout << "                                                  " << endl;
+            cout << "                                                  " << endl;
+            return 0;
+        }
+    }
 
     IntroNS::Intro i;
     i.show();
 
     try {
-        mainloop();
+        mainloop(losEnabled, animsEnabled);
     }
     catch(const std::out_of_range& e)
     {
