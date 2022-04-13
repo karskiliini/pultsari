@@ -464,87 +464,131 @@ bool Level::raycast(Coord from, const Coord& to) const
     bool originBuilding = hitBuilding(to);
 
     bool debug = false;
-    if ((to.y == 3) && (to.x == 22)) debug = true;
-    uint32_t block = 0;
+    //if ((from.x == to.x+1) && (from.y == to.y+1))
+    //    debug = true;
 
+    uint32_t block = 0;
     uint32_t dx = std::max(from.x, to.x) - std::min(from.x, to.x);
     uint32_t dy = std::max(from.y, to.y) - std::min(from.y, to.y);
-
-    // todo: angle should be different if dx < 0
-    float ang = (dy == 0) ? 0.f : (float)((float)dx / (float)dy);
-    // if (debug) cout << "start: ang: " << ang << " " << from.x << ", " << from.y <<" to: " << to.x << ", " << to.y << "               " << endl;
+    float ang = (dy == 0) ? 10.f : (float)((float)dx / (float)dy);
 
     if (ang < 1.f) {
-        bool ret = false;
-        int k1 = (ang == 0) ? 100 : 1.f / ang;
-        int k2 = (ang == 0) ? 100 : ceil(1.f / ang);
-        Coord tmp = from;
-        for (float k : { k1, k2 }) {
-            tmp = from;
-            while(from != to) {
-                // if (debug)
-                //     cout << ang << " k: " << k << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
-                for (int i = (int)k; i > 0; --i)
-                {
-                    if (from.y < to.y) ++from.y;
-                    else if (from.y > to.y) --from.y;
-                }
-                if (from.x < to.x) ++from.x;
-                else if (from.x > to.x) --from.x;
+        bool ret = (from == to);
+        float k = (ang == 0) ? 100 : 1.f / ang;
 
-                if (originBuilding) {
-                    // always show building internals
-                } else {
-                    block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
-                }
-                if ((block > 0) && (from == to))
-                {
-                    ret = true;
-                    break;
-                }
+        while(from != to) {
+            uint32_t dx = std::max(from.x, to.x) - std::min(from.x, to.x);
+            uint32_t dy = std::max(from.y, to.y) - std::min(from.y, to.y);
+            float ang = (dy == 0) ? 999.f : (float)((float)dx / (float)dy);
+            k = (ang == 0) ? (float)dy / 2.f : 1.f / ang;
+            k = ((int)k == 0) ? 1 : k;
+
+            if (debug)
+                cout << ang << " k: " << k << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
+
+            for (int i = (int)k; i > 0; --i)
+            {
+                if (from.y < to.y) ++from.y;
+                else if (from.y > to.y) --from.y;
+                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
                 if (block > 0) {
+                    if (debug) cout << "for - block break " << block << endl;
                     break;
                 }
             }
+            if (block <= 1)
+            {
+                if (from.x < to.x) ++from.x;
+                else if (from.x > to.x) --from.x;
+                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+            }
+
+            if (from == to)
+            {
+                if (debug) cout << "from == to block: " << block << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
+                ret = true;
+                break;
+            }
+            if ((block <= 1) && hitPerson(from) && (to == from)) {
+                ret = true;
+                break;
+            } else if (block > 0) {
+                if (debug) cout << "block > 0 break " << block << endl;
+                ret = false;
+                break;
+            }
+            if (debug) cout << "exit loop " << block << endl;
         }
-        if (block == 0) { ret = true; }
+
+        // always show building internals
+        if (originBuilding) ret = true;
+
+        if (debug) cout << "break: " << ret << endl;
+
+        if (debug)
+            for (int i = 0; i < 20; ++i) { cout << "                             " << endl; }
+
         return ret;
 
     } else if (ang >= 1.f) {
-        bool ret = false;
-        float k1 = ang;
-        float k2 = ceil(ang);
+        bool ret = (from == to);
+        float k = ang;
 
-        Coord tmp = from;
-        for (float k : { k1, k2 }) {
-            from = tmp;
+        while(from != to) {
 
-            while(from != to) {
-                for (int i = (int)k; i > 0; --i)
-                {
-                    if (from.x < to.x) ++from.x;
-                    else if (from.x > to.x) --from.x;
-                }
-                if (from.y < to.y) ++from.y;
-                else if (from.y > to.y) --from.y;
+            uint32_t dx = std::max(from.x, to.x) - std::min(from.x, to.x);
+            uint32_t dy = std::max(from.y, to.y) - std::min(from.y, to.y);
+            float ang = (dy == 0) ? 100 : (float)((float)dx / (float)dy);
+            k = ang;
 
-                if (originBuilding) {
-                    // always show building internals
-                } else {
-                    block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
-                }
-                if ((block > 0) && (from == to)) {
-                    ret = true;
-                    break;
-                }
+            if (debug)
+                cout << ang << " k: " << k << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
+
+            for (int i = (int)k; i > 0; --i)
+            {
+                if (from.x < to.x) ++from.x;
+                else if (from.x > to.x) --from.x;
+                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
                 if (block > 0) {
+                    if (debug) cout << "for - block break (2) " << block << endl;
                     break;
                 }
             }
+            if (block <= 1)
+            {
+                if (from.y < to.y) ++from.y;
+                else if (from.y > to.y) --from.y;
+                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+            }
+
+            if (from == to)
+            {
+                if (debug) cout << "from == to block: " << block << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
+                ret = true;
+                break;
+            }
+            if ((block <= 1) && hitPerson(from) && (to == from)) {
+                if (debug) cout << ((block > 0) && hitPerson(from) && (to == from)) << block << endl;
+                ret = true;
+                break;
+            } else if (block > 0) {
+                if (debug) cout << "block > 0 break " << block << endl;
+                ret = false;
+                break;
+            }
+            if (debug) cout << "exit loop " << block << endl;
         }
-        if (block == 0) { ret = true; }
+        // always show building internals
+        if (originBuilding) ret = true;
+
         return ret;
     }
+
+    if (debug)
+        cout << "default out " << ang << endl;
+
+    for (int i = 0; i < 20; ++i) { cout << "                             " << endl; }
+
     return true;
 }
 
