@@ -255,7 +255,7 @@ void mainloop()
                 level.cleanDiscardedItems();
 
                 if (turn) {
-                    ++player.turn;
+                    player.updateTurn();
                 }
             } catch(...) {
                 quit = true;
@@ -270,6 +270,11 @@ void mainloop()
             } else if (player.health < 1) {
                 quit = true;
                 printer.setMessage("Terveytesi pettaa... kemahdat tantereeseen pitkaksesi .........");
+                printer.print(level);
+                break;
+            } else if (player.promilles < 1) {
+                quit = true;
+                printer.setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
                 printer.print(level);
                 break;
             }

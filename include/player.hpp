@@ -15,6 +15,9 @@ class Player : public Person {
 public:
     Player();
     virtual ~Player() = default;
+    virtual void updatepromilles(int p);
+    void updateTurn();
+
     void resetPosition();
 
     virtual void npcAct(Printer* printer) { }
@@ -30,7 +33,7 @@ public:
     virtual std::string typeToChar() const { return "@"; };
 
     Inventory inventory;
-    uint32_t promilles = 0.2;
+    uint32_t promilles = 2;
     uint32_t money = 20;
     uint32_t turn = 1;
     bool inJail = false;

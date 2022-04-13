@@ -19,6 +19,16 @@ using common::random;
 
 void Person::powerup(uint32_t damage)  {
     health += damage;
+
+#ifdef ANIMATIONS_ENABLED
+    string text = "+" + std::to_string(damage) + "hp";
+    uint32_t diff = text.length() / 2;
+    diff = (coord.x < diff) ? 0 : coord.x - diff;
+    Coord textCoord { diff, coord.y };
+    Animation* a = new Animation(textCoord, text, 5);
+    a->coordMove = Coordinate<int>(0, -1);
+    level->addAnimation(a);
+#endif
 }
 
 void Person::damage(uint32_t damage)  {

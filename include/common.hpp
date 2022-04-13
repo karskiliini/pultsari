@@ -19,6 +19,7 @@ constexpr uint32_t PLAYER_START_Y = SIZEY/2;
 bool random(uint32_t pct);
 bool checkBounds(Coord& coord);
 void sleep(uint32_t ms);
+void cursorHome();
 
 } // namespace common
 

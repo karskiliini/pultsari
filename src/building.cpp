@@ -218,18 +218,18 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
     switch(purchase)
     {
         case InputNS::ostakalja:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (kalja)";
+            msg = "Kiitos,ja hyvää päivän jatkoa.";
             ++player->inventory.kalja;
             player->money -= 10;
             break;
         case InputNS::ostalonkka:
             ++player->inventory.lonkka;
             player->money -= 15;
-            msg = "Kiitos,ja hyvää päivän jatkoa. (lonkka)";
+            msg = "Kiitos,ja hyvää päivän jatkoa.";
             break;
         default:
         case InputNS::poistualko:
-            msg = "Kiitos,ja hyvää päivän jatkoa. (ulos)";
+            msg = "Kiitos,ja hyvää päivän jatkoa.";
             break;
     }
 }

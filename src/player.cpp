@@ -4,6 +4,7 @@
 #include "item.hpp"
 #include "input.hpp"
 #include "building.hpp"
+#include "animation.hpp"
 #include <iostream>
 #include <string>
 #include <exception>
@@ -17,9 +18,40 @@ using InputNS::InputType;
 using std::cout;
 using std::endl;
 
+
 Player::Player() : Person(PersonType::pelaaja, {0, 0})
 {
     health = 20;
+}
+
+void Player::updatepromilles(int p)
+{
+    promilles += p;
+
+#ifdef ANIMATIONS_ENABLED
+    string prefix = "+";
+    if (p < 0) {
+        prefix = "-";
+    }
+
+    string ptext = std::to_string(abs(p)/10) + "." + std::to_string(abs(p)%10);
+
+    string text = prefix + ptext + "%.";
+    uint32_t diff = text.length() / 2;
+    diff = (coord.x < diff) ? 0 : coord.x - diff;
+    Coord textCoord { diff, coord.y };
+    Animation* a = new Animation(textCoord, text, 5);
+    a->coordMove = Coordinate<int>(0, -1);
+    level->addAnimation(a);
+#endif
+}
+
+void Player::updateTurn()
+{
+    ++turn;
+    if (turn % 260 == 0) {
+        updatepromilles(-1);
+    }
 }
 
 bool Player::interact(std::string& msg, Person* source, Printer* printer)
@@ -78,12 +110,12 @@ bool Player::drink(Printer& printer, Level& level)
             case InputNS::kalja:
                 --inventory.kalja;
                 printer.showMessage("Glub glub glub glub ..... Burb !!!", level, false);
-                promilles += 2;
+                updatepromilles(2);
                 break;
             case InputNS::lonkka:
                 --inventory.lonkka;
                 printer.showMessage("Glub glub glub glub ..... Burb !!!", level, false);
-                promilles += 4;
+                updatepromilles(4);
                 break;
             default:
                 printer.showMessage("Päätit olla juomatta mitään.", level, false);
@@ -93,12 +125,12 @@ bool Player::drink(Printer& printer, Level& level)
     else if (inventory.lonkka > 0) {
         printer.showMessage("Glub glub .. gulb gulu... ooorbbbs.", level);
         --inventory.lonkka;
-        promilles += 4;
+        updatepromilles(4);
     }
     else if (inventory.kalja > 0) {
         printer.showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", level);
         --inventory.kalja;
-        promilles += 3;
+        updatepromilles(3);
     } else {
         printer.showMessage("Ei oo ehtaa tavaraa.", level);
         return false;
@@ -116,7 +148,7 @@ bool Player::eat(Printer& printer, Level& level)
         if (random(50)) {
             printer.showMessage("Ei vaikutusta.", level);
         } else {
-            health += 1;
+            powerup(1);
             printer.showMessage("Bansku teki teraa !!!", level);
         }
     } else if ((inventory.kalat == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
@@ -125,7 +157,7 @@ bool Player::eat(Printer& printer, Level& level)
             damage(1);
             printer.showMessage("Omppo oli pilaantunut,oksennat.", level);
         } else {
-            health += 2;
+            powerup(2);
             printer.showMessage("Omena oli herkullinen !!!", level);
         }
     } else if ((inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
@@ -134,11 +166,11 @@ bool Player::eat(Printer& printer, Level& level)
             damage(2);
             printer.showMessage("Syomasi kala sisalsi matoja...", level);
         } else {
-            health += 4;
+            powerup(4);
             printer.showMessage("Kala antaa sinulle uutta puhtia !!!", level);
         }
     } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0)) {
-        health += 1;
+        powerup(1);
         --inventory.lenkki;
         printer.showMessage("Oispa edes kossua kaveriksi.", level);
     } else {
@@ -163,7 +195,7 @@ bool Player::eat(Printer& printer, Level& level)
                         damage(2);
                         printer.showMessage("Syomasi kala sisalsi matoja...", level, false);
                     } else {
-                        health += 4;
+                        powerup(4);
                         printer.showMessage("Kaloreja kalasta.", level, false);
                     }
                 }
@@ -177,7 +209,7 @@ bool Player::eat(Printer& printer, Level& level)
                         damage(1);
                         printer.showMessage("Joku oli kaytellyt keski keppiaan omppoosi.", level, false);
                     } else {
-                        health += 2;
+                        powerup(2);
                         printer.showMessage("orb.", level, false);
                     }
                 }
@@ -190,7 +222,7 @@ bool Player::eat(Printer& printer, Level& level)
                     if (random(50)) {
                         printer.showMessage("Bansku ei vaikuttanut.", level, false);
                     } else {
-                        health += 1;
+                        powerup(1);
                         printer.showMessage("Babababananiii", level, false);
                     }
                 }
