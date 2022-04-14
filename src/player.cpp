@@ -436,6 +436,20 @@ static Item* checkItems(Level& level, const Coord& c)
     return nullptr;
 }
 
+bool Player::stagger(Level& level, Printer& printer)
+{
+    printer.showMessage("Horjahtelet...", level, false);
+
+    DirectionNS::Direction d;
+    if (common::random(50)) {
+        d = (common::random(50) ? DirectionNS::left : DirectionNS::left);
+    } else {
+        d = (common::random(50) ? DirectionNS::up : DirectionNS::down);
+    }
+
+    return move(d, level, printer);
+}
+
 bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 {
     // spend turn

@@ -23,6 +23,7 @@ public:
 
     virtual void npcAct(Printer* printer) { }
 
+    bool stagger(Level& level, Printer& printer);
     virtual bool move(DirectionNS::Direction d, Level& level, Printer& printer);
     virtual bool interact(std::string& msg, Person* source, Printer* printer);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);

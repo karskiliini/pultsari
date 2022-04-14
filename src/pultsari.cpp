@@ -37,39 +37,44 @@ void show_console_cursor(const bool show) {
 static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
 {
     bool ret;
-    bool retry = true;
-    while (retry)
-    {
-        auto input = InputNS::Input::getInput();
+    InputNS::InputType input;
 
-        retry = false;
-        switch(input)
-        {
-            case InputNS::up:
-                ret = player.move(DirectionNS::up, level, printer);
-                break;
-            case InputNS::down:
-                ret = player.move(DirectionNS::down, level, printer);
-                break;
-            case InputNS::left:
-                ret = player.move(DirectionNS::left, level, printer);
-                break;
-            case InputNS::right:
-                ret = player.move(DirectionNS::right, level, printer);
-                break;
-            case InputNS::drinking:
-                ret = player.drink(printer, level);
-                break;
-            case InputNS::eating:
-                ret = player.eat(printer, level);
-                break;
-            case InputNS::throwing:
-                ret = player.throwItem(printer);
-                break;
-            default:
-            case InputNS::quit:
-                throw std::out_of_range("quit!");
-        }
+    input = InputNS::Input::getInput();
+
+    if (player.promilles > 23 && common::random(60)) {
+        input = InputNS::stagger;
+    }
+
+    switch(input)
+    {
+        case InputNS::up:
+            ret = player.move(DirectionNS::up, level, printer);
+            break;
+        case InputNS::down:
+            ret = player.move(DirectionNS::down, level, printer);
+            break;
+        case InputNS::left:
+            ret = player.move(DirectionNS::left, level, printer);
+            break;
+        case InputNS::right:
+            ret = player.move(DirectionNS::right, level, printer);
+            break;
+        case InputNS::drinking:
+            ret = player.drink(printer, level);
+            break;
+        case InputNS::eating:
+            ret = player.eat(printer, level);
+            break;
+        case InputNS::throwing:
+            ret = player.throwItem(printer);
+            break;
+        case InputNS::stagger:
+            ret = player.stagger(level, printer);
+            break;
+        default:
+        case InputNS::quit:
+            ret = false;
+            throw std::out_of_range("quit!");
     }
 
     return ret;

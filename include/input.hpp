@@ -14,6 +14,7 @@ enum InputType {
     throwing,
     drinking,
     eating,
+    stagger,
     quit
 };
 
