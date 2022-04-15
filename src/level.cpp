@@ -59,7 +59,7 @@ void Level::npcTurn(Printer* printer)
         string msg = "";
         if (p->health > 0)
         {
-            p->npcAct(printer);
+            p->npcAct();
         }
     }
 }

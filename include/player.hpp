@@ -21,7 +21,7 @@ public:
 
     void resetPosition();
 
-    virtual void npcAct(Printer* printer) { }
+    virtual void npcAct() { }
 
     bool stagger(Level& level);
     virtual bool move(DirectionNS::Direction d, Level& level);

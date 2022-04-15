@@ -166,7 +166,7 @@ bool Cop::move(Direction d, std::string& msg)
     return true;
 }
 
-void Cop::npcAct(Printer* printer)
+void Cop::npcAct()
 {
     string msg = "";
 
@@ -312,7 +312,7 @@ bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
     return hit;
 }
 
-void Varas::npcAct(Printer* printer)
+void Varas::npcAct()
 {
     string msg = "";
     Player* p = level->getPlayer();
@@ -431,7 +431,7 @@ bool Vanki::move(Direction d, std::string& msg)
     return true;
 }
 
-void Vanki::npcAct(Printer* printer)
+void Vanki::npcAct()
 {
     string msg = "";
     if (firstMove)
@@ -581,7 +581,7 @@ bool Skinhead::move(Direction d, std::string& msg)
     return true;
 }
 
-void Skinhead::npcAct(Printer* printer)
+void Skinhead::npcAct()
 {
     if (firstMove)
     {
@@ -699,7 +699,7 @@ bool Yka::move(Direction d, std::string& msg)
     return true;
 }
 
-void Yka::npcAct(Printer* printer)
+void Yka::npcAct()
 {
     string msg = "";
 
