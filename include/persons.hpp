@@ -21,7 +21,7 @@ public:
 
     virtual DirectionNS::Direction getMoveDirection(const Coord& target) const;
     virtual void npcAct(Printer* printer) = 0;
-    virtual bool interact(std::string& msg, Person* source, Printer* printer) { return false; };
+    virtual bool interact(std::string& msg, Person* source) { return false; };
     virtual bool interactThrow(Item* item, Person* source, std::string& msg) = 0;
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
@@ -40,7 +40,7 @@ public:
     Mummo(const Coord& pos);
     virtual ~Mummo() = default;
     virtual void npcAct(Printer* printer) {};
-    virtual bool interact(std::string& msg, Person* source, Printer* printer);
+    virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "M"; };
@@ -53,7 +53,7 @@ public:
 
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(Printer* printer);
-    virtual bool interact(std::string& msg, Person* source, Printer* printer);
+    virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     Item* dropItem();
     virtual std::string typeToChar() const { return "C"; };
@@ -66,7 +66,7 @@ public:
 
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(Printer* printer);
-    virtual bool interact(std::string& msg, Person* source, Printer* printer);
+    virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "V"; };
     Coord target;
@@ -79,7 +79,7 @@ public:
 
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(Printer* printer);
-    virtual bool interact(std::string& msg, Person* source, Printer* printer);
+    virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "E"; };
     Coord target;
@@ -94,7 +94,7 @@ public:
 
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(Printer* printer);
-    virtual bool interact(std::string& msg, Person* source, Printer* printer);
+    virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "O"; };
     bool firstMove = true;
@@ -105,9 +105,9 @@ public:
     Yka(const Coord& pos);
     virtual ~Yka() = default;
 
-    bool move(DirectionNS::Direction d, std::string& msg, Printer* printer);
+    bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct(Printer* printer);
-    virtual bool interact(std::string& msg, Person* source, Printer* printer);
+    virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "Y"; };
 

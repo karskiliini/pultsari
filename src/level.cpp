@@ -147,6 +147,7 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
     }
 
     if (p) {
+        p->printer = printer;
         p->setLevel(this);
         addPerson(p);
     }

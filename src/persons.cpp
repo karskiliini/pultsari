@@ -85,7 +85,7 @@ Mummo::Mummo(const Coord& pos) : Person(mummo, pos)
 {
 }
 
-bool Mummo::interact(std::string& msg, Person* source, Printer* printer)
+bool Mummo::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja)
     {
@@ -197,7 +197,7 @@ void Cop::npcAct(Printer* printer)
     printer->showMessage(msg, *level);
 }
 
-bool Cop::interact(std::string& msg, Person* source, Printer* printer)
+bool Cop::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja)
     {
@@ -337,7 +337,7 @@ void Varas::npcAct(Printer* printer)
     printer->showMessage(msg, *level);
 }
 
-bool Varas::interact(std::string& msg, Person* source, Printer* printer)
+bool Varas::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja)
     {
@@ -480,7 +480,7 @@ void Vanki::npcAct(Printer* printer)
     printer->showMessage(msg, *level);
 }
 
-bool Vanki::interact(std::string& msg, Person* source, Printer* printer)
+bool Vanki::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja)
     {
@@ -606,7 +606,7 @@ void Skinhead::npcAct(Printer* printer)
     printer->showMessage(msg, *level);
 }
 
-bool Skinhead::interact(std::string& msg, Person* source, Printer* printer)
+bool Skinhead::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja)
     {
@@ -650,7 +650,7 @@ Yka::Yka(const Coord& pos) : Person(yka, pos)
     health = 1;
 }
 
-bool Yka::move(Direction d, std::string& msg, Printer* printer)
+bool Yka::move(Direction d, std::string& msg)
 {
     Coord check {coord.x, coord.y};
     switch(d)
@@ -669,7 +669,7 @@ bool Yka::move(Direction d, std::string& msg, Printer* printer)
         if (p)
         {
             if (p->type == pelaaja) {
-                bool received = p->interact(msg, this, printer);
+                bool received = p->interact(msg, this);
                 kaljaKesken = received ? 5 : 1;
             } else if (p->type == poliisi) {
                 if (!puhallus) {
@@ -714,12 +714,12 @@ void Yka::npcAct(Printer* printer)
 
     if (p->inventory.kalja > 0) {
         Direction d = getMoveDirection(target);
-        move(d, msg, printer);
+        move(d, msg);
     }
     printer->showMessage(msg, *level);
 }
 
-bool Yka::interact(std::string& msg, Person* source, Printer* printer)
+bool Yka::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja)
     {

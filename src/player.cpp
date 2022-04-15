@@ -54,7 +54,7 @@ void Player::updateTurn()
     }
 }
 
-bool Player::interact(std::string& msg, Person* source, Printer* printer)
+bool Player::interact(std::string& msg, Person* source)
 {
     if (health == 0) return true;
 
@@ -436,9 +436,9 @@ static Item* checkItems(Level& level, const Coord& c)
     return nullptr;
 }
 
-bool Player::stagger(Level& level, Printer& printer)
+bool Player::stagger(Level& level)
 {
-    printer.showMessage("Horjahtelet...", level, false);
+    printer->showMessage("Horjahtelet...", level, false);
 
     DirectionNS::Direction d;
     if (common::random(50)) {
@@ -447,10 +447,10 @@ bool Player::stagger(Level& level, Printer& printer)
         d = (common::random(50) ? DirectionNS::up : DirectionNS::down);
     }
 
-    return move(d, level, printer);
+    return move(d, level);
 }
 
-bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
+bool Player::move(DirectionNS::Direction d, Level& level)
 {
     // spend turn
     bool ret = true;
@@ -484,15 +484,15 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
 
         // check whether can enter
         bool entered = b->getEnterMsg(this, msg);
-        printer.showMessage(msg, level, entered);
+        printer->showMessage(msg, level, entered);
         if (entered)
         {
             // step into building
             b->getInteractMsg(this, msg);
-            printer.showMessage(msg, level, true);
+            printer->showMessage(msg, level, true);
 
             b->interact(this, msg);
-            printer.showMessage(msg, level, false);
+            printer->showMessage(msg, level, false);
         }
     }
 
@@ -502,7 +502,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
             if (b)
             {
                 msg = b->getWalkMsg();
-                printer.showMessage(msg, level, true);
+                printer->showMessage(msg, level, true);
                 blocked = true;
             }
         }
@@ -512,8 +512,8 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
         Person* p = level.checkPerson(check);
         if (p)
         {
-            blocked = p->interact(msg, this, &printer);
-            printer.showMessage(msg, level);
+            blocked = p->interact(msg, this);
+            printer->showMessage(msg, level);
 
             if (p->health == 0) {
                 Item* i = p->dropItem();
@@ -530,7 +530,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
             i = checkItems(level, check);
             if (i) {
                 msg = i->getMsg();
-                printer.showMessage(msg, level, false);
+                printer->showMessage(msg, level, false);
                 auto consume = i->interact(this);
 
                 if (consume) {
@@ -545,7 +545,7 @@ bool Player::move(DirectionNS::Direction d, Level& level, Printer& printer)
     }
 
     if (common::checkBounds(coord)) {
-        printer.showMessage("Ei karata pelialueelta !!", level, true);
+        printer->showMessage("Ei karata pelialueelta !!", level, true);
         ret = false;
     }
 

@@ -48,16 +48,16 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
     switch(input)
     {
         case InputNS::up:
-            ret = player.move(DirectionNS::up, level, printer);
+            ret = player.move(DirectionNS::up, level);
             break;
         case InputNS::down:
-            ret = player.move(DirectionNS::down, level, printer);
+            ret = player.move(DirectionNS::down, level);
             break;
         case InputNS::left:
-            ret = player.move(DirectionNS::left, level, printer);
+            ret = player.move(DirectionNS::left, level);
             break;
         case InputNS::right:
-            ret = player.move(DirectionNS::right, level, printer);
+            ret = player.move(DirectionNS::right, level);
             break;
         case InputNS::drinking:
             ret = player.drink(printer, level);
@@ -69,7 +69,7 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
             ret = player.throwItem(printer);
             break;
         case InputNS::stagger:
-            ret = player.stagger(level, printer);
+            ret = player.stagger(level);
             break;
         default:
         case InputNS::quit:
@@ -230,6 +230,7 @@ void mainloop(bool losEnabled, bool animsEnabled)
     Printer printer;
     uint32_t stage = 1;
     PlayerNS::Player player;
+    player.printer = &printer;
 
     bool quit = false;
 
