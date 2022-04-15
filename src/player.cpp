@@ -99,136 +99,136 @@ void Player::resetPosition()
     coord = {common::PLAYER_START_X, common::PLAYER_START_Y};
 }
 
-bool Player::drink(Printer& printer, Level& level)
+bool Player::drink(Level& level)
 {
     if ((inventory.kalja > 0) && (inventory.lonkka > 0))
     {
-        printer.showMessage("Kumpaakos horaat, kaljaa vai lonkkaa (1,2)?", level);
+        printer->showMessage("Kumpaakos horaat, kaljaa vai lonkkaa (1,2)?", level);
         auto type = InputNS::Input::getDrink();
         switch(type)
         {
             case InputNS::kalja:
                 --inventory.kalja;
-                printer.showMessage("Glub glub glub glub ..... Burb !!!", level, false);
+                printer->showMessage("Glub glub glub glub ..... Burb !!!", level, false);
                 updatepromilles(2);
                 break;
             case InputNS::lonkka:
                 --inventory.lonkka;
-                printer.showMessage("Glub glub glub glub ..... Burb !!!", level, false);
+                printer->showMessage("Glub glub glub glub ..... Burb !!!", level, false);
                 updatepromilles(4);
                 break;
             default:
-                printer.showMessage("Päätit olla juomatta mitään.", level, false);
+                printer->showMessage("Päätit olla juomatta mitään.", level, false);
                 return false;
         }
     }
     else if (inventory.lonkka > 0) {
-        printer.showMessage("Glub glub .. gulb gulu... ooorbbbs.", level);
+        printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", level);
         --inventory.lonkka;
         updatepromilles(4);
     }
     else if (inventory.kalja > 0) {
-        printer.showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", level);
+        printer->showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", level);
         --inventory.kalja;
         updatepromilles(3);
     } else {
-        printer.showMessage("Ei oo ehtaa tavaraa.", level);
+        printer->showMessage("Ei oo ehtaa tavaraa.", level);
         return false;
     }
 
     return true;
 }
 
-bool Player::eat(Printer& printer, Level& level)
+bool Player::eat(Level& level)
 {
     if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
-        printer.showMessage("Ei syötävää.", level);
+        printer->showMessage("Ei syötävää.", level);
     } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.lenkki == 0)) {
         --inventory.bansku;
         if (random(50)) {
-            printer.showMessage("Ei vaikutusta.", level);
+            printer->showMessage("Ei vaikutusta.", level);
         } else {
             powerup(1);
-            printer.showMessage("Bansku teki teraa !!!", level);
+            printer->showMessage("Bansku teki teraa !!!", level);
         }
     } else if ((inventory.kalat == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
         --inventory.omppo;
         if (random(50)) {
             damage(1);
-            printer.showMessage("Omppo oli pilaantunut,oksennat.", level);
+            printer->showMessage("Omppo oli pilaantunut,oksennat.", level);
         } else {
             powerup(2);
-            printer.showMessage("Omena oli herkullinen !!!", level);
+            printer->showMessage("Omena oli herkullinen !!!", level);
         }
     } else if ((inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
         --inventory.kalat;
         if (random(70)) {
             damage(2);
-            printer.showMessage("Syomasi kala sisalsi matoja...", level);
+            printer->showMessage("Syomasi kala sisalsi matoja...", level);
         } else {
             powerup(4);
-            printer.showMessage("Kala antaa sinulle uutta puhtia !!!", level);
+            printer->showMessage("Kala antaa sinulle uutta puhtia !!!", level);
         }
     } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0)) {
         powerup(1);
         --inventory.lenkki;
-        printer.showMessage("Oispa edes kossua kaveriksi.", level);
+        printer->showMessage("Oispa edes kossua kaveriksi.", level);
     } else {
-        printer.showMessage("Mitas...1=makkara 2=kala 3=omppo 4=bansku ???", level);
+        printer->showMessage("Mitas...1=makkara 2=kala 3=omppo 4=bansku ???", level);
         auto type = InputNS::Input::getFood();
 
         switch(type) {
             case InputNS::foodlenkki:
                 if (inventory.lenkki == 0) {
-                    printer.showMessage("Ei ole niitä.", level, false);
+                    printer->showMessage("Ei ole niitä.", level, false);
                 } else {
                     --inventory.lenkki;
-                    printer.showMessage("Mamamamakkaraa.", level, false);
+                    printer->showMessage("Mamamamakkaraa.", level, false);
                 }
                 break;
             case InputNS::foodkala:
                 if (inventory.kalat == 0) {
-                    printer.showMessage("Kalat loppu.", level, false);
+                    printer->showMessage("Kalat loppu.", level, false);
                 } else {
                     --inventory.kalat;
                     if (random(70)) {
                         damage(2);
-                        printer.showMessage("Syomasi kala sisalsi matoja...", level, false);
+                        printer->showMessage("Syomasi kala sisalsi matoja...", level, false);
                     } else {
                         powerup(4);
-                        printer.showMessage("Kaloreja kalasta.", level, false);
+                        printer->showMessage("Kaloreja kalasta.", level, false);
                     }
                 }
                 break;
             case InputNS::foodomppo:
                 if (inventory.omppo == 0) {
-                    printer.showMessage("EE OO OMMPPOJA.", level, false);
+                    printer->showMessage("EE OO OMMPPOJA.", level, false);
                 } else {
                     --inventory.omppo;
                     if (random(50)) {
                         damage(1);
-                        printer.showMessage("Joku oli kaytellyt keski keppiaan omppoosi.", level, false);
+                        printer->showMessage("Joku oli kaytellyt keski keppiaan omppoosi.", level, false);
                     } else {
                         powerup(2);
-                        printer.showMessage("orb.", level, false);
+                        printer->showMessage("orb.", level, false);
                     }
                 }
                 break;
             case InputNS::foodbansku:
                 if (inventory.bansku == 0) {
-                    printer.showMessage("Bailu ilman banskuu?", level, false);
+                    printer->showMessage("Bailu ilman banskuu?", level, false);
                 } else {
                     --inventory.bansku;
                     if (random(50)) {
-                        printer.showMessage("Bansku ei vaikuttanut.", level, false);
+                        printer->showMessage("Bansku ei vaikuttanut.", level, false);
                     } else {
                         powerup(1);
-                        printer.showMessage("Babababananiii", level, false);
+                        printer->showMessage("Babababananiii", level, false);
                     }
                 }
                 break;
             default:
-                printer.showMessage("Päätit olla syömättä mitään.", level, false);
+                printer->showMessage("Päätit olla syömättä mitään.", level, false);
                 return false;
 
         }
@@ -248,9 +248,9 @@ static InputType validateDirection(InputType in) {
     }
 }
 
-static DirectionNS::Direction getDirection(Printer& printer, Level* level)
+static DirectionNS::Direction getDirection(Level* level, Printer* printer)
 {
-    printer.showMessage("Anna suunta: ", *level, false);
+    printer->showMessage("Anna suunta: ", *level, false);
 
     InputType direction = InputNS::inputpending;
     while(direction == InputNS::inputpending) {
@@ -271,12 +271,12 @@ static DirectionNS::Direction getDirection(Printer& printer, Level* level)
     }
 }
 
-bool Player::decrementInventory(uint32_t index, Printer& printer)
+bool Player::decrementInventory(uint32_t index)
 {
     switch(index) {
         case 1:
             if (inventory.kalja == 0) {
-                printer.showMessage("Ei ole kaljaa...", *level, false);
+                printer->showMessage("Ei ole kaljaa...", *level, false);
                 return false;
             } else {
                 --inventory.kalja;
@@ -284,7 +284,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 2:
             if (inventory.lonkka == 0) {
-                printer.showMessage("Ei ole giniä...", *level, false);
+                printer->showMessage("Ei ole giniä...", *level, false);
                 return false;
             } else {
                 --inventory.lonkka;
@@ -292,7 +292,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 3:
             if (inventory.lenkki == 0) {
-                printer.showMessage("Ei ole kiekuralenkkiä...", *level, false);
+                printer->showMessage("Ei ole kiekuralenkkiä...", *level, false);
                 return false;
             } else {
                 --inventory.lenkki;
@@ -300,7 +300,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 4:
             if (inventory.ketjut == 0) {
-                printer.showMessage("Ei ole kettinkiä...", *level, false);
+                printer->showMessage("Ei ole kettinkiä...", *level, false);
                 return false;
             } else {
                 --inventory.ketjut;
@@ -308,7 +308,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 5:
             if (inventory.veitset == 0) {
-                printer.showMessage("Ei ole puukkoja...", *level, false);
+                printer->showMessage("Ei ole puukkoja...", *level, false);
                 return false;
             } else {
                 --inventory.veitset;
@@ -316,7 +316,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 6:
             if (inventory.kivet == 0) {
-                printer.showMessage("Ei ole kiviä...", *level, false);
+                printer->showMessage("Ei ole kiviä...", *level, false);
                 return false;
             } else {
                 --inventory.kivet;
@@ -324,7 +324,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 7:
             if (inventory.pamput == 0) {
-                printer.showMessage("Ei ole pamppuja...", *level, false);
+                printer->showMessage("Ei ole pamppuja...", *level, false);
                 return false;
             } else {
                 --inventory.pamput;
@@ -332,7 +332,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 8:
             if (inventory.bootsit == 0) {
-                printer.showMessage("Ei ole camel bootseja...", *level, false);
+                printer->showMessage("Ei ole camel bootseja...", *level, false);
                 return false;
             } else {
                 --inventory.bootsit;
@@ -340,7 +340,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 9:
             if (inventory.kalat == 0) {
-                printer.showMessage("Ei ole turskaa...", *level, false);
+                printer->showMessage("Ei ole turskaa...", *level, false);
                 return false;
             } else {
                 --inventory.kalat;
@@ -348,7 +348,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 10:
             if (inventory.omppo == 0) {
-                printer.showMessage("Ei ole omenia...", *level, false);
+                printer->showMessage("Ei ole omenia...", *level, false);
                 return false;
             } else {
                 --inventory.omppo;
@@ -356,7 +356,7 @@ bool Player::decrementInventory(uint32_t index, Printer& printer)
             break;
         case 11:
             if (inventory.veitset == 0) {
-                printer.showMessage("Ei ole banskuja...", *level, false);
+                printer->showMessage("Ei ole banskuja...", *level, false);
                 return false;
             } else {
                 --inventory.veitset;
@@ -382,16 +382,16 @@ static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
     }
 }
 
-bool Player::throwItem(Printer& printer)
+bool Player::throwItem()
 {
-    printer.showMessage("ANNA NUMERO ..", *level, false);
+    printer->showMessage("ANNA NUMERO ..", *level, false);
     auto number = InputNS::Input::getThrow();
-    if (!decrementInventory(number, printer))
+    if (!decrementInventory(number))
     {
         return false;
     }
 
-    auto dir = getDirection(printer, level);
+    auto dir = getDirection(level, printer);
     {
         Coordinate<int> c { static_cast<int>(coord.x), static_cast<int>(coord.y) };
         auto d = dirToCoord(dir);

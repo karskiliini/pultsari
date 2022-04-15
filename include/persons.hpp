@@ -25,7 +25,7 @@ public:
     virtual bool interactThrow(Item* item, Person* source, std::string& msg) = 0;
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
-    virtual bool throwItem(Printer& printer) { return false; };
+    virtual bool throwItem() { return false; };
     void setLevel(Level* level) { Person::level = level; }
 
     Level* level;

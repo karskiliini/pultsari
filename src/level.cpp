@@ -53,7 +53,7 @@ void Level::buildingTurn()
     }
 }
 
-void Level::npcTurn(Printer* printer)
+void Level::npcTurn()
 {
     for(auto& p : persons) {
         string msg = "";

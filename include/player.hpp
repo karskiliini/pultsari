@@ -28,9 +28,9 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
 
-    virtual bool drink(Printer& printer, Level& level);
-    virtual bool eat(Printer& printer, Level& level);
-    virtual bool throwItem(Printer& printer);
+    virtual bool drink(Level& level);
+    virtual bool eat(Level& level);
+    virtual bool throwItem();
 
     virtual std::string typeToChar() const { return "@"; };
 
@@ -43,7 +43,7 @@ public:
     ScoreBoard scoreBoard;
 
 private:
-    bool decrementInventory(uint32_t index, Printer& printer);
+    bool decrementInventory(uint32_t index);
 };
 
 }

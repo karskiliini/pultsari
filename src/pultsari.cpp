@@ -60,13 +60,13 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
             ret = player.move(DirectionNS::right, level);
             break;
         case InputNS::drinking:
-            ret = player.drink(printer, level);
+            ret = player.drink(level);
             break;
         case InputNS::eating:
-            ret = player.eat(printer, level);
+            ret = player.eat(level);
             break;
         case InputNS::throwing:
-            ret = player.throwItem(printer);
+            ret = player.throwItem();
             break;
         case InputNS::stagger:
             ret = player.stagger(level);
@@ -280,7 +280,7 @@ void mainloop(bool losEnabled, bool animsEnabled)
                 printer.print(level);
 
                 level.buildingTurn();
-                level.npcTurn(&printer);
+                level.npcTurn();
                 level.cleanDead();
                 level.cleanDiscardedItems();
 

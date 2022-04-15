@@ -25,7 +25,7 @@ public:
     ~Level();
 
     void buildingTurn();
-    void npcTurn(Printer* printer);
+    void npcTurn();
     void actThrow(Person* source);
     void playAnimation();
 
