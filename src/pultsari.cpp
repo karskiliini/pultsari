@@ -43,6 +43,12 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
 
     if (player.promilles > 23 && common::random(60)) {
         input = InputNS::stagger;
+    } else if (player.promilles < 4 && common::random(20)) {
+        printer.showMessage("Sua janottaa !!!", level);
+    } else if (player.promilles > 28 && common::random(30)) {
+        printer.showMessage("Oksennat !!", level);
+        player.damage(1);
+        input = InputNS::throwup;
     }
 
     switch(input)
@@ -71,6 +77,8 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
         case InputNS::stagger:
             ret = player.stagger(level);
             break;
+        // case InputNS::throwup();
+        // break;
         default:
         case InputNS::quit:
             ret = false;
@@ -305,6 +313,11 @@ void mainloop(bool losEnabled, bool animsEnabled)
             } else if (player.promilles < 1) {
                 quit = true;
                 printer.setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
+                printer.print(level);
+                break;
+            } else if (player.promilles > 34 && common::random(10)) {
+                quit = true;
+                printer.setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
                 printer.print(level);
                 break;
             }
