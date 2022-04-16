@@ -125,6 +125,13 @@ bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
     return hit;
 }
 
+bool Mummo::interactpuke(Person* source)
+{
+    printer->showMessage("Ykäs meni mummon niskoille. Se kuoli.", *level);
+    damage(health);
+    return true;
+}
+
 Item* Mummo::dropItem()
 {
     return new Raha(coord, rand()%25 + 1);
@@ -228,6 +235,14 @@ bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
 
     auto i = dropItem();
     level->addItem(i);
+    return true;
+}
+
+bool Cop::interactpuke(Person* source)
+{
+    printer->showMessage("Polsu tukehtui yrjöös, muut pollarit ei taija tykätä susta.", *level);
+    level->alertCops(source);
+    damage(health);
     return true;
 }
 

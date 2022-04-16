@@ -26,6 +26,7 @@ Item* Item::createItem(uint32_t index, Coord coord) {
         case 9: return new Kala(coord);
         case 10: return new Omppo(coord);
         case 11: return new Banaani(coord);
+        case 12: return new Oksennus(coord);
         default: return nullptr;
     }
 }
@@ -301,6 +302,18 @@ static bool checkBonas(Level* level)
         }
     }
     return ok;
+}
+
+// oksennus
+Oksennus::Oksennus(const Coord& c) : Item(c, EOksennus) { }
+std::string Oksennus::typeToChar() const { return "‘"; }
+std::string Oksennus::getMsg() const {
+    return "Maassa on oma oksennuksesi. Sulaneita kebabia ja ranskalaisilta. Sinun tulee taas nälkä.";
+}
+
+bool Oksennus::interact(PlayerNS::Player* player)
+{
+    return true;
 }
 
 // next level

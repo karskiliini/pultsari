@@ -24,6 +24,7 @@ enum ItemType {
     ERaha,
     EPaska,
     EViesti,
+    EOksennus,
     ENextLevel
 };
 
@@ -180,6 +181,15 @@ class Viesti : public Item {
 public:
     Viesti(const Coord& c);
     virtual ~Viesti() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+class Oksennus : public Item {
+public:
+    Oksennus(const Coord& c);
+    virtual ~Oksennus() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);

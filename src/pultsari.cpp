@@ -41,14 +41,18 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
 
     input = InputNS::Input::getInput();
 
-    if (player.promilles > 23 && common::random(60)) {
-        input = InputNS::stagger;
+    if (player.promilles > 23 && common::random(10)) {
+        if (input != InputNS::quit)
+            input = InputNS::stagger;
     } else if (player.promilles < 4 && common::random(20)) {
         printer.showMessage("Sua janottaa !!!", level);
-    } else if (player.promilles > 28 && common::random(30)) {
+    } else if (player.promilles > 28 && common::random(5)) {
         printer.showMessage("Oksennat !!", level);
         player.damage(1);
-        input = InputNS::throwup;
+
+        // quit will override even throwing up
+        if (input != InputNS::quit)
+            input = InputNS::throwup;
     }
 
     switch(input)
@@ -77,8 +81,29 @@ static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer
         case InputNS::stagger:
             ret = player.stagger(level);
             break;
-        // case InputNS::throwup();
-        // break;
+        case InputNS::throwup:
+            {
+                DirectionNS::Direction d;
+                int dir = rand() % 4;
+                switch(dir)
+                {
+                    default:
+                    case 0:
+                        d = DirectionNS::up;
+                        break;
+                    case 1:
+                        d = DirectionNS::right;
+                        break;
+                    case 2:
+                        d = DirectionNS::down;
+                        break;
+                    case 3:
+                        d = DirectionNS::left;
+                        break;
+                }
+                ret = player.puke(d, level);
+            }
+            break;
         default:
         case InputNS::quit:
             ret = false;

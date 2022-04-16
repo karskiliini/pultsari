@@ -236,6 +236,41 @@ bool Player::eat(Level& level)
     return true;
 }
 
+bool Player::puke(DirectionNS::Direction d, Level& level)
+{
+    Coord check = coord;
+    switch(d)
+    {
+        default:
+        case DirectionNS::up:
+            --check.y;
+            break;
+        case DirectionNS::right:
+            ++check.x;
+            break;
+        case DirectionNS::down:
+            ++check.y;
+            break;
+        case DirectionNS::left:
+            --check.x;
+            break;
+    }
+
+    bool ret = false;
+    auto p = level.getPerson(check);
+    if (p)
+    {
+        ret = p->interactpuke(this);
+    }
+
+    if (!ret) {
+        auto puke = Item::createItem(12, check);
+        level.addItem(puke);
+    }
+
+    return ret;
+}
+
 static InputType validateDirection(InputType in) {
     switch(in) {
         case InputNS::up:

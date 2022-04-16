@@ -23,6 +23,7 @@ public:
     virtual void npcAct() = 0;
     virtual bool interact(std::string& msg, Person* source) { return false; };
     virtual bool interactThrow(Item* item, Person* source, std::string& msg) = 0;
+    virtual bool interactpuke(Person* source) { return false; };
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
     virtual bool throwItem() { return false; };
@@ -42,6 +43,7 @@ public:
     virtual void npcAct() {};
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual bool interactpuke(Person* source);
     Item* dropItem();
     virtual std::string typeToChar() const { return "M"; };
 };
@@ -55,6 +57,7 @@ public:
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual bool interactpuke(Person* source);
     Item* dropItem();
     virtual std::string typeToChar() const { return "C"; };
 };
