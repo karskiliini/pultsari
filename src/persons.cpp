@@ -101,6 +101,10 @@ bool Mummo::interact(std::string& msg, Person* source)
         }
 
         level->alertCops(source);
+    } else if (source->type == varas) {
+        msg = "Mummo jäi varkaan kynsiin!";
+        level->alertCops(source);
+        damage(health);
     }
 
     return true;
@@ -161,10 +165,7 @@ bool Cop::move(Direction d, std::string& msg)
         auto p = level->getPerson(check);
         if (p)
         {
-            if (p->type == varas) {
-                msg = "Poliisi pidätti varkaan!";
-                p->damage(p->health);
-            }
+            p->interact(msg, this);
         } else if (!level->hitBuilding(check)) {
             coord = check;
         }
@@ -217,6 +218,9 @@ bool Cop::interact(std::string& msg, Person* source)
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }
         level->alertCops(source);
+    } else if (source->type == varas) {
+        msg = "Poliisi pidätti varkaan!";
+        source->damage(health);
     }
 
     return true;
@@ -275,14 +279,7 @@ bool Varas::move(Direction d, std::string& msg)
         auto p = level->getPerson(check);
         if (p)
         {
-            if (p->type == poliisi) {
-                msg = "Poliisi pidätti varkaan!";
-                damage(health);
-            } else if (p->type == mummo) {
-                msg = "Mummo jäi varkaan kynsiin!";
-                level->alertCops(this);
-                p->damage(p->health);
-            }
+            p->interact(msg, this);
         }
 
         auto i = level->getItem(check);
@@ -364,6 +361,9 @@ bool Varas::interact(std::string& msg, Person* source)
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
             damage(health);
         }
+    } else if (source->type == poliisi) {
+        msg = "Poliisi pidätti varkaan!";
+        damage(health);
     }
 
     return true;
@@ -501,6 +501,9 @@ bool Vanki::interact(std::string& msg, Person* source)
     {
         msg = "Hakkaat hullun lailla vankikarkuria!";
         damage(1);
+    } else if (source->type == poliisi) {
+        msg = "Poliisi ottaa vankikarkurin hallintaotteeseen!!!";
+        damage(health);
     }
 
     if (health == 0)
