@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -Wall -g
+CFLAGS := -Wall -g -std=c++14
 TARGET := pultsari
 export REL_PATH := $(shell pwd)
 INC :=-I$(REL_PATH)/include
