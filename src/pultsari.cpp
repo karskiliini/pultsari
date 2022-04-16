@@ -13,6 +13,7 @@
 #include "scoreboard.hpp"
 #include <iostream>
 #include <exception>
+#include <GL/glut.h>
 
 using std::cout;
 using std::endl;
@@ -369,6 +370,13 @@ void mainloop(bool losEnabled, bool animsEnabled)
 
 int main(int argc, char *argv[])
 {
+	// init GLUT and create Window
+	glutInit(&argc, argv);
+	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
+	glutInitWindowPosition(100,100);
+	glutInitWindowSize(320,320);
+	glutCreateWindow("Pultsari 1.0");
+
     srand(time(NULL));
     show_console_cursor(false);
 
