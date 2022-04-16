@@ -11,7 +11,7 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 
 all: $(TARGET)
 $(TARGET): $(OBJS)
-	$(CC) -o $@ $^
+	$(CC) -o $@ $^ -lglut
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< ${INC}
 	mv *.o src/
