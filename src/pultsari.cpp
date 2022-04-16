@@ -14,7 +14,6 @@
 #include <iostream>
 #include <exception>
 #ifdef __APPLE__
-#include <GLUT/glut.h>
 #else
 #include <GL/glut.h>
 #endif
@@ -374,13 +373,16 @@ void mainloop(bool losEnabled, bool animsEnabled)
 
 int main(int argc, char *argv[])
 {
+
+#ifdef __APPLE__
+#else
 	// init GLUT and create Window
 	glutInit(&argc, argv);
 	glutInitDisplayMode(GLUT_DEPTH | GLUT_DOUBLE | GLUT_RGBA);
 	glutInitWindowPosition(100,100);
 	glutInitWindowSize(320,320);
 	glutCreateWindow("Pultsari 1.0");
-
+#endif
     srand(time(NULL));
     show_console_cursor(false);
 
