@@ -1,5 +1,4 @@
 #include "printerglut.hpp"
-#include "GL/glut.h"
 #include "player.hpp"
 #include "item.hpp"
 #include "input.hpp"
@@ -9,6 +8,12 @@
 #include <vector>
 #include <iostream>
 #include <string>
+
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
+#include <GL/glut.h>
+#endif
 
 using std::vector;
 using std::cout;

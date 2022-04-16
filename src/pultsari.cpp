@@ -13,7 +13,11 @@
 #include "scoreboard.hpp"
 #include <iostream>
 #include <exception>
+#ifdef __APPLE__
+#include <GLUT/glut.h>
+#else
 #include <GL/glut.h>
+#endif
 
 using std::cout;
 using std::endl;
