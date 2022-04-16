@@ -12,6 +12,8 @@
 
 namespace PlayerNS {
 
+constexpr uint32_t INITIAL_HP = 10;
+
 class Player : public Person {
 public:
     Player();
@@ -36,7 +38,7 @@ public:
     virtual std::string typeToChar() const { return "@"; };
 
     Inventory inventory;
-    uint32_t promilles = 27;
+    uint32_t promilles = 2;
     uint32_t money = 20;
     uint32_t turn = 1;
     bool inJail = false;

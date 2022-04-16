@@ -21,7 +21,7 @@ using std::endl;
 
 Player::Player() : Person(PersonType::pelaaja, {0, 0})
 {
-    health = 20;
+    health = INITIAL_HP;
 }
 
 void Player::updatepromilles(int p)
