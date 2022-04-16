@@ -32,7 +32,7 @@ static string tokenizeStr(string& str)
     return str;
 }
 
-void Printer::setMessage(std::string message)
+void Printer::setMessage(const std::string& message)
 {
     msg = message;
 }
@@ -80,7 +80,7 @@ void Printer::removeMessage()
     if (msgShown) msgShown = false;
 }
 
-const Person* findPerson(vector<const Person*> row, uint32_t x)
+static const Person* findPerson(vector<const Person*> row, uint32_t x)
 {
     for (const auto& p : row) {
         if (p->coord.x == x) return p;
@@ -89,7 +89,7 @@ const Person* findPerson(vector<const Person*> row, uint32_t x)
     return nullptr;
 }
 
-const Item* findItem(vector<const Item*> row, uint32_t x)
+static const Item* findItem(vector<const Item*> row, uint32_t x)
 {
     for (const auto& p : row) {
         if (p->coord.x == x) return p;
@@ -105,12 +105,12 @@ const string BOT_RIGHT = "╝";
 const string VERTICAL = "║";
 const string HORIZONTAL = "═";
 
-void printLeftBorderSpaces()
+static void printLeftBorderSpaces()
 {
     cout << "             ";
 }
 
-void printBorder(Level& l, bool top)
+static void printBorder(Level& l, bool top)
 {
     printLeftBorderSpaces();
     if (top) {
@@ -130,7 +130,7 @@ void printBorder(Level& l, bool top)
     cout << endl;
 }
 
-string inventoryAligned(uint32_t value)
+static string inventoryAligned(uint32_t value)
 {
     if (value < 10) {
         char str[10];
@@ -145,7 +145,7 @@ string inventoryAligned(uint32_t value)
     }
 }
 
-void printInventory(uint32_t y, Player* player)
+static void printInventory(uint32_t y, Player* player)
 {
     auto& i = player->inventory;
     constexpr uint32_t ROW = 1;
@@ -166,7 +166,7 @@ void printInventory(uint32_t y, Player* player)
     }
 }
 
-string moneyAligned(uint32_t value)
+static string moneyAligned(uint32_t value)
 {
     if (value < 10) {
         char str[10];
@@ -193,7 +193,7 @@ string moneyAligned(uint32_t value)
     }
 }
 
-string promilleAligned(uint32_t value)
+static string promilleAligned(uint32_t value)
 {
     string ret = "";
     uint32_t full = value / 10;
@@ -220,7 +220,7 @@ string promilleAligned(uint32_t value)
     return ret;
 }
 
-void printStats(Level& l, Player* player)
+static void printStats(Level& l, Player* player)
 {
     cout << "RAHAA: "    << moneyAligned(player->money);
     cout << "  VOIMA: "    << moneyAligned(player->health);

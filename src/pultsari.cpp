@@ -117,7 +117,8 @@ static void populateItems(Level& level)
 {
     level.addBonas();
     if (random(50))  level.addItem(EKalja);
-    if (random(250)) level.addItem(EKetjut);
+    if (random(25)) level.addItem(ELenkki);
+    if (random(25)) level.addItem(EKetjut);
     if (random(10))  level.addItem(EVeitsi);
     if (random(55))  level.addItem(EKivi);
     if (random(15))  level.addItem(EBootsit);
