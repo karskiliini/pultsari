@@ -258,7 +258,7 @@ void printScore(const ScoreBoard& scoreBoard)
     cout << "                                                                " << endl;
 }
 
-void mainloop(bool losEnabled, bool animsEnabled)
+void mainloop(bool losEnabled, bool animsEnabled, bool pathFinding)
 {
 #ifdef ANIMATIONS_ENABLED
     common::animsEnabled = animsEnabled;
@@ -275,6 +275,7 @@ void mainloop(bool losEnabled, bool animsEnabled)
     while (!quit) {
         player.resetPosition();
         Level level(stage);
+        level.pathFinding = pathFinding;
 
         VisionNS::Mask mask(&level);
 #ifdef LOS_ENABLED
@@ -331,13 +332,13 @@ void mainloop(bool losEnabled, bool animsEnabled)
             }
 
             if (player.inJail) {
-                printer.setMessage("Putkassa istuskellessasi huomaat parin tunnin paasta miten\nPaasi alkaa selveta, ja tunnet miten kankkunen tulee. Game over !!!!!");
+                printer.setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
                 printer.print(level);
                 quit = true;
                 break;
             } else if (player.health < 1) {
                 quit = true;
-                printer.setMessage("Terveytesi pettaa... kemahdat tantereeseen pitkaksesi .........");
+                printer.setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
                 printer.print(level);
                 break;
             } else if (player.promilles < 1) {
@@ -388,6 +389,7 @@ int main(int argc, char *argv[])
 
     bool animsEnabled = false;
     bool losEnabled = false;
+    bool pathFinding = false;
 
     for (int i = 0; i < argc; ++i) {
         std::string a = argv[i];
@@ -405,13 +407,17 @@ int main(int argc, char *argv[])
             cout << "                                                  " << endl;
             return 0;
         }
+        if (a == "--path") {
+            // enable advanced path finding for npc characters
+            pathFinding = true;
+        }
     }
 
     IntroNS::Intro i;
     i.show();
 
     try {
-        mainloop(losEnabled, animsEnabled);
+        mainloop(losEnabled, animsEnabled, pathFinding);
     }
     catch(const std::out_of_range& e)
     {

@@ -5,6 +5,7 @@
 #include "common.hpp"
 #include "coord.hpp"
 #include "animation.hpp"
+#include "pathmask.hpp"
 #include <string>
 #include <iostream>
 
@@ -52,28 +53,50 @@ void Person::damage(uint32_t damage)  {
 
 Direction Person::getMoveDirection(const Coord& target) const
 {
-    auto dx = max(coord.x, target.x) - (min(coord.x, target.x));
-    auto dy = max(coord.y, target.y) - (min(coord.y, target.y));
+    if (pathFinding) {
+        // use advanced pathfinding
+        PathNS::PathMask mask(level);
+        bool found = mask.findPath(coord, target);
 
-    if (dx > dy) {
-        if (coord.x > target.x) {
-            return DirectionNS::left;
-        } else if (coord.x < target.x) {
-            return DirectionNS::right;
-        } else if (coord.y > target.y) {
-            return DirectionNS::up;
-        } else if (coord.y < target.y) {
-            return DirectionNS::down;
+        if (found) {
+#if 0
+            printer->pathmask = &mask;
+            printer->print(*level);
+            printer->pathmask = nullptr;
+#endif
+            // path is done, now trace back to origin
+            auto player = level->getPlayer();
+            const auto& pCoord = player->coord;
+            return mask.traceBack(pCoord);
+        } else {
+            return DirectionNS::none;
         }
+
     } else {
-        if (coord.y < target.y) {
-            return DirectionNS::down;
-        } else if (coord.y > target.y) {
-            return DirectionNS::up;
-        } else if (coord.x > target.x) {
-            return DirectionNS::left;
-        } else if (coord.x < target.x) {
-            return DirectionNS::right;
+        // use classic pultsari 1.0 pathfinding
+        auto dx = max(coord.x, target.x) - (min(coord.x, target.x));
+        auto dy = max(coord.y, target.y) - (min(coord.y, target.y));
+
+        if (dx > dy) {
+            if (coord.x > target.x) {
+                return DirectionNS::left;
+            } else if (coord.x < target.x) {
+                return DirectionNS::right;
+            } else if (coord.y > target.y) {
+                return DirectionNS::up;
+            } else if (coord.y < target.y) {
+                return DirectionNS::down;
+            }
+        } else {
+            if (coord.y < target.y) {
+                return DirectionNS::down;
+            } else if (coord.y > target.y) {
+                return DirectionNS::up;
+            } else if (coord.x > target.x) {
+                return DirectionNS::left;
+            } else if (coord.x < target.x) {
+                return DirectionNS::right;
+            }
         }
     }
 

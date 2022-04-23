@@ -12,6 +12,10 @@ namespace VisionNS {
     class Mask;
 }
 
+namespace PathNS {
+    class PathMask;
+}
+
 class Printer {
 public:
     static void raw();
@@ -26,8 +30,9 @@ public:
     std::string msg = "";
     bool msgShown = false;
 
-    PlayerNS::Player* player;
-    VisionNS::Mask* mask;
+    PlayerNS::Player* player = nullptr;
+    VisionNS::Mask* mask = nullptr;
+    PathNS::PathMask* pathmask = nullptr;
 };
 
 #endif

@@ -75,6 +75,7 @@ public:
     Printer* printer = nullptr;
 
     uint32_t stage = 1;
+    bool pathFinding = false;
 };
 
 

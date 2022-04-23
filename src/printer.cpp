@@ -5,6 +5,7 @@
 #include "building.hpp"
 #include "animation.hpp"
 #include "mask.hpp"
+#include "pathmask.hpp"
 #include <vector>
 #include <iostream>
 #include <string>
@@ -230,7 +231,7 @@ static void printStats(Level& l, Player* player)
     cout << endl << endl;
 }
 
-static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask)
+static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask)
 {
     Animation* anim = nullptr;
     if (common::animsEnabled) {
@@ -277,6 +278,19 @@ static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask)
             }
         }
 
+#if 0
+        // debug
+        if (pathmask)
+        {
+            auto v = pathmask->at(coord);
+            if ((v > 1) && (coord != l.getPlayer()->coord)) {
+                c = std::to_string(v)[0];
+                found = true;
+            }
+        } else {
+            return;
+        }
+#endif
         if (!found) {
             if (!mask->visible(coord)) {
                 c = ".";
@@ -333,7 +347,7 @@ void Printer::print(Level& level)
         // left border
         cout << VERTICAL;
 
-        printLine(level, y, mask);
+        printLine(level, y, mask, pathmask);
 
         // right border
         cout << VERTICAL << " " << endl;

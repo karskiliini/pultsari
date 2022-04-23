@@ -34,6 +34,7 @@ public:
     PersonType type = invalidPerson;
     Coord coord = { 30, 20 };
     uint32_t health = 1;
+    bool pathFinding = false;
 };
 
 class Mummo : public Person {
