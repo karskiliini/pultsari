@@ -56,6 +56,7 @@ Direction Person::getMoveDirection(const Coord& target) const
     if (pathFinding) {
         // use advanced pathfinding
         PathNS::PathMask mask(level);
+        pathmaskHook(&mask);
         bool found = mask.findPath(coord, target);
 
         if (found) {
@@ -197,6 +198,12 @@ bool Cop::move(Direction d, std::string& msg)
     return true;
 }
 
+void Cop::pathmaskHook(PathNS::PathMask* pathmask) const
+{
+    pathmask->skipConvict = true;
+    pathmask->skipVaras = true;
+}
+
 void Cop::npcAct()
 {
     string msg = "";
@@ -322,6 +329,11 @@ bool Varas::move(Direction d, std::string& msg)
     }
     common::checkBounds(coord);
     return true;
+}
+
+void Varas::pathmaskHook(PathNS::PathMask* pathmask) const
+{
+    pathmask->skipCop = true;
 }
 
 bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
@@ -467,6 +479,11 @@ bool Vanki::move(Direction d, std::string& msg)
     }
     common::checkBounds(coord);
     return true;
+}
+
+void Vanki::pathmaskHook(PathNS::PathMask* pathmask) const
+{
+    pathmask->skipCop = true;
 }
 
 void Vanki::npcAct()

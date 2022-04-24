@@ -35,6 +35,23 @@ uint32_t& PathMask::at(const Coord& c)
     return s[c.x];
 }
 
+bool hitPerson(PathNS::PathMask& mask, Coord coord)
+{
+    if (!mask.level->hitPerson(coord))
+    {
+        return false;
+    } else {
+        auto person = mask.level->getPerson(coord);
+        auto type = person->type;
+
+        if ((type == poliisi) && mask.skipCop) return false;
+        if ((type == varas) && mask.skipVaras) return false;
+        if ((type == vanki) && mask.skipConvict) return false;
+    }
+
+    return true;
+}
+
 bool recursePath(PathNS::PathMask& mask, uint32_t value)
 {
     PlayerNS::Player* player = mask.level->getPlayer();
@@ -53,7 +70,7 @@ bool recursePath(PathNS::PathMask& mask, uint32_t value)
                 Coord coord(x, y);
                 if ((mask.at(coord) == 0) && (mask.at(dirs[i]) == value - 1))
                 {
-                    if (!mask.level->hitPerson(coord) && !mask.level->hitBuilding(coord))
+                    if (!hitPerson(mask, coord) && !mask.level->hitBuilding(coord))
                     {
                         mask.at(coord) = value;
                     }

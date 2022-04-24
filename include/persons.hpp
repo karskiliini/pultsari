@@ -11,6 +11,10 @@
 
 class Level;
 
+namespace PathNS {
+    class PathMask;
+}
+
 class Person {
 public:
     Person(PersonType personType, const Coord& pos) : type(personType), coord(pos) { }
@@ -20,6 +24,7 @@ public:
     virtual void damage(uint32_t damage);
 
     virtual DirectionNS::Direction getMoveDirection(const Coord& target) const;
+    virtual void pathmaskHook(PathNS::PathMask* pathmask) const { };
     virtual void npcAct() = 0;
     virtual bool interact(std::string& msg, Person* source) { return false; };
     virtual bool interactThrow(Item* item, Person* source, std::string& msg) = 0;
@@ -55,6 +60,7 @@ public:
     virtual ~Cop() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void pathmaskHook(PathNS::PathMask* pathmask) const;
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
@@ -69,6 +75,7 @@ public:
     virtual ~Varas() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void pathmaskHook(PathNS::PathMask* pathmask) const;
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
@@ -82,6 +89,7 @@ public:
     virtual ~Vanki() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void pathmaskHook(PathNS::PathMask* pathmask) const;
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
