@@ -89,6 +89,7 @@ bool PathMask::findPath(const Coord& coord, const Coord& target)
 DirectionNS::Direction PathMask::traceBack(const Coord& c)
 {
     const uint32_t& value = at(c);
+    const uint32_t& next = value - 1;
 
     Coord dirs[4];
     dirs[0] = { c.x,     c.y - 1 };
@@ -96,29 +97,33 @@ DirectionNS::Direction PathMask::traceBack(const Coord& c)
     dirs[2] = { c.x,     c.y + 1 };
     dirs[3] = { c.x - 1, c.y     };
 
-    for (uint32_t i = 0; i < 4; ++i) {
-        std::cout << "traceBack " << value << std::endl;
-        if (at(dirs[i]) == (value - 1)) {
-            std::cout << "traceBack value -1 " << value << std::endl;
+    std::vector<uint32_t> foundDirs;
 
-            if ((value - 1) == 1) {
+    for (uint32_t i = 0; i < 4; ++i) {
+        if (at(dirs[i]) == next) {
+            // found npc character?
+            if (next == 1) {
                 switch(i) {
                     case 0: return DirectionNS::down;
                     case 1: return DirectionNS::left;
                     case 2: return DirectionNS::up;
                     case 3: return DirectionNS::right;
                     default:
-                        break;
+                            return DirectionNS::none;
                 }
             }
-            // correct path found
-            std::cout << "follow path " << value << std::endl;
-            return traceBack(dirs[i]);
+            foundDirs.push_back(i);
         }
     }
+    if (foundDirs.size() == 0) {
+        return DirectionNS::none;
+    }
 
-    std::cout << "none " << std::endl;
-    return DirectionNS::none;
+    // correct path found, randomize which one is picked
+    uint32_t pick = (std::rand() % foundDirs.size());
+
+    // std::cout << "size: " << foundDirs.size() << " pick: " << pick << std::endl;
+    return traceBack(dirs[foundDirs[pick]]);
 }
 
 }

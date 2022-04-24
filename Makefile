@@ -1,5 +1,5 @@
 CC := g++
-CFLAGS := -Wall -g -std=c++14 -static -static-libgcc -static-libstdc++
+CFLAGS := -Wall -g -std=c++14
 TARGET := pultsari
 export REL_PATH := $(shell pwd)
 INC :=-I$(REL_PATH)/include
@@ -11,7 +11,7 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 
 all: $(TARGET)
 $(TARGET): $(OBJS)
-	$(CC) ${CFLAGS} -o $@ $^ -lglut
+	$(CC) ${CFLAGS} -o $@ $^
 %.o: %.cpp
 	$(CC) $(CFLAGS) -c $< ${INC}
 	mv *.o src/
