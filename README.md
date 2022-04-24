@@ -23,12 +23,12 @@ or
 
 
 ### linux
-The compilation requires C++11 gcc
-$ make clean
-$ make
-$ ./pultsari
-
-For advanced features try
-$ ./pultsari --help
-$ ./pultsari --all
-
+The compilation requires C++11 gcc  
+$ make clean  
+$ make  
+$ ./pultsari  
+  
+For advanced features try  
+$ ./pultsari --help  
+$ ./pultsari --all  
+  
