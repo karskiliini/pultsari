@@ -19,6 +19,7 @@ public:
     Player();
     virtual ~Player() = default;
     virtual void updatepromilles(int p);
+    virtual void updateMoney(int money);
     void updateTurn();
 
     void resetPosition();

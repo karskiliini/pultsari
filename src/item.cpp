@@ -192,7 +192,7 @@ std::string Raha::getMsg() const {
 }
 bool Raha::interact(PlayerNS::Player* player)
 {
-    player->money += value;
+    player->updateMoney(value);
     return true;
 }
 

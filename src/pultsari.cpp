@@ -395,7 +395,7 @@ int main(int argc, char *argv[])
         } else if (a == "--path") {
             // enable advanced path finding for npc characters
             pathFinding = true;
-        } else if (a == "--all") {
+        } else if ((a == "--all") || (a == "-a")) {
             losEnabled = true;
             animsEnabled = true;
             pathFinding = true;

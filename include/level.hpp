@@ -55,7 +55,7 @@ public:
     void addItem(ItemType item);
     void addItem(Item* item);
     void addThrownItem(Item* item);
-    void addAnimation(Animation* animation);
+    void addAnimation(Animation* animation, bool play = true);
     void removeItem(Item* item);
 
     bool raycast(Coord from, const Coord& to) const;

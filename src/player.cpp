@@ -24,6 +24,28 @@ Player::Player() : Person(PersonType::pelaaja, {0, 0})
     health = INITIAL_HP;
 }
 
+void Player::updateMoney(int money)
+{
+    Player::money += money;
+
+#ifdef ANIMATIONS_ENABLED
+    string prefix = "+";
+    if (money < 0) {
+        prefix = "-";
+    }
+
+    string ptext = std::to_string(abs(money));
+
+    string text = prefix + ptext + "$";
+    uint32_t diff = text.length() / 2;
+    diff = (coord.x < diff) ? 0 : coord.x - diff;
+    Coord textCoord { diff, coord.y };
+    Animation* a = new Animation(textCoord, text, 5);
+    a->coordMove = Coordinate<int>(0, -1);
+    level->addAnimation(a, false);
+#endif
+}
+
 void Player::updatepromilles(int p)
 {
     promilles += p;
@@ -578,6 +600,8 @@ bool Player::move(DirectionNS::Direction d, Level& level)
     if (!blocked) {
         coord = check;
     }
+
+    level.playAnimation();
 
     if (common::checkBounds(coord)) {
         printer->showMessage("Ei karata pelialueelta !!", level, true);

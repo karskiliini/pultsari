@@ -407,10 +407,13 @@ void Level::addThrownItem(Item* item)
     thrownItem = item;
 }
 
-void Level::addAnimation(Animation* animation)
+void Level::addAnimation(Animation* animation, bool play)
 {
     Level::animation = animation;
-    playAnimation();
+    if (play)
+    {
+        playAnimation();
+    }
 }
 
 void Level::removeItem(Item* item)

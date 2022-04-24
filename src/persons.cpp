@@ -350,8 +350,8 @@ bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
 void Varas::npcAct()
 {
     string msg = "";
-    Player* p = level->getPlayer();
-    target = p->coord;
+    Player* player = level->getPlayer();
+    target = player->coord;
 
     if (coord.distance(target) == 1)
     {
@@ -360,8 +360,8 @@ void Varas::npcAct()
         if (rand()%2)
         {
             uint32_t sum = rand() % 16 + 1;
-            if (sum > p->money) sum = p->money;
-            p->money -= sum;
+            if (sum > player->money) sum = player->money;
+            player->updateMoney(-sum);
             msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
             damage(health);
         }

@@ -220,11 +220,11 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
         case InputNS::ostakalja:
             msg = "Kiitos,ja hyvää päivän jatkoa.";
             ++player->inventory.kalja;
-            player->money -= 10;
+            player->updateMoney(-10);
             break;
         case InputNS::ostalonkka:
             ++player->inventory.lonkka;
-            player->money -= 15;
+            player->updateMoney(-15);
             msg = "Kiitos,ja hyvää päivän jatkoa.";
             break;
         default:
@@ -315,7 +315,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                     msg = "Eihän teillä ole kenkia edes jaloissanne.";
                 } else {
                     --player->inventory.bootsit;
-                    player->money += 100;
+                    player->updateMoney(100);
                     msg = "Bootsit meni satasella.";
                 }
                 break;
@@ -325,7 +325,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                 } else {
                     --player->inventory.pamput;
                     uint32_t price = rand() % 40 + 1;
-                    player->money += price;
+                    player->updateMoney(price);
                     msg = "Pamppu hurahti " + std::to_string(price) + " markalla.";
                 }
                 break;
@@ -334,7 +334,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                     msg = "Mutta, kun sinulla ei ole yhtikäs yhtään ketjun patkääkään.";
                 } else {
                     --player->inventory.ketjut;
-                    player->money += 30;
+                    player->updateMoney(30);
                     msg = "Ketjut onnistuit myymaan kolmella kympilla.";
                 }
                 break;
@@ -344,7 +344,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                 } else {
                     --player->inventory.veitset;
                     uint32_t price = rand() % 50 + 1;
-                    player->money += price;
+                    player->updateMoney(price);
                     msg = "Voitit veitellas " + std::to_string(price) + " markkaa.";
                 }
                 break;
