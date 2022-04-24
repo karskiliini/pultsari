@@ -386,15 +386,18 @@ int main(int argc, char *argv[])
             // enable animations
             animsEnabled = true;
         } else if ((a == "-h") || (a == "--help")) {
-            cout << "Pultsari help:                                    " << endl;
-            cout << "-los :   to enable line of sight mode             " << endl;
-            cout << "-anims : to enable animations support             " << endl;
-            cout << "                                                  " << endl;
-            cout << "                                                  " << endl;
+            cout << "Pultsari help:                                        " << endl;
+            cout << "--los      : to enable line of sight mode             " << endl;
+            cout << "--anims    : to enable animations support             " << endl;
+            cout << "--path     : to enable advanced path finding          " << endl;
+            cout << "--all | -a : enable all features                      " << endl;
             return 0;
-        }
-        if (a == "--path") {
+        } else if (a == "--path") {
             // enable advanced path finding for npc characters
+            pathFinding = true;
+        } else if (a == "--all") {
+            losEnabled = true;
+            animsEnabled = true;
             pathFinding = true;
         }
     }
