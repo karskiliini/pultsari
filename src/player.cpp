@@ -519,16 +519,16 @@ bool Player::move(DirectionNS::Direction d, Level& level)
     switch(d)
     {
         case DirectionNS::down:
-            check += Coord { 0, 1 };
+            check += { 0, 1 };
             break;
         case DirectionNS::up:
-            check -= Coord { 0, 1 };
+            check -= { 0, 1 };
             break;
         case DirectionNS::right:
-            check += Coord { 1, 0 };
+            check += { 1, 0 };
             break;
         case DirectionNS::left:
-            check -= Coord { 1, 0 };
+            check -= { 1, 0 };
             break;
         case DirectionNS::none:
             return false;
