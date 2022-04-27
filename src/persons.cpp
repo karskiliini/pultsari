@@ -213,7 +213,7 @@ void Cop::npcAct()
         Player* p = level->getPlayer();
         if (coord.distance(p->coord) == 1)
         {
-            msg = "Pollari varoittaa!";
+            msg = "Pollari varoittaa ettei kantsi alkaa rettelöidä!";
         }
     } else {
         Player* p = level->getPlayer();

@@ -140,6 +140,7 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+    bool emitted = false;
 };
 
 class Seina : public Building {

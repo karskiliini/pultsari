@@ -497,10 +497,12 @@ std::string Asema::getName() const
 
 void Asema::npcAct()
 {
-    ++turn;
-    if (turn >= 30) {
-        level->createPerson(getSpawn(), skinhead);
-        turn = 0;
+    if (!emitted) {
+        ++turn;
+        if (turn >= 30) {
+            level->createPerson(getSpawn(), skinhead);
+            emitted = true;
+        }
     }
 }
 

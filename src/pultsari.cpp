@@ -254,7 +254,7 @@ void printScore(const ScoreBoard& scoreBoard)
     cout << "                                                                " << endl;
 }
 
-void mainloop(bool losEnabled, bool animsEnabled, bool pathFinding)
+void mainloop(uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFinding)
 {
 #ifdef ANIMATIONS_ENABLED
     common::animsEnabled = animsEnabled;
@@ -262,7 +262,6 @@ void mainloop(bool losEnabled, bool animsEnabled, bool pathFinding)
     bool welcome = true;
 
     Printer printer;
-    uint32_t stage = 1;
     PlayerNS::Player player;
     player.printer = &printer;
 
@@ -373,6 +372,7 @@ int main(int argc, char *argv[])
     srand(time(NULL));
     show_console_cursor(false);
 
+    uint32_t level = 1;
     bool animsEnabled = false;
     bool losEnabled = false;
     bool pathFinding = false;
@@ -399,6 +399,19 @@ int main(int argc, char *argv[])
             losEnabled = true;
             animsEnabled = true;
             pathFinding = true;
+        } else if (a == "--level") {
+            ++i;
+            if (i == argc) {
+                cout << "ERROR: --level requires a parameter!" << endl;
+                throw std::out_of_range("--level missing parameter");
+            }
+            uint32_t tmp = std::atoi(argv[i]);
+            if ((tmp > 100) || (tmp == 0)) {
+                cout << "ERROR: --level parameter out of range" << endl;
+                throw std::out_of_range("--level out of range.");
+            } else {
+                level = tmp;
+            }
         }
     }
 
@@ -406,7 +419,7 @@ int main(int argc, char *argv[])
     i.show();
 
     try {
-        mainloop(losEnabled, animsEnabled, pathFinding);
+        mainloop(level, losEnabled, animsEnabled, pathFinding);
     }
     catch(const std::out_of_range& e)
     {
