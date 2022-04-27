@@ -71,6 +71,14 @@ void Player::updatepromilles(int p)
 void Player::updateTurn()
 {
     ++turn;
+
+// original pultsari has this feature, but it makes the game too easy
+#if 0
+    if (turn % 50 == 0)
+    {
+        powerup(1);
+    }
+#endif
     if (turn % 260 == 0) {
         updatepromilles(-1);
     }
