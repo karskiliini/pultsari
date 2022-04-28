@@ -5,6 +5,7 @@
 
 class PrinterTerm : public Printer {
 public:
+    virtual void show_console_cursor(const bool show);
     virtual void cursorHome();
     virtual void printMore();
     virtual void printHalfTab();

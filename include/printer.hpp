@@ -29,6 +29,7 @@ public:
     const std::string VERTICAL = "║";
     const std::string HORIZONTAL = "═";
 
+    virtual void show_console_cursor(const bool show) = 0;
     virtual void cursorHome() = 0;
     virtual void printMore() = 0;
     virtual void printHalfTab() = 0;

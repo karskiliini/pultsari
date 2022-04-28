@@ -22,18 +22,6 @@ namespace common {
     bool animsEnabled;
 }
 
-void show_console_cursor(const bool show) {
-#if defined(_WIN32)
-    static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
-    CONSOLE_CURSOR_INFO cci;
-    GetConsoleCursorInfo(handle, &cci);
-    cci.bVisible = show; // show/hide cursor
-    SetConsoleCursorInfo(handle, &cci);
-#elif defined(__linux__)
-    std::cout << (show ? "\033[?25h" : "\033[?25l"); // show/hide cursor
-#endif // Windows/Linux
-}
-
 static bool handleInput(PlayerNS::Player& player, Level* level, Printer& printer)
 {
     bool ret;
@@ -353,7 +341,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 int init(int argc, char *argv[], Printer* printer)
 {
     srand(time(NULL));
-    show_console_cursor(false);
+    printer->show_console_cursor(false);
 
     uint32_t stage = 1;
     bool animsEnabled = false;
@@ -382,15 +370,18 @@ int init(int argc, char *argv[], Printer* printer)
             ++i;
             if (i == argc) {
                 printer->printErr("ERROR: --level requires a parameter!");
-                throw std::out_of_range("--level missing parameter");
+                return -1;
             }
             uint32_t tmp = std::atoi(argv[i]);
             if ((tmp > 100) || (tmp == 0)) {
                 printer->printErr("ERROR: --level parameter out of range");
-                throw std::out_of_range("--level out of range.");
+                return -1;
             } else {
                 stage = tmp;
             }
+        } else if (i > 0) {
+            printer->printErr("ERROR: unknown parameter " + a);
+            return -1;
         }
     }
 
@@ -411,7 +402,7 @@ int init(int argc, char *argv[], Printer* printer)
         std::cout << "unknown exception caught, exit!" << std::endl;
     }
 
-    show_console_cursor(true);
+    printer->show_console_cursor(true);
 
     return 0;
 }
