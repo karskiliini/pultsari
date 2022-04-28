@@ -6,6 +6,7 @@
 #include "direction.hpp"
 #include "printer.hpp"
 #include "scoreboard.hpp"
+#include "stats.hpp"
 #include <cstdint>
 #include <string>
 
@@ -40,9 +41,6 @@ public:
     virtual std::string typeToChar() const { return "@"; };
 
     Inventory inventory;
-    uint32_t promilles = 2;
-    uint32_t money = 20;
-    uint32_t turn = 1;
     bool inJail = false;
 
     ScoreBoard scoreBoard;

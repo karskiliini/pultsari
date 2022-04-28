@@ -19,7 +19,7 @@ using DirectionNS::Direction;
 using common::random;
 
 void Person::powerup(uint32_t damage)  {
-    health += damage;
+    stats.health += damage;
 
 #ifdef ANIMATIONS_ENABLED
     string text = "+" + std::to_string(damage) + "hp";
@@ -33,11 +33,11 @@ void Person::powerup(uint32_t damage)  {
 }
 
 void Person::damage(uint32_t damage)  {
-    if (damage >= health) {
+    if (damage >= stats.health) {
         if (this == level->attack) level->attack = nullptr;
-        health = 0;
+        stats.health = 0;
     } else {
-        health -= damage;
+        stats.health -= damage;
     }
 
 #ifdef ANIMATIONS_ENABLED
@@ -120,7 +120,7 @@ bool Mummo::interact(std::string& msg, Person* source)
             source->damage(damage);
         } else {
             msg = "Mukiloit mummon kumoon. Haa,lompsa !!!";
-            damage(health);
+            damage(stats.health);
             ++dynamic_cast<Player*>(source)->scoreBoard.mummot;
         }
 
@@ -128,7 +128,7 @@ bool Mummo::interact(std::string& msg, Person* source)
     } else if (source->type == varas) {
         msg = "Mummo jäi varkaan kynsiin!";
         level->alertCops(source);
-        damage(health);
+        damage(stats.health);
     }
 
     return true;
@@ -142,7 +142,7 @@ bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
             if (source->type == pelaaja) msg = "Et osunut mummoon!";
         } else {
             msg = "Mummo heitti kuperkeikan ja hukkasi käsilaukkunsa.";
-            damage(health);
+            damage(stats.health);
             ++dynamic_cast<Player*>(source)->scoreBoard.mummot;
             level->alertCops(source);
 
@@ -156,7 +156,7 @@ bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
 bool Mummo::interactpuke(Person* source)
 {
     printer->showMessage("Ykäs meni mummon niskoille. Se kuoli.", level);
-    damage(health);
+    damage(stats.health);
     return true;
 }
 
@@ -244,13 +244,13 @@ bool Cop::interact(std::string& msg, Person* source)
             msg = "Huitaiset kyylää!";
         } else {
             msg = "Kyttä kellahtaa ketoon !!!";
-            damage(health);
+            damage(stats.health);
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }
         level->alertCops(source);
     } else if (source->type == varas) {
         msg = "Poliisi pidätti varkaan!";
-        source->damage(health);
+        source->damage(stats.health);
     }
 
     return true;
@@ -276,7 +276,7 @@ bool Cop::interactpuke(Person* source)
 {
     printer->showMessage("Polsu tukehtui yrjöös, muut pollarit ei taija tykätä susta.", level);
     level->alertCops(source);
-    damage(health);
+    damage(stats.health);
     return true;
 }
 
@@ -320,7 +320,7 @@ bool Varas::move(Direction d, std::string& msg)
                 msg += (msg == "") ? "" : "\n";
                 msg += "Varas liukastui paskaan, ja kuoli.";
                 i->discard = true;
-                damage(health);
+                damage(stats.health);
             } else if (!level->hitBuilding(check)) {
                 coord = check;
             }
@@ -346,14 +346,14 @@ bool Varas::interactThrow(Item* item, Person* source, std::string& msg)
             if (random(50)) msg = "Varas ulvahtaa kivusta kun osut häntä munille.";
             else msg = "Osuit varkaaseen, joka kupsahti.";
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
-            damage(health);
+            damage(stats.health);
         }
     } else {
         if (!hit) {
         } else {
             if (random(50)) msg = "Varas ulvahtaa kivusta kun häntä osuu munille.";
             else msg = "Varkaaseen osui ja se kupsahti.";
-            damage(health);
+            damage(stats.health);
         }
     }
     return hit;
@@ -372,10 +372,10 @@ void Varas::npcAct()
         if (rand()%2)
         {
             uint32_t sum = rand() % 16 + 1;
-            if (sum > player->money) sum = player->money;
+            if (sum > player->stats.money) sum = player->stats.money;
             player->updateMoney(-sum);
             msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
-            damage(health);
+            damage(stats.health);
         }
     } else {
         Direction d = getMoveDirection(target);
@@ -394,11 +394,11 @@ bool Varas::interact(std::string& msg, Person* source)
         } else {
             msg = "VARAS kellahtaa ketoon !!!";
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
-            damage(health);
+            damage(stats.health);
         }
     } else if (source->type == poliisi) {
         msg = "Poliisi pidätti varkaan!";
-        damage(health);
+        damage(stats.health);
     }
 
     return true;
@@ -408,7 +408,7 @@ bool Varas::interact(std::string& msg, Person* source)
 // VANKI
 Vanki::Vanki(const Coord& pos) : Person(vanki, pos), target(pos)
 {
-    health = 4;
+    stats.health = 4;
 }
 
 bool Vanki::move(Direction d, std::string& msg)
@@ -432,10 +432,10 @@ bool Vanki::move(Direction d, std::string& msg)
         {
             if (p->type == poliisi) {
                 msg = "Poliisi hapettaa vankikarkurin!";
-                damage(health);
+                damage(stats.health);
             } else if (p->type == mummo) {
                 msg = "Vankikarkuri tönäisee muorin nurin!";
-                p->damage(p->health);
+                p->damage(p->stats.health);
                 level->alertCops(this);
             }
         }
@@ -450,7 +450,7 @@ bool Vanki::move(Direction d, std::string& msg)
                     i->discard = true;
                     coord = check;
                     damage(1);
-                    if (health == 0)
+                    if (stats.health == 0)
                     {
                         msg += "\nja vankikarkuri kuoli.";
                     }
@@ -458,7 +458,7 @@ bool Vanki::move(Direction d, std::string& msg)
                 case ELenkki:
                     msg += (msg == "") ? "" : "\n";
                     msg += "Vankikarkuri ahmii kiekuralenkin ja voimistuu";
-                    ++health;
+                    ++stats.health;
                     i->discard = true;
                     coord = check;
                     break;
@@ -543,13 +543,13 @@ bool Vanki::interact(std::string& msg, Person* source)
         damage(1);
     } else if (source->type == poliisi) {
         msg = "Poliisi ottaa vankikarkurin hallintaotteeseen!!!";
-        damage(health);
+        damage(stats.health);
     }
 
-    if (health == 0)
+    if (stats.health == 0)
     {
         msg = msg + "\n Vanki kellahtaa ketoon !!!";
-        damage(health);
+        damage(stats.health);
 
         if (source->type == pelaaja) {
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
@@ -566,7 +566,7 @@ bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
         msg = "Roisto väisti heittosi !";
     } else {
         uint32_t d = rand() % 3 + 1;
-        if (d >= health) {
+        if (d >= stats.health) {
             msg = "Vankikarkuri pokertyy heittosi ansiosta maahan...";
         } else {
             msg = "Osuit vankikarkuriin, mutta hän näyttää entistä vihaisemmalta!";
@@ -582,7 +582,7 @@ bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
 // SKINHEAD
 Skinhead::Skinhead(const Coord& pos) : Person(skinhead, pos)
 {
-    health = 7;
+    stats.health = 7;
 }
 
 bool Skinhead::move(Direction d, std::string& msg)
@@ -617,7 +617,7 @@ bool Skinhead::move(Direction d, std::string& msg)
                     msg += (msg == "") ? "" : "\n";
                     msg += "Skini näkee maassa kikkareen ja päättää maistaa sitä.";
                     damage(1);
-                    if (health == 0)
+                    if (stats.health == 0)
                     {
                         msg += "\nSkinhead tukehtui paskaan.";
                     }
@@ -625,7 +625,7 @@ bool Skinhead::move(Direction d, std::string& msg)
                 case ELenkki:
                     msg += (msg == "") ? "" : "\n";
                     msg += "Skinin massa kasvaa pilottitakin alla.";
-                    ++health;
+                    ++stats.health;
                     i->discard = true;
                     break;
                 default:
@@ -671,10 +671,10 @@ bool Skinhead::interact(std::string& msg, Person* source)
         msg = "Pusket SHITHEADia naamaan,mutta sehan murjoo myos sua.";
         damage(1);
 
-        if (health == 0)
+        if (stats.health == 0)
         {
             msg = "Osuit skiniä kiveksiin !!!";
-            damage(health);
+            damage(stats.health);
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }
     }
@@ -689,7 +689,7 @@ bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
         msg = "Et osunut skinheadiin !";
     } else {
         uint32_t d = rand() % 5 + 1;
-        if (d >= health) {
+        if (d >= stats.health) {
             msg = "Heittosi ossuupi skinukkelia vyon alle. Se koskee tuntuvasti !!!";
         } else {
             msg = "Osuit skiniin, mutta hän näyttää entistä vihaisemmalta!";
@@ -705,7 +705,7 @@ bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
 // YKÄ
 Yka::Yka(const Coord& pos) : Person(yka, pos)
 {
-    health = 1;
+    stats.health = 1;
 }
 
 bool Yka::move(Direction d, std::string& msg)
@@ -786,7 +786,7 @@ bool Yka::interact(std::string& msg, Person* source)
         {
             msg = "Huitaiset ykaa,joka pollii sulta yhen kaljan.";
             --p->inventory.kalja;
-            damage(health);
+            damage(stats.health);
         } else {
             msg = "Mätät Ykää sikana naamaan!";
         }
@@ -803,7 +803,7 @@ bool Yka::interactThrow(Item* item, Person* source, std::string& msg)
         return false;
     } else {
         msg = "Ykä simahtaa !";
-        damage(health);
+        damage(stats.health);
         if (source->type == pelaaja) {
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }

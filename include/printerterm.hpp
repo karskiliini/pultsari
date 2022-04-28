@@ -10,8 +10,8 @@ public:
     virtual void printHalfTab();
     virtual void printLeftBorderSpaces();
     virtual void printBorder(Level* l, bool top);
-    virtual void printInventory(uint32_t y, PlayerNS::Player* player);
-    virtual void printStats(Level* l, PlayerNS::Player* player);
+    virtual void printInventory(uint32_t y, Inventory* inventory);
+    virtual void printStats(Level* l, Stats* stats);
     virtual void printChar(std::string c);
     virtual void printScore(const ScoreBoard* scoreBoard);
     virtual void printHelp();

@@ -17,6 +17,8 @@ namespace PathNS {
 
 class Level;
 struct ScoreBoard;
+struct Inventory;
+struct Stats;
 
 class Printer {
 public:
@@ -32,8 +34,8 @@ public:
     virtual void printHalfTab() = 0;
     virtual void printLeftBorderSpaces() = 0;
     virtual void printBorder(Level* l, bool top) = 0;
-    virtual void printInventory(uint32_t y, PlayerNS::Player* player) = 0;
-    virtual void printStats(Level* l, PlayerNS::Player* player) = 0;
+    virtual void printInventory(uint32_t y, Inventory* inventory) = 0;
+    virtual void printStats(Level* l, Stats* stats) = 0;
     virtual void printChar(std::string c) = 0;
     virtual void printScore(const ScoreBoard* scoreBoard) = 0;
     virtual void printHelp() = 0;

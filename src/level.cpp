@@ -57,7 +57,7 @@ void Level::npcTurn()
 {
     for(auto& p : persons) {
         string msg = "";
-        if (p->health > 0)
+        if (p->stats.health > 0)
         {
             p->npcAct();
         }
@@ -194,7 +194,7 @@ void Level::cleanDead()
         restart = false;
 
         for (auto& p : persons) {
-            if ((p->health == 0) && (p->type != pelaaja)) {
+            if ((p->stats.health == 0) && (p->type != pelaaja)) {
                 delete p;
                 p = nullptr;
 
@@ -243,7 +243,7 @@ bool Level::hitPerson(const Coord& c) const
 {
     for (const auto& p : persons)
     {
-        if ((p->coord == c) && (p->health > 0))
+        if ((p->coord == c) && (p->stats.health > 0))
             return true;
     }
     return false;

@@ -6,6 +6,7 @@
 #include "direction.hpp"
 #include "item.hpp"
 #include "printer.hpp"
+#include "stats.hpp"
 #include <cstdint>
 #include <string>
 
@@ -38,7 +39,7 @@ public:
     Printer* printer;
     PersonType type = invalidPerson;
     Coord coord = { 30, 20 };
-    uint32_t health = 1;
+    Stats stats;
     bool pathFinding = false;
 };
 

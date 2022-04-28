@@ -3,6 +3,7 @@
 #include "player.hpp"
 #include "scoreboard.hpp"
 #include "common.hpp"
+#include "inventory.hpp"
 #include <iostream>
 #include <string>
 
@@ -51,9 +52,9 @@ void PrinterTerm::printBorder(Level* l, bool top)
     cout << endl;
 }
 
-void PrinterTerm::printInventory(uint32_t y, Player* player)
+void PrinterTerm::printInventory(uint32_t y, Inventory* inventory)
 {
-    auto& i = player->inventory;
+    const auto& i = *inventory;
     constexpr uint32_t ROW = 1;
 
     switch(y) {
@@ -72,12 +73,12 @@ void PrinterTerm::printInventory(uint32_t y, Player* player)
     }
 }
 
-void PrinterTerm::printStats(Level* l, Player* player)
+void PrinterTerm::printStats(Level* l, Stats* stats)
 {
-    cout << "RAHAA: "    << moneyAligned(player->money);
-    cout << "  VOIMA: "    << moneyAligned(player->health);
-    cout << "  PROMILLE: " << promilleAligned(player->promilles);
-    cout << "  KÄPPÄILY: " << player->turn << " ";
+    cout << "RAHAA: "    << moneyAligned(stats->money);
+    cout << "  VOIMA: "    << moneyAligned(stats->health);
+    cout << "  PROMILLE: " << promilleAligned(stats->promilles);
+    cout << "  KÄPPÄILY: " << stats->turn << " ";
     cout << "  LEVEL: "  << l->stage << " ";
     cout << endl << endl;
 }

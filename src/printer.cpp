@@ -276,7 +276,7 @@ void Printer::print(Level* level)
 
     for (uint32_t y = 0; y < level->sizey; ++y) {
 
-        printInventory(y, player);
+        printInventory(y, &player->inventory);
 
         // left border
         printChar(VERTICAL);
@@ -291,7 +291,7 @@ void Printer::print(Level* level)
     }
 
     printBorder(level, false);
-    printStats(level, player);
+    printStats(level, &player->stats);
 
     showMessage(msg, level, false);
 }

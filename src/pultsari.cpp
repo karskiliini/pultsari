@@ -41,12 +41,12 @@ static bool handleInput(PlayerNS::Player& player, Level* level, Printer& printer
 
     input = InputNS::Input::getInput();
 
-    if (player.promilles > 23 && common::random(10)) {
+    if (player.stats.promilles > 23 && common::random(10)) {
         if (input != InputNS::quit)
             input = InputNS::stagger;
-    } else if (player.promilles < 4 && common::random(20)) {
+    } else if (player.stats.promilles < 4 && common::random(20)) {
         printer.showMessage("Sua janottaa !!!", level);
-    } else if (player.promilles > 28 && common::random(5)) {
+    } else if (player.stats.promilles > 28 && common::random(5)) {
         printer.showMessage("Oksennat !!", level);
         player.damage(1);
 
@@ -316,17 +316,17 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 printer->print(&level);
                 quit = true;
                 break;
-            } else if (player.health < 1) {
+            } else if (player.stats.health < 1) {
                 quit = true;
                 printer->setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
                 printer->print(&level);
                 break;
-            } else if (player.promilles < 1) {
+            } else if (player.stats.promilles < 1) {
                 quit = true;
                 printer->setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
                 printer->print(&level);
                 break;
-            } else if (player.promilles > 34 && common::random(10)) {
+            } else if (player.stats.promilles > 34 && common::random(10)) {
                 quit = true;
                 printer->setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
                 printer->print(&level);

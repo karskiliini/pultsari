@@ -22,12 +22,15 @@ using std::endl;
 
 Player::Player() : Person(PersonType::pelaaja, {0, 0})
 {
-    health = INITIAL_HP;
+    stats.health = INITIAL_HP;
+    stats.promilles = 2;
+    stats.money = 20;
+    stats.turn = 1;
 }
 
 void Player::updateMoney(int money)
 {
-    Player::money += money;
+    stats.money += money;
 
 #ifdef ANIMATIONS_ENABLED
     string prefix = "+";
@@ -49,7 +52,7 @@ void Player::updateMoney(int money)
 
 void Player::updatepromilles(int p)
 {
-    promilles += p;
+    stats.promilles += p;
 
 #ifdef ANIMATIONS_ENABLED
     string prefix = "+";
@@ -71,23 +74,23 @@ void Player::updatepromilles(int p)
 
 void Player::updateTurn()
 {
-    ++turn;
+    ++stats.turn;
 
 // original pultsari has this feature, but it makes the game too easy
 #if 0
-    if (turn % 50 == 0)
+    if (stats.turn % 50 == 0)
     {
         powerup(1);
     }
 #endif
-    if (turn % 260 == 0) {
+    if (stats.turn % 260 == 0) {
         updatepromilles(-1);
     }
 }
 
 bool Player::interact(std::string& msg, Person* source)
 {
-    if (health == 0) return true;
+    if (stats.health == 0) return true;
 
     if (source->type == yka) {
         msg = "Ykä pummaa yhtä kaljaa, annatko? (k/e)";
@@ -581,7 +584,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             blocked = p->interact(msg, this);
             printer->showMessage(msg, level);
 
-            if (p->health == 0) {
+            if (p->stats.health == 0) {
                 Item* i = p->dropItem();
                 if (i) {
                     level->addItem(i);
