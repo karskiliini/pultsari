@@ -1,4 +1,5 @@
 #include "mask.hpp"
+#include "level.hpp"
 #include "common.hpp"
 #include "player.hpp"
 #include "coord.hpp"

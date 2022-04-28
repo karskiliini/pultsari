@@ -6,6 +6,7 @@
 #include "animation.hpp"
 #include "mask.hpp"
 #include "pathmask.hpp"
+#include "level.hpp"
 #include <vector>
 #include <iostream>
 #include <string>
@@ -16,11 +17,6 @@ using std::endl;
 using InputNS::Input;
 using PlayerNS::Player;
 using std::string;
-
-static void cursorHome()
-{
-    cout << "\e[f\e[K";
-}
 
 static string tokenizeStr(string& str)
 {
@@ -38,7 +34,7 @@ void Printer::setMessage(const std::string& message)
     msg = message;
 }
 
-void Printer::showMessage(std::string message, Level& level, bool waitKey)
+void Printer::showMessage(std::string message, Level* level, bool waitKey)
 {
     if (message == "") return;
 
@@ -56,7 +52,7 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
         }
 
         if (msgShown && waitKey && !waited) {
-            cout << "     <LISÄÄ>";
+            printMore();
             Input::waitKey();
         }
 
@@ -64,11 +60,11 @@ void Printer::showMessage(std::string message, Level& level, bool waitKey)
         if (!msgShown) msgShown = true;
 
         cursorHome();
-        cout << "  " << msg;
+        printHalfTab();
 
         if (tokenize && !waited)
         {
-            cout << "     <LISÄÄ>";
+            printMore();
             Input::waitKey();
             waited = true;
         }
@@ -81,7 +77,7 @@ void Printer::removeMessage()
     if (msgShown) msgShown = false;
 }
 
-static const Person* findPerson(vector<const Person*> row, uint32_t x)
+static const Person* findPerson(const vector<const Person*>& row, uint32_t x)
 {
     for (const auto& p : row) {
         if (p->coord.x == x) return p;
@@ -90,7 +86,7 @@ static const Person* findPerson(vector<const Person*> row, uint32_t x)
     return nullptr;
 }
 
-static const Item* findItem(vector<const Item*> row, uint32_t x)
+static const Item* findItem(const vector<const Item*>& row, uint32_t x)
 {
     for (const auto& p : row) {
         if (p->coord.x == x) return p;
@@ -99,39 +95,7 @@ static const Item* findItem(vector<const Item*> row, uint32_t x)
     return nullptr;
 }
 
-const string TOP_LEFT = "╔";
-const string BOT_LEFT = "╚";
-const string TOP_RIGHT = "╗";
-const string BOT_RIGHT = "╝";
-const string VERTICAL = "║";
-const string HORIZONTAL = "═";
-
-static void printLeftBorderSpaces()
-{
-    cout << "             ";
-}
-
-static void printBorder(Level& l, bool top)
-{
-    printLeftBorderSpaces();
-    if (top) {
-        cout << TOP_LEFT;
-    } else {
-        cout << BOT_LEFT;
-    }
-
-    for (uint32_t x = 0; x < l.sizex; ++x)
-        cout << HORIZONTAL;
-
-    if (top) {
-        cout << TOP_RIGHT;
-    } else {
-        cout << BOT_RIGHT;
-    }
-    cout << endl;
-}
-
-static string inventoryAligned(uint32_t value)
+string Printer::inventoryAligned(uint32_t value) const
 {
     if (value < 10) {
         char str[10];
@@ -146,28 +110,7 @@ static string inventoryAligned(uint32_t value)
     }
 }
 
-static void printInventory(uint32_t y, Player* player)
-{
-    auto& i = player->inventory;
-    constexpr uint32_t ROW = 1;
-
-    switch(y) {
-        case ROW +  0: cout << "KALJAA  = " << inventoryAligned(i.kalja); break;
-        case ROW +  1: cout << "LONKKA  = " << inventoryAligned(i.lonkka); break;
-        case ROW +  2: cout << "LENKKI  = " << inventoryAligned(i.lenkki); break;
-        case ROW +  3: cout << "KETJUT  = " << inventoryAligned(i.ketjut); break;
-        case ROW +  4: cout << "VEITSET = " << inventoryAligned(i.veitset); break;
-        case ROW +  5: cout << "KIVET   = " << inventoryAligned(i.kivet); break;
-        case ROW +  6: cout << "PAMPUT  = " << inventoryAligned(i.pamput); break;
-        case ROW +  7: cout << "BOOTSIT = " << inventoryAligned(i.bootsit); break;
-        case ROW +  8: cout << "KALAT   = " << inventoryAligned(i.kalat); break;
-        case ROW +  9: cout << "OMPPO   = " << inventoryAligned(i.omppo); break;
-        case ROW + 10: cout << "BANSKU  = " << inventoryAligned(i.bansku); break;
-        default: printLeftBorderSpaces(); break;
-    }
-}
-
-static string moneyAligned(uint32_t value)
+string Printer::moneyAligned(uint32_t value) const
 {
     if (value < 10) {
         char str[10];
@@ -194,7 +137,7 @@ static string moneyAligned(uint32_t value)
     }
 }
 
-static string promilleAligned(uint32_t value)
+string Printer::promilleAligned(uint32_t value) const
 {
     string ret = "";
     uint32_t full = value / 10;
@@ -221,46 +164,36 @@ static string promilleAligned(uint32_t value)
     return ret;
 }
 
-static void printStats(Level& l, Player* player)
-{
-    cout << "RAHAA: "    << moneyAligned(player->money);
-    cout << "  VOIMA: "    << moneyAligned(player->health);
-    cout << "  PROMILLE: " << promilleAligned(player->promilles);
-    cout << "  KÄPPÄILY: " << player->turn << " ";
-    cout << "  LEVEL: "  << l.stage << " ";
-    cout << endl << endl;
-}
-
-static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask)
+void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask)
 {
     Animation* anim = nullptr;
     if (common::animsEnabled) {
-        if (l.animation && l.animation->coord.y == y) {
-            anim = l.animation;
+        if (l->animation && l->animation->coord.y == y) {
+            anim = l->animation;
         }
     }
 
     Item* thrownItem = nullptr;
-    if (l.thrownItem && l.thrownItem->coord.y == y) {
-        thrownItem = l.thrownItem;
+    if (l->thrownItem && l->thrownItem->coord.y == y) {
+        thrownItem = l->thrownItem;
     }
 
     // find all people that are on this line
     vector<const Person*> persons;
-    for (const auto& p : l.persons) {
+    for (const auto& p : l->persons) {
         if (p->coord.y == y) {
             persons.push_back(p);
         }
     }
 
     vector<const Item*> items;
-    for (const auto& i : l.items) {
+    for (const auto& i : l->items) {
         if (i->coord.y == y) {
             items.push_back(i);
         }
     }
 
-    for (uint32_t x = 0; x < l.sizex; ++x) {
+    for (uint32_t x = 0; x < l->sizex; ++x) {
         Coord coord { x, y };
         bool found = false;
         string c = " ";
@@ -283,7 +216,7 @@ static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask, PathNS::
         if (pathmask)
         {
             auto v = pathmask->at(coord);
-            if ((v > 1) && (coord != l.getPlayer()->coord)) {
+            if ((v > 1) && (coord != l->getPlayer()->coord)) {
                 c = std::to_string(v)[0];
                 found = true;
             }
@@ -305,7 +238,7 @@ static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask, PathNS::
         }
 
         if (!found) {
-            for (auto b : l.buildings) {
+            for (auto b : l->buildings) {
                 if (b->hitBuilding(coord)) {
                     c = b->typeToChar(coord);
                     found = true;
@@ -329,31 +262,41 @@ static void printLine(Level& l, uint32_t y, const VisionNS::Mask* mask, PathNS::
                 found = true;
             }
         }
-        cout << c;
+
+        printChar(c);
     }
 }
 
-void Printer::print(Level& level)
+void Printer::print(Level* level)
 {
     cursorHome();
-    cout << endl;
+    printChar("\n");
 
     printBorder(level, true);
 
-    for (uint32_t y = 0; y < level.sizey; ++y) {
+    for (uint32_t y = 0; y < level->sizey; ++y) {
 
         printInventory(y, player);
 
         // left border
-        cout << VERTICAL;
+        printChar(VERTICAL);
 
         printLine(level, y, mask, pathmask);
 
         // right border
-        cout << VERTICAL << " " << endl;
+        printChar(VERTICAL);
+
+        // BUG: sometimes right border gets drawn shifter by 1, clean it up from terminal
+        printChar(" \n");
     }
+
     printBorder(level, false);
     printStats(level, player);
 
     showMessage(msg, level, false);
+}
+
+void Printer::printErr(const std::string& msg)
+{
+    std::cerr << msg << std::endl;
 }

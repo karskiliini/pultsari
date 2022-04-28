@@ -74,16 +74,16 @@ void Level::actThrow(Person* source)
         if (p) {
             string msg = "";
             hit = p->interactThrow(thrownItem, source, msg);
-            printer->showMessage(msg, *this, false);
+            printer->showMessage(msg, this, false);
         } else {
             if (hitBuilding(thrownItem->coord))
             {
-                printer->showMessage("Osuit seinään.", *this, false);
+                printer->showMessage("Osuit seinään.", this, false);
                 hit = true;
             } else {
                 Coord copy { thrownItem->coord.x, thrownItem->coord.y };
                 if (common::checkBounds(copy)) {
-                    printer->showMessage("Huti meni.", *this, false);
+                    printer->showMessage("Huti meni.", this, false);
                     hit = true;
                 }
             }
@@ -95,7 +95,7 @@ void Level::actThrow(Person* source)
             thrownItem = nullptr;
         }
 
-        printer->print(*this);
+        printer->print(this);
         common::sleep(16);
     }
 }
@@ -106,14 +106,14 @@ void Level::playAnimation()
     while (animation && running)
     {
         running = animation->act();
-        printer->print(*this);
+        printer->print(this);
         common::sleep(animation->delay);
     }
 
     delete animation;
     animation = nullptr;
 
-    printer->print(*this);
+    printer->print(this);
 }
 
 Person* Level::createPerson(const Coord& coord, PersonType type)
@@ -319,7 +319,7 @@ void Level::addItem(ItemType item)
     switch(item)
     {
         default:
-            cout << "ERROR: addItem\n";
+            printer->printErr("ERROR: addItem\n");
             i = nullptr;
             break;
         case EKalja:
@@ -426,51 +426,10 @@ void Level::removeItem(Item* item)
     }
 }
 
-void moveAngle(float ang, Coord& from, const Coord& to, bool debug)
-{
-#if 1
-#else
-    if (ang > 1.f && (from.x != to.x)) {
-        if (debug)
-            cout << "ang: " << ang << " from: " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "            " << endl;
-
-        if (from.x > to.x) {
-            --from.x;
-        } else if (from.x < to.x) {
-            ++from.x;
-        }
-    } else if ((ang < 1.f) && (from.y != to.y)) {
-        if (debug)
-            cout << "ang: " << ang << " from: " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "            "<< endl;
-        if (from.y > to.y) {
-            --from.y;
-        } else if (from.y < to.y) {
-            ++from.y;
-        }
-    } else
-    {
-        if (from.x > to.x) {
-            --from.x;
-        } else if (from.x < to.x) {
-            ++from.x;
-        }
-        if (from.y > to.y) {
-            --from.y;
-        } else if (from.y < to.y) {
-            ++from.y;
-        }
-    }
-#endif
-}
-
 // return true if visibility ok
 bool Level::raycast(Coord from, const Coord& to) const
 {
     bool originBuilding = hitBuilding(to);
-
-    bool debug = false;
-    //if ((from.x == to.x+1) && (from.y == to.y+1))
-    //    debug = true;
 
     uint32_t block = 0;
     uint32_t dx = std::max(from.x, to.x) - std::min(from.x, to.x);
@@ -488,16 +447,12 @@ bool Level::raycast(Coord from, const Coord& to) const
             k = (ang == 0) ? (float)dy / 2.f : 1.f / ang;
             k = ((int)k == 0) ? 1 : k;
 
-            if (debug)
-                cout << ang << " k: " << k << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
-
             for (int i = (int)k; i > 0; --i)
             {
                 if (from.y < to.y) ++from.y;
                 else if (from.y > to.y) --from.y;
                 block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
                 if (block > 0) {
-                    if (debug) cout << "for - block break " << block << endl;
                     break;
                 }
             }
@@ -510,7 +465,6 @@ bool Level::raycast(Coord from, const Coord& to) const
 
             if (from == to)
             {
-                if (debug) cout << "from == to block: " << block << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
                 ret = true;
                 break;
             }
@@ -518,20 +472,13 @@ bool Level::raycast(Coord from, const Coord& to) const
                 ret = true;
                 break;
             } else if (block > 0) {
-                if (debug) cout << "block > 0 break " << block << endl;
                 ret = false;
                 break;
             }
-            if (debug) cout << "exit loop " << block << endl;
         }
 
         // always show building internals
         if (originBuilding) ret = true;
-
-        if (debug) cout << "break: " << ret << endl;
-
-        if (debug)
-            for (int i = 0; i < 20; ++i) { cout << "                             " << endl; }
 
         return ret;
 
@@ -546,16 +493,12 @@ bool Level::raycast(Coord from, const Coord& to) const
             float ang = (dy == 0) ? 100 : (float)((float)dx / (float)dy);
             k = ang;
 
-            if (debug)
-                cout << ang << " k: " << k << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
-
             for (int i = (int)k; i > 0; --i)
             {
                 if (from.x < to.x) ++from.x;
                 else if (from.x > to.x) --from.x;
                 block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
                 if (block > 0) {
-                    if (debug) cout << "for - block break (2) " << block << endl;
                     break;
                 }
             }
@@ -568,31 +511,22 @@ bool Level::raycast(Coord from, const Coord& to) const
 
             if (from == to)
             {
-                if (debug) cout << "from == to block: " << block << " " << from.x << ", " << from.y << " to: " << to.x << ", " << to.y << "               " << endl;
                 ret = true;
                 break;
             }
             if ((block <= 1) && hitPerson(from) && (to == from)) {
-                if (debug) cout << ((block > 0) && hitPerson(from) && (to == from)) << block << endl;
                 ret = true;
                 break;
             } else if (block > 0) {
-                if (debug) cout << "block > 0 break " << block << endl;
                 ret = false;
                 break;
             }
-            if (debug) cout << "exit loop " << block << endl;
         }
         // always show building internals
         if (originBuilding) ret = true;
 
         return ret;
     }
-
-    if (debug)
-        cout << "default out " << ang << endl;
-
-    for (int i = 0; i < 20; ++i) { cout << "                             " << endl; }
 
     return true;
 }

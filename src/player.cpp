@@ -1,5 +1,6 @@
 
 #include "player.hpp"
+#include "level.hpp"
 #include "common.hpp"
 #include "item.hpp"
 #include "input.hpp"
@@ -90,7 +91,7 @@ bool Player::interact(std::string& msg, Person* source)
 
     if (source->type == yka) {
         msg = "Ykä pummaa yhtä kaljaa, annatko? (k/e)";
-        printer->showMessage(msg, *level);
+        printer->showMessage(msg, level);
         char c = InputNS::Input::inputYka();
         switch(c) {
             default:
@@ -129,7 +130,7 @@ void Player::resetPosition()
     coord = {common::PLAYER_START_X, common::PLAYER_START_Y};
 }
 
-bool Player::drink(Level& level)
+bool Player::drink(Level* level)
 {
     if ((inventory.kalja > 0) && (inventory.lonkka > 0))
     {
@@ -169,7 +170,7 @@ bool Player::drink(Level& level)
     return true;
 }
 
-bool Player::eat(Level& level)
+bool Player::eat(Level* level)
 {
     if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
         printer->showMessage("Ei syötävää.", level);
@@ -266,7 +267,7 @@ bool Player::eat(Level& level)
     return true;
 }
 
-bool Player::puke(DirectionNS::Direction d, Level& level)
+bool Player::puke(DirectionNS::Direction d, Level* level)
 {
     Coord check = coord;
     switch(d)
@@ -287,7 +288,7 @@ bool Player::puke(DirectionNS::Direction d, Level& level)
     }
 
     bool ret = false;
-    auto p = level.getPerson(check);
+    auto p = level->getPerson(check);
     if (p)
     {
         ret = p->interactpuke(this);
@@ -295,7 +296,7 @@ bool Player::puke(DirectionNS::Direction d, Level& level)
 
     if (!ret) {
         auto puke = Item::createItem(12, check);
-        level.addItem(puke);
+        level->addItem(puke);
     }
 
     return ret;
@@ -315,7 +316,7 @@ static InputType validateDirection(InputType in) {
 
 static DirectionNS::Direction getDirection(Level* level, Printer* printer)
 {
-    printer->showMessage("Anna suunta: ", *level, false);
+    printer->showMessage("Anna suunta: ", level, false);
 
     InputType direction = InputNS::inputpending;
     while(direction == InputNS::inputpending) {
@@ -341,7 +342,7 @@ bool Player::decrementInventory(uint32_t index)
     switch(index) {
         case 1:
             if (inventory.kalja == 0) {
-                printer->showMessage("Ei ole kaljaa...", *level, false);
+                printer->showMessage("Ei ole kaljaa...", level, false);
                 return false;
             } else {
                 --inventory.kalja;
@@ -349,7 +350,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 2:
             if (inventory.lonkka == 0) {
-                printer->showMessage("Ei ole giniä...", *level, false);
+                printer->showMessage("Ei ole giniä...", level, false);
                 return false;
             } else {
                 --inventory.lonkka;
@@ -357,7 +358,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 3:
             if (inventory.lenkki == 0) {
-                printer->showMessage("Ei ole kiekuralenkkiä...", *level, false);
+                printer->showMessage("Ei ole kiekuralenkkiä...", level, false);
                 return false;
             } else {
                 --inventory.lenkki;
@@ -365,7 +366,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 4:
             if (inventory.ketjut == 0) {
-                printer->showMessage("Ei ole kettinkiä...", *level, false);
+                printer->showMessage("Ei ole kettinkiä...", level, false);
                 return false;
             } else {
                 --inventory.ketjut;
@@ -373,7 +374,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 5:
             if (inventory.veitset == 0) {
-                printer->showMessage("Ei ole puukkoja...", *level, false);
+                printer->showMessage("Ei ole puukkoja...", level, false);
                 return false;
             } else {
                 --inventory.veitset;
@@ -381,7 +382,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 6:
             if (inventory.kivet == 0) {
-                printer->showMessage("Ei ole kiviä...", *level, false);
+                printer->showMessage("Ei ole kiviä...", level, false);
                 return false;
             } else {
                 --inventory.kivet;
@@ -389,7 +390,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 7:
             if (inventory.pamput == 0) {
-                printer->showMessage("Ei ole pamppuja...", *level, false);
+                printer->showMessage("Ei ole pamppuja...", level, false);
                 return false;
             } else {
                 --inventory.pamput;
@@ -397,7 +398,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 8:
             if (inventory.bootsit == 0) {
-                printer->showMessage("Ei ole camel bootseja...", *level, false);
+                printer->showMessage("Ei ole camel bootseja...", level, false);
                 return false;
             } else {
                 --inventory.bootsit;
@@ -405,7 +406,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 9:
             if (inventory.kalat == 0) {
-                printer->showMessage("Ei ole turskaa...", *level, false);
+                printer->showMessage("Ei ole turskaa...", level, false);
                 return false;
             } else {
                 --inventory.kalat;
@@ -413,7 +414,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 10:
             if (inventory.omppo == 0) {
-                printer->showMessage("Ei ole omenia...", *level, false);
+                printer->showMessage("Ei ole omenia...", level, false);
                 return false;
             } else {
                 --inventory.omppo;
@@ -421,7 +422,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 11:
             if (inventory.veitset == 0) {
-                printer->showMessage("Ei ole banskuja...", *level, false);
+                printer->showMessage("Ei ole banskuja...", level, false);
                 return false;
             } else {
                 --inventory.veitset;
@@ -449,7 +450,7 @@ static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
 
 bool Player::throwItem()
 {
-    printer->showMessage("ANNA NUMERO ..", *level, false);
+    printer->showMessage("ANNA NUMERO ..", level, false);
     auto number = InputNS::Input::getThrow();
     if (!decrementInventory(number))
     {
@@ -471,9 +472,9 @@ bool Player::throwItem()
     return true;
 }
 
-static Building* checkDoor(Level& level, const Coord& c)
+static Building* checkDoor(Level* level, const Coord& c)
 {
-    for (auto& b : level.buildings) {
+    for (auto& b : level->buildings) {
         if (b->hitDoor(c)) {
             return b;
         }
@@ -481,9 +482,9 @@ static Building* checkDoor(Level& level, const Coord& c)
     return nullptr;
 }
 
-static Building* checkWalls(Level& level, const Coord& c)
+static Building* checkWalls(Level* level, const Coord& c)
 {
-    for (auto& b : level.buildings) {
+    for (auto& b : level->buildings) {
         if (b->hitWall(c)) {
             return b;
         }
@@ -491,9 +492,9 @@ static Building* checkWalls(Level& level, const Coord& c)
     return nullptr;
 }
 
-static Item* checkItems(Level& level, const Coord& c)
+static Item* checkItems(Level* level, const Coord& c)
 {
-    for (auto& i : level.items) {
+    for (auto& i : level->items) {
         if (i->coord == c) {
             return i;
         }
@@ -501,7 +502,7 @@ static Item* checkItems(Level& level, const Coord& c)
     return nullptr;
 }
 
-bool Player::stagger(Level& level)
+bool Player::stagger(Level* level)
 {
     printer->showMessage("Horjahtelet...", level, false);
 
@@ -515,7 +516,7 @@ bool Player::stagger(Level& level)
     return move(d, level);
 }
 
-bool Player::move(DirectionNS::Direction d, Level& level)
+bool Player::move(DirectionNS::Direction d, Level* level)
 {
     // spend turn
     bool ret = true;
@@ -574,7 +575,7 @@ bool Player::move(DirectionNS::Direction d, Level& level)
     }
 
     if (!blocked) {
-        Person* p = level.checkPerson(check);
+        Person* p = level->checkPerson(check);
         if (p)
         {
             blocked = p->interact(msg, this);
@@ -583,7 +584,7 @@ bool Player::move(DirectionNS::Direction d, Level& level)
             if (p->health == 0) {
                 Item* i = p->dropItem();
                 if (i) {
-                    level.addItem(i);
+                    level->addItem(i);
                 }
             }
         }
@@ -599,7 +600,7 @@ bool Player::move(DirectionNS::Direction d, Level& level)
                 auto consume = i->interact(this);
 
                 if (consume) {
-                    level.removeItem(i);
+                    level->removeItem(i);
                 }
             }
         }
@@ -609,7 +610,7 @@ bool Player::move(DirectionNS::Direction d, Level& level)
         coord = check;
     }
 
-    level.playAnimation();
+    level->playAnimation();
 
     if (common::checkBounds(coord)) {
         printer->showMessage("Ei karata pelialueelta !!", level, true);

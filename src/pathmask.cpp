@@ -1,4 +1,5 @@
 #include "pathmask.hpp"
+#include "level.hpp"
 #include "common.hpp"
 #include "player.hpp"
 #include "coord.hpp"
@@ -138,8 +139,6 @@ DirectionNS::Direction PathMask::traceBack(const Coord& c)
 
     // correct path found, randomize which one is picked
     uint32_t pick = (std::rand() % foundDirs.size());
-
-    // std::cout << "size: " << foundDirs.size() << " pick: " << pick << std::endl;
     return traceBack(dirs[foundDirs[pick]]);
 }
 

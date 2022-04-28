@@ -155,7 +155,7 @@ bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
 
 bool Mummo::interactpuke(Person* source)
 {
-    printer->showMessage("Ykäs meni mummon niskoille. Se kuoli.", *level);
+    printer->showMessage("Ykäs meni mummon niskoille. Se kuoli.", level);
     damage(health);
     return true;
 }
@@ -232,7 +232,7 @@ void Cop::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, *level);
+    printer->showMessage(msg, level);
 }
 
 bool Cop::interact(std::string& msg, Person* source)
@@ -274,7 +274,7 @@ bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
 
 bool Cop::interactpuke(Person* source)
 {
-    printer->showMessage("Polsu tukehtui yrjöös, muut pollarit ei taija tykätä susta.", *level);
+    printer->showMessage("Polsu tukehtui yrjöös, muut pollarit ei taija tykätä susta.", level);
     level->alertCops(source);
     damage(health);
     return true;
@@ -381,7 +381,7 @@ void Varas::npcAct()
         Direction d = getMoveDirection(target);
         move(d, msg);
     }
-    printer->showMessage(msg, *level);
+    printer->showMessage(msg, level);
 }
 
 bool Varas::interact(std::string& msg, Person* source)
@@ -532,7 +532,7 @@ void Vanki::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, *level);
+    printer->showMessage(msg, level);
 }
 
 bool Vanki::interact(std::string& msg, Person* source)
@@ -661,7 +661,7 @@ void Skinhead::npcAct()
         Direction d = getMoveDirection(target);
         move(d, msg);
     }
-    printer->showMessage(msg, *level);
+    printer->showMessage(msg, level);
 }
 
 bool Skinhead::interact(std::string& msg, Person* source)
@@ -774,7 +774,7 @@ void Yka::npcAct()
         Direction d = getMoveDirection(target);
         move(d, msg);
     }
-    printer->showMessage(msg, *level);
+    printer->showMessage(msg, level);
 }
 
 bool Yka::interact(std::string& msg, Person* source)

@@ -34,7 +34,7 @@ void show_console_cursor(const bool show) {
 #endif // Windows/Linux
 }
 
-static bool handleInput(PlayerNS::Player& player, Level& level, Printer& printer)
+static bool handleInput(PlayerNS::Player& player, Level* level, Printer& printer)
 {
     bool ret;
     InputNS::InputType input;
@@ -239,31 +239,16 @@ static bool checkExit(const Level& level)
     return ok;
 }
 
-void printScore(const ScoreBoard& scoreBoard)
-{
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
-    cout << "Hakkaamasi mummelit  : " << scoreBoard.mummot << "              " << endl;
-    cout << "Kaikki hakatut oliot : " << scoreBoard.kaikki << "              " << endl;
-    cout << "------------------------------" <<  "              " << endl;
-    cout << "Yhteispistetilanteesi: " << scoreBoard.mummot + scoreBoard.kaikki <<  "              " << endl;
-    cout << "Kiitos Pultsarin pelaamisesta!" <<  "              " << endl;
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
-}
 
-void mainloop(uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFinding)
+void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFinding)
 {
 #ifdef ANIMATIONS_ENABLED
     common::animsEnabled = animsEnabled;
 #endif
     bool welcome = true;
 
-    Printer printer;
     PlayerNS::Player player;
-    player.printer = &printer;
+    player.printer = printer;
 
     bool quit = false;
 
@@ -277,11 +262,11 @@ void mainloop(uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFindi
         if (losEnabled)
             mask.enable();
 #endif
-        printer.mask = &mask;
+        printer->mask = &mask;
 
-        level.printer = &printer;
+        level.printer = printer;
 
-        printer.player = &player;
+        printer->player = &player;
 
         {
             NextLevel* next = new NextLevel(Coord(79,27), &level);
@@ -295,23 +280,23 @@ void mainloop(uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFindi
 
         if (welcome) {
             welcome = false;
-            printer.showMessage("Tervetuloa Pultsariin!", level, false);
+            printer->showMessage("Tervetuloa Pultsariin!", &level, false);
         }
 
         mask.init();
-        printer.print(level);
+        printer->print(&level);
 
         bool nextLevel = false;
         while(!nextLevel && !quit) {
-            printer.removeMessage();
+            printer->removeMessage();
 
             try {
-                bool turn = handleInput(player, level, printer);
+                bool turn = handleInput(player, &level, *printer);
                 mask.init();
                 level.cleanDead();
                 level.cleanDiscardedItems();
 
-                printer.print(level);
+                printer->print(&level);
 
                 level.buildingTurn();
                 level.npcTurn();
@@ -327,32 +312,32 @@ void mainloop(uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFindi
             }
 
             if (player.inJail) {
-                printer.setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
-                printer.print(level);
+                printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
+                printer->print(&level);
                 quit = true;
                 break;
             } else if (player.health < 1) {
                 quit = true;
-                printer.setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
-                printer.print(level);
+                printer->setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
+                printer->print(&level);
                 break;
             } else if (player.promilles < 1) {
                 quit = true;
-                printer.setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
-                printer.print(level);
+                printer->setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
+                printer->print(&level);
                 break;
             } else if (player.promilles > 34 && common::random(10)) {
                 quit = true;
-                printer.setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
-                printer.print(level);
+                printer->setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
+                printer->print(&level);
                 break;
             }
 
-            printer.print(level);
+            printer->print(&level);
             if (checkExit(level))
             {
-                printer.showMessage("Seuraavaan kenttaan...", level, false);
-                printer.removeMessage();
+                printer->showMessage("Seuraavaan kenttaan...", &level, false);
+                printer->removeMessage();
 
                 InputNS::Input::waitKey();
 
@@ -361,18 +346,16 @@ void mainloop(uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFindi
                 nextLevel = true;
             }
         }
-        printScore(player.scoreBoard);
+        printer->printScore(&player.scoreBoard);
     }
-
-
 }
 
-int main(int argc, char *argv[])
+int init(int argc, char *argv[], Printer* printer)
 {
     srand(time(NULL));
     show_console_cursor(false);
 
-    uint32_t level = 1;
+    uint32_t stage = 1;
     bool animsEnabled = false;
     bool losEnabled = false;
     bool pathFinding = false;
@@ -386,11 +369,7 @@ int main(int argc, char *argv[])
             // enable animations
             animsEnabled = true;
         } else if ((a == "-h") || (a == "--help")) {
-            cout << "Pultsari help:                                        " << endl;
-            cout << "--los      : to enable line of sight mode             " << endl;
-            cout << "--anims    : to enable animations support             " << endl;
-            cout << "--path     : to enable advanced path finding          " << endl;
-            cout << "--all | -a : enable all features                      " << endl;
+            printer->printHelp();
             return 0;
         } else if (a == "--path") {
             // enable advanced path finding for npc characters
@@ -402,24 +381,24 @@ int main(int argc, char *argv[])
         } else if (a == "--level") {
             ++i;
             if (i == argc) {
-                cout << "ERROR: --level requires a parameter!" << endl;
+                printer->printErr("ERROR: --level requires a parameter!");
                 throw std::out_of_range("--level missing parameter");
             }
             uint32_t tmp = std::atoi(argv[i]);
             if ((tmp > 100) || (tmp == 0)) {
-                cout << "ERROR: --level parameter out of range" << endl;
+                printer->printErr("ERROR: --level parameter out of range");
                 throw std::out_of_range("--level out of range.");
             } else {
-                level = tmp;
+                stage = tmp;
             }
         }
     }
 
-    IntroNS::Intro i;
+    IntroNS::Intro i(printer);
     i.show();
 
     try {
-        mainloop(level, losEnabled, animsEnabled, pathFinding);
+        mainloop(printer, stage, losEnabled, animsEnabled, pathFinding);
     }
     catch(const std::out_of_range& e)
     {

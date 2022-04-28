@@ -1,4 +1,5 @@
 #include "intro.hpp"
+#include "printer.hpp"
 #include "input.hpp"
 #include "common.hpp"
 #include <string>
@@ -7,65 +8,47 @@
 namespace IntroNS {
 
 using std::string;
-using std::cout;
-using std::endl;
-using std::cin;
 
 string name1 = "(C) By Mika  Maaranen";
 string name2 = "       Jari  Maaranen";
 string name3 = "       Tero  Maaranen";
 string name4 = "       Kimmo Korhonen";
 
-void emptyTitleLine(uint32_t textLen = 0)
-{
-    for (uint32_t i = 0; i < common::SIZEX / 2 - textLen; ++i) {
-        cout << " ";
-    }
-}
-
-void emptyLine(uint32_t textLen = 0)
-{
-    for (uint32_t i = 0; i < common::SIZEX - textLen; ++i) {
-        cout << " ";
-    }
-    cout << endl;
-}
-
 void Intro::show()
 {
     const string pulsu = "PULTSARI";
     const string anykey = "Press any key to continue";
 
-    common::cursorHome();
+    printer->cursorHome();
 
-    emptyTitleLine(pulsu.length() / 2);
-    cout << pulsu;
-    emptyTitleLine(pulsu.length() / 2);
-    cout << endl;
+    printer->emptyTitleLine(pulsu.length() / 2);
+    printer->printChar(pulsu);
+    printer->emptyTitleLine(pulsu.length() / 2);
+    printer->printChar("\n");
 
     for (uint32_t i = 0; i < 7 ; ++i) {
-        emptyLine();
+        printer->emptyLine();
     }
 
-    cout << name1;
-    emptyLine(name1.length());
-    cout << name2;
-    emptyLine(name2.length());
-    cout << name3;
-    emptyLine(name3.length());
-    cout << name4;
-    emptyLine(name4.length());
+    printer->printChar(name1);
+    printer->emptyLine(name1.length());
+    printer->printChar(name2);
+    printer->emptyLine(name2.length());
+    printer->printChar(name3);
+    printer->emptyLine(name3.length());
+    printer->printChar(name4);
+    printer->emptyLine(name4.length());
 
-    emptyLine();
-    cout << anykey;
-    emptyLine(anykey.length());
+    printer->emptyLine();
+    printer->printChar(anykey);
+    printer->emptyLine(anykey.length());
 
     for (uint32_t i = 0; i < 6; ++i) {
-        emptyLine();
+        printer->emptyLine();
     }
 
-    cout << "28.12.1991 - 14.1.1992 (Välillä paussi)" << endl;
-    emptyLine();
+    printer->printChar("28.12.1991 - 14.1.1992 (Välillä paussi)");
+    printer->emptyLine();
 
     InputNS::Input::waitKey();
 }

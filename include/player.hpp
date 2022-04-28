@@ -2,13 +2,14 @@
 #define PLAYER_HPP
 
 #include "persons.hpp"
-#include "level.hpp"
 #include "inventory.hpp"
 #include "direction.hpp"
 #include "printer.hpp"
 #include "scoreboard.hpp"
 #include <cstdint>
 #include <string>
+
+class Level;
 
 namespace PlayerNS {
 
@@ -26,14 +27,14 @@ public:
 
     virtual void npcAct() { }
 
-    bool stagger(Level& level);
-    virtual bool move(DirectionNS::Direction d, Level& level);
+    bool stagger(Level* level);
+    virtual bool move(DirectionNS::Direction d, Level* level);
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
 
-    virtual bool drink(Level& level);
-    virtual bool eat(Level& level);
-    virtual bool puke(DirectionNS::Direction d, Level& level);
+    virtual bool drink(Level* level);
+    virtual bool eat(Level* level);
+    virtual bool puke(DirectionNS::Direction d, Level* level);
     virtual bool throwItem();
 
     virtual std::string typeToChar() const { return "@"; };
