@@ -297,7 +297,6 @@ void Printer::print(Level* level)
     showMessage(msg, level, false);
 
     printerRefresh();
-    cursorHome();
 }
 
 void Printer::printErr(const std::string& msg)
