@@ -1,5 +1,10 @@
 CC := g++
-CFLAGS := -Wall -g -std=c++14 -lncurses
+
+# enable these to use ncurses UI
+#CURSESFLAG := -DUSE_NCURSES
+#CURSESLIB := -lncurses
+
+CFLAGS := -Wall -g -std=c++14 ${CURSESLIB}
 TARGET := pultsari
 export REL_PATH := $(shell pwd)
 INC :=-I$(REL_PATH)/include
@@ -11,9 +16,9 @@ OBJS := $(patsubst %.cpp,%.o,$(SRCS))
 
 all: $(TARGET)
 $(TARGET): $(OBJS)
-	$(CC) ${CFLAGS} -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^
 %.o: %.cpp
-	$(CC) $(CFLAGS) -c $< ${INC}
+	$(CC) $(CFLAGS) $(CURSESFLAG) -c $< ${INC}
 	mv *.o src/
 clean:
 	rm -rf $(TARGET) *.o src/*.o
