@@ -53,6 +53,7 @@ void Printer::showMessage(std::string message, Level* level, bool waitKey)
 
         if (msgShown && waitKey && !waited) {
             printMore();
+            printerRefresh();
             Input::waitKey();
         }
 
@@ -65,6 +66,7 @@ void Printer::showMessage(std::string message, Level* level, bool waitKey)
         if (tokenize && !waited)
         {
             printMore();
+            printerRefresh();
             Input::waitKey();
             waited = true;
         }
