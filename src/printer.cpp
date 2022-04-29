@@ -60,7 +60,7 @@ void Printer::showMessage(std::string message, Level* level, bool waitKey)
         if (!msgShown) msgShown = true;
 
         cursorHome();
-        printHalfTab();
+        printMessage();
 
         if (tokenize && !waited)
         {
@@ -69,6 +69,7 @@ void Printer::showMessage(std::string message, Level* level, bool waitKey)
             waited = true;
         }
     }
+    printerRefresh();
 }
 
 void Printer::removeMessage()
@@ -77,7 +78,7 @@ void Printer::removeMessage()
     if (msgShown) msgShown = false;
 }
 
-static const Person* findPerson(const vector<const Person*>& row, uint32_t x)
+const Person* Printer::findPerson(const vector<const Person*>& row, uint32_t x) const
 {
     for (const auto& p : row) {
         if (p->coord.x == x) return p;
@@ -86,7 +87,7 @@ static const Person* findPerson(const vector<const Person*>& row, uint32_t x)
     return nullptr;
 }
 
-static const Item* findItem(const vector<const Item*>& row, uint32_t x)
+const Item* Printer::findItem(const vector<const Item*>& row, uint32_t x) const
 {
     for (const auto& p : row) {
         if (p->coord.x == x) return p;
@@ -279,12 +280,12 @@ void Printer::print(Level* level)
         printInventory(y, &player->inventory);
 
         // left border
-        printChar(VERTICAL);
+        printVBorder(level);
 
         printLine(level, y, mask, pathmask);
 
         // right border
-        printChar(VERTICAL);
+        printVBorder(level);
 
         // BUG: sometimes right border gets drawn shifter by 1, clean it up from terminal
         printChar(" \n");
@@ -294,6 +295,8 @@ void Printer::print(Level* level)
     printStats(level, &player->stats);
 
     showMessage(msg, level, false);
+
+    printerRefresh();
 }
 
 void Printer::printErr(const std::string& msg)

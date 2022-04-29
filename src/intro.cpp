@@ -50,6 +50,8 @@ void Intro::show()
     printer->printChar("28.12.1991 - 14.1.1992 (Välillä paussi)");
     printer->emptyLine();
 
+    printer->printerRefresh();
+
     InputNS::Input::waitKey();
 }
 

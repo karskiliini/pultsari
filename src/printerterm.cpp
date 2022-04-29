@@ -34,7 +34,7 @@ void PrinterTerm::printMore()
     cout << "     <LISÄÄ>";
 }
 
-void PrinterTerm::printHalfTab()
+void PrinterTerm::printMessage()
 {
     cout << "  " << msg;
 }
@@ -48,20 +48,25 @@ void PrinterTerm::printBorder(Level* l, bool top)
 {
     printLeftBorderSpaces();
     if (top) {
-        cout << Printer::TOP_LEFT;
+        cout << TOP_LEFT;
     } else {
-        cout << Printer::BOT_LEFT;
+        cout << BOT_LEFT;
     }
 
     for (uint32_t x = 0; x < l->sizex; ++x)
-        cout << Printer::HORIZONTAL;
+        cout << HORIZONTAL;
 
     if (top) {
-        cout << Printer::TOP_RIGHT;
+        cout << TOP_RIGHT;
     } else {
-        cout << Printer::BOT_RIGHT;
+        cout << BOT_RIGHT;
     }
     cout << endl;
+}
+
+void PrinterTerm::printVBorder(Level* l)
+{
+    cout << VERTICAL;
 }
 
 void PrinterTerm::printInventory(uint32_t y, Inventory* inventory)
@@ -137,4 +142,8 @@ void PrinterTerm::emptyTitleLine(uint32_t textLen)
     for (uint32_t i = 0; i < common::SIZEX / 2 - textLen; ++i) {
         cout << " ";
     }
+}
+
+void PrinterTerm::printerRefresh()
+{
 }

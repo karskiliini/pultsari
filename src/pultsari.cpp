@@ -358,6 +358,7 @@ int init(int argc, char *argv[], Printer* printer)
             animsEnabled = true;
         } else if ((a == "-h") || (a == "--help")) {
             printer->printHelp();
+            InputNS::Input::waitKey();
             return 0;
         } else if (a == "--path") {
             // enable advanced path finding for npc characters
