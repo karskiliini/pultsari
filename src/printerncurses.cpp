@@ -24,8 +24,8 @@ PrinterNcurses::PrinterNcurses() {
     mainwindow = initscr();
     gamewindow = newwin(common::SIZEY + 2, common::SIZEX + 2, 5, 18);
     inventorywindow = newwin(11, 16, 5, 1);
-    msgwindow = newwin(3, 80, 2, 18);
-    statswindow = newwin(3, 80, 35, 18);
+    msgwindow = newwin(3, common::SIZEX + 2, 2, 18);
+    statswindow = newwin(3, common::SIZEX + 2, 35, 18);
 }
 
 PrinterNcurses::~PrinterNcurses() {
@@ -34,6 +34,9 @@ PrinterNcurses::~PrinterNcurses() {
 
 void PrinterNcurses::clear()
 {
+    wclear((WINDOW*)mainwindow);
+    wclear((WINDOW*)statswindow);
+    wclear((WINDOW*)gamewindow);
     ::clear();
 }
 
@@ -43,11 +46,6 @@ void PrinterNcurses::show_console_cursor(const bool show) {
 
 void PrinterNcurses::cursorHome()
 {
-/*
-    wmove((WINDOW*)gamewindow, 1, 1);
-    wmove((WINDOW*)msgwindow, 0, 1);
-    wmove((WINDOW*)statswindow, 0, 1);
-*/
 }
 
 void PrinterNcurses::printMore()
@@ -63,6 +61,7 @@ void PrinterNcurses::setMessage(const std::string& message)
 
 void PrinterNcurses::printMessage()
 {
+    wclear((WINDOW*)msgwindow);
     mvwprintw((WINDOW*)msgwindow, 1, 1, msg.c_str());
     wrefresh((WINDOW*)msgwindow);
 }
@@ -100,7 +99,6 @@ void PrinterNcurses::printStats(Level* l, Stats* stats)
 
 void PrinterNcurses::printChar(string c)
 {
-    printw(c.c_str());
 }
 
 void PrinterNcurses::printScore(const ScoreBoard* scoreBoard)
@@ -250,15 +248,37 @@ void PrinterNcurses::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask,
             }
         }
 
-        wprintw((WINDOW*)gamewindow, c.c_str());
+        if (c == "█")
+        {
+            waddch((WINDOW*)gamewindow, ACS_BLOCK);
+        }
+        else if (c == "░")
+        {
+            waddch((WINDOW*)gamewindow, ACS_UARROW);
+        }
+        else if (c == "°")
+        {
+            waddch((WINDOW*)gamewindow, ACS_BULLET);
+        }
+        else if (c == "%")
+        {
+            waddch((WINDOW*)gamewindow, ACS_BBSS);
+        }
+        else if (c == "¨")
+        {
+            waddch((WINDOW*)gamewindow, ACS_PI);
+        }
+        else if (c == "¥")
+        {
+            waddch((WINDOW*)gamewindow, ACS_DIAMOND);
+        } else {
+            wprintw((WINDOW*)gamewindow, c.c_str());
+        }
     }
 }
 
 void PrinterNcurses::print(Level* level)
 {
-//    wclear((WINDOW*)mainwindow);
-//    wclear((WINDOW*)statswindow);
-//    wclear((WINDOW*)gamewindow);
     wclear((WINDOW*)msgwindow);
 
     printInventory(0, &player->inventory);

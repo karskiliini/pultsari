@@ -52,7 +52,7 @@ bool Kalja::interact(PlayerNS::Player* player)
 
 // lonkka
 Lonkka::Lonkka(const Coord& c) : Item(c, ELonkka) { }
-std::string Lonkka::typeToChar() const { return "%"; }
+std::string Lonkka::typeToChar() const { return "&"; }
 std::string Lonkka::getMsg() const {
     return "Kappas, lonkan mittainen !!!";
 }
