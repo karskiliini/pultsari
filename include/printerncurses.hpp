@@ -15,6 +15,7 @@ public:
     PrinterNcurses();
     ~PrinterNcurses();
 
+    virtual void clear();
     virtual void show_console_cursor(const bool show);
     virtual void cursorHome();
     virtual void printMore();

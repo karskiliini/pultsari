@@ -21,15 +21,20 @@ using std::string;
 using PlayerNS::Player;
 
 PrinterNcurses::PrinterNcurses() {
-    mainwindow = (void*)initscr();
-    gamewindow = (void*)newwin(common::SIZEY + 2, common::SIZEX + 2, 4, 18);
+    mainwindow = initscr();
+    gamewindow = newwin(common::SIZEY + 2, common::SIZEX + 2, 5, 18);
     inventorywindow = newwin(11, 16, 5, 1);
-    msgwindow = newwin(2, 80, 2, 2);
-    statswindow = newwin(2, 80, 35, 18);
+    msgwindow = newwin(3, 80, 2, 18);
+    statswindow = newwin(3, 80, 35, 18);
 }
 
 PrinterNcurses::~PrinterNcurses() {
     endwin();
+}
+
+void PrinterNcurses::clear()
+{
+    ::clear();
 }
 
 void PrinterNcurses::show_console_cursor(const bool show) {
@@ -38,14 +43,16 @@ void PrinterNcurses::show_console_cursor(const bool show) {
 
 void PrinterNcurses::cursorHome()
 {
+/*
     wmove((WINDOW*)gamewindow, 1, 1);
     wmove((WINDOW*)msgwindow, 0, 1);
     wmove((WINDOW*)statswindow, 0, 1);
+*/
 }
 
 void PrinterNcurses::printMore()
 {
-    wprintw((WINDOW*)msgwindow, "     <LISÄÄ>");
+    mvwprintw((WINDOW*)msgwindow, 1, 70, "<LISAA>");
     wrefresh((WINDOW*)msgwindow);
 }
 
@@ -56,8 +63,7 @@ void PrinterNcurses::setMessage(const std::string& message)
 
 void PrinterNcurses::printMessage()
 {
-    wclear((WINDOW*)msgwindow);
-    mvwprintw((WINDOW*)msgwindow, 0, 0, ("  " + msg).c_str());
+    mvwprintw((WINDOW*)msgwindow, 1, 1, msg.c_str());
     wrefresh((WINDOW*)msgwindow);
 }
 
@@ -85,13 +91,11 @@ void PrinterNcurses::printInventory(uint32_t /* y */, Inventory* inventory)
 
 void PrinterNcurses::printStats(Level* l, Stats* stats)
 {
-    wclear((WINDOW*)statswindow);
-    wprintw((WINDOW*)statswindow, ("RAHAA: "      + moneyAligned(stats->money)).c_str());
+    mvwprintw((WINDOW*)statswindow, 1, 0, ("RAHAA: "      + moneyAligned(stats->money)).c_str());
     wprintw((WINDOW*)statswindow, ("  VOIMA: "    + moneyAligned(stats->health)).c_str());
     wprintw((WINDOW*)statswindow,("  PROMILLE: " + promilleAligned(stats->promilles)).c_str());
     wprintw((WINDOW*)statswindow,("  KÄPPÄILY: " + std::to_string(stats->turn) + " ").c_str());
     wprintw((WINDOW*)statswindow,("  LEVEL: "    + std::to_string(l->stage) + " ").c_str());
-//    wprintw((WINDOW*)statswindow,"\n\n");
 }
 
 void PrinterNcurses::printChar(string c)
@@ -125,7 +129,7 @@ void PrinterNcurses::printHelp()
     wprintw((WINDOW*)gamewindow, "--path     : to enable advanced path finding          \n");
     wprintw((WINDOW*)gamewindow, "--all | -a : enable all features                      \n");
 
-    wrefresh((WINDOW*)gamewindow);
+    printerRefresh();
 }
 
 void PrinterNcurses::emptyLine(uint32_t textLen)
@@ -145,12 +149,13 @@ void PrinterNcurses::emptyTitleLine(uint32_t textLen)
 
 void PrinterNcurses::printerRefresh()
 {
-    box((WINDOW*)mainwindow, 0, 0);
+    // box((WINDOW*)mainwindow, 0, 0);
     box((WINDOW*)gamewindow, 0, 0);
-    //box((WINDOW*)inventorywindow, 0, 0);
-    //box((WINDOW*)msgwindow, 0, 0);
+    box((WINDOW*)inventorywindow, 0, 0);
+    box((WINDOW*)msgwindow, 0, 0);
+    box((WINDOW*)statswindow, 0, 0);
 
-    // refresh();
+    wrefresh((WINDOW*)mainwindow);
     wrefresh((WINDOW*)gamewindow);
     wrefresh((WINDOW*)inventorywindow);
     wrefresh((WINDOW*)msgwindow);
@@ -251,7 +256,9 @@ void PrinterNcurses::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask,
 
 void PrinterNcurses::print(Level* level)
 {
-    wclear((WINDOW*)gamewindow);
+//    wclear((WINDOW*)mainwindow);
+//    wclear((WINDOW*)statswindow);
+//    wclear((WINDOW*)gamewindow);
     wclear((WINDOW*)msgwindow);
 
     printInventory(0, &player->inventory);

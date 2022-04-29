@@ -53,6 +53,8 @@ void Intro::show()
     printer->printerRefresh();
 
     InputNS::Input::waitKey();
+
+    printer->clear();
 }
 
 }
