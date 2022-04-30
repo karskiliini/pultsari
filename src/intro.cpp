@@ -14,6 +14,11 @@ string name2 = "       Jari  Maaranen";
 string name3 = "       Tero  Maaranen";
 string name4 = "       Kimmo Korhonen";
 
+Intro::~Intro()
+{
+    printer->endIntro();
+}
+
 void Intro::show()
 {
     const string pulsu = "PULTSARI";

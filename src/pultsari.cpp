@@ -334,7 +334,10 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 nextLevel = true;
             }
         }
+
+        printer->endGame();
         printer->printScore(&player.scoreBoard);
+        InputNS::Input::waitKey();
     }
 }
 
@@ -386,8 +389,10 @@ int init(int argc, char *argv[], Printer* printer)
         }
     }
 
-    IntroNS::Intro i(printer);
-    i.show();
+    {
+        IntroNS::Intro i(printer);
+        i.show();
+    }
 
     try {
         mainloop(printer, stage, losEnabled, animsEnabled, pathFinding);

@@ -24,10 +24,6 @@ using PlayerNS::Player;
 
 PrinterNcurses::PrinterNcurses() {
     mainwindow = initscr();
-    gamewindow = newwin(common::SIZEY + 2, common::SIZEX + 2, 5, 18);
-    inventorywindow = newwin(11, 16, 5, 1);
-    msgwindow = newwin(3, common::SIZEX + 2, 2, 18);
-    statswindow = newwin(3, common::SIZEX + 2, 35, 18);
 }
 
 PrinterNcurses::~PrinterNcurses() {
@@ -36,10 +32,27 @@ PrinterNcurses::~PrinterNcurses() {
 
 void PrinterNcurses::clear()
 {
-    wclear((WINDOW*)mainwindow);
-    wclear((WINDOW*)statswindow);
-    wclear((WINDOW*)gamewindow);
+    if (mainwindow) wclear((WINDOW*)mainwindow);
+    if (statswindow) wclear((WINDOW*)statswindow);
+    if (gamewindow) wclear((WINDOW*)gamewindow);
     ::clear();
+}
+
+void PrinterNcurses::endIntro()
+{
+    gamewindow = newwin(common::SIZEY + 2, common::SIZEX + 2, 5, 18);
+    inventorywindow = newwin(11, 16, 5, 1);
+    msgwindow = newwin(3, common::SIZEX + 2, 2, 18);
+    statswindow = newwin(3, common::SIZEX + 2, 35, 18);
+}
+
+void PrinterNcurses::endGame()
+{
+    if (mainwindow) wclear((WINDOW*)mainwindow);
+    if (statswindow) wclear((WINDOW*)statswindow);
+    if (gamewindow) wclear((WINDOW*)gamewindow);
+    if (statswindow) delwin((WINDOW*)statswindow);
+    if (gamewindow) delwin((WINDOW*)gamewindow);
 }
 
 void PrinterNcurses::show_console_cursor(const bool show) {
@@ -101,21 +114,25 @@ void PrinterNcurses::printStats(Level* l, Stats* stats)
 
 void PrinterNcurses::printChar(string c)
 {
+    wprintw((WINDOW*)mainwindow, c.c_str());
 }
 
 void PrinterNcurses::printScore(const ScoreBoard* scoreBoard)
 {
-    printw("                                                                \n");
-    printw("                                                                \n");
-    printw("                                                                \n");
-    printw((std::string("Hakkaamasi mummelit  : ") + std::to_string(scoreBoard->mummot) + "              " + "\n").c_str());
-    printw((std::string("Kaikki hakatut oliot : ") + std::to_string(scoreBoard->kaikki) + "              " + "\n").c_str());
-    printw((std::string("------------------------------") + "              " + "\n").c_str());
-    printw(("Yhteispistetilanteesi: " + std::to_string(scoreBoard->mummot + scoreBoard->kaikki) +  "              ").c_str());
-    printw("Kiitos Pultsarin pelaamisesta!              \n");
-    printw("                                                                ");
-    printw("                                                                ");
-    printw("                                                                ");
+    wprintw((WINDOW*)mainwindow, "                                                                \n");
+    wprintw((WINDOW*)mainwindow, "                                                                \n");
+    wprintw((WINDOW*)mainwindow, "                                                                \n");
+    wprintw((WINDOW*)mainwindow, (std::string("Hakkaamasi mummelit  : ") + std::to_string(scoreBoard->mummot) + "              " + "\n").c_str());
+    wprintw((WINDOW*)mainwindow, (std::string("Kaikki hakatut oliot : ") + std::to_string(scoreBoard->kaikki) + "              " + "\n").c_str());
+    wprintw((WINDOW*)mainwindow, (std::string("------------------------------") + "              " + "\n").c_str());
+    wprintw((WINDOW*)mainwindow, ("Yhteispistetilanteesi: " + std::to_string(scoreBoard->mummot + scoreBoard->kaikki) +  "              ").c_str());
+    wprintw((WINDOW*)mainwindow, "\n");
+    wprintw((WINDOW*)mainwindow, "\n");
+    wprintw((WINDOW*)mainwindow, "Kiitos Pultsarin pelaamisesta!              \n");
+    wprintw((WINDOW*)mainwindow, "\n");
+    wprintw((WINDOW*)mainwindow, "\n");
+    wprintw((WINDOW*)mainwindow, "\n");
+    refresh();
 }
 
 void PrinterNcurses::printHelp()

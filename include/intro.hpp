@@ -8,7 +8,7 @@ namespace IntroNS {
 class Intro {
 public:
     Intro(Printer* p) { printer = p; }
-    ~Intro() = default;
+    ~Intro();
 
     void show();
     Printer* printer = nullptr;

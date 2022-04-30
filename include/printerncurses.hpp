@@ -16,6 +16,8 @@ public:
     ~PrinterNcurses();
 
     virtual void clear();
+    virtual void endIntro();
+    virtual void endGame();
     virtual void show_console_cursor(const bool show);
     virtual void cursorHome();
     virtual void printMore();
@@ -36,11 +38,11 @@ public:
     virtual void printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask);
     virtual void print(Level* level);
 
-    void *mainwindow;
-    void *gamewindow;
-    void *inventorywindow;
-    void *msgwindow;
-    void *statswindow;
+    void *mainwindow = nullptr;
+    void *gamewindow = nullptr;
+    void *inventorywindow = nullptr;
+    void *msgwindow = nullptr;
+    void *statswindow = nullptr;
 };
 
 #endif
