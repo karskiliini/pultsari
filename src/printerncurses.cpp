@@ -32,27 +32,23 @@ PrinterNcurses::~PrinterNcurses() {
 
 void PrinterNcurses::clear()
 {
-    if (mainwindow) wclear((WINDOW*)mainwindow);
-    if (statswindow) wclear((WINDOW*)statswindow);
-    if (gamewindow) wclear((WINDOW*)gamewindow);
     ::clear();
 }
 
 void PrinterNcurses::endIntro()
 {
     gamewindow = newwin(common::SIZEY + 2, common::SIZEX + 2, 5, 18);
-    inventorywindow = newwin(11, 16, 5, 1);
+    inventorywindow = newwin(13, 16, 5, 1);
     msgwindow = newwin(3, common::SIZEX + 2, 2, 18);
     statswindow = newwin(3, common::SIZEX + 2, 35, 18);
 }
 
 void PrinterNcurses::endGame()
 {
-    if (mainwindow) wclear((WINDOW*)mainwindow);
-    if (statswindow) wclear((WINDOW*)statswindow);
-    if (gamewindow) wclear((WINDOW*)gamewindow);
-    if (statswindow) delwin((WINDOW*)statswindow);
-    if (gamewindow) delwin((WINDOW*)gamewindow);
+    engameWindow = newwin((common::SIZEY + 2) * 2 / 3 + 1,
+                          (common::SIZEX + 2) * 2 / 3,
+                          (common::SIZEY + 2) / 3,
+                          (common::SIZEX + 2) / 3);
 }
 
 void PrinterNcurses::show_console_cursor(const bool show) {
@@ -77,6 +73,7 @@ void PrinterNcurses::setMessage(const std::string& message)
 void PrinterNcurses::printMessage()
 {
     wclear((WINDOW*)msgwindow);
+    box((WINDOW*)msgwindow, 0, 0);
     mvwprintw((WINDOW*)msgwindow, 1, 1, msg.c_str());
     wrefresh((WINDOW*)msgwindow);
 }
@@ -105,7 +102,7 @@ void PrinterNcurses::printInventory(uint32_t /* y */, Inventory* inventory)
 
 void PrinterNcurses::printStats(Level* l, Stats* stats)
 {
-    mvwprintw((WINDOW*)statswindow, 1, 0, ("RAHAA: "      + moneyAligned(stats->money)).c_str());
+    mvwprintw((WINDOW*)statswindow, 1, 1, ("RAHAA: "      + moneyAligned(stats->money)).c_str());
     wprintw((WINDOW*)statswindow, ("  VOIMA: "    + moneyAligned(stats->health)).c_str());
     wprintw((WINDOW*)statswindow,("  PROMILLE: " + promilleAligned(stats->promilles)).c_str());
     wprintw((WINDOW*)statswindow,("  KÄPPÄILY: " + std::to_string(stats->turn) + " ").c_str());
@@ -119,20 +116,16 @@ void PrinterNcurses::printChar(string c)
 
 void PrinterNcurses::printScore(const ScoreBoard* scoreBoard)
 {
-    wprintw((WINDOW*)mainwindow, "                                                                \n");
-    wprintw((WINDOW*)mainwindow, "                                                                \n");
-    wprintw((WINDOW*)mainwindow, "                                                                \n");
-    wprintw((WINDOW*)mainwindow, (std::string("Hakkaamasi mummelit  : ") + std::to_string(scoreBoard->mummot) + "              " + "\n").c_str());
-    wprintw((WINDOW*)mainwindow, (std::string("Kaikki hakatut oliot : ") + std::to_string(scoreBoard->kaikki) + "              " + "\n").c_str());
-    wprintw((WINDOW*)mainwindow, (std::string("------------------------------") + "              " + "\n").c_str());
-    wprintw((WINDOW*)mainwindow, ("Yhteispistetilanteesi: " + std::to_string(scoreBoard->mummot + scoreBoard->kaikki) +  "              ").c_str());
-    wprintw((WINDOW*)mainwindow, "\n");
-    wprintw((WINDOW*)mainwindow, "\n");
-    wprintw((WINDOW*)mainwindow, "Kiitos Pultsarin pelaamisesta!              \n");
-    wprintw((WINDOW*)mainwindow, "\n");
-    wprintw((WINDOW*)mainwindow, "\n");
-    wprintw((WINDOW*)mainwindow, "\n");
-    refresh();
+    mvwprintw((WINDOW*)engameWindow, 6, 10, (std::string("Hakkaamasi mummelit  : ") + std::to_string(scoreBoard->mummot) + "              " + "\n").c_str());
+    mvwprintw((WINDOW*)engameWindow, 7, 10, (std::string("Kaikki hakatut oliot : ") + std::to_string(scoreBoard->kaikki) + "              " + "\n").c_str());
+    mvwprintw((WINDOW*)engameWindow, 8, 10, (std::string("------------------------------") + "              " + "\n").c_str());
+    mvwprintw((WINDOW*)engameWindow, 9, 10, ("Yhteispistetilanteesi: " + std::to_string(scoreBoard->mummot + scoreBoard->kaikki) +  "              ").c_str());
+
+    mvwprintw((WINDOW*)engameWindow, 13, 10, "Kiitos Pultsarin pelaamisesta!              \n");
+
+
+    box((WINDOW*)engameWindow, 0, 0);
+    wrefresh((WINDOW*)engameWindow);
 }
 
 void PrinterNcurses::printHelp()
@@ -166,7 +159,6 @@ void PrinterNcurses::emptyTitleLine(uint32_t textLen)
 
 void PrinterNcurses::printerRefresh()
 {
-    // box((WINDOW*)mainwindow, 0, 0);
     box((WINDOW*)gamewindow, 0, 0);
     box((WINDOW*)inventorywindow, 0, 0);
     box((WINDOW*)msgwindow, 0, 0);
@@ -269,11 +261,12 @@ void PrinterNcurses::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask,
 
         if (c == "█")
         {
-            waddch((WINDOW*)gamewindow, ACS_BLOCK);
+            //waddch((WINDOW*)gamewindow, ACS_BLOCK);
+            waddch((WINDOW*)gamewindow, 97 | A_ALTCHARSET);
         }
         else if (c == "░")
         {
-            waddch((WINDOW*)gamewindow, ACS_UARROW);
+            waddch((WINDOW*)gamewindow, ACS_BOARD);
         }
         else if (c == "°")
         {
@@ -300,7 +293,6 @@ void PrinterNcurses::print(Level* level)
 {
     wclear((WINDOW*)msgwindow);
     wclear((WINDOW*)gamewindow);
-
 
     printInventory(0, &player->inventory);
 

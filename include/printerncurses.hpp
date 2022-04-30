@@ -43,6 +43,7 @@ public:
     void *inventorywindow = nullptr;
     void *msgwindow = nullptr;
     void *statswindow = nullptr;
+    void *engameWindow = nullptr;
 };
 
 #endif

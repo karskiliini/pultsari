@@ -239,6 +239,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
     player.printer = printer;
 
     bool quit = false;
+    bool skipWaitKey = false;
 
     while (!quit) {
         player.resetPosition();
@@ -296,6 +297,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 }
             } catch(...) {
                 quit = true;
+                skipWaitKey = true;
                 break;
             }
 
@@ -334,11 +336,12 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 nextLevel = true;
             }
         }
-
-        printer->endGame();
-        printer->printScore(&player.scoreBoard);
-        InputNS::Input::waitKey();
     }
+
+    if (!skipWaitKey) InputNS::Input::waitKey();
+    printer->endGame();
+    printer->printScore(&player.scoreBoard);
+    InputNS::Input::waitKey();
 }
 
 int init(int argc, char *argv[], Printer* printer)
