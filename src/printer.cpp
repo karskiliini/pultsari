@@ -36,7 +36,10 @@ void Printer::setMessage(const std::string& message)
 
 void Printer::showMessage(std::string message, Level* level, bool waitKey)
 {
-    if (message == "") return;
+    if (message == "") {
+        printerRefresh();
+        return;
+    }
 
     bool tokenize = true;
     uint32_t limit = 3;
