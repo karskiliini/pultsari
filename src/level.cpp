@@ -253,7 +253,7 @@ bool Level::hitItem(const Coord& c) const
 {
     for (const auto& i : items)
     {
-        if ((i->coord == c))
+        if (i->coord == c)
             return true;
     }
     return false;
@@ -261,13 +261,7 @@ bool Level::hitItem(const Coord& c) const
 
 bool Level::hit(const Coord& c) const
 {
-    bool hit = hitBuilding(c);
-    if (hit) return true;
-
-    hit = hitPerson(c);
-    if (hit) return true;
-
-    return hitItem(c);
+    return hitBuilding(c) || hitPerson(c) || hitItem(c);
 }
 
 Item* Level::getItem(const Coord& c) const
@@ -284,8 +278,8 @@ Coord Level::freePosition() const
 
     bool recheck;
     do {
-        coord.x = rand() % sizex;
-        coord.y = rand() % sizey;
+        coord.x = std::rand() % sizex;
+        coord.y = std::rand() % sizey;
         recheck = hit(coord);
     } while (recheck);
 

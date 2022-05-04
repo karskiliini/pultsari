@@ -10,7 +10,7 @@ namespace common {
 
 bool random(uint32_t pct)
 {
-    return (uint32_t)(rand() % 101) <= pct;
+    return (uint32_t)(std::rand() % 101) <= pct;
 }
 
 bool checkBounds(Coord& coord) {

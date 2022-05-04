@@ -16,14 +16,35 @@ using InputNS::Input;
 using common::random;
 
 Building::Building(BuildingType buildingType) : type(buildingType)
-{
-}
+{ }
 
 void Building::npcAct()
+{ }
+
+std::string Building::typeToChar(const Coord& c) const
 {
+    uint32_t x = c.x;
+    uint32_t y = c.y;
+
+    if (hasDoor && hitDoor(c)) return "░";
+    if (hitWall(c)) return "█";
+
+    if (y == (wallTop + wallBot) / 2)
+    {
+        const auto name = getName();
+        const auto len = name.length();
+        const uint32_t mid = ((wallRight + wallLeft) / 2);
+        const uint32_t left = mid - len/2;
+
+        if ((x >= left) && (x < (left + len))) {
+            const auto index = x - left;
+            string ret = name.substr(index, 1);
+            return ret;
+        }
+    }
+    return " ";
 }
 
-std::string Building::typeToChar(const Coord& c) const { return printChar(c); };
 std::string Building::getName() const { return ""; }
 
 bool Building::getEnterMsg(PlayerNS::Player* player, std::string& msg) const { return false; }
@@ -105,30 +126,6 @@ bool Building::hitDoor(const Coord& c) const {
         }
     }
     return false;
-}
-
-string Building::printChar(const Coord& c) const
-{
-    uint32_t x = c.x;
-    uint32_t y = c.y;
-
-    if (hasDoor && hitDoor(c)) return "░";
-    if (hitWall(c)) return "█";
-
-    if (y == (wallTop + wallBot) / 2)
-    {
-        const auto name = getName();
-        const auto len = name.length();
-        const uint32_t mid = ((wallRight + wallLeft) / 2);
-        const uint32_t left = mid - len/2;
-
-        if ((x >= left) && (x < (left + len))) {
-            const auto index = x - left;
-            string ret = name.substr(index, 1);
-            return ret;
-        }
-    }
-    return " ";
 }
 
 Coord Building::getDoor() const
@@ -324,7 +321,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                     msg = "Joo, montahan noita pamppuja sinulla onkin.";
                 } else {
                     --player->inventory.pamput;
-                    uint32_t price = rand() % 40 + 1;
+                    uint32_t price = std::rand() % 40 + 1;
                     player->updateMoney(price);
                     msg = "Pamppu hurahti " + std::to_string(price) + " markalla.";
                 }
@@ -343,7 +340,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                     msg = "Et omista veitsiä.";
                 } else {
                     --player->inventory.veitset;
-                    uint32_t price = rand() % 50 + 1;
+                    uint32_t price = std::rand() % 50 + 1;
                     player->updateMoney(price);
                     msg = "Voitit veitellas " + std::to_string(price) + " markkaa.";
                 }

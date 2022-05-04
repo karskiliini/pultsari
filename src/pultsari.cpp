@@ -72,7 +72,7 @@ static bool handleInput(PlayerNS::Player& player, Level* level, Printer& printer
         case InputNS::throwup:
             {
                 DirectionNS::Direction d;
-                int dir = rand() % 4;
+                int dir = std::rand() % 4;
                 switch(dir)
                 {
                     default:
@@ -180,7 +180,7 @@ static void populatePersons(Level& level)
     }
 
     // at least one cop / level
-    for (int i = 0; i < rand() % 9 + 1; ++i)
+    for (int i = 0; i < std::rand() % 9 + 1; ++i)
     {
         bool create = true;
         if (create) {

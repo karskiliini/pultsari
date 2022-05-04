@@ -116,7 +116,7 @@ bool Mummo::interact(std::string& msg, Person* source)
         if (random(50))
         {
             msg = "Eläkellääinen hakkaa sua käsilaukullaan !!!";
-            uint32_t damage = rand() % 1 + 1;
+            uint32_t damage = std::rand() % 1 + 1;
             source->damage(damage);
         } else {
             msg = "Mukiloit mummon kumoon. Haa,lompsa !!!";
@@ -162,7 +162,7 @@ bool Mummo::interactpuke(Person* source)
 
 Item* Mummo::dropItem()
 {
-    return new Raha(coord, rand()%25 + 1);
+    return new Raha(coord, std::rand()%25 + 1);
 }
 
 // COP
@@ -369,9 +369,10 @@ void Varas::npcAct()
     {
         msg = "Varas hipelöi sinua !!!";
 
-        if (rand()%2)
+        auto r = std::rand();
+        if (r % 2)
         {
-            uint32_t sum = rand() % 16 + 1;
+            uint32_t sum = r % 16 + 1;
             if (sum > player->stats.money) sum = player->stats.money;
             player->updateMoney(-sum);
             msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
@@ -502,7 +503,7 @@ void Vanki::npcAct()
     {
         msg = "Vankikarkuri kurmottaa sinua!";
 
-        uint32_t damage = rand()%3 + 1;
+        uint32_t damage = std::rand()%3 + 1;
         p->damage(damage);
     } else {
         if (kivi && ((coord.x == p->coord.x) || (coord.y == p->coord.y)))
@@ -565,7 +566,7 @@ bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
     if (!hit) {
         msg = "Roisto väisti heittosi !";
     } else {
-        uint32_t d = rand() % 3 + 1;
+        uint32_t d = std::rand() % 3 + 1;
         if (d >= stats.health) {
             msg = "Vankikarkuri pokertyy heittosi ansiosta maahan...";
         } else {
@@ -655,7 +656,7 @@ void Skinhead::npcAct()
     {
         msg = "Skinhead murjoo sinua apinan raivolla!!";
 
-        uint32_t damage = rand()%4 + 1;
+        uint32_t damage = std::rand()%4 + 1;
         p->damage(damage);
     } else {
         Direction d = getMoveDirection(target);
@@ -688,7 +689,7 @@ bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
     if (!hit) {
         msg = "Et osunut skinheadiin !";
     } else {
-        uint32_t d = rand() % 5 + 1;
+        uint32_t d = std::rand() % 5 + 1;
         if (d >= stats.health) {
             msg = "Heittosi ossuupi skinukkelia vyon alle. Se koskee tuntuvasti !!!";
         } else {

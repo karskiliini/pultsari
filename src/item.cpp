@@ -172,7 +172,7 @@ bool Banaani::interact(PlayerNS::Player* player)
 
 // Raha
 Raha::Raha(const Coord& c) : Item(c, ERaha) {
-    value = rand() % 29 + 1;
+    value = std::rand() % 29 + 1;
 }
 
 Raha::Raha(const Coord& c, uint32_t value) : Item(c, ERaha)

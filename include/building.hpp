@@ -45,7 +45,6 @@ public:
     bool hitRightWall(const Coord& c) const;
     bool hitWall(const Coord& c) const;
     bool hitDoor(const Coord& c) const;
-    std::string printChar(const Coord& c) const;
 
     Coord getDoor() const;
     Coord getSpawn() const;
@@ -58,7 +57,6 @@ public:
     uint32_t wallLeft;
     uint32_t wallBot;
 
-    uint32_t turn = 0;
     Level* level;
 };
 
@@ -117,6 +115,7 @@ public:
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
     bool emitted = false;
+    uint32_t turn = 0;
 };
 
 class PoliisiAsema : public Building {
@@ -128,6 +127,7 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+    uint32_t turn = 0;
 };
 
 class Asema : public Building {
@@ -141,6 +141,7 @@ public:
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
     bool emitted = false;
+    uint32_t turn = 0;
 };
 
 class Seina : public Building {
