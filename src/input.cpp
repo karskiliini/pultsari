@@ -1,24 +1,43 @@
 #include "input.hpp"
 #include "iostream"
 
+#if defined(_WIN32)
+#include <conio.h>
+#include <unistd.h>
+#endif
+
 namespace InputNS {
+
+char readChar() {
+#if defined(_WIN32)
+    return getch();
+#else
+    return getchar();
+#endif
+}
 
 void Input::raw()
 {
+#if defined(_WIN32)
+#elif defined(__linux__)
     // Set terminal to raw mode
     system("stty raw -echo");
+#endif // Windows/Linux
 }
 
 void Input::noraw()
 {
+#if defined(_WIN32)
+#elif defined(__linux__)
     // Set terminal to cooked mode
     system("stty -raw echo");
+#endif // Windows/Linux
 }
 
 void Input::waitKey()
 {
     Input::raw();
-    getchar();
+    readChar();
     Input::noraw();
 }
 
@@ -29,7 +48,7 @@ InputType Input::getInput()
     InputType sel = inputpending;
     while(sel == inputpending)
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case 'l': sel = right; break;
@@ -56,7 +75,7 @@ uint32_t InputNS::Input::getThrow()
     uint32_t sel = 0;
     while(sel == 0)
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case '1': sel = 1; break;
@@ -88,7 +107,7 @@ InputAlkoType Input::getInputAlko()
     InputAlkoType sel = alkopending;
     while(sel == alkopending)
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case '1': sel = InputAlkoType::ostakalja; break;
@@ -109,7 +128,7 @@ bool Input::getInputPutka()
     bool done = false;
     while(!done)
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case 'E':
@@ -131,7 +150,7 @@ uint32_t Input::getInputDivari()
     uint32_t sel = 0;
     while (sel == 0)
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case '1': sel = 1; break;
@@ -153,7 +172,7 @@ DrinkType Input::getDrink()
     DrinkType sel = drinkpending;
     while(sel == drinkpending)
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case '1': sel = DrinkType::kalja; break;
@@ -173,7 +192,7 @@ FoodType Input::getFood()
     FoodType sel = foodpending;
     while(sel == foodpending)
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case '1': sel = FoodType::foodlenkki; break;
@@ -195,7 +214,7 @@ char Input::inputYka()
     char sel = '1';
     while(sel == '1')
     {
-        auto c = getchar();
+        auto c = readChar();
         switch(c)
         {
             case 'k':

@@ -14,11 +14,12 @@ using PlayerNS::Player;
 
 void PrinterTerm::show_console_cursor(const bool show) {
 #if defined(_WIN32)
-    static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
+    /* static const HANDLE handle = GetStdHandle(STD_OUTPUT_HANDLE);
     CONSOLE_CURSOR_INFO cci;
     GetConsoleCursorInfo(handle, &cci);
     cci.bVisible = show; // show/hide cursor
     SetConsoleCursorInfo(handle, &cci);
+    */
 #elif defined(__linux__)
     std::cout << (show ? "\033[?25h" : "\033[?25l"); // show/hide cursor
 #endif // Windows/Linux

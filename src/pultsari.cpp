@@ -14,6 +14,10 @@
 #include <iostream>
 #include <exception>
 
+#if defined(_WIN32)
+#include <time.h>
+#endif
+
 using std::cout;
 using std::endl;
 using common::random;
