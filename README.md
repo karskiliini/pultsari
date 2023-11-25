@@ -11,7 +11,7 @@
 ## Build instructions
 
 ### Windows 10
-- Install [QB64](https://qb64.org/) IDE, open pultsari.bas file and press F5 to compile pultsari.exe.
+- Install [QB64](https://qb64.com/) IDE, open pultsari.bas file and press F5 to compile pultsari.exe.
 - run pultsari.exe
 
 or
