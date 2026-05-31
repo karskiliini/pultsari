@@ -11,6 +11,7 @@
 #include "item.hpp"
 #include "mask.hpp"
 #include "scoreboard.hpp"
+#include "remotecontrol.hpp"
 #include <iostream>
 #include <exception>
 
@@ -353,26 +354,33 @@ int init(int argc, char *argv[], Printer* printer)
     bool animsEnabled = false;
     bool losEnabled = false;
     bool pathFinding = false;
+    uint16_t remotePort = 0;
 
     for (int i = 0; i < argc; ++i) {
         std::string a = argv[i];
         if (a == "--los") {
-            // enable line of sight
             losEnabled = true;
         } else if (a == "--anims") {
-            // enable animations
             animsEnabled = true;
         } else if ((a == "-h") || (a == "--help")) {
             printer->printHelp();
             InputNS::Input::waitKey();
             return 0;
         } else if (a == "--path") {
-            // enable advanced path finding for npc characters
             pathFinding = true;
         } else if ((a == "--all") || (a == "-a")) {
             losEnabled = true;
             animsEnabled = true;
             pathFinding = true;
+        } else if (a == "--remote") {
+            remotePort = 9999;
+            if (i + 1 < argc) {
+                uint32_t tmp = std::atoi(argv[i + 1]);
+                if (tmp > 0 && tmp <= 65535) {
+                    remotePort = static_cast<uint16_t>(tmp);
+                    ++i;
+                }
+            }
         } else if (a == "--level") {
             ++i;
             if (i == argc) {
@@ -390,6 +398,18 @@ int init(int argc, char *argv[], Printer* printer)
             printer->printErr("ERROR: unknown parameter " + a);
             return -1;
         }
+    }
+
+    RemoteControl* remote = nullptr;
+    if (remotePort > 0) {
+        remote = new RemoteControl(remotePort);
+        if (!remote->waitForConnection()) {
+            printer->printErr("ERROR: failed to establish remote connection");
+            delete remote;
+            printer->show_console_cursor(true);
+            return -1;
+        }
+        InputNS::Input::setRemote(remote);
     }
 
     {
@@ -412,6 +432,8 @@ int init(int argc, char *argv[], Printer* printer)
     }
 
     printer->show_console_cursor(true);
+
+    delete remote;
 
     return 0;
 }

@@ -3,6 +3,8 @@
 
 #include <cstdint>
 
+class RemoteControl;
+
 namespace InputNS {
 
 enum InputType {
@@ -50,6 +52,8 @@ public:
     static void raw();
     static void noraw();
 
+    static void setRemote(RemoteControl* rc);
+
     static void waitKey();
     static InputType getInput();
     static DrinkType getDrink();
@@ -59,6 +63,10 @@ public:
     static bool getInputPutka();
     static uint32_t getInputDivari();
     static char inputYka();
+
+private:
+    static RemoteControl* remote;
+    static char getCharInput();
 };
 
 }
