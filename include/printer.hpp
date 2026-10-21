@@ -1,6 +1,7 @@
 #ifndef PRINTER_HPP
 #define PRINTER_HPP
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
