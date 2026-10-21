@@ -14,16 +14,27 @@ on:
   workflow_dispatch:
 
 # A workflow run is made up of one or more jobs that can run sequentially or in parallel
+permissions:
+  contents: read
+
 jobs:
   # This workflow contains a single job called "build"
   build:
     # The type of runner that the job will run on
     runs-on: ubuntu-latest
+    timeout-minutes: 15
 
     # Steps represent a sequence of tasks that will be executed as part of the job
     steps:
       # Checks-out your repository under $GITHUB_WORKSPACE, so your job can access it
-      - uses: actions/checkout@v3
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Install ncurses headers
+        run: sudo apt-get update && sudo apt-get install -y libncurses-dev
+      - name: Terminal security regression
+        run: |
+          c++ -std=c++17 -I include src/input.cpp test/terminal.cpp -lutil -o /tmp/pultsari-terminal-test
+          /tmp/pultsari-terminal-test
 
       # Runs a single command using the runners shell
       - name: Run a one-line script

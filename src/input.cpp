@@ -1,18 +1,31 @@
 #include "input.hpp"
 #include "iostream"
+#include <termios.h>
+#include <unistd.h>
 
 namespace InputNS {
 
+namespace {
+termios originalTerminal{};
+bool terminalSaved = false;
+}
+
 void Input::raw()
 {
-    // Set terminal to raw mode
-    system("stty raw -echo");
+    if (terminalSaved || !isatty(STDIN_FILENO)) return;
+    termios mode{};
+    if (tcgetattr(STDIN_FILENO, &mode) != 0) return;
+    originalTerminal = mode;
+    cfmakeraw(&mode);
+    if (tcsetattr(STDIN_FILENO, TCSANOW, &mode) == 0) terminalSaved = true;
 }
 
 void Input::noraw()
 {
-    // Set terminal to cooked mode
-    system("stty -raw echo");
+    if (terminalSaved) {
+        tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminal);
+        terminalSaved = false;
+    }
 }
 
 void Input::waitKey()
