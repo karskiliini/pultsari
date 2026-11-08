@@ -337,7 +337,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                                 if (num > 0 && player.decrementInventory(num)) {
                                     throwItemNum = num;
-                                    printer->showMessage("Anna suunta (i/j/k/l):", &level, false);
+                                    printer->showMessage("Anna suunta (wasd):", &level, false);
                                     dlg = DlgMode::ThrowDir;
                                 } else if (num > 0) {
                                     dlg = DlgMode::None;
@@ -347,10 +347,10 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                             case DlgMode::ThrowDir: {
                                 DirectionNS::Direction dir = DirectionNS::none;
-                                if (c == 'i') dir = DirectionNS::up;
-                                else if (c == 'k') dir = DirectionNS::down;
-                                else if (c == 'j') dir = DirectionNS::left;
-                                else if (c == 'l') dir = DirectionNS::right;
+                                if (c == 'i' || c == 'w') dir = DirectionNS::up;
+                                else if (c == 'k' || c == 's') dir = DirectionNS::down;
+                                else if (c == 'j' || c == 'a') dir = DirectionNS::left;
+                                else if (c == 'l' || c == 'd') dir = DirectionNS::right;
 
                                 if (dir != DirectionNS::none) {
                                     player.executeThrow(throwItemNum, dir);

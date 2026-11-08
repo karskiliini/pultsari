@@ -54,10 +54,10 @@ InputType Input::getInputNonBlocking()
 
     switch(c)
     {
-        case 'l': return right;
-        case 'j': return left;
-        case 'k': return down;
-        case 'i': return up;
+        case 'l': case 'd': return right;
+        case 'j': case 'a': return left;
+        case 'k': case 's': return down;
+        case 'i': case 'w': return up;
         case 'z': return InputType::quit;
         case 't': return throwing;
         case 'q': return drinking;
@@ -84,10 +84,10 @@ InputType Input::getInput()
         auto c = getchar();
         switch(c)
         {
-            case 'l': sel = right; break;
-            case 'j': sel = left; break;
-            case 'k': sel = down; break;
-            case 'i': sel = up; break;
+            case 'l': case 'd': sel = right; break;
+            case 'j': case 'a': sel = left; break;
+            case 'k': case 's': sel = down; break;
+            case 'i': case 'w': sel = up; break;
             case 'z': sel = InputType::quit; break;
             case 't': sel = throwing; break;
             case 'q': sel = drinking; break;
