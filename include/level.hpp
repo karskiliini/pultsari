@@ -8,6 +8,8 @@
 #include <cstdint>
 #include <vector>
 
+class Vehicle;
+
 class Person;
 class Building;
 class Item;
@@ -61,6 +63,10 @@ public:
     void addAnimation(Animation* animation, bool play = true);
     void removeItem(Item* item);
 
+    void addVehicle(Vehicle* v);
+    void updateVehicles();
+    Vehicle* getVehicleAt(const Coord& c) const;
+
     bool raycast(Coord from, const Coord& to) const;
     Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
     Building* raycastBuilding(const Coordinate<int>& from, const Coordinate<int>& vector) const;
@@ -71,6 +77,7 @@ public:
     std::vector<Building*> buildings;
     std::vector<Person*> persons;
     std::vector<Item*> items;
+    std::vector<Vehicle*> vehicles;
     Item* thrownItem = nullptr;
     Animation* animation = nullptr;
 

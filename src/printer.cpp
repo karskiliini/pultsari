@@ -7,6 +7,7 @@
 #include "mask.hpp"
 #include "pathmask.hpp"
 #include "level.hpp"
+#include "vehicle.hpp"
 #include <vector>
 #include <iostream>
 #include <string>
@@ -267,6 +268,16 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             if (i) {
                 c = i->typeToChar();
                 found = true;
+            }
+        }
+
+        if (!found) {
+            for (const auto& v : l->vehicles) {
+                if (v->hitVehicle(coord)) {
+                    c = v->typeToChar();
+                    found = true;
+                    break;
+                }
             }
         }
 

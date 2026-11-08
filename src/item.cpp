@@ -304,6 +304,16 @@ static bool checkBonas(Level* level)
     return ok;
 }
 
+// bus stop
+BusStop::BusStop(const Coord& c) : Item(c, EBusStop) { }
+std::string BusStop::typeToChar() const { return "H"; }
+std::string BusStop::getMsg() const {
+    return "Bussipysäkki. Odota bussia.";
+}
+bool BusStop::interact(PlayerNS::Player* player) {
+    return false;
+}
+
 // pensas
 Pensas::Pensas(const Coord& c) : Item(c, EPensas) { blocksLOS = true; }
 std::string Pensas::typeToChar() const { return "#"; }

@@ -8,6 +8,7 @@
 #include "coord.hpp"
 #include "common.hpp"
 #include "animation.hpp"
+#include "vehicle.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -43,6 +44,12 @@ Level::~Level() {
         delete p;
     }
     items.clear();
+
+    for (auto& v : vehicles)
+    {
+        delete v;
+    }
+    vehicles.clear();
 }
 
 void Level::buildingTurn()
@@ -441,6 +448,29 @@ void Level::addItem(Item* item)
 void Level::addThrownItem(Item* item)
 {
     thrownItem = item;
+}
+
+void Level::addVehicle(Vehicle* v)
+{
+    v->level = this;
+    vehicles.push_back(v);
+}
+
+void Level::updateVehicles()
+{
+    for (auto& v : vehicles)
+    {
+        v->update();
+    }
+}
+
+Vehicle* Level::getVehicleAt(const Coord& c) const
+{
+    for (auto& v : vehicles)
+    {
+        if (v->hitVehicle(c)) return v;
+    }
+    return nullptr;
 }
 
 void Level::addAnimation(Animation* animation, bool play)

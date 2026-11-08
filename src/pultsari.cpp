@@ -11,6 +11,7 @@
 #include "item.hpp"
 #include "mask.hpp"
 #include "scoreboard.hpp"
+#include "vehicle.hpp"
 #include <iostream>
 #include <exception>
 #include <cmath>
@@ -162,6 +163,20 @@ static void populatePersons(Level& level)
 
 }
 
+static void populateVehicles(Level& level)
+{
+    if (level.stage > 3) {
+        constexpr uint32_t BUS_ROUTE_Y = 19;
+        constexpr uint32_t BUS_STOP_X = 40;
+
+        Bus* bus = new Bus(BUS_ROUTE_Y, BUS_STOP_X);
+        level.addVehicle(bus);
+
+        BusStop* stop = new BusStop(Coord{BUS_STOP_X, BUS_ROUTE_Y - 1});
+        level.addItem(stop);
+    }
+}
+
 static bool checkExit(const Level& level)
 {
     bool ok = true;
@@ -282,6 +297,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         populateBuildings(level);
         populatePersons(level);
         populateItems(level);
+        populateVehicles(level);
 
         if (welcome) {
             welcome = false;
@@ -484,9 +500,34 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         npcTick = 0;
                         level.buildingTurn();
                         level.npcTurn();
+                        level.updateVehicles();
                         level.cleanDead();
                         level.cleanDiscardedItems();
                         player.updateTurn();
+
+                        // check if player is at bus stop and bus is there
+                        for (auto& v : level.vehicles) {
+                            Bus* bus = dynamic_cast<Bus*>(v);
+                            if (bus && bus->atStop) {
+                                Coord stopCoord { bus->stopX, bus->routeY - 1 };
+                                if (player.coord == stopCoord) {
+                                    printer->showMessage("Bussi saapui! Nouse kyytiin? (K=kyllä)", &level, false);
+                                    printer->print(&level);
+                                    InputNS::Input::noraw();
+
+                                    auto result = runBusMinigame(&player, &level);
+                                    if (result.levelChange != 0) {
+                                        int newStage = (int)stage + result.levelChange;
+                                        if (newStage < 1) newStage = 1;
+                                        stage = (uint32_t)newStage;
+                                        nextLevel = true;
+                                    }
+
+                                    InputNS::Input::raw();
+                                    break;
+                                }
+                            }
+                        }
                     }
 
                     mask.init();
@@ -557,6 +598,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                     level.buildingTurn();
                     level.npcTurn();
+                    level.updateVehicles();
                     level.cleanDead();
                     level.cleanDiscardedItems();
 
