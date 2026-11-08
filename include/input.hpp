@@ -16,7 +16,8 @@ enum InputType {
     eating,
     stagger,
     throwup,
-    quit
+    quit,
+    inventory
 };
 
 enum DrinkType {

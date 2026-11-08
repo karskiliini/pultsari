@@ -62,6 +62,8 @@ InputType Input::getInputNonBlocking()
         case 't': return throwing;
         case 'q': return drinking;
         case 'e': return eating;
+        case '\t': return inventory;
+        case ' ': return InputType::throwing;
         default:  return inputpending;
     }
 }

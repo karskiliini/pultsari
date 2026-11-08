@@ -10,6 +10,7 @@
 #include <vector>
 #include <iostream>
 #include <string>
+#include <cmath>
 
 using std::vector;
 using std::cout;
@@ -302,6 +303,93 @@ void Printer::print(Level* level)
     showMessage(msg, level, false);
 
     printerRefresh();
+}
+
+void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
+{
+    constexpr int OVERLAY_X = 25;
+    constexpr int OVERLAY_Y = 5;
+
+    struct InvItem {
+        const char* name;
+        uint32_t count;
+        bool canUse;
+        bool canThrow;
+    };
+
+    InvItem items[] = {
+        {"KALJA",   inventory->kalja,   true,  true},
+        {"LONKKA",  inventory->lonkka,  true,  true},
+        {"LENKKI",  inventory->lenkki,  true,  true},
+        {"KALA",    inventory->kalat,   true,  true},
+        {"OMPPO",   inventory->omppo,   true,  true},
+        {"BANSKU",  inventory->bansku,  true,  true},
+        {"KETJUT",  inventory->ketjut,  false, true},
+        {"VEITSI",  inventory->veitset, false, true},
+        {"KIVI",    inventory->kivet,   false, true},
+        {"PAMPPU",  inventory->pamput,  false, true},
+        {"BOOTSIT", inventory->bootsit, false, true},
+    };
+    constexpr int NUM_ITEMS = 11;
+
+    char buf[256];
+
+    // top border
+    sprintf(buf, "\033[%d;%dH\033[44;37m+------- TAVARAT --------+", OVERLAY_Y, OVERLAY_X);
+    cout << buf;
+
+    for (int i = 0; i < NUM_ITEMS; ++i) {
+        int y = OVERLAY_Y + 1 + i;
+        bool selected = (i == selectedRow);
+        const char* arrow = selected ? ">" : " ";
+        const char* color = selected ? "\033[43;30m" : "\033[44;37m";
+
+        sprintf(buf, "\033[%d;%dH%s%s %-8s x%-3d %s %s\033[44;37m",
+                y, OVERLAY_X, color, arrow,
+                items[i].name, items[i].count,
+                items[i].canUse ? "[Q]syö" : "      ",
+                items[i].canThrow ? "[E]heitä" : "");
+        cout << buf;
+    }
+
+    // bottom border + help
+    sprintf(buf, "\033[%d;%dH+------------------------+", OVERLAY_Y + NUM_ITEMS + 1, OVERLAY_X);
+    cout << buf;
+    sprintf(buf, "\033[%d;%dH W/S=selaa Tab=sulje     ", OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
+    cout << buf;
+
+    cout << "\033[0m";
+    cout.flush();
+}
+
+void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
+{
+    float dx = cos(angle);
+    float dy = sin(angle);
+    float fx = (float)px;
+    float fy = (float)py;
+
+    for (int step = 1; step < 20; ++step) {
+        fx += dx;
+        fy += dy;
+        int ix = (int)(fx + 0.5f);
+        int iy = (int)(fy + 0.5f);
+
+        if (ix < 0 || iy < 0 || ix >= (int)level->sizex || iy >= (int)level->sizey)
+            break;
+
+        Coord c { (uint32_t)ix, (uint32_t)iy };
+        if (level->hitBuilding(c)) break;
+
+        // +3 for border offset in terminal (1 newline + 1 border + 1 inventory column)
+        int termX = ix + 15;
+        int termY = iy + 3;
+
+        char buf[64];
+        sprintf(buf, "\033[%d;%dH\033[91m*\033[0m", termY, termX);
+        cout << buf;
+    }
+    cout.flush();
 }
 
 void Printer::printErr(const std::string& msg)

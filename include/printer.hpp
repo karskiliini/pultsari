@@ -58,6 +58,8 @@ public:
     virtual void printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask);
     virtual void print(Level* level);
     virtual void printErr(const std::string& msg);
+    virtual void printInventoryOverlay(Inventory* inventory, int selectedRow);
+    virtual void printAimLine(Level* level, uint32_t px, uint32_t py, float angle);
 
     std::string msg = "";
     bool msgShown = false;

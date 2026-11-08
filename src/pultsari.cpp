@@ -13,6 +13,7 @@
 #include "scoreboard.hpp"
 #include <iostream>
 #include <exception>
+#include <cmath>
 
 using std::cout;
 using std::endl;
@@ -269,155 +270,181 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         bool nextLevel = false;
 
         if (common::realtimeEnabled) {
-            // real-time game loop with non-blocking dialog system
             InputNS::Input::raw();
 
             uint32_t npcTick = 0;
             constexpr uint32_t NPC_INTERVAL = 5;
             constexpr uint32_t FRAME_MS = 50;
 
-            enum class DlgMode { None, Drink, Eat, ThrowItem, ThrowDir };
-            DlgMode dlg = DlgMode::None;
-            uint32_t throwItemNum = 0;
+            enum class Mode { Normal, Inventory, Aim };
+            Mode mode = Mode::Normal;
+            int invSelection = 0;
+            constexpr int INV_ITEMS = 11;
+
+            // aim state
+            float aimAngle = 0.0f;
+            uint32_t aimItemNum = 0;
+            uint32_t aimTick = 0;
+
+            // inventory item-to-throw mapping
+            // maps inventory overlay row to decrementInventory() index
+            auto invIndexToThrowNum = [](int idx) -> uint32_t {
+                //  overlay order:  kalja lonkka lenkki kala omppo bansku ketjut veitsi kivi pamppu bootsit
+                //  decrement idx:  1     2      3      9    10    11     4      5      6    7      8
+                constexpr uint32_t map[] = { 1, 2, 3, 9, 10, 11, 4, 5, 6, 7, 8 };
+                if (idx >= 0 && idx < 11) return map[idx];
+                return 0;
+            };
+
+            auto useInventoryItem = [&](int idx) {
+                auto& inv = player.inventory;
+                switch(idx) {
+                    case 0: // kalja
+                        if (inv.kalja > 0) {
+                            --inv.kalja;
+                            printer->showMessage("Glub glub glub ..... Burb !!!", &level, false);
+                            player.updatepromilles(2);
+                        } else printer->showMessage("Ei kaljaa.", &level, false);
+                        break;
+                    case 1: // lonkka
+                        if (inv.lonkka > 0) {
+                            --inv.lonkka;
+                            printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", &level, false);
+                            player.updatepromilles(4);
+                        } else printer->showMessage("Ei lonkkaa.", &level, false);
+                        break;
+                    case 2: // lenkki
+                        if (inv.lenkki > 0) {
+                            --inv.lenkki; player.powerup(1);
+                            printer->showMessage("Mamamamakkaraa.", &level, false);
+                        } else printer->showMessage("Ei lenkkiä.", &level, false);
+                        break;
+                    case 3: // kala
+                        if (inv.kalat > 0) {
+                            --inv.kalat;
+                            if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
+                            else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); }
+                        } else printer->showMessage("Ei kalaa.", &level, false);
+                        break;
+                    case 4: // omppo
+                        if (inv.omppo > 0) {
+                            --inv.omppo;
+                            if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut.", &level, false); }
+                            else { player.powerup(2); printer->showMessage("orb.", &level, false); }
+                        } else printer->showMessage("Ei omppoa.", &level, false);
+                        break;
+                    case 5: // bansku
+                        if (inv.bansku > 0) {
+                            --inv.bansku;
+                            if (random(50)) printer->showMessage("Bansku ei vaikuttanut.", &level, false);
+                            else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); }
+                        } else printer->showMessage("Ei banaania.", &level, false);
+                        break;
+                    default:
+                        printer->showMessage("Tätä ei voi käyttää.", &level, false);
+                        break;
+                }
+            };
 
             while (!nextLevel && !quit) {
                 printer->removeMessage();
 
                 try {
-                    if (dlg != DlgMode::None) {
-                        // dialog active: read raw char for menu choice
-                        char c = InputNS::Input::getRawCharNonBlocking();
-                        if (c == 'z') throw std::out_of_range("quit!");
+                    char c = InputNS::Input::getRawCharNonBlocking();
+                    if (c == 'z') throw std::out_of_range("quit!");
 
+                    switch (mode) {
+                    case Mode::Normal: {
+                        InputNS::InputType input = InputNS::inputpending;
                         if (c != 0) {
-                            switch (dlg) {
-                            case DlgMode::Drink:
-                                if (c == '1') {
-                                    --player.inventory.kalja;
-                                    printer->showMessage("Glub glub glub glub ..... Burb !!!", &level, false);
-                                    player.updatepromilles(2);
-                                } else if (c == '2') {
-                                    --player.inventory.lonkka;
-                                    printer->showMessage("Glub glub glub glub ..... Burb !!!", &level, false);
-                                    player.updatepromilles(4);
-                                } else {
-                                    printer->showMessage("Päätit olla juomatta mitään.", &level, false);
-                                }
-                                dlg = DlgMode::None;
-                                break;
-
-                            case DlgMode::Eat:
-                                if (c == '1' && player.inventory.lenkki > 0) {
-                                    --player.inventory.lenkki;
-                                    player.powerup(1);
-                                    printer->showMessage("Mamamamakkaraa.", &level, false);
-                                } else if (c == '2' && player.inventory.kalat > 0) {
-                                    --player.inventory.kalat;
-                                    if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
-                                    else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); }
-                                } else if (c == '3' && player.inventory.omppo > 0) {
-                                    --player.inventory.omppo;
-                                    if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut.", &level, false); }
-                                    else { player.powerup(2); printer->showMessage("orb.", &level, false); }
-                                } else if (c == '4' && player.inventory.bansku > 0) {
-                                    --player.inventory.bansku;
-                                    if (random(50)) printer->showMessage("Bansku ei vaikuttanut.", &level, false);
-                                    else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); }
-                                } else {
-                                    printer->showMessage("Päätit olla syömättä mitään.", &level, false);
-                                }
-                                dlg = DlgMode::None;
-                                break;
-
-                            case DlgMode::ThrowItem: {
-                                uint32_t num = 0;
-                                if (c >= '1' && c <= '9') num = c - '0';
-                                else if (c == 'a' || c == 'A') num = 10;
-                                else if (c == 'b' || c == 'B') num = 11;
-
-                                if (num > 0 && player.decrementInventory(num)) {
-                                    throwItemNum = num;
-                                    printer->showMessage("Anna suunta (wasd):", &level, false);
-                                    dlg = DlgMode::ThrowDir;
-                                } else if (num > 0) {
-                                    dlg = DlgMode::None;
-                                }
-                                break;
-                            }
-
-                            case DlgMode::ThrowDir: {
-                                DirectionNS::Direction dir = DirectionNS::none;
-                                if (c == 'i' || c == 'w') dir = DirectionNS::up;
-                                else if (c == 'k' || c == 's') dir = DirectionNS::down;
-                                else if (c == 'j' || c == 'a') dir = DirectionNS::left;
-                                else if (c == 'l' || c == 'd') dir = DirectionNS::right;
-
-                                if (dir != DirectionNS::none) {
-                                    player.executeThrow(throwItemNum, dir);
-                                    dlg = DlgMode::None;
-                                }
-                                break;
-                            }
-
-                            default:
-                                dlg = DlgMode::None;
-                                break;
+                            switch(c) {
+                                case 'w': case 'i': input = InputNS::up; break;
+                                case 's': case 'k': input = InputNS::down; break;
+                                case 'a': case 'j': input = InputNS::left; break;
+                                case 'd': case 'l': input = InputNS::right; break;
+                                case '\t': mode = Mode::Inventory; invSelection = 0; break;
+                                default: break;
                             }
                         }
-                    } else {
-                        // no dialog: normal input
-                        InputNS::InputType input = InputNS::Input::getInputNonBlocking();
 
-                        if (input == InputNS::drinking) {
-                            auto& inv = player.inventory;
-                            if (inv.kalja > 0 && inv.lonkka > 0) {
-                                printer->showMessage("Kaljaa vai lonkkaa (1/2)?", &level, false);
-                                dlg = DlgMode::Drink;
-                            } else if (inv.lonkka > 0) {
-                                --inv.lonkka;
-                                printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", &level, false);
-                                player.updatepromilles(4);
-                            } else if (inv.kalja > 0) {
-                                --inv.kalja;
-                                printer->showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", &level, false);
-                                player.updatepromilles(3);
-                            } else {
-                                printer->showMessage("Ei oo ehtaa tavaraa.", &level, false);
-                            }
-                        } else if (input == InputNS::eating) {
-                            auto& inv = player.inventory;
-                            bool hasMultiple = (inv.lenkki > 0) + (inv.kalat > 0) + (inv.omppo > 0) + (inv.bansku > 0) > 1;
-                            if (inv.lenkki == 0 && inv.kalat == 0 && inv.omppo == 0 && inv.bansku == 0) {
-                                printer->showMessage("Ei syötävää.", &level, false);
-                            } else if (hasMultiple) {
-                                printer->showMessage("1=makkara 2=kala 3=omppo 4=bansku?", &level, false);
-                                dlg = DlgMode::Eat;
-                            } else if (inv.lenkki > 0) {
-                                --inv.lenkki; player.powerup(1);
-                                printer->showMessage("Oispa edes kossua kaveriksi.", &level, false);
-                            } else if (inv.bansku > 0) {
-                                --inv.bansku;
-                                if (random(50)) printer->showMessage("Ei vaikutusta.", &level, false);
-                                else { player.powerup(1); printer->showMessage("Bansku teki teraa !!!", &level, false); }
-                            } else if (inv.omppo > 0) {
-                                --inv.omppo;
-                                if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut,oksennat.", &level, false); }
-                                else { player.powerup(2); printer->showMessage("Omena oli herkullinen !!!", &level, false); }
-                            } else if (inv.kalat > 0) {
-                                --inv.kalat;
-                                if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
-                                else { player.powerup(4); printer->showMessage("Kala antaa sinulle uutta puhtia !!!", &level, false); }
-                            }
-                        } else if (input == InputNS::throwing) {
-                            printer->showMessage("ANNA NUMERO (1-9,a,b):", &level, false);
-                            dlg = DlgMode::ThrowItem;
-                        } else if (input != InputNS::inputpending) {
+                        if (input != InputNS::inputpending) {
                             input = applyDrunkEffects(input, player, &level, *printer);
                             processInput(input, player, &level, *printer);
                             InputNS::Input::raw();
                             level.cleanDead();
                             level.cleanDiscardedItems();
                         }
+                        break;
+                    }
+
+                    case Mode::Inventory: {
+                        if (c != 0) {
+                            switch(c) {
+                                case 'w': case 'i':
+                                    invSelection = (invSelection - 1 + INV_ITEMS) % INV_ITEMS;
+                                    break;
+                                case 's': case 'k':
+                                    invSelection = (invSelection + 1) % INV_ITEMS;
+                                    break;
+                                case 'q': // use (eat/drink)
+                                    useInventoryItem(invSelection);
+                                    mode = Mode::Normal;
+                                    break;
+                                case 'e': { // throw -> aim mode
+                                    uint32_t throwNum = invIndexToThrowNum(invSelection);
+                                    if (throwNum > 0 && player.decrementInventory(throwNum)) {
+                                        aimItemNum = throwNum;
+                                        aimAngle = -M_PI / 2.0f; // start aiming up
+                                        aimTick = 0;
+                                        mode = Mode::Aim;
+                                        printer->showMessage("A/D = tähtää, SPACE = heitä, ESC = peru", &level, false);
+                                    } else {
+                                        printer->showMessage("Ei tavaraa heitettäväksi.", &level, false);
+                                    }
+                                    break;
+                                }
+                                case '\t': case 27: // tab or ESC closes
+                                    mode = Mode::Normal;
+                                    break;
+                            }
+                        }
+                        break;
+                    }
+
+                    case Mode::Aim: {
+                        float sway = sinf((float)aimTick * 0.15f) * (float)player.stats.promilles / 100.0f;
+                        aimAngle += sway * 0.05f;
+
+                        if (c != 0) {
+                            switch(c) {
+                                case 'a': case 'j':
+                                    aimAngle -= 0.15f;
+                                    break;
+                                case 'd': case 'l':
+                                    aimAngle += 0.15f;
+                                    break;
+                                case ' ': { // fire/throw
+                                    float dx = cosf(aimAngle);
+                                    float dy = sinf(aimAngle);
+                                    int idx = (fabsf(dx) > fabsf(dy))
+                                        ? (dx > 0 ? 0 : 2)
+                                        : (dy > 0 ? 1 : 3);
+                                    DirectionNS::Direction dirs[] = {
+                                        DirectionNS::right, DirectionNS::down,
+                                        DirectionNS::left, DirectionNS::up
+                                    };
+                                    player.executeThrow(aimItemNum, dirs[idx]);
+                                    mode = Mode::Normal;
+                                    break;
+                                }
+                                case 27: case '\t': // ESC or Tab cancels
+                                    mode = Mode::Normal;
+                                    break;
+                            }
+                        }
+                        ++aimTick;
+                        break;
+                    }
                     }
 
                     ++npcTick;
@@ -432,6 +459,12 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                     mask.init();
                     printer->print(&level);
+
+                    if (mode == Mode::Inventory) {
+                        printer->printInventoryOverlay(&player.inventory, invSelection);
+                    } else if (mode == Mode::Aim) {
+                        printer->printAimLine(&level, player.coord.x, player.coord.y, aimAngle);
+                    }
 
                 } catch(...) {
                     quit = true;
