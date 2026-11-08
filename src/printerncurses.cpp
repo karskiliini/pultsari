@@ -105,7 +105,7 @@ void PrinterNcurses::printStats(Level* l, Stats* stats)
     mvwprintw((WINDOW*)statswindow, 1, 1, ("RAHAA: "      + moneyAligned(stats->money)).c_str());
     wprintw((WINDOW*)statswindow, ("  VOIMA: "    + moneyAligned(stats->health)).c_str());
     wprintw((WINDOW*)statswindow,("  PROMILLE: " + promilleAligned(stats->promilles)).c_str());
-    wprintw((WINDOW*)statswindow,("  KÄPPÄILY: " + std::to_string(stats->turn) + " ").c_str());
+    wprintw((WINDOW*)statswindow,("  NÄLKÄ: " + moneyAligned(stats->hunger)).c_str());
     wprintw((WINDOW*)statswindow,("  LEVEL: "    + std::to_string(l->stage) + " ").c_str());
 }
 

@@ -95,7 +95,7 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
     cout << "RAHAA: "    << moneyAligned(stats->money);
     cout << "  VOIMA: "    << moneyAligned(stats->health);
     cout << "  PROMILLE: " << promilleAligned(stats->promilles);
-    cout << "  KÄPPÄILY: " << stats->turn << " ";
+    cout << "  NÄLKÄ: " << moneyAligned(stats->hunger);
     cout << "  LEVEL: "  << l->stage << " ";
     cout << endl << endl;
 }

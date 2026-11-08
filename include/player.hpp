@@ -23,6 +23,7 @@ public:
     virtual void updatepromilles(int p);
     virtual void updateMoney(int money);
     void updateTurn();
+    void feedHunger(uint32_t amount);
 
     void resetPosition();
 

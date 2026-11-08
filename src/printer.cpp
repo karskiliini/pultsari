@@ -355,7 +355,9 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
     // bottom border + help
     sprintf(buf, "\033[%d;%dH+------------------------+", OVERLAY_Y + NUM_ITEMS + 1, OVERLAY_X);
     cout << buf;
-    sprintf(buf, "\033[%d;%dH W/S=selaa Tab=sulje     ", OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
+    sprintf(buf, "\033[%d;%dH W/S=selaa Q=käytä E=heitä", OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
+    cout << buf;
+    sprintf(buf, "\033[%d;%dH Tab=sulje               ", OVERLAY_Y + NUM_ITEMS + 3, OVERLAY_X);
     cout << buf;
 
     cout << "\033[0m";

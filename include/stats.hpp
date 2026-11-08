@@ -8,6 +8,7 @@ struct Stats {
     uint32_t health = 1;
     uint32_t promilles = 0;
     uint32_t turn = 0;
+    uint32_t hunger = 100;
 };
 
 #endif

@@ -296,6 +296,11 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 return 0;
             };
 
+            auto feedHunger = [&](uint32_t amount) {
+                player.stats.hunger += amount;
+                if (player.stats.hunger > 100) player.stats.hunger = 100;
+            };
+
             auto useInventoryItem = [&](int idx) {
                 auto& inv = player.inventory;
                 switch(idx) {
@@ -304,6 +309,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             --inv.kalja;
                             printer->showMessage("Glub glub glub ..... Burb !!!", &level, false);
                             player.updatepromilles(2);
+                            feedHunger(2);
                         } else printer->showMessage("Ei kaljaa.", &level, false);
                         break;
                     case 1: // lonkka
@@ -311,33 +317,35 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             --inv.lonkka;
                             printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", &level, false);
                             player.updatepromilles(4);
+                            feedHunger(1);
                         } else printer->showMessage("Ei lonkkaa.", &level, false);
                         break;
                     case 2: // lenkki
                         if (inv.lenkki > 0) {
                             --inv.lenkki; player.powerup(1);
                             printer->showMessage("Mamamamakkaraa.", &level, false);
+                            feedHunger(25);
                         } else printer->showMessage("Ei lenkkiä.", &level, false);
                         break;
                     case 3: // kala
                         if (inv.kalat > 0) {
                             --inv.kalat;
                             if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
-                            else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); }
+                            else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); feedHunger(30); }
                         } else printer->showMessage("Ei kalaa.", &level, false);
                         break;
                     case 4: // omppo
                         if (inv.omppo > 0) {
                             --inv.omppo;
                             if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut.", &level, false); }
-                            else { player.powerup(2); printer->showMessage("orb.", &level, false); }
+                            else { player.powerup(2); printer->showMessage("orb.", &level, false); feedHunger(15); }
                         } else printer->showMessage("Ei omppoa.", &level, false);
                         break;
                     case 5: // bansku
                         if (inv.bansku > 0) {
                             --inv.bansku;
-                            if (random(50)) printer->showMessage("Bansku ei vaikuttanut.", &level, false);
-                            else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); }
+                            if (random(50)) { printer->showMessage("Bansku ei vaikuttanut.", &level, false); feedHunger(5); }
+                            else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); feedHunger(10); }
                         } else printer->showMessage("Ei banaania.", &level, false);
                         break;
                     default:

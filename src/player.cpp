@@ -72,19 +72,40 @@ void Player::updatepromilles(int p)
 #endif
 }
 
+void Player::feedHunger(uint32_t amount)
+{
+    stats.hunger += amount;
+    if (stats.hunger > 100) stats.hunger = 100;
+}
+
 void Player::updateTurn()
 {
     ++stats.turn;
 
-// original pultsari has this feature, but it makes the game too easy
-#if 0
-    if (stats.turn % 50 == 0)
-    {
-        powerup(1);
-    }
-#endif
-    if (stats.turn % 260 == 0) {
-        updatepromilles(-1);
+    if (common::realtimeEnabled) {
+        // real-time: faster promille decay
+        if (stats.turn % 80 == 0) {
+            updatepromilles(-1);
+        }
+        // hunger decreases every 40 turns
+        if (stats.turn % 40 == 0 && stats.hunger > 0) {
+            --stats.hunger;
+        }
+        // starving: take damage
+        if (stats.hunger == 0 && stats.turn % 60 == 0) {
+            damage(1);
+            printer->showMessage("Nälkä kalvaa sisuksiasi...", level, false);
+        }
+        // low hunger warnings
+        if (stats.hunger == 20 && stats.turn % 40 == 1) {
+            printer->showMessage("Vatsasi kurnii kovasti!", level, false);
+        } else if (stats.hunger == 10 && stats.turn % 40 == 1) {
+            printer->showMessage("Olet nälästä sekaisin!", level, false);
+        }
+    } else {
+        if (stats.turn % 260 == 0) {
+            updatepromilles(-1);
+        }
     }
 }
 
@@ -197,6 +218,7 @@ bool Player::eat(Level* level)
             powerup(1);
             printer->showMessage("Bansku teki teraa !!!", level);
         }
+        feedHunger(10);
     } else if ((inventory.kalat == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
         --inventory.omppo;
         if (random(50)) {
@@ -205,6 +227,7 @@ bool Player::eat(Level* level)
         } else {
             powerup(2);
             printer->showMessage("Omena oli herkullinen !!!", level);
+            feedHunger(15);
         }
     } else if ((inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
         --inventory.kalat;
@@ -214,11 +237,13 @@ bool Player::eat(Level* level)
         } else {
             powerup(4);
             printer->showMessage("Kala antaa sinulle uutta puhtia !!!", level);
+            feedHunger(30);
         }
     } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0)) {
         powerup(1);
         --inventory.lenkki;
         printer->showMessage("Oispa edes kossua kaveriksi.", level);
+        feedHunger(25);
     } else {
         printer->showMessage("Mitas...1=makkara 2=kala 3=omppo 4=bansku ???", level);
         auto type = InputNS::Input::getFood();
@@ -230,6 +255,7 @@ bool Player::eat(Level* level)
                 } else {
                     --inventory.lenkki;
                     printer->showMessage("Mamamamakkaraa.", level, false);
+                    feedHunger(25);
                 }
                 break;
             case InputNS::foodkala:
@@ -243,6 +269,7 @@ bool Player::eat(Level* level)
                     } else {
                         powerup(4);
                         printer->showMessage("Kaloreja kalasta.", level, false);
+                        feedHunger(30);
                     }
                 }
                 break;
@@ -257,6 +284,7 @@ bool Player::eat(Level* level)
                     } else {
                         powerup(2);
                         printer->showMessage("orb.", level, false);
+                        feedHunger(15);
                     }
                 }
                 break;
@@ -271,6 +299,7 @@ bool Player::eat(Level* level)
                         powerup(1);
                         printer->showMessage("Babababananiii", level, false);
                     }
+                    feedHunger(10);
                 }
                 break;
             default:
