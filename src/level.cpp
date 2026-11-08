@@ -185,6 +185,13 @@ bool Level::PersonExists(PersonType type) const
 void Level::alertCops(Person* source)
 {
     attack = source;
+    for (auto& p : persons) {
+        if (p->type == poliisi && p->stats.health > 0) {
+            p->alerted = true;
+            p->lastKnownPos = source->coord;
+            p->alertCooldown = 20;
+        }
+    }
 }
 
 void Level::cleanDead()
@@ -529,20 +536,26 @@ Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vecto
 {
     if (vector == Coordinate<int>(0, 0)) return nullptr;
 
-    Person* p = nullptr;
-    while (p == nullptr) {
-        Coord c { (uint32_t)from.x, (uint32_t)from.y };
-        p = getPerson(c);
+    Coordinate<int> pos = from;
+    pos.x += vector.x;
+    pos.y += vector.y;
 
-        if (!p)
-        {
-            Coord copy { c.x, c.y };
-            if (!common::checkBounds(copy)) {
-                return nullptr;
-            }
+    while (true) {
+        if (pos.x < 0 || pos.y < 0 ||
+            pos.x >= (int)sizex || pos.y >= (int)sizey) {
+            return nullptr;
         }
+
+        Coord c { (uint32_t)pos.x, (uint32_t)pos.y };
+
+        if (hitBuilding(c)) return nullptr;
+
+        Person* p = getPerson(c);
+        if (p) return p;
+
+        pos.x += vector.x;
+        pos.y += vector.y;
     }
-    return p;
 }
 
 

@@ -51,6 +51,23 @@ void Person::damage(uint32_t damage)  {
 #endif
 }
 
+bool Person::canSeeTarget(const Coord& target) const
+{
+    if (visionRange == 0) return true;
+    if (coord.distance(target) > visionRange) return false;
+    return level->raycast(coord, target);
+}
+
+Direction Person::randomDirection() const
+{
+    switch (std::rand() % 4) {
+        case 0: return DirectionNS::up;
+        case 1: return DirectionNS::down;
+        case 2: return DirectionNS::left;
+        default: return DirectionNS::right;
+    }
+}
+
 Direction Person::getMoveDirection(const Coord& target) const
 {
     if (pathFinding) {
@@ -168,6 +185,7 @@ Item* Mummo::dropItem()
 // COP
 Cop::Cop(const Coord& pos) : Person(poliisi, pos)
 {
+    visionRange = 10;
 }
 
 bool Cop::move(Direction d, std::string& msg)
@@ -207,28 +225,53 @@ void Cop::pathmaskHook(PathNS::PathMask* pathmask) const
 void Cop::npcAct()
 {
     string msg = "";
+    Player* p = level->getPlayer();
+    bool seesPlayer = canSeeTarget(p->coord);
 
     if (!level->attack)
     {
-        Player* p = level->getPlayer();
-        if (coord.distance(p->coord) == 1)
+        if (seesPlayer && coord.distance(p->coord) == 1)
         {
             msg = "Pollari varoittaa ettei kantsi alkaa rettelöidä!";
+        } else if (!seesPlayer) {
+            Direction d = randomDirection();
+            move(d, msg);
         }
     } else {
-        Player* p = level->getPlayer();
-        if (p == level->attack)
-        {
-            if (coord.distance(level->attack->coord) == 1)
+        Person* target = level->attack;
+        bool seesTarget = (target == p) ? seesPlayer : canSeeTarget(target->coord);
+
+        if (seesTarget) {
+            alerted = true;
+            lastKnownPos = target->coord;
+            alertCooldown = 15;
+        }
+
+        if (alerted) {
+            Coord chasePos = seesTarget ? target->coord : lastKnownPos;
+
+            if (seesTarget && coord.distance(target->coord) == 1)
             {
-                msg = "Pollari pamputtaa !!!";
-                p->damage(rand()%2+1);
+                if (target == p) {
+                    msg = "Pollari pamputtaa !!!";
+                    p->damage(rand()%2+1);
+                } else {
+                    msg = "";
+                }
             } else {
-                Direction d = getMoveDirection(level->attack->coord);
+                Direction d = getMoveDirection(chasePos);
                 move(d, msg);
             }
+
+            if (!seesTarget && coord.distance(lastKnownPos) <= 1) {
+                if (alertCooldown > 0) {
+                    --alertCooldown;
+                } else {
+                    alerted = false;
+                }
+            }
         } else {
-            Direction d = getMoveDirection(level->attack->coord);
+            Direction d = randomDirection();
             move(d, msg);
         }
     }
@@ -289,6 +332,7 @@ Item* Cop::dropItem()
 // VARAS
 Varas::Varas(const Coord& pos) : Person(varas, pos), target(pos)
 {
+    visionRange = 8;
 }
 
 bool Varas::move(Direction d, std::string& msg)
@@ -363,24 +407,45 @@ void Varas::npcAct()
 {
     string msg = "";
     Player* player = level->getPlayer();
-    target = player->coord;
+    bool seesPlayer = canSeeTarget(player->coord);
 
-    if (coord.distance(target) == 1)
-    {
-        msg = "Varas hipelöi sinua !!!";
+    if (seesPlayer) {
+        alerted = true;
+        lastKnownPos = player->coord;
+        alertCooldown = 10;
+        target = player->coord;
+    }
 
-        auto r = std::rand();
-        if (r % 2)
+    if (alerted) {
+        Coord chasePos = seesPlayer ? player->coord : lastKnownPos;
+
+        if (seesPlayer && coord.distance(player->coord) == 1)
         {
-            uint32_t sum = r % 16 + 1;
-            if (sum > player->stats.money) sum = player->stats.money;
-            player->updateMoney(-sum);
-            msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
-            damage(stats.health);
+            msg = "Varas hipelöi sinua !!!";
+
+            auto r = std::rand();
+            if (r % 2)
+            {
+                uint32_t sum = r % 16 + 1;
+                if (sum > player->stats.money) sum = player->stats.money;
+                player->updateMoney(-sum);
+                msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
+                damage(stats.health);
+            }
+        } else {
+            Direction d = getMoveDirection(chasePos);
+            move(d, msg);
+        }
+
+        if (!seesPlayer && coord.distance(lastKnownPos) <= 1) {
+            if (alertCooldown > 0) --alertCooldown;
+            else alerted = false;
         }
     } else {
-        Direction d = getMoveDirection(target);
-        move(d, msg);
+        if (random(30)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
     }
     printer->showMessage(msg, level);
 }
@@ -410,6 +475,7 @@ bool Varas::interact(std::string& msg, Person* source)
 Vanki::Vanki(const Coord& pos) : Person(vanki, pos), target(pos)
 {
     stats.health = 4;
+    visionRange = 8;
 }
 
 bool Vanki::move(Direction d, std::string& msg)
@@ -497,39 +563,48 @@ void Vanki::npcAct()
     }
 
     Player* p = level->getPlayer();
-    target = p->coord;
+    bool seesPlayer = canSeeTarget(p->coord);
 
-    if (coord.distance(target) == 1)
-    {
-        msg = "Vankikarkuri kurmottaa sinua!";
+    if (seesPlayer) {
+        alerted = true;
+        lastKnownPos = p->coord;
+        alertCooldown = 10;
+        target = p->coord;
+    }
 
-        uint32_t damage = std::rand()%3 + 1;
-        p->damage(damage);
-    } else {
-        if (kivi && ((coord.x == p->coord.x) || (coord.y == p->coord.y)))
+    if (alerted) {
+        Coord chasePos = seesPlayer ? p->coord : lastKnownPos;
+
+        if (seesPlayer && coord.distance(p->coord) == 1)
         {
+            msg = "Vankikarkuri kurmottaa sinua!";
+            uint32_t damage = std::rand()%3 + 1;
+            p->damage(damage);
+        } else if (seesPlayer && kivi && ((coord.x == p->coord.x) || (coord.y == p->coord.y))) {
             kivi = false;
+            int dx = coord.x - p->coord.x;
+            int dy = coord.y - p->coord.y;
+            dx = (dx < 0) ? 1 : (dx > 0) ? -1 : 0;
+            dy = (dy < 0) ? 1 : (dy > 0) ? -1 : 0;
 
-            {
-                int dx = coord.x - p->coord.x;
-                int dy = coord.y - p->coord.y;
-                dx = (dx < 0) ? 1 : (dx > 0) ? -1 : 0;
-                dy = (dy < 0) ? 1 : (dy > 0) ? -1 : 0;
-
-                {
-                    Coordinate<int> c { static_cast<int>(dx), static_cast<int>(dy) };
-
-                    // kivi
-                    Item* i = Item::createItem(6, coord);
-                    i->thrown = true;
-                    i->throwVec = c;
-                    level->addThrownItem(i);
-                    level->actThrow(this);
-                }
-            }
-
+            Coordinate<int> c { static_cast<int>(dx), static_cast<int>(dy) };
+            Item* i = Item::createItem(6, coord);
+            i->thrown = true;
+            i->throwVec = c;
+            level->addThrownItem(i);
+            level->actThrow(this);
         } else {
-            Direction d = getMoveDirection(target);
+            Direction d = getMoveDirection(chasePos);
+            move(d, msg);
+        }
+
+        if (!seesPlayer && coord.distance(lastKnownPos) <= 1) {
+            if (alertCooldown > 0) --alertCooldown;
+            else alerted = false;
+        }
+    } else {
+        if (random(25)) {
+            Direction d = randomDirection();
             move(d, msg);
         }
     }
@@ -584,6 +659,7 @@ bool Vanki::interactThrow(Item* item, Person* source, std::string& msg)
 Skinhead::Skinhead(const Coord& pos) : Person(skinhead, pos)
 {
     stats.health = 7;
+    visionRange = 7;
 }
 
 bool Skinhead::move(Direction d, std::string& msg)
@@ -650,17 +726,36 @@ void Skinhead::npcAct()
 
     string msg = "";
     Player* p = level->getPlayer();
-    Coord target = p->coord;
+    bool seesPlayer = canSeeTarget(p->coord);
 
-    if (coord.distance(target) == 1)
-    {
-        msg = "Skinhead murjoo sinua apinan raivolla!!";
+    if (seesPlayer) {
+        alerted = true;
+        lastKnownPos = p->coord;
+        alertCooldown = 12;
+    }
 
-        uint32_t damage = std::rand()%4 + 1;
-        p->damage(damage);
+    if (alerted) {
+        Coord chasePos = seesPlayer ? p->coord : lastKnownPos;
+
+        if (seesPlayer && coord.distance(p->coord) == 1)
+        {
+            msg = "Skinhead murjoo sinua apinan raivolla!!";
+            uint32_t damage = std::rand()%4 + 1;
+            p->damage(damage);
+        } else {
+            Direction d = getMoveDirection(chasePos);
+            move(d, msg);
+        }
+
+        if (!seesPlayer && coord.distance(lastKnownPos) <= 1) {
+            if (alertCooldown > 0) --alertCooldown;
+            else alerted = false;
+        }
     } else {
-        Direction d = getMoveDirection(target);
-        move(d, msg);
+        if (random(25)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
     }
     printer->showMessage(msg, level);
 }
@@ -707,6 +802,7 @@ bool Skinhead::interactThrow(Item* item, Person* source, std::string& msg)
 Yka::Yka(const Coord& pos) : Person(yka, pos)
 {
     stats.health = 1;
+    visionRange = 6;
 }
 
 bool Yka::move(Direction d, std::string& msg)
@@ -769,11 +865,16 @@ void Yka::npcAct()
     }
 
     Player* p = level->getPlayer();
-    Coord target = p->coord;
+    bool seesPlayer = canSeeTarget(p->coord);
 
-    if (p->inventory.kalja > 0) {
-        Direction d = getMoveDirection(target);
+    if (seesPlayer && p->inventory.kalja > 0) {
+        Direction d = getMoveDirection(p->coord);
         move(d, msg);
+    } else {
+        if (random(20)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
     }
     printer->showMessage(msg, level);
 }

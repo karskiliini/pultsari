@@ -35,12 +35,20 @@ public:
     virtual bool throwItem() { return false; };
     void setLevel(Level* level) { Person::level = level; }
 
+    bool canSeeTarget(const Coord& target) const;
+    DirectionNS::Direction randomDirection() const;
+
     Level* level;
     Printer* printer;
     PersonType type = invalidPerson;
     Coord coord = { 30, 20 };
     Stats stats;
     bool pathFinding = false;
+
+    uint32_t visionRange = 0;
+    bool alerted = false;
+    Coord lastKnownPos = { 0, 0 };
+    uint32_t alertCooldown = 0;
 };
 
 class Mummo : public Person {
