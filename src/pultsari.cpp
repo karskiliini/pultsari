@@ -136,6 +136,26 @@ static void populatePersons(Level& level)
         }
     }
 
+    // jengi - appears from stage 3, more common later
+    if (level.stage > 2) {
+        int count = std::rand() % (level.stage / 2 + 1);
+        for (int i = 0; i < count && i < 3; ++i) {
+            if (random(40)) {
+                level.createPerson(level.freePosition(), jengi);
+            }
+        }
+    }
+
+    // ryöstäjä - rare, appears from stage 4
+    if (level.stage > 3 && random(30)) {
+        level.createPerson(level.freePosition(), ryostaja);
+    }
+
+    // diileri - appears from stage 2
+    if (level.stage > 1 && random(40)) {
+        level.createPerson(level.freePosition(), diileri);
+    }
+
 }
 
 static bool checkExit(const Level& level)

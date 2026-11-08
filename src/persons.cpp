@@ -232,7 +232,22 @@ void Cop::npcAct()
     {
         if (seesPlayer && coord.distance(p->coord) == 1)
         {
-            msg = "Pollari varoittaa ettei kantsi alkaa rettelöidä!";
+            if (common::realtimeEnabled && p->stats.promilles > 20 && random(15)) {
+                msg = "Poliisi: Paperit! ...Olet liian humalassa.";
+                if (p->stats.money < 5) {
+                    msg = "Poliisi: Paperit! Ei rahaa, ei asiaa kadulle. Putkaan!";
+                    p->inJail = true;
+                } else {
+                    uint32_t fine = std::min(p->stats.money, (uint32_t)(rand()%15 + 5));
+                    p->updateMoney(-(int)fine);
+                    msg = "Poliisi sakottaa " + std::to_string(fine) + " markkaa!";
+                }
+            } else {
+                msg = "Pollari varoittaa ettei kantsi alkaa rettelöidä!";
+            }
+        } else if (seesPlayer && coord.distance(p->coord) <= 3) {
+            Direction d = getMoveDirection(p->coord);
+            move(d, msg);
         } else if (!seesPlayer) {
             Direction d = randomDirection();
             move(d, msg);
@@ -911,4 +926,336 @@ bool Yka::interactThrow(Item* item, Person* source, std::string& msg)
         }
     }
     return hit;
+}
+
+
+// JENGI (Gang member)
+Jengi::Jengi(const Coord& pos) : Person(jengi, pos)
+{
+    stats.health = 5;
+    visionRange = 8;
+}
+
+bool Jengi::move(Direction d, std::string& msg)
+{
+    Coord check {coord.x, coord.y};
+    switch(d)
+    {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+
+    if (!level->hit(check)) {
+        coord = check;
+    } else {
+        auto p = level->getPerson(check);
+        if (p && p->type == poliisi) {
+            msg = "Jengiläinen ja poliisi taistelevat!";
+        }
+    }
+    common::checkBounds(coord);
+    return true;
+}
+
+void Jengi::npcAct()
+{
+    if (firstMove) { firstMove = false; return; }
+
+    string msg = "";
+    Player* p = level->getPlayer();
+    bool seesPlayer = canSeeTarget(p->coord);
+
+    if (seesPlayer) {
+        alerted = true;
+        lastKnownPos = p->coord;
+        alertCooldown = 8;
+    }
+
+    if (alerted) {
+        Coord chasePos = seesPlayer ? p->coord : lastKnownPos;
+
+        if (seesPlayer && coord.distance(p->coord) == 1) {
+            auto r = std::rand() % 3;
+            if (r == 0) {
+                uint32_t sum = std::rand() % 20 + 5;
+                if (sum > p->stats.money) sum = p->stats.money;
+                p->updateMoney(-(int)sum);
+                msg = "Jengiläinen ryöstää " + std::to_string(sum) + " markkaa!";
+            } else if (r == 1) {
+                uint32_t dmg = std::rand() % 3 + 1;
+                p->damage(dmg);
+                msg = "Jengiläinen lyö sinua nyrkillä!";
+            } else {
+                msg = "Jengiläinen uhkailee sinua.";
+            }
+            level->alertCops(this);
+        } else {
+            Direction d = getMoveDirection(chasePos);
+            move(d, msg);
+        }
+
+        if (!seesPlayer && coord.distance(lastKnownPos) <= 1) {
+            if (alertCooldown > 0) --alertCooldown;
+            else alerted = false;
+        }
+    } else {
+        if (random(30)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+    }
+    printer->showMessage(msg, level);
+}
+
+bool Jengi::interact(std::string& msg, Person* source)
+{
+    if (source->type == pelaaja) {
+        if (random(40)) {
+            msg = "Jengiläinen iskee takaisin!";
+            source->damage(std::rand()%2+1);
+        } else {
+            msg = "Moukaroit jengiläisen tajuttomaksi!";
+            damage(stats.health);
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+        }
+        level->alertCops(source);
+    }
+    return true;
+}
+
+bool Jengi::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    bool hit = random(50);
+    if (!hit) {
+        msg = "Jengiläinen väisti!";
+    } else {
+        msg = "Jengiläinen sai osuman ja kaatuu!";
+        damage(stats.health);
+        if (source->type == pelaaja)
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    }
+    return hit;
+}
+
+
+// RYÖSTÄJÄ (Armed robber)
+Ryostaja::Ryostaja(const Coord& pos) : Person(ryostaja, pos)
+{
+    stats.health = 3;
+    visionRange = 9;
+}
+
+bool Ryostaja::move(Direction d, std::string& msg)
+{
+    Coord check {coord.x, coord.y};
+    switch(d)
+    {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+
+    if (!level->hit(check)) {
+        coord = check;
+    } else {
+        auto p = level->getPerson(check);
+        if (p && p->type == poliisi) {
+            msg = "Ryöstäjä ampuu poliisia!";
+            p->damage(p->stats.health);
+            level->alertCops(this);
+        }
+    }
+    common::checkBounds(coord);
+    return true;
+}
+
+void Ryostaja::npcAct()
+{
+    string msg = "";
+    Player* p = level->getPlayer();
+    bool seesPlayer = canSeeTarget(p->coord);
+
+    if (seesPlayer) {
+        alerted = true;
+        lastKnownPos = p->coord;
+        alertCooldown = 12;
+    }
+
+    if (alerted) {
+        Coord chasePos = seesPlayer ? p->coord : lastKnownPos;
+
+        if (seesPlayer && coord.distance(p->coord) == 1) {
+            if (armed) {
+                msg = "Ryöstäjä osoittaa sinua aseella: RAHAT TAI HENKI!";
+                if (p->stats.money > 0) {
+                    uint32_t take = std::min(p->stats.money, (uint32_t)(rand()%30 + 10));
+                    p->updateMoney(-(int)take);
+                    msg = "Ryöstäjä vie " + std::to_string(take) + " markkaa aseella uhaten!";
+                } else {
+                    p->damage(std::rand()%3+2);
+                    msg = "Ryöstäjä ampuu sinua kun ei ole rahaa!";
+                }
+                level->alertCops(this);
+            } else {
+                p->damage(std::rand()%2+1);
+                msg = "Ryöstäjä lyö sinua!";
+            }
+        } else if (seesPlayer && coord.distance(p->coord) <= 4 && armed && random(20)) {
+            p->damage(std::rand()%2+1);
+            msg = "Ryöstäjä ampuu sinua kaukaa!";
+            level->alertCops(this);
+        } else {
+            Direction d = getMoveDirection(chasePos);
+            move(d, msg);
+        }
+
+        if (!seesPlayer && coord.distance(lastKnownPos) <= 1) {
+            if (alertCooldown > 0) --alertCooldown;
+            else alerted = false;
+        }
+    } else {
+        if (random(20)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+    }
+    printer->showMessage(msg, level);
+}
+
+bool Ryostaja::interact(std::string& msg, Person* source)
+{
+    if (source->type == pelaaja) {
+        if (random(60)) {
+            msg = "Ryöstäjä ampuu sinua!";
+            source->damage(std::rand()%3+1);
+            armed = false;
+        } else {
+            msg = "Kaadoit ryöstäjän! Ase putoaa maahan.";
+            damage(stats.health);
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+        }
+        level->alertCops(source);
+    }
+    return true;
+}
+
+bool Ryostaja::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    bool hit = random(40);
+    if (!hit) {
+        msg = "Ryöstäjä väistää heiton!";
+    } else {
+        msg = "Ryöstäjä kaatuu ja pudottaa aseensa!";
+        damage(stats.health);
+        auto i = dropItem();
+        level->addItem(i);
+        if (source->type == pelaaja)
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    }
+    return hit;
+}
+
+Item* Ryostaja::dropItem()
+{
+    return new Raha(coord, std::rand()%30 + 10);
+}
+
+
+// DIILERI (Drug dealer)
+Diileri::Diileri(const Coord& pos) : Person(diileri, pos)
+{
+    stats.health = 2;
+    visionRange = 7;
+}
+
+bool Diileri::move(Direction d, std::string& msg)
+{
+    Coord check {coord.x, coord.y};
+    switch(d)
+    {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+
+    if (!level->hit(check)) {
+        coord = check;
+    }
+    common::checkBounds(coord);
+    return true;
+}
+
+void Diileri::npcAct()
+{
+    string msg = "";
+    Player* p = level->getPlayer();
+    bool seesPlayer = canSeeTarget(p->coord);
+
+    if (seesPlayer && coord.distance(p->coord) == 1 && !offered) {
+        offered = true;
+        if (common::realtimeEnabled) {
+            if (p->stats.money >= 10 && random(50)) {
+                p->updateMoney(-10);
+                if (random(30)) {
+                    msg = "Diileri: Kokeile tätä... Pääsi pyörii!";
+                    p->updatepromilles(8);
+                    p->damage(1);
+                } else {
+                    msg = "Diileri: Tässä on hyvää kamaa! Olet energinen!";
+                    p->powerup(3);
+                    p->stats.hunger += 20;
+                    if (p->stats.hunger > 100) p->stats.hunger = 100;
+                }
+            } else {
+                msg = "Diileri: Hei, haluatko ostaa jotain?";
+            }
+        } else {
+            msg = "Diileri: Hei, haluatko ostaa jotain?";
+        }
+    } else if (seesPlayer && coord.distance(p->coord) <= 3) {
+        if (random(40)) {
+            Direction d = getMoveDirection(p->coord);
+            move(d, msg);
+        }
+    } else {
+        offered = false;
+        if (random(20)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+    }
+    printer->showMessage(msg, level);
+}
+
+bool Diileri::interact(std::string& msg, Person* source)
+{
+    if (source->type == pelaaja) {
+        if (random(70)) {
+            msg = "Diileri karkaa juosten!";
+            damage(stats.health);
+        } else {
+            msg = "Löylyytät diilerin ja löydät rahaa!";
+            damage(stats.health);
+            dynamic_cast<Player*>(source)->updateMoney(std::rand()%20+5);
+            ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+        }
+        level->alertCops(source);
+    }
+    return true;
+}
+
+bool Diileri::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Diileri kaatuu ja karkaa!";
+    damage(stats.health);
+    if (source->type == pelaaja)
+        ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    return true;
 }

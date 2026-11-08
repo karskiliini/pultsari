@@ -11,7 +11,10 @@ enum PersonType {
     vanki,
     varas,
     skinhead,
-    yka
+    yka,
+    jengi,
+    ryostaja,
+    diileri
 };
 
 #endif

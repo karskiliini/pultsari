@@ -136,4 +136,44 @@ public:
     uint32_t kaljaKesken = 0;
 };
 
+class Jengi : public Person {
+public:
+    Jengi(const Coord& pos);
+    virtual ~Jengi() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "G"; };
+    bool firstMove = true;
+};
+
+class Ryostaja : public Person {
+public:
+    Ryostaja(const Coord& pos);
+    virtual ~Ryostaja() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    Item* dropItem();
+    virtual std::string typeToChar() const { return "R"; };
+    bool armed = true;
+};
+
+class Diileri : public Person {
+public:
+    Diileri(const Coord& pos);
+    virtual ~Diileri() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "D"; };
+    bool offered = false;
+};
+
 #endif
