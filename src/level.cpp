@@ -275,6 +275,16 @@ bool Level::hitItem(const Coord& c) const
     return false;
 }
 
+bool Level::hitLOSBlocker(const Coord& c) const
+{
+    for (const auto& i : items)
+    {
+        if (i->coord == c && i->blocksLOS)
+            return true;
+    }
+    return false;
+}
+
 bool Level::hit(const Coord& c) const
 {
     return hitBuilding(c) || hitPerson(c) || hitItem(c);
@@ -374,6 +384,12 @@ void Level::addItem(ItemType item)
         case EViesti:
             i = new Viesti(c);
             break;
+        case EPensas:
+            i = new Pensas(c);
+            break;
+        case ERoskis:
+            i = new Roskis(c);
+            break;
     }
     if (i) {
         addItem(i);
@@ -461,7 +477,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.y < to.y) ++from.y;
                 else if (from.y > to.y) --from.y;
-                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
                 if (block > 0) {
                     break;
                 }
@@ -470,7 +486,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.x < to.x) ++from.x;
                 else if (from.x > to.x) --from.x;
-                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
             }
 
             if (from == to)
@@ -507,7 +523,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.x < to.x) ++from.x;
                 else if (from.x > to.x) --from.x;
-                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
                 if (block > 0) {
                     break;
                 }
@@ -516,7 +532,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.y < to.y) ++from.y;
                 else if (from.y > to.y) --from.y;
-                block += (hitBuilding(from) || hitPerson(from)) ? 1 : 0;
+                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
             }
 
             if (from == to)
@@ -557,7 +573,7 @@ Person* Level::raycast(const Coordinate<int>& from, const Coordinate<int>& vecto
 
         Coord c { (uint32_t)pos.x, (uint32_t)pos.y };
 
-        if (hitBuilding(c)) return nullptr;
+        if (hitBuilding(c) || hitLOSBlocker(c)) return nullptr;
 
         Person* p = getPerson(c);
         if (p) return p;

@@ -25,7 +25,9 @@ enum ItemType {
     EPaska,
     EViesti,
     EOksennus,
-    ENextLevel
+    ENextLevel,
+    EPensas,
+    ERoskis
 };
 
 class Level;
@@ -48,6 +50,7 @@ public:
 
     bool thrown = false;
     Coordinate<int> throwVec { 0, 0 };
+    bool blocksLOS = false;
 };
 
 class Bona : public Item {
@@ -190,6 +193,24 @@ class Oksennus : public Item {
 public:
     Oksennus(const Coord& c);
     virtual ~Oksennus() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+class Pensas : public Item {
+public:
+    Pensas(const Coord& c);
+    virtual ~Pensas() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+class Roskis : public Item {
+public:
+    Roskis(const Coord& c);
+    virtual ~Roskis() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);

@@ -42,6 +42,10 @@ static void populateItems(Level& level)
     if (random(80))  level.addItem(ELonkka);
     if (random(90))  level.addItem(ERaha);
     if (random(19))  level.addItem(EPaska);
+    for (int i = 0; i < std::rand() % 4 + 2; ++i)
+        level.addItem(EPensas);
+    for (int i = 0; i < std::rand() % 2 + 1; ++i)
+        level.addItem(ERoskis);
 }
 
 static void populateBuildings(Level& level)

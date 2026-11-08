@@ -304,6 +304,26 @@ static bool checkBonas(Level* level)
     return ok;
 }
 
+// pensas
+Pensas::Pensas(const Coord& c) : Item(c, EPensas) { blocksLOS = true; }
+std::string Pensas::typeToChar() const { return "#"; }
+std::string Pensas::getMsg() const {
+    return "Pensas. Voit piiloutua tänne.";
+}
+bool Pensas::interact(PlayerNS::Player* player) {
+    return false;
+}
+
+// roskis
+Roskis::Roskis(const Coord& c) : Item(c, ERoskis) { blocksLOS = true; }
+std::string Roskis::typeToChar() const { return "U"; }
+std::string Roskis::getMsg() const {
+    return "Roskis. Haisee, mutta voit piiloutua taakse.";
+}
+bool Roskis::interact(PlayerNS::Player* player) {
+    return false;
+}
+
 // oksennus
 Oksennus::Oksennus(const Coord& c) : Item(c, EOksennus) { }
 std::string Oksennus::typeToChar() const { return "‘"; }
