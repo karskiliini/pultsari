@@ -407,6 +407,9 @@ void Level::addItem(ItemType item)
         case ERoskis:
             i = new Roskis(c);
             break;
+        case EPistooli:
+            i = new Pistooli(c);
+            break;
     }
     if (i) {
         addItem(i);

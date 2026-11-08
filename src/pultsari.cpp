@@ -43,6 +43,8 @@ static void populateItems(Level& level)
     if (random(80))  level.addItem(ELonkka);
     if (random(90))  level.addItem(ERaha);
     if (random(19))  level.addItem(EPaska);
+    if (level.stage > 4 && random(15))
+        level.addItem(EPistooli);
     for (int i = 0; i < std::rand() % 4 + 2; ++i)
         level.addItem(EPensas);
     for (int i = 0; i < std::rand() % 2 + 1; ++i)
@@ -319,12 +321,13 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             enum class Mode { Normal, Inventory, Aim };
             Mode mode = Mode::Normal;
             int invSelection = 0;
-            constexpr int INV_ITEMS = 11;
+            constexpr int INV_ITEMS = 13;
 
             // aim state
             float aimAngle = 0.0f;
             uint32_t aimItemNum = 0;
             uint32_t aimTick = 0;
+            bool aimIsShooting = false;
 
             // inventory item-to-throw mapping
             // maps inventory overlay row to decrementInventory() index
@@ -387,6 +390,19 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             if (random(50)) { printer->showMessage("Bansku ei vaikuttanut.", &level, false); feedHunger(5); }
                             else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); feedHunger(10); }
                         } else printer->showMessage("Ei banaania.", &level, false);
+                        break;
+                    case 11: // pistooli - go to aim mode for shooting
+                        if (inv.pistooli > 0 && inv.ammukset > 0) {
+                            aimIsShooting = true;
+                            aimAngle = -M_PI / 2.0f;
+                            aimTick = 0;
+                            mode = Mode::Aim;
+                            printer->showMessage("A/D = tähtää, SPACE = ammu, ESC = peru", &level, false);
+                        } else if (inv.pistooli == 0) {
+                            printer->showMessage("Ei pistoolia.", &level, false);
+                        } else {
+                            printer->showMessage("Ei ammuksia.", &level, false);
+                        }
                         break;
                     default:
                         printer->showMessage("Tätä ei voi käyttää.", &level, false);
@@ -471,7 +487,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 'd': case 'l':
                                     aimAngle += 0.15f;
                                     break;
-                                case ' ': { // fire/throw
+                                case ' ': { // fire/throw/shoot
                                     float dx = cosf(aimAngle);
                                     float dy = sinf(aimAngle);
                                     int idx = (fabsf(dx) > fabsf(dy))
@@ -481,7 +497,12 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         DirectionNS::right, DirectionNS::down,
                                         DirectionNS::left, DirectionNS::up
                                     };
-                                    player.executeThrow(aimItemNum, dirs[idx]);
+                                    if (aimIsShooting) {
+                                        player.shoot(dirs[idx]);
+                                        aimIsShooting = false;
+                                    } else {
+                                        player.executeThrow(aimItemNum, dirs[idx]);
+                                    }
                                     mode = Mode::Normal;
                                     break;
                                 }

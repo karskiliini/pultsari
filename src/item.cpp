@@ -304,6 +304,18 @@ static bool checkBonas(Level* level)
     return ok;
 }
 
+// pistooli
+Pistooli::Pistooli(const Coord& c) : Item(c, EPistooli) { }
+std::string Pistooli::typeToChar() const { return "T"; }
+std::string Pistooli::getMsg() const {
+    return "Löysit pistoolin! Vaarallinen kapistus.";
+}
+bool Pistooli::interact(PlayerNS::Player* player) {
+    ++player->inventory.pistooli;
+    player->inventory.ammukset += (std::rand() % 4 + 2);
+    return true;
+}
+
 // bus stop
 BusStop::BusStop(const Coord& c) : Item(c, EBusStop) { }
 std::string BusStop::typeToChar() const { return "H"; }

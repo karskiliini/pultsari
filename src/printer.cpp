@@ -326,22 +326,25 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
         uint32_t count;
         bool canUse;
         bool canThrow;
+        const char* useLabel;
     };
 
     InvItem items[] = {
-        {"KALJA",   inventory->kalja,   true,  true},
-        {"LONKKA",  inventory->lonkka,  true,  true},
-        {"LENKKI",  inventory->lenkki,  true,  true},
-        {"KALA",    inventory->kalat,   true,  true},
-        {"OMPPO",   inventory->omppo,   true,  true},
-        {"BANSKU",  inventory->bansku,  true,  true},
-        {"KETJUT",  inventory->ketjut,  false, true},
-        {"VEITSI",  inventory->veitset, false, true},
-        {"KIVI",    inventory->kivet,   false, true},
-        {"PAMPPU",  inventory->pamput,  false, true},
-        {"BOOTSIT", inventory->bootsit, false, true},
+        {"KALJA",   inventory->kalja,   true,  true,  "[Q]juo"},
+        {"LONKKA",  inventory->lonkka,  true,  true,  "[Q]juo"},
+        {"LENKKI",  inventory->lenkki,  true,  true,  "[Q]syö"},
+        {"KALA",    inventory->kalat,   true,  true,  "[Q]syö"},
+        {"OMPPO",   inventory->omppo,   true,  true,  "[Q]syö"},
+        {"BANSKU",  inventory->bansku,  true,  true,  "[Q]syö"},
+        {"KETJUT",  inventory->ketjut,  false, true,  "      "},
+        {"VEITSI",  inventory->veitset, false, true,  "      "},
+        {"KIVI",    inventory->kivet,   false, true,  "      "},
+        {"PAMPPU",  inventory->pamput,  false, true,  "      "},
+        {"BOOTSIT", inventory->bootsit, false, true,  "      "},
+        {"PISTOOLI",inventory->pistooli,true,  false, "[Q]ammu"},
+        {"AMMUKSET",inventory->ammukset,false, false, "       "},
     };
-    constexpr int NUM_ITEMS = 11;
+    constexpr int NUM_ITEMS = 13;
 
     char buf[256];
 
@@ -358,7 +361,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
         sprintf(buf, "\033[%d;%dH%s%s %-8s x%-3d %s %s\033[44;37m",
                 y, OVERLAY_X, color, arrow,
                 items[i].name, items[i].count,
-                items[i].canUse ? "[Q]syö" : "      ",
+                items[i].useLabel,
                 items[i].canThrow ? "[E]heitä" : "");
         cout << buf;
     }

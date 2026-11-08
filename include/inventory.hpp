@@ -15,6 +15,8 @@ struct Inventory {
     uint32_t kalat = 0;
     uint32_t omppo = 0;
     uint32_t bansku = 0;
+    uint32_t pistooli = 0;
+    uint32_t ammukset = 0;
 };
 
 #endif

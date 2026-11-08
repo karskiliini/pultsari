@@ -519,6 +519,37 @@ bool Player::executeThrow(uint32_t itemNum, DirectionNS::Direction dir)
     return true;
 }
 
+bool Player::shoot(DirectionNS::Direction dir)
+{
+    if (inventory.ammukset == 0) {
+        printer->showMessage("Ei ammuksia!", level, false);
+        return false;
+    }
+    --inventory.ammukset;
+
+    Coordinate<int> from { static_cast<int>(coord.x), static_cast<int>(coord.y) };
+    auto d = dirToCoord(dir);
+
+    Person* target = level->raycast(from, d);
+    if (target) {
+        string msg = "";
+        target->damage(5);
+        if (target->stats.health <= 0) {
+            msg = "PAM! Osuma! Kohde kaatuu maahan.";
+            level->alertCops(this);
+        } else {
+            msg = "PAM! Osuma!";
+            level->alertCops(this);
+        }
+        printer->showMessage(msg, level, false);
+    } else {
+        printer->showMessage("PAM! Huti.", level, false);
+        level->alertCops(this);
+    }
+
+    return true;
+}
+
 static Building* checkDoor(Level* level, const Coord& c)
 {
     for (auto& b : level->buildings) {
