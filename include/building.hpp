@@ -5,6 +5,7 @@
 #include "coord.hpp"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 namespace PlayerNS {
     class Player;
@@ -45,6 +46,7 @@ public:
     bool hitRightWall(const Coord& c) const;
     bool hitWall(const Coord& c) const;
     bool hitDoor(const Coord& c) const;
+    bool hitWindow(const Coord& c) const;
 
     Coord getDoor() const;
     Coord getSpawn() const;
@@ -58,6 +60,7 @@ public:
     uint32_t wallBot;
 
     Level* level;
+    std::vector<Coord> windows;
 };
 
 class Alko : public Building {

@@ -40,9 +40,11 @@ public:
     void cleanDiscardedItems();
 
     bool hitBuilding(const Coord& c) const;
+    bool hitWindow(const Coord& c) const;
     bool hitPerson(const Coord& c) const;
     bool hitItem(const Coord& c) const;
     bool hitLOSBlocker(const Coord& c) const;
+    bool blocksLOS(const Coord& c) const;
     bool hit(const Coord& coord) const;
 
     Item* getItem(const Coord& c) const;

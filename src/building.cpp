@@ -27,6 +27,7 @@ std::string Building::typeToChar(const Coord& c) const
     uint32_t y = c.y;
 
     if (hasDoor && hitDoor(c)) return "░";
+    if (hitWindow(c)) return "▒";
     if (hitWall(c)) return "█";
 
     if (y == (wallTop + wallBot) / 2)
@@ -81,6 +82,13 @@ bool Building::hitWall(const Coord& c) const {
         hitLeftWall(c))
     {
         return true;
+    }
+    return false;
+}
+
+bool Building::hitWindow(const Coord& c) const {
+    for (const auto& w : windows) {
+        if (w == c) return true;
     }
     return false;
 }
@@ -180,6 +188,8 @@ Alko::Alko() : Building(BuildingType::EAlko) {
     wallBot = 4;
 
     door = DirectionNS::down;
+    windows.push_back({wallRight, 2});
+    windows.push_back({wallLeft, 2});
 }
 
 std::string Alko::getName() const
@@ -241,6 +251,8 @@ Isku::Isku() : Building(BuildingType::EIsku) {
     wallBot = 27;
 
     door = DirectionNS::up;
+    windows.push_back({wallRight, 25});
+    windows.push_back({wallLeft, 25});
 }
 
 std::string Isku::getName() const
@@ -269,6 +281,8 @@ Divari::Divari() : Building(BuildingType::EDivari) {
     wallBot = 27;
 
     door = DirectionNS::up;
+    windows.push_back({wallRight, 25});
+    windows.push_back({wallLeft, 25});
 }
 
 std::string Divari::getName() const
@@ -363,6 +377,8 @@ KRauta::KRauta() : Building(BuildingType::EKRauta) {
     wallBot = 4;
 
     door = DirectionNS::down;
+    windows.push_back({wallRight, 2});
+    windows.push_back({wallLeft, 2});
 }
 
 std::string KRauta::getName() const
@@ -443,6 +459,8 @@ PoliisiAsema::PoliisiAsema() : Building(BuildingType::EPoliisiAsema) {
     wallBot = 27;
 
     door = DirectionNS::up;
+    windows.push_back({wallLeft, 25});
+    windows.push_back({wallRight, 25});
 }
 
 std::string PoliisiAsema::getName() const
@@ -484,6 +502,7 @@ Asema::Asema() : Building(BuildingType::EAsema) {
     wallBot = 27;
 
     door = DirectionNS::left;
+    windows.push_back({72, wallTop});
 }
 
 std::string Asema::getName() const

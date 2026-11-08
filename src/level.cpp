@@ -255,6 +255,16 @@ bool Level::hitBuilding(const Coord& c) const
     return false;
 }
 
+bool Level::hitWindow(const Coord& c) const
+{
+    for (const auto& b : buildings)
+    {
+        if (b->hitWindow(c))
+            return true;
+    }
+    return false;
+}
+
 bool Level::hitPerson(const Coord& c) const
 {
     for (const auto& p : persons)
@@ -452,6 +462,22 @@ void Level::removeItem(Item* item)
     }
 }
 
+// walls block LOS, but windows and doors don't
+bool Level::blocksLOS(const Coord& c) const
+{
+    if (hitLOSBlocker(c)) return true;
+
+    for (const auto& b : buildings)
+    {
+        if (b->hitBuilding(c))
+        {
+            if (b->hitWall(c) && !b->hitWindow(c) && !b->hitDoor(c))
+                return true;
+        }
+    }
+    return false;
+}
+
 // return true if visibility ok
 bool Level::raycast(Coord from, const Coord& to) const
 {
@@ -477,7 +503,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.y < to.y) ++from.y;
                 else if (from.y > to.y) --from.y;
-                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
+                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
                 if (block > 0) {
                     break;
                 }
@@ -486,7 +512,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.x < to.x) ++from.x;
                 else if (from.x > to.x) --from.x;
-                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
+                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
             }
 
             if (from == to)
@@ -523,7 +549,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.x < to.x) ++from.x;
                 else if (from.x > to.x) --from.x;
-                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
+                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
                 if (block > 0) {
                     break;
                 }
@@ -532,7 +558,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.y < to.y) ++from.y;
                 else if (from.y > to.y) --from.y;
-                block += (hitBuilding(from) || hitPerson(from) || hitLOSBlocker(from)) ? 1 : 0;
+                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
             }
 
             if (from == to)
