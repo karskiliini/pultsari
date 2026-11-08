@@ -17,6 +17,7 @@ constexpr uint32_t PLAYER_START_X = 10;
 constexpr uint32_t PLAYER_START_Y = SIZEY/2;
 
 extern bool animsEnabled;
+extern bool realtimeEnabled;
 
 bool random(uint32_t pct);
 bool checkBounds(Coord& coord);

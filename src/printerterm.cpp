@@ -123,10 +123,11 @@ void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
 void PrinterTerm::printHelp()
 {
     cout << "Pultsari help:                                        " << endl;
-    cout << "--los      : to enable line of sight mode             " << endl;
-    cout << "--anims    : to enable animations support             " << endl;
-    cout << "--path     : to enable advanced path finding          " << endl;
-    cout << "--all | -a : enable all features                      " << endl;
+    cout << "--los          : to enable line of sight mode         " << endl;
+    cout << "--anims        : to enable animations support         " << endl;
+    cout << "--path         : to enable advanced path finding      " << endl;
+    cout << "--realtime|--rt: real-time mode (NPCs move on timer)  " << endl;
+    cout << "--all | -a     : enable all features (except realtime)" << endl;
 }
 
 void PrinterTerm::emptyLine(uint32_t textLen)

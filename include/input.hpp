@@ -52,6 +52,8 @@ public:
 
     static void waitKey();
     static InputType getInput();
+    static bool hasInput();
+    static InputType getInputNonBlocking();
     static DrinkType getDrink();
     static FoodType getFood();
     static uint32_t getThrow();

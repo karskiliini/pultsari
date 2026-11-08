@@ -20,86 +20,9 @@ using common::random;
 
 namespace common {
     bool animsEnabled;
+    bool realtimeEnabled;
 }
 
-static bool handleInput(PlayerNS::Player& player, Level* level, Printer& printer)
-{
-    bool ret;
-    InputNS::InputType input;
-
-    input = InputNS::Input::getInput();
-
-    if (player.stats.promilles > 23 && common::random(10)) {
-        if (input != InputNS::quit)
-            input = InputNS::stagger;
-    } else if (player.stats.promilles < 4 && common::random(20)) {
-        printer.showMessage("Sua janottaa !!!", level);
-    } else if (player.stats.promilles > 28 && common::random(5)) {
-        printer.showMessage("Oksennat !!", level);
-        player.damage(1);
-
-        // quit will override even throwing up
-        if (input != InputNS::quit)
-            input = InputNS::throwup;
-    }
-
-    switch(input)
-    {
-        case InputNS::up:
-            ret = player.move(DirectionNS::up, level);
-            break;
-        case InputNS::down:
-            ret = player.move(DirectionNS::down, level);
-            break;
-        case InputNS::left:
-            ret = player.move(DirectionNS::left, level);
-            break;
-        case InputNS::right:
-            ret = player.move(DirectionNS::right, level);
-            break;
-        case InputNS::drinking:
-            ret = player.drink(level);
-            break;
-        case InputNS::eating:
-            ret = player.eat(level);
-            break;
-        case InputNS::throwing:
-            ret = player.throwItem();
-            break;
-        case InputNS::stagger:
-            ret = player.stagger(level);
-            break;
-        case InputNS::throwup:
-            {
-                DirectionNS::Direction d;
-                int dir = std::rand() % 4;
-                switch(dir)
-                {
-                    default:
-                    case 0:
-                        d = DirectionNS::up;
-                        break;
-                    case 1:
-                        d = DirectionNS::right;
-                        break;
-                    case 2:
-                        d = DirectionNS::down;
-                        break;
-                    case 3:
-                        d = DirectionNS::left;
-                        break;
-                }
-                ret = player.puke(d, level);
-            }
-            break;
-        default:
-        case InputNS::quit:
-            ret = false;
-            throw std::out_of_range("quit!");
-    }
-
-    return ret;
-}
 
 static void populateItems(Level& level)
 {
@@ -228,6 +151,74 @@ static bool checkExit(const Level& level)
 }
 
 
+static bool processInput(InputNS::InputType input, PlayerNS::Player& player, Level* level, Printer& printer)
+{
+    bool ret;
+    switch(input)
+    {
+        case InputNS::up:
+            ret = player.move(DirectionNS::up, level);
+            break;
+        case InputNS::down:
+            ret = player.move(DirectionNS::down, level);
+            break;
+        case InputNS::left:
+            ret = player.move(DirectionNS::left, level);
+            break;
+        case InputNS::right:
+            ret = player.move(DirectionNS::right, level);
+            break;
+        case InputNS::drinking:
+            ret = player.drink(level);
+            break;
+        case InputNS::eating:
+            ret = player.eat(level);
+            break;
+        case InputNS::throwing:
+            ret = player.throwItem();
+            break;
+        case InputNS::stagger:
+            ret = player.stagger(level);
+            break;
+        case InputNS::throwup:
+            {
+                DirectionNS::Direction d;
+                int dir = std::rand() % 4;
+                switch(dir)
+                {
+                    default:
+                    case 0: d = DirectionNS::up; break;
+                    case 1: d = DirectionNS::right; break;
+                    case 2: d = DirectionNS::down; break;
+                    case 3: d = DirectionNS::left; break;
+                }
+                ret = player.puke(d, level);
+            }
+            break;
+        default:
+        case InputNS::quit:
+            ret = false;
+            throw std::out_of_range("quit!");
+    }
+    return ret;
+}
+
+static InputNS::InputType applyDrunkEffects(InputNS::InputType input, PlayerNS::Player& player, Level* level, Printer& printer)
+{
+    if (player.stats.promilles > 23 && common::random(10)) {
+        if (input != InputNS::quit)
+            input = InputNS::stagger;
+    } else if (player.stats.promilles < 4 && common::random(20)) {
+        printer.showMessage("Sua janottaa !!!", level);
+    } else if (player.stats.promilles > 28 && common::random(5)) {
+        printer.showMessage("Oksennat !!", level);
+        player.damage(1);
+        if (input != InputNS::quit)
+            input = InputNS::throwup;
+    }
+    return input;
+}
+
 void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFinding)
 {
 #ifdef ANIMATIONS_ENABLED
@@ -276,64 +267,146 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         printer->print(&level);
 
         bool nextLevel = false;
-        while(!nextLevel && !quit) {
-            printer->removeMessage();
 
-            try {
-                bool turn = handleInput(player, &level, *printer);
-                mask.init();
-                level.cleanDead();
-                level.cleanDiscardedItems();
+        if (common::realtimeEnabled) {
+            // real-time game loop
+            InputNS::Input::raw();
 
-                printer->print(&level);
+            uint32_t npcTick = 0;
+            constexpr uint32_t NPC_INTERVAL = 5; // NPC acts every 5 frames (~250ms)
+            constexpr uint32_t FRAME_MS = 50;
 
-                level.buildingTurn();
-                level.npcTurn();
-                level.cleanDead();
-                level.cleanDiscardedItems();
-
-                if (turn) {
-                    player.updateTurn();
-                }
-            } catch(...) {
-                quit = true;
-                skipWaitKey = true;
-                break;
-            }
-
-            if (player.inJail) {
-                printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
-                printer->print(&level);
-                quit = true;
-                break;
-            } else if (player.stats.health < 1) {
-                quit = true;
-                printer->setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
-                printer->print(&level);
-                break;
-            } else if (player.stats.promilles < 1) {
-                quit = true;
-                printer->setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
-                printer->print(&level);
-                break;
-            } else if (player.stats.promilles > 34 && common::random(10)) {
-                quit = true;
-                printer->setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
-                printer->print(&level);
-                break;
-            }
-
-            printer->print(&level);
-            if (checkExit(level))
-            {
-                printer->showMessage("Seuraavaan kenttaan...", &level, false);
+            while (!nextLevel && !quit) {
                 printer->removeMessage();
 
-                InputNS::Input::waitKey();
+                try {
+                    InputNS::InputType input = InputNS::Input::getInputNonBlocking();
+                    if (input != InputNS::inputpending) {
+                        input = applyDrunkEffects(input, player, &level, *printer);
+                        processInput(input, player, &level, *printer);
+                        InputNS::Input::raw();
+                        level.cleanDead();
+                        level.cleanDiscardedItems();
+                    }
 
-                // next level
-                stage++;
-                nextLevel = true;
+                    ++npcTick;
+                    if (npcTick >= NPC_INTERVAL) {
+                        npcTick = 0;
+                        level.buildingTurn();
+                        level.npcTurn();
+                        level.cleanDead();
+                        level.cleanDiscardedItems();
+                        player.updateTurn();
+                    }
+
+                    mask.init();
+                    printer->print(&level);
+
+                } catch(...) {
+                    quit = true;
+                    skipWaitKey = true;
+                    break;
+                }
+
+                if (player.inJail) {
+                    printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
+                    printer->print(&level);
+                    quit = true;
+                    break;
+                } else if (player.stats.health < 1) {
+                    quit = true;
+                    printer->setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
+                    printer->print(&level);
+                    break;
+                } else if (player.stats.promilles < 1) {
+                    quit = true;
+                    printer->setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
+                    printer->print(&level);
+                    break;
+                } else if (player.stats.promilles > 34 && common::random(10)) {
+                    quit = true;
+                    printer->setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
+                    printer->print(&level);
+                    break;
+                }
+
+                if (checkExit(level))
+                {
+                    printer->showMessage("Seuraavaan kenttaan...", &level, false);
+                    printer->removeMessage();
+                    InputNS::Input::waitKey();
+                    stage++;
+                    nextLevel = true;
+                }
+
+                common::sleep(FRAME_MS);
+            }
+
+            InputNS::Input::noraw();
+
+        } else {
+            // original turn-based loop
+            while(!nextLevel && !quit) {
+                printer->removeMessage();
+
+                try {
+                    InputNS::InputType input = InputNS::Input::getInput();
+                    input = applyDrunkEffects(input, player, &level, *printer);
+                    bool turn = processInput(input, player, &level, *printer);
+                    mask.init();
+                    level.cleanDead();
+                    level.cleanDiscardedItems();
+
+                    printer->print(&level);
+
+                    level.buildingTurn();
+                    level.npcTurn();
+                    level.cleanDead();
+                    level.cleanDiscardedItems();
+
+                    if (turn) {
+                        player.updateTurn();
+                    }
+                } catch(...) {
+                    quit = true;
+                    skipWaitKey = true;
+                    break;
+                }
+
+                if (player.inJail) {
+                    printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
+                    printer->print(&level);
+                    quit = true;
+                    break;
+                } else if (player.stats.health < 1) {
+                    quit = true;
+                    printer->setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
+                    printer->print(&level);
+                    break;
+                } else if (player.stats.promilles < 1) {
+                    quit = true;
+                    printer->setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
+                    printer->print(&level);
+                    break;
+                } else if (player.stats.promilles > 34 && common::random(10)) {
+                    quit = true;
+                    printer->setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
+                    printer->print(&level);
+                    break;
+                }
+
+                printer->print(&level);
+                if (checkExit(level))
+                {
+                    printer->showMessage("Seuraavaan kenttaan...", &level, false);
+                    printer->removeMessage();
+
+                    InputNS::Input::waitKey();
+
+                    // next level
+                    stage++;
+                    nextLevel = true;
+                }
             }
         }
     }
@@ -353,22 +426,22 @@ int init(int argc, char *argv[], Printer* printer)
     bool animsEnabled = false;
     bool losEnabled = false;
     bool pathFinding = false;
+    bool realtime = false;
 
     for (int i = 0; i < argc; ++i) {
         std::string a = argv[i];
         if (a == "--los") {
-            // enable line of sight
             losEnabled = true;
         } else if (a == "--anims") {
-            // enable animations
             animsEnabled = true;
         } else if ((a == "-h") || (a == "--help")) {
             printer->printHelp();
             InputNS::Input::waitKey();
             return 0;
         } else if (a == "--path") {
-            // enable advanced path finding for npc characters
             pathFinding = true;
+        } else if ((a == "--realtime") || (a == "--rt")) {
+            realtime = true;
         } else if ((a == "--all") || (a == "-a")) {
             losEnabled = true;
             animsEnabled = true;
@@ -391,6 +464,8 @@ int init(int argc, char *argv[], Printer* printer)
             return -1;
         }
     }
+
+    common::realtimeEnabled = realtime;
 
     {
         IntroNS::Intro i(printer);

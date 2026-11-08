@@ -2,6 +2,7 @@
 #include "iostream"
 #include <termios.h>
 #include <unistd.h>
+#include <sys/select.h>
 
 namespace InputNS {
 
@@ -33,6 +34,36 @@ void Input::waitKey()
     Input::raw();
     getchar();
     Input::noraw();
+}
+
+bool Input::hasInput()
+{
+    fd_set fds;
+    FD_ZERO(&fds);
+    FD_SET(STDIN_FILENO, &fds);
+    struct timeval tv = {0, 0};
+    return select(STDIN_FILENO + 1, &fds, nullptr, nullptr, &tv) > 0;
+}
+
+InputType Input::getInputNonBlocking()
+{
+    if (!hasInput()) return inputpending;
+
+    char c;
+    if (read(STDIN_FILENO, &c, 1) != 1) return inputpending;
+
+    switch(c)
+    {
+        case 'l': return right;
+        case 'j': return left;
+        case 'k': return down;
+        case 'i': return up;
+        case 'z': return InputType::quit;
+        case 't': return throwing;
+        case 'q': return drinking;
+        case 'e': return eating;
+        default:  return inputpending;
+    }
 }
 
 InputType Input::getInput()
