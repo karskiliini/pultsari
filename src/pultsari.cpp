@@ -269,24 +269,155 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         bool nextLevel = false;
 
         if (common::realtimeEnabled) {
-            // real-time game loop
+            // real-time game loop with non-blocking dialog system
             InputNS::Input::raw();
 
             uint32_t npcTick = 0;
-            constexpr uint32_t NPC_INTERVAL = 5; // NPC acts every 5 frames (~250ms)
+            constexpr uint32_t NPC_INTERVAL = 5;
             constexpr uint32_t FRAME_MS = 50;
+
+            enum class DlgMode { None, Drink, Eat, ThrowItem, ThrowDir };
+            DlgMode dlg = DlgMode::None;
+            uint32_t throwItemNum = 0;
 
             while (!nextLevel && !quit) {
                 printer->removeMessage();
 
                 try {
-                    InputNS::InputType input = InputNS::Input::getInputNonBlocking();
-                    if (input != InputNS::inputpending) {
-                        input = applyDrunkEffects(input, player, &level, *printer);
-                        processInput(input, player, &level, *printer);
-                        InputNS::Input::raw();
-                        level.cleanDead();
-                        level.cleanDiscardedItems();
+                    if (dlg != DlgMode::None) {
+                        // dialog active: read raw char for menu choice
+                        char c = InputNS::Input::getRawCharNonBlocking();
+                        if (c == 'z') throw std::out_of_range("quit!");
+
+                        if (c != 0) {
+                            switch (dlg) {
+                            case DlgMode::Drink:
+                                if (c == '1') {
+                                    --player.inventory.kalja;
+                                    printer->showMessage("Glub glub glub glub ..... Burb !!!", &level, false);
+                                    player.updatepromilles(2);
+                                } else if (c == '2') {
+                                    --player.inventory.lonkka;
+                                    printer->showMessage("Glub glub glub glub ..... Burb !!!", &level, false);
+                                    player.updatepromilles(4);
+                                } else {
+                                    printer->showMessage("Päätit olla juomatta mitään.", &level, false);
+                                }
+                                dlg = DlgMode::None;
+                                break;
+
+                            case DlgMode::Eat:
+                                if (c == '1' && player.inventory.lenkki > 0) {
+                                    --player.inventory.lenkki;
+                                    player.powerup(1);
+                                    printer->showMessage("Mamamamakkaraa.", &level, false);
+                                } else if (c == '2' && player.inventory.kalat > 0) {
+                                    --player.inventory.kalat;
+                                    if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
+                                    else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); }
+                                } else if (c == '3' && player.inventory.omppo > 0) {
+                                    --player.inventory.omppo;
+                                    if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut.", &level, false); }
+                                    else { player.powerup(2); printer->showMessage("orb.", &level, false); }
+                                } else if (c == '4' && player.inventory.bansku > 0) {
+                                    --player.inventory.bansku;
+                                    if (random(50)) printer->showMessage("Bansku ei vaikuttanut.", &level, false);
+                                    else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); }
+                                } else {
+                                    printer->showMessage("Päätit olla syömättä mitään.", &level, false);
+                                }
+                                dlg = DlgMode::None;
+                                break;
+
+                            case DlgMode::ThrowItem: {
+                                uint32_t num = 0;
+                                if (c >= '1' && c <= '9') num = c - '0';
+                                else if (c == 'a' || c == 'A') num = 10;
+                                else if (c == 'b' || c == 'B') num = 11;
+
+                                if (num > 0 && player.decrementInventory(num)) {
+                                    throwItemNum = num;
+                                    printer->showMessage("Anna suunta (i/j/k/l):", &level, false);
+                                    dlg = DlgMode::ThrowDir;
+                                } else if (num > 0) {
+                                    dlg = DlgMode::None;
+                                }
+                                break;
+                            }
+
+                            case DlgMode::ThrowDir: {
+                                DirectionNS::Direction dir = DirectionNS::none;
+                                if (c == 'i') dir = DirectionNS::up;
+                                else if (c == 'k') dir = DirectionNS::down;
+                                else if (c == 'j') dir = DirectionNS::left;
+                                else if (c == 'l') dir = DirectionNS::right;
+
+                                if (dir != DirectionNS::none) {
+                                    player.executeThrow(throwItemNum, dir);
+                                    dlg = DlgMode::None;
+                                }
+                                break;
+                            }
+
+                            default:
+                                dlg = DlgMode::None;
+                                break;
+                            }
+                        }
+                    } else {
+                        // no dialog: normal input
+                        InputNS::InputType input = InputNS::Input::getInputNonBlocking();
+
+                        if (input == InputNS::drinking) {
+                            auto& inv = player.inventory;
+                            if (inv.kalja > 0 && inv.lonkka > 0) {
+                                printer->showMessage("Kaljaa vai lonkkaa (1/2)?", &level, false);
+                                dlg = DlgMode::Drink;
+                            } else if (inv.lonkka > 0) {
+                                --inv.lonkka;
+                                printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", &level, false);
+                                player.updatepromilles(4);
+                            } else if (inv.kalja > 0) {
+                                --inv.kalja;
+                                printer->showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", &level, false);
+                                player.updatepromilles(3);
+                            } else {
+                                printer->showMessage("Ei oo ehtaa tavaraa.", &level, false);
+                            }
+                        } else if (input == InputNS::eating) {
+                            auto& inv = player.inventory;
+                            bool hasMultiple = (inv.lenkki > 0) + (inv.kalat > 0) + (inv.omppo > 0) + (inv.bansku > 0) > 1;
+                            if (inv.lenkki == 0 && inv.kalat == 0 && inv.omppo == 0 && inv.bansku == 0) {
+                                printer->showMessage("Ei syötävää.", &level, false);
+                            } else if (hasMultiple) {
+                                printer->showMessage("1=makkara 2=kala 3=omppo 4=bansku?", &level, false);
+                                dlg = DlgMode::Eat;
+                            } else if (inv.lenkki > 0) {
+                                --inv.lenkki; player.powerup(1);
+                                printer->showMessage("Oispa edes kossua kaveriksi.", &level, false);
+                            } else if (inv.bansku > 0) {
+                                --inv.bansku;
+                                if (random(50)) printer->showMessage("Ei vaikutusta.", &level, false);
+                                else { player.powerup(1); printer->showMessage("Bansku teki teraa !!!", &level, false); }
+                            } else if (inv.omppo > 0) {
+                                --inv.omppo;
+                                if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut,oksennat.", &level, false); }
+                                else { player.powerup(2); printer->showMessage("Omena oli herkullinen !!!", &level, false); }
+                            } else if (inv.kalat > 0) {
+                                --inv.kalat;
+                                if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
+                                else { player.powerup(4); printer->showMessage("Kala antaa sinulle uutta puhtia !!!", &level, false); }
+                            }
+                        } else if (input == InputNS::throwing) {
+                            printer->showMessage("ANNA NUMERO (1-9,a,b):", &level, false);
+                            dlg = DlgMode::ThrowItem;
+                        } else if (input != InputNS::inputpending) {
+                            input = applyDrunkEffects(input, player, &level, *printer);
+                            processInput(input, player, &level, *printer);
+                            InputNS::Input::raw();
+                            level.cleanDead();
+                            level.cleanDiscardedItems();
+                        }
                     }
 
                     ++npcTick;

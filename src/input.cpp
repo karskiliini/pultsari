@@ -66,6 +66,14 @@ InputType Input::getInputNonBlocking()
     }
 }
 
+char Input::getRawCharNonBlocking()
+{
+    if (!hasInput()) return 0;
+    char c;
+    if (read(STDIN_FILENO, &c, 1) != 1) return 0;
+    return c;
+}
+
 InputType Input::getInput()
 {
     Input::raw();

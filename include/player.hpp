@@ -45,8 +45,8 @@ public:
 
     ScoreBoard scoreBoard;
 
-private:
     bool decrementInventory(uint32_t index);
+    bool executeThrow(uint32_t itemNum, DirectionNS::Direction dir);
 };
 
 }

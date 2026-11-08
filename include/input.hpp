@@ -54,6 +54,7 @@ public:
     static InputType getInput();
     static bool hasInput();
     static InputType getInputNonBlocking();
+    static char getRawCharNonBlocking();
     static DrinkType getDrink();
     static FoodType getFood();
     static uint32_t getThrow();

@@ -93,6 +93,18 @@ bool Player::interact(std::string& msg, Person* source)
     if (stats.health == 0) return true;
 
     if (source->type == yka) {
+        if (common::realtimeEnabled) {
+            if (inventory.kalja > 0) {
+                msg = "Ykä pummaa kaljaa. Annat yhden.";
+                --inventory.kalja;
+                return true;
+            } else {
+                msg = "Ykä taputteleepi palleaasi.";
+                damage(1);
+                return false;
+            }
+        }
+
         msg = "Ykä pummaa yhtä kaljaa, annatko? (k/e)";
         printer->showMessage(msg, level);
         char c = InputNS::Input::inputYka();
@@ -461,16 +473,19 @@ bool Player::throwItem()
     }
 
     auto dir = getDirection(level, printer);
-    {
-        Coordinate<int> c { static_cast<int>(coord.x), static_cast<int>(coord.y) };
-        auto d = dirToCoord(dir);
+    return executeThrow(number, dir);
+}
 
-        Item* i = Item::createItem(number, coord);
-        i->thrown = true;
-        i->throwVec = d;
-        level->addThrownItem(i);
-        level->actThrow(this);
-    }
+bool Player::executeThrow(uint32_t itemNum, DirectionNS::Direction dir)
+{
+    Coordinate<int> c { static_cast<int>(coord.x), static_cast<int>(coord.y) };
+    auto d = dirToCoord(dir);
+
+    Item* i = Item::createItem(itemNum, coord);
+    i->thrown = true;
+    i->throwVec = d;
+    level->addThrownItem(i);
+    level->actThrow(this);
 
     return true;
 }
