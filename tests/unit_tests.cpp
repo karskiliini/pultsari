@@ -2802,3 +2802,125 @@ TEST(guards_indoors_or_without_radio_hold_fire)
     for (int i = 0; i < 100; ++i) antiDroneFire(w.level);
     CHECK(w.level.drones.size() == 2);
 }
+
+// a parked black car at (x, y) and an FSB man come to grab the player
+static Car* parkFsbCar(World& w, uint32_t x, uint32_t y)
+{
+    auto* car = new Car(Coord{ x, y }, true, -1, Car::Kind::Fsb);
+    car->script = Car::Script::Parked;
+    w.level.addVehicle(car);
+    w.level.fsbPatrol.cars.push_back(car);
+    w.level.fsbPatrol.stage = FsbPatrol::Stage::Grabbing;
+    return car;
+}
+
+static FSBAgent* recruiterAt(World& w, Coord c)
+{
+    auto* a = dynamic_cast<FSBAgent*>(w.level.createPerson(c, fsb));
+    a->recruiter = true;
+    a->firstMove = false;
+    a->patience = 80;
+    a->lastHealth = a->stats.health;
+    return a;
+}
+
+static bool nextToCar(const Car* car, const Coord& c)
+{
+    for (const auto& cell : car->cells())
+        if (std::abs((int)cell.x - (int)c.x) <= 1 && std::abs((int)cell.y - (int)c.y) <= 1) return true;
+    return false;
+}
+
+TEST(fsb_drags_player_to_the_car_door_before_conscripting)
+{
+    World w(Coord{ 60, 120 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    auto* car = parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 120 });
+
+    agent->npcAct();
+    CHECK(agent->holding);               // grabbed, not yet conscripted
+    CHECK(!w.player.conscripted);
+    CHECK(w.printer.saw("tarttuu sinua niskasta"));
+
+    bool conscriptedAway = false;
+    for (int i = 0; i < 200 && !w.player.conscripted; ++i) {
+        const Coord before = w.player.coord;
+        agent->npcAct();
+        if (w.player.conscripted && !nextToCar(car, before)) conscriptedAway = true;
+    }
+    CHECK(w.player.conscripted);
+    CHECK(!conscriptedAway);             // only ever at the car door
+    CHECK(nextToCar(car, w.player.coord));
+    CHECK(w.printer.saw("takapenkille"));
+}
+
+TEST(fsb_grip_breaks_when_player_fights_back)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    agent->npcAct();
+    CHECK(agent->holding);
+
+    string msg;
+    for (int i = 0; i < 20 && agent->holding && agent->stats.health > 0; ++i) agent->interact(msg, &w.player);
+    CHECK(!agent->holding);
+    CHECK(!w.player.conscripted);
+}
+
+TEST(fsb_grip_breaks_when_shot)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    agent->npcAct();
+    CHECK(agent->holding);
+    agent->damage(5);                    // a pistol round
+    const Coord at = w.player.coord;
+    agent->npcAct();
+    CHECK(!agent->holding);
+    CHECK(w.player.coord == at);         // not dragged this time
+    CHECK(w.printer.saw("ote irtoaa"));
+}
+
+TEST(fsb_grip_can_be_wriggled_out_of)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    agent->npcAct();
+    CHECK(agent->holding);
+    w.player.move(DirectionNS::left, &w.level);
+    int tries = 1;
+    while (agent->holding && tries < 60) { w.player.move(DirectionNS::left, &w.level); ++tries; }
+    CHECK(!agent->holding);
+    CHECK(tries > 1 || w.printer.saw("Riuhtaiset"));
+    CHECK(w.printer.saw("pit\xC3\xA4\xC3\xA4 sinusta kiinni") || tries == 1);
+}
+
+TEST(fsb_drives_off_when_player_wins_the_fight)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    auto* quitter = recruiterAt(w, Coord{ 90, 125 });
+    quitter->patience = 0;
+    quitter->npcAct();                   // lost him: waits by the car, arrests nobody
+    CHECK(quitter->gaveUp);
+
+    string msg;
+    for (int i = 0; i < 40 && agent->stats.health > 0; ++i) agent->interact(msg, &w.player);
+    CHECK(agent->stats.health == 0);
+    w.level.cleanDead();
+    w.level.fsbTick();
+    CHECK(w.level.fsbPatrol.stage == FsbPatrol::Stage::Idle);
+    CHECK(w.printer.saw("palaavat autoihin"));
+    CHECK(w.count(fsb) == 0);            // the quitter got back in the car too
+    CHECK(!w.player.conscripted);
+    CHECK(!w.player.inJail);
+}

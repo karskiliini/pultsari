@@ -343,7 +343,8 @@ void Car::frame(uint32_t ms)
         if (p && !level->playerDead) {
             const int along = horizontal ? (int)p->coord.x - (int)coord.x : (int)p->coord.y - (int)coord.y;
             const int across = horizontal ? (int)p->coord.y - (int)coord.y : (int)p->coord.x - (int)coord.x;
-            if (std::abs(along) <= 3 && std::abs(across) <= 14) {
+            // a few car lengths short: they have to haul him to the door
+            if (std::abs(along) <= 6 && std::abs(across) <= 14) {
                 script = Script::Parked;
                 arrived = true;
                 return;

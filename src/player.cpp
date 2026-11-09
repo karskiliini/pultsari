@@ -1,6 +1,7 @@
 
 #include "player.hpp"
 #include "level.hpp"
+#include "persons.hpp"
 #include "common.hpp"
 #include "item.hpp"
 #include "input.hpp"
@@ -751,6 +752,20 @@ bool Player::move(DirectionNS::Direction d, Level* level)
 
     // facing turns towards the step even if the way is blocked
     heading.step((int)check.x - (int)coord.x, (int)check.y - (int)coord.y);
+
+    // in the FSB's grip: a step anywhere but into someone (a punch) is a struggle to break free
+    if (FSBAgent* holder = level->fsbHolder()) {
+        if (!level->getPerson(check)) {
+            const uint32_t chance = stats.promilles >= 25 ? 5 : 30 - stats.promilles;
+            if (!common::random(chance)) {
+                printer->showMessage("FSB-agentti pit\xC3\xA4\xC3\xA4 sinusta kiinni! Riuhdo, ly\xC3\xB6 tai ammu.", level);
+                return true;
+            }
+            holder->holding = false;
+            holder->stun = 2;
+            printer->showMessage("Riuhtaiset itsesi irti!", level);
+        }
+    }
 
     string msg;
     Building* b = checkDoor(level, check);

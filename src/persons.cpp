@@ -2078,10 +2078,10 @@ void FSBAgent::npcAct()
 bool FSBAgent::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja) {
+        if (recruiter) return recruiterHit(msg, source);
         msg = "FSB-agentti väistää iskusi ja lyö takaisin!";
         source->damage(std::rand()%5 + 3);
-        if (recruiter) dynamic_cast<Player*>(source)->conscripted = true;
-        else dynamic_cast<Player*>(source)->inJail = true;
+        dynamic_cast<Player*>(source)->inJail = true;
     }
     return true;
 }

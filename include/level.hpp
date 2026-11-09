@@ -19,6 +19,8 @@ class Item;
 class Printer;
 class Animation;
 
+class FSBAgent;
+
 namespace PlayerNS{
     class Player;
 };
@@ -180,6 +182,8 @@ public:
     // world tick: the longer the player walks down the road, the likelier the FSB comes for him
     void fsbTick();
     bool hasVehicle(const Vehicle* v) const;
+    // the FSB man who has the player by the collar, if any
+    FSBAgent* fsbHolder() const;
     // A bullet from `shooter` along `angle` (radians): walls stop it; each person in
     // the way is hit with `hitPercent` chance, else it flies on. Returns who was hit.
     Person* fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent);

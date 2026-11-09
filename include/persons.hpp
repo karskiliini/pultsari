@@ -262,6 +262,8 @@ public:
     std::string name;
 };
 
+class Car;
+
 class FSBAgent : public Person {
 public:
     FSBAgent(const Coord& pos);
@@ -276,7 +278,15 @@ public:
     // jumped out of a black car to grab the player for the front; gives up after `patience` acts
     bool recruiter = false;
     uint32_t patience = 0;
+    bool holding = false;         // has the player by the collar and drags him to the car
+    bool gaveUp = false;          // lost him: waits to get back in the car
+    uint32_t stun = 0;            // acts lost after a punch or a bullet
+    uint32_t lastHealth = 0;      // to notice being hurt between acts
     void recruitAct();
+    // pull the held player one step towards the car's door; in through it once he is there
+    void drag(Car* car);
+    // the player fights back against a man come to take him to the front
+    bool recruiterHit(std::string& msg, Person* source);
     bool hasTarget = false;
     Coord defenTarget = { 0, 0 };
     uint32_t defenCooldown = 0;
