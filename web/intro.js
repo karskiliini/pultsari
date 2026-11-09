@@ -110,7 +110,8 @@
             for (let i = 0; i < n; i++) {
                 const gx = (px[i] / H_) | 0, gy = (py[i] / H_) | 0;
                 let ax = 0, ay = G;
-                for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
+                // in the air the jet is pure ballistics: it stays a tight tube until it hits something
+                if (!fly[i]) for (let ox = -1; ox <= 1; ox++) for (let oy = -1; oy <= 1; oy++) {
                     const bucket = grid.get((gx + ox) * 4096 + gy + oy);
                     if (!bucket) continue;
                     for (const j of bucket) {
@@ -475,34 +476,40 @@
         let stopTheme = () => {};
         const cues = [
             [2.6, () => window.SFX && SFX.play('cough', 1)],
-            [3.1, () => { window.SFX && SFX.play('vomit', 1); startJet(540, 14, false); }],
-            [5.0, () => { window.SFX && SFX.play('vomit2', 1); splash(360); }],
+            [3.1, () => { window.SFX && SFX.play('vomit', 1); startJet(640, 20, false); }],
+            [5.0, () => { window.SFX && SFX.play('vomit2', 1); startJet(420, 20, false); }],
             // the third heave is the longest: a long, wavering jet
-            [7.0, () => { window.SFX && SFX.play('vomit', 1); startJet(1000, 9, true); }],
+            [7.0, () => { window.SFX && SFX.play('vomit', 1); startJet(1200, 13, true); }],
             [7.9, () => window.SFX && SFX.play('vomit2', 0.8)],
         ];
 
         // the first heave: a jet from the left that sweeps across the letters to the right
-        // each jet comes down from above the screen, and the drunk turns his head as he heaves:
-        // the stream sweeps from left to right across the title
-        let jet = 0, jetTotal = 1, jetRate = 30, jetLong = false, jetT = 0;
+        // projectile vomit from one mouth just above the top edge: a tight tube that leaves the
+        // mouth fast and arcs down; the drunk turns his head, so it sweeps across the title
+        const mouthX = (startX - fs * 1.5) / CELL, mouthY = -6;
+        let jet = 0, jetTotal = 1, jetRate = 14, jetLong = false, jetT = 0;
         function startJet(count, rate, long) { jet = jetTotal = count; jetRate = rate; jetLong = long; jetT = 0; }
         function jetFrame() {
             if (jet <= 0) return;
             jetT++;
             const progress = 1 - jet / jetTotal;
-            const fallCells = baseY / CELL + 12;          // from above the top edge down to the title
-            const air = 42;                                // steps in the air before it lands
-            const hitX = (startX + (titleW + latinW) * progress) / CELL;
-            const ux = 1.3, uy = fallCells / air - 0.5 * G * air;
-            const srcX = hitX - ux * air, srcY = -12;
-            // the long heave wavers and weakens toward the end
-            const sway = jetLong ? Math.sin(jetT / 7) * 0.25 : 0;
-            const power = jetLong ? 0.8 + 0.3 * Math.min(1, jet / 500) : 1;
+            // where the stream lands this moment: left to right over the title (the long heave wavers)
+            const sweep = jetLong ? progress + 0.08 * Math.sin(jetT / 6) : progress;
+            const hitX = (startX + (titleW + latinW) * Math.max(0, Math.min(1, sweep))) / CELL;
+            const hitY = (baseY - fs * 0.45) / CELL;
+            const air = 26 + 10 * sweep;                         // further is a longer flight
+            const power = jetLong ? 0.92 + 0.08 * Math.min(1, jet / 400) : 1;
+            const ux = (hitX - mouthX) / air;
+            const uy = (hitY - mouthY) / air - 0.5 * G * air;
             for (let k = 0; k < jetRate && jet > 0; k++, jet--) {
-                emit(srcX + (Math.random() - 0.5) * 6, srcY + (Math.random() - 0.5) * 6,
-                     ux * power + (Math.random() - 0.5) * 0.3, uy + sway + (Math.random() - 0.5) * 0.25, jet % 2 ? 0 : 1);
-                fly[n - 1] = 140;
+                // all of it leaves the same mouth, only a slight spread
+                const spread = 1 + (Math.random() - 0.5) * 0.06;
+                const vxk = ux * spread * power, vyk = uy * spread + (Math.random() - 0.5) * 0.05;
+                // spread each frame's batch along the two steps it travels per frame: one unbroken tube
+                const lead = Math.random() * 2;
+                emit(mouthX + vxk * lead + (Math.random() - 0.5) * 2.6, mouthY + vyk * lead + (Math.random() - 0.5) * 2.6,
+                     vxk, vyk + G * lead, jet % 2 ? 0 : 1);
+                fly[n - 1] = 160;
             }
         }
 
