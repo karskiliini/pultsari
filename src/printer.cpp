@@ -219,6 +219,7 @@ const char* personColor(const Person* p)
         case varas:        return "38;5;246";           // grey hoodie
         case vanki:        return "38;5;101";           // worn prison black-olive
         case diileri:      return "38;5;135";           // shiny purple tracksuit
+        case avustaja:     return "38;5;216";           // flushed drunk face
         default:           return "37";
     }
 }

@@ -72,7 +72,7 @@ void Person::report(const std::string& msg)
     const Person* p = level->getPlayer();
     if (!p) return;
     const bool seen = coord.distance(p->coord) <= 12 && level->raycast(p->coord, coord);
-    if (seen || level->canHear(p->coord, coord, 15)) report(msg);
+    if (seen || level->canHear(p->coord, coord, 15)) printer->showMessage(msg, level);
 }
 
 Direction Person::randomDirection() const
@@ -1630,6 +1630,8 @@ void Veteraani::npcAct()
                 move(d, msg);
             }
         }
+    } else if (level->isAlive(assistant)) {
+        lookAfterAssistant(msg);
     } else {
         if (blind && random(3)) say("Olen sokea, mutta kuulen kaiken.");
         // peaceful mode: wander slowly
@@ -2845,5 +2847,97 @@ bool Kenraali::interactThrow(Item* item, Person* source, std::string& msg)
     damage(2);
     level->alertCops(source);
     msg = "Osuit kenraali " + name() + "iin! H\xC3\xA4n kiroilee karttaa.";
+    return true;
+}
+
+// ============ Veteran's personal assistant ============
+
+void Veteraani::lookAfterAssistant(std::string& msg)
+{
+    // a blind veteran finds his assistant by the snoring and mumbling
+    const bool knowsWhere = blind ? level->canHear(coord, assistant->coord, 12)
+                                  : canSeeTarget(assistant->coord);
+    const uint32_t dist = coord.distance(assistant->coord);
+
+    if (assistant->collapsed && dist <= 1) {
+        static const char* lines[] = {
+            "Nouse yl\xC3\xB6s, Kolja! Min\xC3\xA4 t\xC3\xA4ss\xC3\xA4 olen se sokea!",
+            "Kuka t\xC3\xA4ss\xC3\xA4 avustaa ketä?!",
+            "Taas sammunut. Valtion maksama avustaja...",
+            "Yl\xC3\xB6s, sotilas! Tai mik\xC3\xA4 ikin\xC3\xA4 oletkaan.",
+        };
+        say(lines[std::rand() % 4]);
+        assistant->collapsed = false;
+        assistant->say("*hik* Kiitos pomo...");
+        return;
+    }
+    if (knowsWhere && (assistant->collapsed || dist > 4)) {
+        if (random(15)) say(assistant->collapsed ? "Kolja! Miss\xC3\xA4 sin\xC3\xA4 makaat?!" : "Odota minua, senkin juoppo!");
+        move(getMoveDirection(assistant->coord), msg);
+        return;
+    }
+    if (random(15)) move(randomDirection(), msg);
+}
+
+Avustaja::Avustaja(const Coord& pos) : Person(avustaja, pos)
+{
+    stats.health = 4;
+    visionRange = 2;
+}
+
+void Avustaja::npcAct()
+{
+    if (collapsed) {
+        if (random(8)) {
+            static const char* snores[] = { "*kuorsaa*", "Hrrr... \xC3\xA4iti...", "*kuolaa asfalttiin*" };
+            say(snores[std::rand() % 3]);
+        }
+        level->audio.addSound(coord, SoundType::Voice,
+            "Joku kuorsaa maassa", "Kuorsausta", "...kuorsausta...", 8);
+        return;
+    }
+
+    if (random(10)) {
+        collapsed = true;
+        say("*kaatuu naamalleen*");
+        return;
+    }
+    if (random(10)) {
+        static const char* drunk[] = {
+            "Miss\xC3\xA4... miss\xC3\xA4 me ollaan?",
+            "Min\xC3\xA4 hoidan t\xC3\xA4m\xC3\xA4n, pomo. *hik*",
+            "Pomo, onko meill\xC3\xA4 lis\xC3\xA4\xC3\xA4 viinaa?",
+            "Olen henkil\xC3\xB6kohtainen avustaja. Henkil\xC3\xB6kohtaisesti k\xC3\xA4nniss\xC3\xA4.",
+            "Unohdin l\xC3\xA4\xC3\xA4kkeesi. Ja sinut. Ja itseni.",
+        };
+        say(drunk[std::rand() % 5]);
+        level->audio.addSound(coord, SoundType::Voice,
+            "Joku sammaltaa humalassa", "Sammallusta", "...sammallusta...", 8);
+    }
+    if (random(60)) {
+        Coord next = coord;
+        switch (randomDirection()) {
+            case DirectionNS::up:    if (next.y > 0) --next.y; break;
+            case DirectionNS::down:  ++next.y; break;
+            case DirectionNS::left:  if (next.x > 0) --next.x; break;
+            case DirectionNS::right: ++next.x; break;
+            default: break;
+        }
+        if (!level->hit(next)) coord = next;
+    }
+}
+
+bool Avustaja::interact(std::string& msg, Person* source)
+{
+    msg = "Veteraanin avustaja kaatuu p\xC3\xA4\xC3\xA4llesi ja kysyy kuka sin\xC3\xA4 olet.";
+    collapsed = true;
+    return true;
+}
+
+bool Avustaja::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Osuit avustajaan. H\xC3\xA4n ei huomaa mit\xC3\xA4\xC3\xA4n.";
+    damage(1);
+    collapsed = true;
     return true;
 }

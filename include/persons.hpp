@@ -187,6 +187,8 @@ public:
     bool offered = false;
 };
 
+class Avustaja;
+
 class Veteraani : public Person {
 public:
     Veteraani(const Coord& pos);
@@ -203,6 +205,20 @@ public:
     uint32_t rageCooldown = 0;
     uint32_t grenades = 2;
     uint32_t ammo = 6;
+    // a state-funded personal assistant, permanently blind drunk
+    Avustaja* assistant = nullptr;
+private:
+    void lookAfterAssistant(std::string& msg);
+};
+
+class Avustaja : public Person {
+public:
+    Avustaja(const Coord& pos);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return collapsed ? "_" : "a"; };
+    bool collapsed = false;
 };
 
 class Juoppo : public Person {

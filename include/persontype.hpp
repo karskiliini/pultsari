@@ -22,7 +22,8 @@ enum PersonType {
     putin,
     medvedev,
     shoigu,
-    gerasimov
+    gerasimov,
+    avustaja
 };
 
 #endif

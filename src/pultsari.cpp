@@ -151,6 +151,24 @@ static void populateBuildings(Level& level, const GameState& gs)
     }
 }
 
+// some veterans come with a state-funded personal assistant, permanently drunk
+static void spawnVeteran(Level& level)
+{
+    Veteraani* v = dynamic_cast<Veteraani*>(level.createPerson(level.freePosition(), veteraani));
+    if (!v || !random(v->blind ? 70 : 40)) return;
+
+    const int offsets[][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+    for (const auto& o : offsets) {
+        Coord c { (uint32_t)((int)v->coord.x + o[0]), (uint32_t)((int)v->coord.y + o[1]) };
+        if (level.hit(c)) continue;
+        Avustaja* a = new Avustaja(c);
+        a->pathFinding = level.pathFinding;
+        a->printer = level.printer;
+        if (level.addPerson(a)) { v->assistant = a; return; }
+        delete a;
+    }
+}
+
 static void populatePersons(Level& level, const GameState& gs)
 {
     if (gs.phase == GamePhase::War) {
@@ -160,7 +178,7 @@ static void populatePersons(Level& level, const GameState& gs)
         }
         if (random(40)) level.createPerson(level.freePosition(), vanki);
         for (int i = 0; i < (int)gs.warStage; ++i) {
-            if (random(50)) level.createPerson(level.freePosition(), veteraani);
+            if (random(50)) spawnVeteran(level);
         }
         return;
     }
@@ -244,9 +262,9 @@ static void populatePersons(Level& level, const GameState& gs)
 
     // SMO veteraanit
     if (random(35))
-        level.createPerson(level.freePosition(), veteraani);
+        spawnVeteran(level);
     if (random(25))
-        level.createPerson(level.freePosition(), veteraani);
+        spawnVeteran(level);
 
     // FSB - more near Kremlin
     {
