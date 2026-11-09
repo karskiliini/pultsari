@@ -167,7 +167,7 @@ static void populateBuildings(Level& level, const GameState& gs)
 
     Building* b = nullptr;
 
-    // Alko - near player start area
+    // Alko - west side
     b = new Alko();
     b->setOffset(30, 85);
     level.addBuilding(b);

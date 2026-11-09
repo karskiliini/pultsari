@@ -17,8 +17,10 @@ constexpr uint32_t WORLD_W = 400;
 constexpr uint32_t WORLD_H = 200;
 constexpr uint32_t SIZEX = WORLD_W;
 constexpr uint32_t SIZEY = WORLD_H;
-constexpr uint32_t PLAYER_START_X = 50;
-constexpr uint32_t PLAYER_START_Y = WORLD_H / 2;
+// the drunk comes to in the city's bottom-left corner, on the pavement of Leninski prospekt
+// (its carriageway is rows 150..152, Leningradskoje shosse runs down columns 15..17)
+constexpr uint32_t PLAYER_START_X = 6;
+constexpr uint32_t PLAYER_START_Y = 153;
 
 extern bool animsEnabled;
 extern bool realtimeEnabled;

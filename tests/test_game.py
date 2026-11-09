@@ -93,6 +93,17 @@ def test_city_is_built_up():
                                   f'shops {kinds.count(SHOP)} flats {kinds.count(FLATS)}')
 
 
+def test_player_starts_on_leninski():
+    g = Game()
+    time.sleep(1); g.keys(' ', 0); time.sleep(1)
+    fr = g.frames()
+    g.close()
+    first = fr[0] if fr else {}
+    # the bottom-left corner of the city, by Leninski prospekt
+    check('player_starts_on_leninski', first.get('pos') == [6, 153] and first.get('lvl') == 'LENINSKI PR.',
+          f"pos {first.get('pos')} lvl {first.get('lvl')}")
+
+
 def test_random_play_does_not_crash():
     g = Game()
     time.sleep(1); g.keys(' ', 0)
@@ -114,6 +125,7 @@ if __name__ == '__main__':
     test_visibility_mask_is_sent()
     test_z_restarts()
     test_city_is_built_up()
+    test_player_starts_on_leninski()
     test_random_play_does_not_crash()
-    print(f'{5 - len(failures)}/5 game tests passed')
+    print(f'{6 - len(failures)}/6 game tests passed')
     sys.exit(1 if failures else 0)
