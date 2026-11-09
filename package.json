@@ -1,26 +1,17 @@
 {
   "name": "pultsari",
-  "version": "1.0.0",
-  "description": "pulsubin.bas    the original version of Pultsari 1.0 in QuickBasic 4.5 binary format     pultsari.bas    ASCII version of the original binary, with some refactoring done. ## include/                     All the headers for a c++ port. ## src/                     All the source files for a c++ port.",
-  "main": "index.js",
-  "directories": {
-    "test": "test"
-  },
+  "version": "2.0.0",
+  "description": "PПLTSAЯI 2: Russki Mir — browser client for the terminal game",
+  "private": true,
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "start": "make && node web/server.js"
   },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/karskiliini/pultsari.git"
   },
-  "keywords": [],
-  "author": "",
-  "license": "ISC",
-  "bugs": {
-    "url": "https://github.com/karskiliini/pultsari/issues"
-  },
-  "homepage": "https://github.com/karskiliini/pultsari#readme",
   "dependencies": {
+    "@xterm/xterm": "^5.5.0",
     "node-pty": "^1.1.0",
     "ws": "^8.22.2"
   }

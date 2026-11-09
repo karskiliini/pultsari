@@ -4,139 +4,116 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PПLTSAЯI 2: Russki Mir</title>
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.css">
+    <link rel="stylesheet" href="xterm.css">
     <style>
+        :root { --bg: #0b0b0b; --fg: #e6e6e6; --red: #d52b1e; --muted: #777; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: #0a0a0a;
-            color: #e0e0e0;
-            font-family: monospace;
+            background: var(--bg);
+            color: var(--fg);
+            font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
             min-height: 100vh;
+            padding: 12px 16px;
         }
-        h1 {
-            color: #ff4444;
-            margin: 12px 0 4px;
-            font-size: 1.4em;
-            letter-spacing: 3px;
-        }
-        .subtitle {
-            color: #888;
-            font-size: 0.8em;
-            margin-bottom: 8px;
-        }
+        h1 { color: var(--red); font-size: 1.4em; letter-spacing: 3px; }
+        .subtitle { color: var(--muted); font-size: 0.85em; margin-bottom: 8px; }
+        #status { color: #ffaa00; margin: 6px 0; font-size: 0.85em; min-height: 1.2em; }
         #terminal-container {
             border: 2px solid #333;
-            border-radius: 4px;
-            overflow: hidden;
+            border-top-color: var(--red);
             background: #000;
-        }
-        .controls {
-            margin-top: 8px;
-            color: #666;
-            font-size: 0.75em;
-            text-align: center;
-            line-height: 1.6;
-        }
-        .controls kbd {
-            background: #222;
-            border: 1px solid #444;
-            border-radius: 3px;
-            padding: 1px 5px;
-            color: #ccc;
-        }
-        #status {
-            color: #ffaa00;
-            margin: 6px 0;
-            font-size: 0.85em;
+            max-width: 100%;
+            overflow-x: auto;
         }
     </style>
 </head>
 <body>
     <h1>PПLTSAЯI 2</h1>
-    <div class="subtitle">Русский Мир</div>
+    <div class="subtitle">Russki Mir · Русский Мир</div>
     <div id="status">Yhdistetään...</div>
     <div id="terminal-container"></div>
-    <div class="controls">
-        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> liiku &nbsp;|&nbsp;
-        <kbd>E</kbd> poimi &nbsp;|&nbsp;
-        <kbd>F</kbd> lyö &nbsp;|&nbsp;
-        <kbd>R</kbd> heitä &nbsp;|&nbsp;
-        <kbd>G</kbd> ammu &nbsp;|&nbsp;
-        <kbd>I</kbd> inventaario &nbsp;|&nbsp;
-        <kbd>Q</kbd> lopeta
-    </div>
 
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/xterm.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/xterm/5.3.0/addons/fit/fit.addon.min.js"></script>
+    <script src="xterm.js"></script>
     <script>
+        const status = document.getElementById('status');
+        function setStatus(text, color) { status.textContent = text; status.style.color = color; }
+
+        if (typeof Terminal === 'undefined') {
+            setStatus('Terminaalikirjaston lataus epäonnistui.', '#ff4444');
+            throw new Error('xterm missing');
+        }
+
         const term = new Terminal({
             cols: 100,
             rows: 35,
             fontSize: 14,
-            fontFamily: '"Cascadia Code", "Fira Code", "Courier New", monospace',
-            theme: {
-                background: '#0a0a0a',
-                foreground: '#e0e0e0',
-                cursor: '#ff4444',
-                cursorAccent: '#0a0a0a',
-                red: '#ff4444',
-                green: '#44ff44',
-                yellow: '#ffaa00',
-                blue: '#4488ff',
-                magenta: '#ff44ff',
-                cyan: '#44ffff',
-                white: '#e0e0e0',
-                brightRed: '#ff6666',
-                brightGreen: '#66ff66',
-                brightYellow: '#ffcc44',
-                brightBlue: '#66aaff',
-            },
-            cursorBlink: true,
+            fontFamily: 'ui-monospace, "Cascadia Code", "Fira Code", "Courier New", monospace',
+            theme: { background: '#000000', foreground: '#e6e6e6', cursor: '#d52b1e' },
+            cursorBlink: false,
             scrollback: 0,
         });
+        term.open(document.getElementById('terminal-container'));
+        term.focus();
 
-        const fitAddon = new FitAddon.FitAddon();
-        term.loadAddon(fitAddon);
+        let send = () => {};
+        let transport = null;
 
-        const container = document.getElementById('terminal-container');
-        term.open(container);
-
-        const status = document.getElementById('status');
-        const protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
-        const ws = new WebSocket(`${protocol}//${location.host}`);
-
-        ws.onopen = () => {
-            status.textContent = 'Yhdistetty! Peli käynnistyy...';
-            status.style.color = '#44ff44';
-            setTimeout(() => { status.style.display = 'none'; }, 2000);
+        function connected(kind) {
+            transport = kind;
+            setStatus('Yhdistetty.', '#44ff44');
+            setTimeout(() => { if (status.textContent === 'Yhdistetty.') setStatus('', ''); }, 2000);
             term.focus();
-        };
+        }
+        function ended() { setStatus('Yhteys päättyi. Päivitä sivu pelataksesi uudelleen.', '#ff4444'); }
 
-        ws.onmessage = (event) => {
-            term.write(event.data);
-        };
+        function startPolling() {
+            fetch('api/new', { method: 'POST' })
+                .then((r) => r.json())
+                .then(({ id }) => {
+                    connected('http');
+                    let queue = '';
+                    let sending = false;
+                    send = (d) => {
+                        queue += d;
+                        if (sending) return;
+                        sending = true;
+                        const body = queue; queue = '';
+                        fetch('api/input?id=' + id, { method: 'POST', body })
+                            .finally(() => { sending = false; if (queue) send(''); });
+                    };
+                    (function poll() {
+                        fetch('api/poll?id=' + id, { cache: 'no-store' })
+                            .then((r) => (r.status === 204 ? { data: '' } : r.ok ? r.json() : Promise.reject()))
+                            .then((m) => { if (m.data) term.write(m.data); if (m.done) ended(); else poll(); })
+                            .catch(ended);
+                    })();
+                })
+                .catch(() => setStatus('Ei yhteyttä palvelimeen.', '#ff4444'));
+        }
 
-        ws.onclose = () => {
-            status.textContent = 'Yhteys katkesi. Päivitä sivu pelataksesi uudelleen.';
-            status.style.color = '#ff4444';
-            status.style.display = 'block';
-        };
+        function startWebSocket() {
+            const wsUrl = new URL('ws', location.href);
+            wsUrl.protocol = location.protocol === 'https:' ? 'wss:' : 'ws:';
+            let ws;
+            try { ws = new WebSocket(wsUrl); } catch (e) { startPolling(); return; }
+            const fallback = setTimeout(() => { ws.onclose = null; ws.close(); startPolling(); }, 3000);
+            ws.onopen = () => {
+                clearTimeout(fallback);
+                connected('ws');
+                send = (d) => { if (ws.readyState === WebSocket.OPEN) ws.send(d); };
+            };
+            ws.onmessage = (e) => term.write(e.data);
+            ws.onclose = () => {
+                clearTimeout(fallback);
+                if (transport === 'ws') ended(); else if (!transport) startPolling();
+            };
+        }
 
-        ws.onerror = () => {
-            status.textContent = 'Yhteysvirhe!';
-            status.style.color = '#ff4444';
-        };
-
-        term.onData((data) => {
-            if (ws.readyState === WebSocket.OPEN) {
-                ws.send(data);
-            }
-        });
-
-        window.addEventListener('resize', () => fitAddon.fit());
+        term.onData((d) => send(d));
+        startWebSocket();
     </script>
 </body>
 </html>

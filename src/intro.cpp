@@ -52,96 +52,75 @@ void Intro::show()
     typewrite("P" "\xD0\x9F" "LTSA" "\xD0\xAF" "I 2: ", 120);
     cout << "\033[0m";
 
-    // pause, then "Russki Mir" appears in white
+    // subtitle sits right after the 12-column "PПLTSAЯI 2: "
+    const int SUB_X = CENTER_X + 12;
+    const int CYR_Y = TITLE_Y + 7;
+    auto at = [&](int y, int x) {
+        sprintf(posBuf, "\033[%d;%dH", y, x);
+        cout << posBuf;
+    };
+
     common::sleep(500);
     cout << "\033[1;37mRusski Mir\033[0m";
     cout.flush();
     common::sleep(1200);
 
-    // *RÖKH* - first cough
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 2, CENTER_X + 5);
-    cout << posBuf;
-    cout << "\033[33m*RÖKH*\033[0m";
+    at(TITLE_Y + 2, CENTER_X);
+    cout << "\033[33m*R\xC3\x96KH*\033[0m";
     cout.flush();
     common::sleep(600);
 
-    // vomit hits the subtitle - "Russki Mir" turns green
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y, CENTER_X + 13);
-    cout << posBuf;
+    // vomit hits the subtitle
+    at(TITLE_Y, SUB_X);
     cout << "\033[32;1mRusski Mir\033[0m";
     cout.flush();
     common::sleep(400);
 
-    // *BLAAARGH* - bigger vomit
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 2, CENTER_X + 2);
-    cout << posBuf;
+    at(TITLE_Y + 4, CENTER_X - 2);
     cout << "\033[33;1m*BLAAARGH*\033[0m";
     cout.flush();
-    common::sleep(700);
+    common::sleep(600);
 
-    // drip trails fall from the Latin letters
+    // drip trails run down from the letters
     const char* trail[] = { ":", ".", "|", ":", ".", ";", "'" };
-    for (int row = 0; row < 5; ++row) {
-        for (int i = 0; i < 10; ++i) {
-            int dx = CENTER_X + 13 + i;
-            sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 2 + row, dx);
-            cout << posBuf;
+    for (int row = 1; row < CYR_Y - TITLE_Y; ++row) {
+        for (int i = 0; i < 11; ++i) {
+            if ((i * 7 + row * 3) % 5 == 0) continue;
+            at(TITLE_Y + row, SUB_X + i);
             cout << "\033[32;2m" << trail[(i + row) % 7] << "\033[0m";
         }
         cout.flush();
         common::sleep(120);
     }
-    common::sleep(300);
 
-    // *ÖÖÖRRRKKK* - more vomit
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 8, CENTER_X + 16);
-    cout << posBuf;
+    at(TITLE_Y + 3, SUB_X + 13);
     cout << "\033[33;1m*\xC3\x96\xC3\x96\xC3\x96RRRKKK*\033[0m";
     cout.flush();
-    common::sleep(600);
+    common::sleep(500);
 
-    // drips collect and form "Русский Мир" in Cyrillic, letter by letter
-    // Р у с с к и й   М и р
+    // the drips pool into "Русский Мир", one letter at a time
     const char* cyrillic[] = {
-        "\xD0\xA0", "\xD1\x83", "\xD1\x81", "\xD1\x81",
-        "\xD0\xBA", "\xD0\xB8", "\xD0\xB9", " ",
-        "\xD0\x9C", "\xD0\xB8", "\xD1\x80",
+        "\xD0\xA0", "\xD1\x83", "\xD1\x81", "\xD1\x81", "\xD0\xBA", "\xD0\xB8",
+        "\xD0\xB9", " ", "\xD0\x9C", "\xD0\xB8", "\xD1\x80",
     };
-    int cyX = CENTER_X + 12;
-    int cyY = TITLE_Y + 9;
     for (int i = 0; i < 11; ++i) {
-        if (cyrillic[i][0] == ' ') continue;
-        // drip falls to position
-        for (int dy = TITLE_Y + 2; dy <= cyY; ++dy) {
-            sprintf(posBuf, "\033[%d;%dH", dy, cyX + i * 2);
-            cout << posBuf;
-            cout << "\033[32;2m.\033[0m";
+        for (int y = TITLE_Y + 1; y < CYR_Y; ++y) {
+            at(y, SUB_X + i);
+            cout << "\033[32;1mo\033[0m";
             cout.flush();
-            common::sleep(12);
-            if (dy < cyY) {
-                sprintf(posBuf, "\033[%d;%dH", dy, cyX + i * 2);
-                cout << posBuf;
-                cout << " ";
-            }
+            common::sleep(14);
+            at(y, SUB_X + i);
+            cout << " ";
         }
-        // place Cyrillic letter
-        sprintf(posBuf, "\033[%d;%dH", cyY, cyX + i * 2);
-        cout << posBuf;
-        cout << "\033[31;1m" << cyrillic[i] << "\033[0m";
+        at(CYR_Y, SUB_X + i);
+        cout << "\033[1;31m" << cyrillic[i] << "\033[0m";
         cout.flush();
-        common::sleep(60);
+        common::sleep(50);
     }
-    common::sleep(400);
-
-    // puddle under "Русский Мир"
-    sprintf(posBuf, "\033[%d;%dH", cyY + 1, cyX - 2);
-    cout << posBuf;
-    cout << "\033[32;2m~.~~~.~..~~.~~~.~..~~.~~~.~\033[0m";
-    cout.flush();
     common::sleep(300);
-    sprintf(posBuf, "\033[%d;%dH", cyY + 2, cyX - 1);
-    cout << posBuf;
-    cout << "\033[32;2m  ~..~.~~..~.~~.~..~~.~  \033[0m";
+
+    at(CYR_Y + 1, SUB_X - 2);
+    cout << "\033[32;2m~.~~~.~..~~.~~.\033[0m";
     cout.flush();
     common::sleep(500);
 
