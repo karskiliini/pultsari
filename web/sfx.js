@@ -207,20 +207,26 @@
         sounds[name](ctx.currentTime + 0.01, Math.max(0.05, Math.min(1, vol)));
     }
 
-    // Original eighties action-show synth theme: driving bass arpeggios under a
-    // square-wave lead in A minor. Returns a function that fades it out.
+    // The intro theme: an eighties action-show synth groove carrying the
+    // Russian folk tune Korobeiniki (public domain), with balalaika tremolo
+    // on the chords. Returns a function that fades it out.
     function startTheme(seconds) {
         if (!ctx || muted) return () => {};
         const out = ctx.createGain();
         out.gain.value = 0.22;
         out.connect(master);
         const t0 = ctx.currentTime + 0.05;
-        const step = 60 / 150 / 2; // eighth notes at 150 bpm
+        const eighth = 60 / 150 / 2;
         const note = (n) => 440 * Math.pow(2, (n - 69) / 12);
-        // A minor, F, C, G, two bars each
-        const chords = [[45, 52, 57], [41, 48, 53], [48, 55, 60], [43, 50, 55]];
-        const lead = [81, 79, 76, 79, 81, 84, 81, 79, 77, 76, 72, 74, 76, 79, 76, 74,
-                      72, 74, 76, 79, 84, 83, 81, 79, 79, 81, 83, 86, 83, 81, 79, 76];
+        // Korobeiniki in A minor as [midi note, length in eighths]
+        const tune = [
+            [76, 2], [71, 1], [72, 1], [74, 2], [72, 1], [71, 1], [69, 2], [69, 1], [72, 1], [76, 2], [74, 1], [72, 1],
+            [71, 3], [72, 1], [74, 2], [76, 2], [72, 2], [69, 2], [69, 4],
+            [74, 3], [77, 1], [81, 2], [79, 1], [77, 1], [76, 3], [72, 1], [76, 2], [74, 1], [72, 1],
+            [71, 2], [71, 1], [72, 1], [74, 2], [76, 2], [72, 2], [69, 2], [69, 4],
+        ];
+        // a chord per bar under the tune: Am E Am E Dm Am E Am
+        const bars = [[45, 52, 57], [40, 47, 52], [45, 52, 57], [40, 47, 52], [38, 45, 50], [45, 52, 57], [40, 47, 52], [45, 52, 57]];
         const voice = (type, freq, t, dur, vol, cutoff) => {
             const o = ctx.createOscillator();
             o.type = type;
@@ -236,14 +242,37 @@
             o.start(t);
             o.stop(t + dur + 0.02);
         };
-        const steps = Math.floor(seconds / step);
+        const pluckOut = (t, freq, vol) => {
+            const o = ctx.createOscillator();
+            o.type = 'triangle';
+            o.frequency.value = freq;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(vol, t + 0.004);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.14);
+            o.connect(g).connect(out);
+            o.start(t);
+            o.stop(t + 0.16);
+        };
+        const steps = Math.floor(seconds / eighth);
+        // groove: bass, drums and balalaika, every eighth
         for (let i = 0; i < steps; i++) {
-            const t = t0 + i * step;
-            const chord = chords[Math.floor(i / 16) % 4];
-            voice('sawtooth', note(chord[i % 3] - 12), t, step * 0.9, 0.5, 700);
-            if (i % 2 === 0) voice('square', note(lead[(i / 2) % lead.length]), t, step * 1.8, 0.16, 2400);
-            if (i % 4 === 0) { burst(t, 0.6, { type: 'lowpass', freq: 160, decay: 0.12, dur: 0.13 }); }
-            if (i % 4 === 2) { burst(t, 0.25, { type: 'highpass', freq: 5000, decay: 0.05, dur: 0.06 }); }
+            const t = t0 + i * eighth;
+            const chord = bars[Math.floor(i / 8) % bars.length];
+            voice('sawtooth', note(chord[0] - 12 + (i % 2 ? 12 : 0)), t, eighth * 0.85, 0.45, 650);
+            if (i % 4 === 0) burst(t, 0.7, { type: 'lowpass', freq: 150, decay: 0.12, dur: 0.13 });
+            if (i % 4 === 2) burst(t, 0.35, { type: 'bandpass', freq: 1800, q: 0.8, decay: 0.09, dur: 0.1 });
+            burst(t, 0.12, { type: 'highpass', freq: 7000, decay: 0.03, dur: 0.04 });
+            // balalaika tremolo: quick repeated plucks of the chord
+            for (let r = 0; r < 3; r++) pluckOut(t + r * eighth / 3, note(chord[(i + r) % 3] + 12), 0.07);
+        }
+        // the tune on a square-wave lead, looping
+        for (let pos = 0, k = 0; pos < steps; k++) {
+            const [n, len] = tune[k % tune.length];
+            const t = t0 + pos * eighth;
+            voice('square', note(n), t, len * eighth * 0.92, 0.14, 2600);
+            voice('sawtooth', note(n) * 1.005, t, len * eighth * 0.92, 0.05, 1800); // slight detune for width
+            pos += len;
         }
         return () => {
             const now = ctx.currentTime;
