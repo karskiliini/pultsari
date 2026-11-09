@@ -16,14 +16,33 @@ const STATIC = {
     '/xterm.css': [path.join(ROOT, 'node_modules/@xterm/xterm/css/xterm.css'), 'text/css'],
 };
 
-function spawnGame() {
-    return pty.spawn(GAME, GAME_ARGS, {
+const MAX_GAMES = Number(process.env.MAX_GAMES || 20);
+const MAX_GAMES_PER_IP = Number(process.env.MAX_GAMES_PER_IP || 3);
+let running = 0;
+const perIp = new Map();
+
+function clientIp(req) {
+    return req.socket.remoteAddress || 'unknown';
+}
+
+// returns null when the server or this client already runs too many games
+function spawnGame(ip) {
+    if (running >= MAX_GAMES || (perIp.get(ip) || 0) >= MAX_GAMES_PER_IP) return null;
+    const game = pty.spawn(GAME, GAME_ARGS, {
         name: 'xterm-256color',
         cols: 100,
         rows: 35,
         cwd: ROOT,
         env: { ...process.env, TERM: 'xterm-256color', LANG: 'C.UTF-8' },
     });
+    running++;
+    perIp.set(ip, (perIp.get(ip) || 0) + 1);
+    game.onExit(() => {
+        running--;
+        const n = (perIp.get(ip) || 1) - 1;
+        if (n > 0) perIp.set(ip, n); else perIp.delete(ip);
+    });
+    return game;
 }
 
 const END_MSG = '\r\n\x1b[1;31m=== PELI PÄÄTTYI — päivitä sivu ===\x1b[0m\r\n';
@@ -32,9 +51,11 @@ const END_MSG = '\r\n\x1b[1;31m=== PELI PÄÄTTYI — päivitä sivu ===\x1b[0m\
 const sessions = new Map();
 const SESSION_IDLE_MS = 60000;
 
-function newSession() {
+function newSession(ip) {
+    const game = spawnGame(ip);
+    if (!game) return null;
     const id = crypto.randomBytes(16).toString('hex');
-    const s = { game: spawnGame(), buf: '', waiter: null, done: false, seen: Date.now() };
+    const s = { game, buf: '', waiter: null, done: false, seen: Date.now() };
     s.game.onData((d) => { s.buf += d; flush(s); });
     s.game.onExit(() => { s.buf += END_MSG; s.done = true; flush(s); });
     sessions.set(id, s);
@@ -72,8 +93,10 @@ const server = http.createServer((req, res) => {
     const p = url.pathname.replace(/^.*\/(api\/)/, '/$1');
 
     if (p === '/api/new' && req.method === 'POST') {
+        const id = newSession(clientIp(req));
+        if (!id) { res.writeHead(503); res.end(); return; }
         res.writeHead(200, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ id: newSession() }));
+        res.end(JSON.stringify({ id }));
         return;
     }
     if (p === '/api/poll' || p === '/api/input') {
@@ -105,8 +128,13 @@ const server = http.createServer((req, res) => {
 
 const wss = new WebSocket.Server({ server });
 
-wss.on('connection', (ws) => {
-    const game = spawnGame();
+wss.on('connection', (ws, req) => {
+    const game = spawnGame(clientIp(req));
+    if (!game) {
+        ws.send('\r\n\x1b[1;31mPalvelin on täynnä. Yritä hetken päästä uudelleen.\x1b[0m\r\n');
+        ws.close();
+        return;
+    }
     game.onData((d) => { if (ws.readyState === WebSocket.OPEN) ws.send(d); });
     game.onExit(() => {
         if (ws.readyState === WebSocket.OPEN) { ws.send(END_MSG); ws.close(); }

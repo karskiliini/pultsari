@@ -6,8 +6,6 @@ enum PersonType {
     pelaaja,
     poliisi,
     mummo,
-    juppi,
-    hippi,
     vanki,
     varas,
     skinhead,

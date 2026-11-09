@@ -35,11 +35,24 @@ static string tokenizeStr(string& str)
 void Printer::setMessage(const std::string& message)
 {
     msg = message;
+    msgTtl = MSG_FRAMES;
 }
 
 void Printer::showMessage(std::string message, Level* level, bool waitKey)
 {
     if (message == "") {
+        printerRefresh();
+        return;
+    }
+
+    // in realtime nothing may block on a keypress: show the latest message on one line
+    if (common::realtimeEnabled) {
+        for (auto& ch : message) if (ch == '\n') ch = ' ';
+        msg = message;
+        msgShown = true;
+        msgTtl = MSG_FRAMES;
+        cursorHome();
+        printMessage();
         printerRefresh();
         return;
     }
@@ -82,6 +95,10 @@ void Printer::showMessage(std::string message, Level* level, bool waitKey)
 
 void Printer::removeMessage()
 {
+    if (common::realtimeEnabled && msgTtl > 0) {
+        --msgTtl;
+        return;
+    }
     msg = "";
     if (msgShown) msgShown = false;
 }
@@ -173,14 +190,91 @@ string Printer::promilleAligned(uint32_t value) const
     return ret;
 }
 
+namespace {
+
+const char* personColor(PersonType t)
+{
+    switch (t) {
+        case pelaaja:      return "1;93";
+        case putin:        return "1;97;41";
+        case fsb:          return "1;31";
+        case poliisi:      return "1;94";
+        case sotilas:
+        case ilmatorjunta: return "32";
+        case veteraani:    return "33";
+        case vartija:      return "36";
+        case mummo:        return "95";
+        case juoppo:       return "93";
+        case jengi:        return "96";
+        case ryostaja:     return "91";
+        default:           return "37";
+    }
+}
+
+const char* itemColor(ItemType t)
+{
+    switch (t) {
+        case EKalja: case ELonkka: case EVodka:
+        case ELenkki: case EKala: case EOmppo: case EBanaani:
+            return "92";
+        case EPamppu: case EVeitsi: case EKetjut: case EKivi:
+        case EBootsit: case EPistooli: case EGranata:
+            return "1;37";
+        case ERaha:        return "1;93";
+        case EBona:        return "96";
+        case EPaska:
+        case EOksennus:    return "2;32";
+        case EViesti:      return "1;95";
+        case ENextLevel:   return "1;97;44";
+        case EPropusk:
+        case EViinaKellari:return "1;97;41";
+        case EPensas:      return "32";
+        case ERoskis:      return "90";
+        case EBusStop:     return "1;93;44";
+        case EPutinPoyta:  return "37";
+        default:           return "33";
+    }
+}
+
+const char* buildingColor(const Building* b, const string& glyph)
+{
+    if (glyph == "\xE2\x96\x88") return b->type == EKremlin ? "31" : "90";
+    if (glyph == "\xE2\x96\x91") return "33";
+    if (glyph == "\xE2\x96\x92") return "2;36";
+    if (glyph == "~") return "1;91";
+    if (glyph == ";") return "2;37";
+    return "1;97";
+}
+
+}
+
 void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask)
 {
     uint32_t worldY = y + (uint32_t)l->cameraY;
+    string line;
+    string current;
+    auto emit = [&](const string& glyph, const char* color) {
+        if (current != color) {
+            line += "\033[0m";
+            if (*color) line += string("\033[") + color + "m";
+            current = color;
+        }
+        line += glyph;
+    };
 
-    Animation* anim = nullptr;
+    struct RowAnim { uint32_t x; vector<string> chars; bool bubble; };
+    vector<RowAnim> rowAnims;
     if (common::animsEnabled) {
-        if (l->animation && l->animation->coord.y == worldY) {
-            anim = l->animation;
+        for (const auto a : l->animations) {
+            if (a->coord.y != worldY) continue;
+            RowAnim r { a->coord.x, {}, a->isBubble };
+            for (size_t i = 0; i < a->text.size();) {
+                const unsigned char b = a->text[i];
+                size_t n = b >= 0xF0 ? 4 : b >= 0xE0 ? 3 : b >= 0xC0 ? 2 : 1;
+                r.chars.push_back(a->text.substr(i, n));
+                i += n;
+            }
+            rowAnims.push_back(std::move(r));
         }
     }
 
@@ -208,48 +302,26 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
         Coord coord { x, worldY };
         bool found = false;
         string c = " ";
+        const char* color = "";
 
-        if (common::animsEnabled) {
-            if (anim)
-            {
-                uint32_t len = anim->text.length();
-                if ((anim->coord.x <= x) && (anim->coord.x + len > x))
-                {
-                    uint32_t index = x - anim->coord.x;
-                    if (anim->isBubble) {
-                        // speech bubble: dim text for 75% opacity effect
-                        c = std::string("\033[2;37m") + anim->text[index] + "\033[0m";
-                    } else {
-                        c = anim->text[index];
-                    }
-                    found = true;
-                }
-            }
-        }
-
-#if 0
-        // debug
-        if (pathmask)
-        {
-            auto v = pathmask->at(coord);
-            if ((v > 1) && (coord != l->getPlayer()->coord)) {
-                c = std::to_string(v)[0];
+        for (auto it = rowAnims.rbegin(); it != rowAnims.rend(); ++it) {
+            if (x >= it->x && x < it->x + it->chars.size()) {
+                c = it->chars[x - it->x];
+                color = it->bubble ? "2;37" : "1;91";
                 found = true;
-            }
-        } else {
-            return;
-        }
-#endif
-        if (!found) {
-            if (!mask->visible(coord)) {
-                c = ".";
-                found = true;
+                break;
             }
         }
 
-        if (thrownItem && thrownItem->coord.x == x)
-        {
+        if (!found && !mask->visible(coord)) {
+            c = ".";
+            color = "2;90";
+            found = true;
+        }
+
+        if (thrownItem && thrownItem->coord.x == x) {
             c = thrownItem->typeToChar();
+            color = "1;97";
             found = true;
         }
 
@@ -257,6 +329,7 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             for (auto b : l->buildings) {
                 if (b->hitBuilding(coord)) {
                     c = b->typeToChar(coord);
+                    color = buildingColor(b, c);
                     found = true;
                     break;
                 }
@@ -267,6 +340,7 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             const Person* p = findPerson(persons, x);
             if (p) {
                 c = p->typeToChar();
+                color = personColor(p->type);
                 found = true;
             }
         }
@@ -275,6 +349,7 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             const Item* i = findItem(items, x);
             if (i) {
                 c = i->typeToChar();
+                color = itemColor(i->type);
                 found = true;
             }
         }
@@ -283,48 +358,38 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             for (const auto& v : l->vehicles) {
                 if (v->hitVehicle(coord)) {
                     c = v->typeToChar();
+                    color = "1;93;40";
                     found = true;
                     break;
                 }
             }
         }
 
-        if (!found && l->events) {
-            if (l->events->hasFire(coord)) {
-                c = "~";
-                found = true;
-            }
+        if (!found && l->events && l->events->hasFire(coord)) {
+            c = "~";
+            color = ((x + worldY) & 1) ? "1;91" : "1;93";
+            found = true;
         }
 
         if (!found) {
             for (auto b : l->buildings) {
-                if (b->type == EHypermarket) {
-                    Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
-                    if (hm && hm->onFire) {
-                        for (const auto& s : hm->smokeSpots) {
-                            if (s == coord) {
-                                c = std::string("\033[2;37m") + ";" + "\033[0m";
-                                found = true;
-                                break;
-                            }
-                        }
-                        if (!found) {
-                            for (const auto& f : hm->fireSpots) {
-                                if (f == coord) {
-                                    c = std::string("\033[91m") + "~" + "\033[0m";
-                                    found = true;
-                                    break;
-                                }
-                            }
-                        }
-                    }
-                    if (found) break;
+                if (b->type != EHypermarket) continue;
+                Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
+                if (!hm || !hm->onFire) continue;
+                for (const auto& s : hm->smokeSpots) {
+                    if (s == coord) { c = ";"; color = "2;37"; found = true; break; }
                 }
+                for (const auto& f : hm->fireSpots) {
+                    if (!found && f == coord) { c = "~"; color = "1;91"; found = true; break; }
+                }
+                if (found) break;
             }
         }
 
-        printChar(c);
+        emit(c, color);
     }
+    line += "\033[0m";
+    printChar(line);
 }
 
 void Printer::print(Level* level)
@@ -371,49 +436,56 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
         const char* useLabel;
     };
 
+    // row order must match useInventoryItem / invIndexToThrowNum in pultsari.cpp
     InvItem items[] = {
-        {"KALJA",   inventory->kalja,   true,  true,  "[Q]juo"},
-        {"LONKKA",  inventory->lonkka,  true,  true,  "[Q]juo"},
-        {"LENKKI",  inventory->lenkki,  true,  true,  "[Q]syö"},
-        {"KALA",    inventory->kalat,   true,  true,  "[Q]syö"},
-        {"OMPPO",   inventory->omppo,   true,  true,  "[Q]syö"},
-        {"BANSKU",  inventory->bansku,  true,  true,  "[Q]syö"},
-        {"KETJUT",  inventory->ketjut,  false, true,  "      "},
-        {"VEITSI",  inventory->veitset, false, true,  "      "},
-        {"KIVI",    inventory->kivet,   false, true,  "      "},
-        {"PAMPPU",  inventory->pamput,  false, true,  "      "},
-        {"BOOTSIT", inventory->bootsit, false, true,  "      "},
-        {"PISTOOLI",inventory->pistooli,true,  false, "[Q]ammu"},
-        {"AMMUKSET",inventory->ammukset,false, false, "       "},
+        {"KALJA",     inventory->kalja,    true,  true,  "[Q] juo  "},
+        {"JAGUAR",    inventory->lonkka,   true,  true,  "[Q] juo  "},
+        {"VODKA",     inventory->vodka,    true,  true,  "[Q] juo  "},
+        {"MAKKARA",   inventory->lenkki,   true,  true,  "[Q] syö  "},
+        {"VOBLA",     inventory->kalat,    true,  true,  "[Q] syö  "},
+        {"OMPPO",     inventory->omppo,    true,  true,  "[Q] syö  "},
+        {"BANAANI",   inventory->bansku,   true,  true,  "[Q] syö  "},
+        {"KETJUT",    inventory->ketjut,   false, true,  "         "},
+        {"VEITSI",    inventory->veitset,  false, true,  "         "},
+        {"KIVI",      inventory->kivet,    false, true,  "         "},
+        {"PAMPPU",    inventory->pamput,   false, true,  "         "},
+        {"VERKKARIT", inventory->bootsit,  false, true,  "         "},
+        {"KRANAATTI", inventory->granata,  false, true,  "         "},
+        {"PISTOOLI",  inventory->pistooli, true,  false, "[Q] ammu "},
+        {"AMMUKSET",  inventory->ammukset, false, false, "         "},
     };
-    constexpr int NUM_ITEMS = 13;
+    constexpr int NUM_ITEMS = sizeof(items) / sizeof(items[0]);
+    const char* frame = "\033[0;41;97m";
 
     char buf[256];
 
-    // top border
-    sprintf(buf, "\033[%d;%dH\033[44;37m+------- TAVARAT --------+", OVERLAY_Y, OVERLAY_X);
+    // all rows are 32 columns wide; box-drawing chars are 3 bytes but 1 column
+    sprintf(buf, "\033[%d;%dH%s\xE2\x95\x94\xE2\x95\x90\xE2\x95\x90 \xD0\xA2\xD0\x9E\xD0\x92\xD0\x90\xD0\xA0\xD0\xAB \xC2\xB7 TAVARAT "
+                 "\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90"
+                 "\xE2\x95\x90\xE2\x95\x90\xE2\x95\x97",
+            OVERLAY_Y, OVERLAY_X, frame);
     cout << buf;
 
     for (int i = 0; i < NUM_ITEMS; ++i) {
-        int y = OVERLAY_Y + 1 + i;
         bool selected = (i == selectedRow);
-        const char* arrow = selected ? ">" : " ";
-        const char* color = selected ? "\033[43;30m" : "\033[44;37m";
+        const char* row = selected ? "\033[0;1;30;107m" : items[i].count ? "\033[0;41;97m" : "\033[0;41;2;37m";
 
-        sprintf(buf, "\033[%d;%dH%s%s %-8s x%-3d %s %s\033[44;37m",
-                y, OVERLAY_X, color, arrow,
+        sprintf(buf, "\033[%d;%dH%s\xE2\x95\x91%s%s %-9s x%-3u %s %s%s\xE2\x95\x91",
+                OVERLAY_Y + 1 + i, OVERLAY_X, frame, row,
+                selected ? "\xE2\x96\xB6" : " ",
                 items[i].name, items[i].count,
                 items[i].useLabel,
-                items[i].canThrow ? "[E]heitä" : "");
+                items[i].canThrow ? "[E]" : "   ",
+                frame);
         cout << buf;
     }
 
-    // bottom border + help
-    sprintf(buf, "\033[%d;%dH+------------------------+", OVERLAY_Y + NUM_ITEMS + 1, OVERLAY_X);
+    sprintf(buf, "\033[%d;%dH%s\xE2\x95\x9A", OVERLAY_Y + NUM_ITEMS + 1, OVERLAY_X, frame);
     cout << buf;
-    sprintf(buf, "\033[%d;%dH W/S=selaa Q=käytä E=heitä", OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
-    cout << buf;
-    sprintf(buf, "\033[%d;%dH Tab=sulje               ", OVERLAY_Y + NUM_ITEMS + 3, OVERLAY_X);
+    for (int i = 0; i < 30; ++i) cout << "\xE2\x95\x90";
+    cout << "\xE2\x95\x9D";
+    sprintf(buf, "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 Q k\xC3\xA4yt\xC3\xA4 \xC2\xB7 E heit\xC3\xA4 \xC2\xB7 Tab sulje ",
+            OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
     cout << buf;
 
     cout << "\033[0m";
@@ -439,9 +511,14 @@ void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
         Coord c { (uint32_t)ix, (uint32_t)iy };
         if (level->hitBuilding(c)) break;
 
-        // +3 for border offset in terminal (1 newline + 1 border + 1 inventory column)
-        int termX = ix + 15;
-        int termY = iy + 3;
+        int vx = ix - level->cameraX;
+        int vy = iy - level->cameraY;
+        if (vx < 0 || vy < 0 || vx >= (int)common::VIEWPORT_W || vy >= (int)common::VIEWPORT_H)
+            break;
+
+        // map starts below the message line and top border, right of the inventory column and border
+        int termX = vx + 15;
+        int termY = vy + 3;
 
         char buf[64];
         sprintf(buf, "\033[%d;%dH\033[91m*\033[0m", termY, termX);

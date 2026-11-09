@@ -18,6 +18,7 @@ bool Animation::act()
     }
 
     if (ttl == 0) return false;
+    if ((coordMove.y < 0 && coord.y == 0) || (coordMove.x < 0 && coord.x == 0)) return false;
 
     coord.x += coordMove.x;
     coord.y += coordMove.y;

@@ -4,23 +4,26 @@ CC := g++
 #CURSESFLAG := -DUSE_NCURSES
 #CURSESLIB := -lncurses
 
-CFLAGS := -Wall -g -std=c++14 ${CURSESLIB}
+CFLAGS := -Wall -g -std=c++14
 TARGET := pultsari
-export REL_PATH := $(shell pwd)
-INC :=-I$(REL_PATH)/include
+INC := -Iinclude
 
-# $(wildcard *.cpp /xxx/xxx/*.cpp): get all .cpp files from the current directory and dir "/xxx/xxx/"
 SRCS := $(wildcard src/*.cpp)
-# $(patsubst %.cpp,%.o,$(SRCS)): substitute all ".cpp" file name strings to ".o" file name strings
 OBJS := $(patsubst %.cpp,%.o,$(SRCS))
+DEPS := $(OBJS:.o=.d)
 
 all: $(TARGET)
+
 $(TARGET): $(OBJS)
-	$(CC) $(CFLAGS) -o $@ $^
+	$(CC) $(CFLAGS) -o $@ $^ $(CURSESLIB)
+
+# -MMD -MP rebuild objects whose headers changed
 %.o: %.cpp
-	$(CC) $(CFLAGS) $(CURSESFLAG) -c $< ${INC}
-	mv *.o src/
+	$(CC) $(CFLAGS) $(CURSESFLAG) -MMD -MP $(INC) -c $< -o $@
+
 clean:
-	rm -rf $(TARGET) *.o src/*.o
+	rm -f $(TARGET) src/*.o src/*.d
+
+-include $(DEPS)
 
 .PHONY: all clean

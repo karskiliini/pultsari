@@ -84,7 +84,9 @@ public:
     std::vector<Item*> items;
     std::vector<Vehicle*> vehicles;
     Item* thrownItem = nullptr;
-    Animation* animation = nullptr;
+    std::vector<Animation*> animations;
+    void stepAnimations();
+    void explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person* source);
 
     Person* attack = nullptr;
     Printer* printer = nullptr;

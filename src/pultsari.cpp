@@ -301,21 +301,29 @@ static void populatePersons(Level& level, const GameState& gs)
     // Putin spawns inside the Kremlin + comically long conference table
     for (auto b : level.buildings) {
         if (b->type == EKremlin) {
-            Coord putinPos = { (b->wallLeft + b->wallRight) / 2, (b->wallTop + b->wallBot) / 2 };
-            if (!level.hit(putinPos)) {
-                level.createPerson(putinPos, putin);
+            // Putin's famous comically long conference table: a dashed outline
+            // with an empty, polished surface in the middle
+            const uint32_t top = b->wallTop + 5;
+            const uint32_t bot = top + 3;
+            const uint32_t left = b->wallLeft + 5;
+            const uint32_t right = b->wallRight - 5;
+            for (uint32_t y = top; y <= bot; ++y) {
+                for (uint32_t x = left; x <= right; ++x) {
+                    const bool edgeRow = (y == top || y == bot);
+                    const bool edgeCol = (x == left || x == right);
+                    if (!edgeRow && !edgeCol) continue;
+                    const char* glyph = edgeRow ? "\xE2\x95\x8C" : "\xE2\x95\x8E";
+                    if (edgeRow && edgeCol)
+                        glyph = y == top ? (x == left ? "\xE2\x95\xAD" : "\xE2\x95\xAE")
+                                         : (x == left ? "\xE2\x95\xB0" : "\xE2\x95\xAF");
+                    Coord tc { x, y };
+                    if (!level.hit(tc)) level.addItem(new PutinPoyta(tc, glyph));
+                }
             }
 
-            // Putin's famous comically long conference table
-            uint32_t tableY = (b->wallTop + b->wallBot) / 2 - 2;
-            uint32_t tableStartX = b->wallLeft + 5;
-            uint32_t tableEndX = b->wallRight - 5;
-            for (uint32_t x = tableStartX; x <= tableEndX; ++x) {
-                Coord tc { x, tableY };
-                if (!level.hit(tc)) {
-                    PutinPoyta* table = new PutinPoyta(tc);
-                    level.addItem(table);
-                }
+            Coord putinPos = { left - 2, top + 1 };
+            if (!level.hit(putinPos)) {
+                level.createPerson(putinPos, putin);
             }
             break;
         }
@@ -441,6 +449,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         level.audio.setLevel(&level);
 
         printer->player = &player;
+        printer->levelName = gameState.getLevelName();
 
         if (gameState.phase == GamePhase::War) {
             level.isWarLevel = true;
@@ -486,7 +495,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             enum class Mode { Normal, Inventory, Aim };
             Mode mode = Mode::Normal;
             int invSelection = 0;
-            constexpr int INV_ITEMS = 13;
+            constexpr int INV_ITEMS = 15;
 
             // aim state
             float aimAngle = 0.0f;
@@ -496,12 +505,23 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
             // inventory item-to-throw mapping
             // maps inventory overlay row to decrementInventory() index
+            // overlay row -> Player::decrementInventory / Item::createItem index
+            // rows: kalja jaguar vodka makkara vobla omppo banaani ketjut veitsi kivi pamppu verkkarit kranaatti
             auto invIndexToThrowNum = [](int idx) -> uint32_t {
-                //  overlay order:  kalja lonkka lenkki kala omppo bansku ketjut veitsi kivi pamppu bootsit
-                //  decrement idx:  1     2      3      9    10    11     4      5      6    7      8
-                constexpr uint32_t map[] = { 1, 2, 3, 9, 10, 11, 4, 5, 6, 7, 8 };
-                if (idx >= 0 && idx < 11) return map[idx];
+                constexpr uint32_t map[] = { 1, 2, 13, 3, 9, 10, 11, 4, 5, 6, 7, 8, 14 };
+                if (idx >= 0 && idx < (int)(sizeof(map) / sizeof(map[0]))) return map[idx];
                 return 0;
+            };
+            auto startThrowAim = [&](uint32_t throwNum) {
+                if (throwNum > 0 && player.decrementInventory(throwNum)) {
+                    aimItemNum = throwNum;
+                    aimAngle = -M_PI / 2.0f;
+                    aimTick = 0;
+                    mode = Mode::Aim;
+                    printer->showMessage("A/D t\xC3\xA4ht\xC3\xA4\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti heitt\xC3\xA4\xC3\xA4, Esc peruu", &level, false);
+                } else {
+                    printer->showMessage("Ei tavaraa heitett\xC3\xA4v\xC3\xA4ksi.", &level, false);
+                }
             };
 
             auto feedHunger = [&](uint32_t amount) {
@@ -520,43 +540,66 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             feedHunger(2);
                         } else printer->showMessage("Ei kaljaa.", &level, false);
                         break;
-                    case 1: // lonkka
+                    case 1: // lonkka (Jaguar)
                         if (inv.lonkka > 0) {
                             --inv.lonkka;
-                            printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", &level, false);
+                            printer->showMessage("Jaguar! Kofeiinia ja viinaa. Syd\xC3\xA4n hakkaa.", &level, false);
                             player.updatepromilles(4);
                             feedHunger(1);
-                        } else printer->showMessage("Ei lonkkaa.", &level, false);
+                        } else printer->showMessage("Ei Jaguaria.", &level, false);
                         break;
-                    case 2: // lenkki
+                    case 2: // vodka
+                        if (inv.vodka > 0) {
+                            const bool piss = !inv.pissVodka.empty() &&
+                                (uint32_t)(std::rand() % inv.vodka) < inv.pissVodka.size();
+                            --inv.vodka;
+                            if (piss) {
+                                const std::string seller = inv.pissVodka.back();
+                                inv.pissVodka.pop_back();
+                                printer->showMessage(seller + " myi sinulle n\xC3\xA4k\xC3\xB6j\xC3\xA4\xC3\xA4n kusta pullossa, hyi! Oksennat.", &level, false);
+                                level.audio.addSound(player.coord, SoundType::Vomit,
+                                    "BL\xC3\x84\xC3\x84\xC3\x84RGH! Oksennat kaaressa!", "Joku oksentaa", "...ykin\xC3\xA4\xC3\xA4...", 15);
+                                player.damage(2);
+                                level.addItem(new Oksennus(player.coord));
+                            } else {
+                                printer->showMessage("Na zdorovje! Vodka polttaa kurkkua.", &level, false);
+                                player.updatepromilles(6);
+                                feedHunger(1);
+                            }
+                        } else printer->showMessage("Ei vodkaa.", &level, false);
+                        break;
+                    case 3: // lenkki
                         if (inv.lenkki > 0) {
                             --inv.lenkki; player.powerup(1);
                             printer->showMessage("Mamamamakkaraa.", &level, false);
                             feedHunger(25);
                         } else printer->showMessage("Ei lenkkiä.", &level, false);
                         break;
-                    case 3: // kala
+                    case 4: // kala
                         if (inv.kalat > 0) {
                             --inv.kalat;
                             if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
                             else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); feedHunger(30); }
                         } else printer->showMessage("Ei kalaa.", &level, false);
                         break;
-                    case 4: // omppo
+                    case 5: // omppo
                         if (inv.omppo > 0) {
                             --inv.omppo;
                             if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut.", &level, false); }
                             else { player.powerup(2); printer->showMessage("orb.", &level, false); feedHunger(15); }
                         } else printer->showMessage("Ei omppoa.", &level, false);
                         break;
-                    case 5: // bansku
+                    case 6: // bansku
                         if (inv.bansku > 0) {
                             --inv.bansku;
                             if (random(50)) { printer->showMessage("Bansku ei vaikuttanut.", &level, false); feedHunger(5); }
                             else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); feedHunger(10); }
                         } else printer->showMessage("Ei banaania.", &level, false);
                         break;
-                    case 11: // pistooli - go to aim mode for shooting
+                    case 12: // kranaatti can only be thrown
+                        startThrowAim(14);
+                        break;
+                    case 13: // pistooli - go to aim mode for shooting
                         if (inv.pistooli > 0 && inv.ammukset > 0) {
                             aimIsShooting = true;
                             aimAngle = -M_PI / 2.0f;
@@ -619,19 +662,9 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     useInventoryItem(invSelection);
                                     mode = Mode::Normal;
                                     break;
-                                case 'e': { // throw -> aim mode
-                                    uint32_t throwNum = invIndexToThrowNum(invSelection);
-                                    if (throwNum > 0 && player.decrementInventory(throwNum)) {
-                                        aimItemNum = throwNum;
-                                        aimAngle = -M_PI / 2.0f; // start aiming up
-                                        aimTick = 0;
-                                        mode = Mode::Aim;
-                                        printer->showMessage("A/D = tähtää, SPACE = heitä, ESC = peru", &level, false);
-                                    } else {
-                                        printer->showMessage("Ei tavaraa heitettäväksi.", &level, false);
-                                    }
+                                case 'e': // throw -> aim mode
+                                    startThrowAim(invIndexToThrowNum(invSelection));
                                     break;
-                                }
                                 case '\t': case 27: // tab or ESC closes
                                     mode = Mode::Normal;
                                     break;
@@ -684,7 +717,6 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     ++npcTick;
                     if (npcTick >= NPC_INTERVAL) {
                         npcTick = 0;
-                        level.audio.clear();
                         level.buildingTurn();
                         level.npcTurn();
                         level.updateVehicles();
@@ -743,10 +775,11 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     InputNS::Input::noraw();
 
                                     auto result = runBusMinigame(&player, &level);
-                                    if (result.levelChange != 0) {
-                                        int newStage = (int)stage + result.levelChange;
-                                        if (newStage < 1) newStage = 1;
-                                        stage = (uint32_t)newStage;
+                                    if (result.levelChange != 0 &&
+                                        (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow)) {
+                                        int newStage = (int)gameState.moscowStage + result.levelChange;
+                                        newStage = std::max(1, std::min(8, newStage));
+                                        gameState.moscowStage = (uint32_t)newStage;
                                         nextLevel = true;
                                     }
 
@@ -757,9 +790,13 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         }
                     }
 
+                    level.stepAnimations();
                     level.updateCamera();
                     mask.init();
                     printer->print(&level);
+                    // sounds stay on screen for a full NPC interval and are cleared after the
+                    // last frame before the next tick, so the player's own shots are never lost
+                    if (npcTick == NPC_INTERVAL - 1) level.audio.clear();
 
                     if (mode == Mode::Inventory) {
                         printer->printInventoryOverlay(&player.inventory, invSelection);

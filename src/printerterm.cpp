@@ -4,6 +4,7 @@
 #include "scoreboard.hpp"
 #include "common.hpp"
 #include "inventory.hpp"
+#include <cstdio>
 #include <iostream>
 #include <string>
 
@@ -24,6 +25,42 @@ void PrinterTerm::show_console_cursor(const bool show) {
 #endif // Windows/Linux
 }
 
+namespace {
+
+constexpr const char* FRAME = "\033[0;31m";
+constexpr const char* RESET = "\033[0m";
+constexpr uint32_t SIDE_W = 13;
+constexpr uint32_t LINE_W = SIDE_W + common::VIEWPORT_W + 2;
+
+// visible columns of a UTF-8 string without escape sequences
+uint32_t columns(const string& s)
+{
+    uint32_t n = 0;
+    for (unsigned char c : s) if ((c & 0xC0) != 0x80) ++n;
+    return n;
+}
+
+string truncateColumns(const string& s, uint32_t maxCols)
+{
+    uint32_t n = 0;
+    for (size_t i = 0; i < s.size(); ++i) {
+        if (((unsigned char)s[i] & 0xC0) != 0x80 && n++ == maxCols)
+            return s.substr(0, i);
+    }
+    return s;
+}
+
+string pad(const string& s, uint32_t width)
+{
+    string out = truncateColumns(s, width);
+    for (uint32_t n = columns(out); n < width; ++n) out += ' ';
+    return out;
+}
+
+struct SideEntry { const char* name; uint32_t count; };
+
+}
+
 void PrinterTerm::cursorHome()
 {
     cout << "\e[f\e[K";
@@ -31,80 +68,111 @@ void PrinterTerm::cursorHome()
 
 void PrinterTerm::printMore()
 {
-    cout << "     <LISÄÄ>";
+    cout << "\033[1;33m <LIS\xC3\x84\xC3\x84>\033[0m";
 }
 
 void PrinterTerm::printMessage()
 {
-    cout << "  " << msg;
+    if (msg.empty()) return;
+    cout << "\033[1;31m \xC2\xBB \033[1;97m" << truncateColumns(msg, LINE_W - 12) << RESET;
 }
 
 void PrinterTerm::printLeftBorderSpaces()
 {
-    cout << "             ";
+    cout << string(SIDE_W, ' ');
 }
 
 void PrinterTerm::printBorder(Level* l, bool top)
 {
     printLeftBorderSpaces();
-    if (top) {
-        cout << TOP_LEFT;
-    } else {
-        cout << BOT_LEFT;
-    }
+    cout << FRAME << (top ? TOP_LEFT : BOT_LEFT);
 
-    for (uint32_t x = 0; x < common::VIEWPORT_W; ++x)
-        cout << HORIZONTAL;
+    string left = top ? " P\xD0\x9F""LTSA\xD0\xAF""I 2 \xC2\xB7 \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80 " : "";
+    string right = (top && !levelName.empty()) ? " " + truncateColumns(levelName, 36) + " " : "";
+    uint32_t used = columns(left) + columns(right) + 4 + (right.empty() ? 2 : 0);
+    uint32_t fill = common::VIEWPORT_W > used ? common::VIEWPORT_W - used : 0;
 
     if (top) {
-        cout << TOP_RIGHT;
+        cout << HORIZONTAL << HORIZONTAL << "\033[1;97;41m" << left << FRAME;
+        for (uint32_t x = 0; x < fill; ++x) cout << HORIZONTAL;
+        cout << "\033[1;33m" << right << FRAME;
+        if (right.empty()) cout << HORIZONTAL << HORIZONTAL;
+        cout << HORIZONTAL << HORIZONTAL;
     } else {
-        cout << BOT_RIGHT;
+        for (uint32_t x = 0; x < common::VIEWPORT_W; ++x) cout << HORIZONTAL;
     }
-    cout << endl;
+
+    cout << (top ? TOP_RIGHT : BOT_RIGHT) << RESET << "\033[K" << endl;
 }
 
 void PrinterTerm::printVBorder(Level* l)
 {
-    cout << VERTICAL;
+    cout << FRAME << VERTICAL << RESET;
 }
 
 void PrinterTerm::printInventory(uint32_t y, Inventory* inventory)
 {
     const auto& i = *inventory;
-    constexpr uint32_t ROW = 1;
+    const SideEntry all[] = {
+        {"KALJA", i.kalja}, {"JAGUAR", i.lonkka}, {"VODKA", i.vodka},
+        {"MAKKARA", i.lenkki}, {"VOBLA", i.kalat}, {"OMPPO", i.omppo},
+        {"BANAANI", i.bansku}, {"KETJUT", i.ketjut}, {"VEITSET", i.veitset},
+        {"KIVET", i.kivet}, {"PAMPUT", i.pamput}, {"VERKKARIT", i.bootsit},
+        {"KRANAATIT", i.granata}, {"PISTOOLI", i.pistooli}, {"AMMUKSET", i.ammukset},
+        {"PROPUSK", i.propusk},
+    };
 
-    switch(y) {
-        case ROW +  0: cout << "KALJAA  = " << inventoryAligned(i.kalja); break;
-        case ROW +  1: cout << "LONKKA  = " << inventoryAligned(i.lonkka); break;
-        case ROW +  2: cout << "LENKKI  = " << inventoryAligned(i.lenkki); break;
-        case ROW +  3: cout << "KETJUT  = " << inventoryAligned(i.ketjut); break;
-        case ROW +  4: cout << "VEITSET = " << inventoryAligned(i.veitset); break;
-        case ROW +  5: cout << "KIVET   = " << inventoryAligned(i.kivet); break;
-        case ROW +  6: cout << "PAMPUT  = " << inventoryAligned(i.pamput); break;
-        case ROW +  7: cout << "BOOTSIT = " << inventoryAligned(i.bootsit); break;
-        case ROW +  8: cout << "KALAT   = " << inventoryAligned(i.kalat); break;
-        case ROW +  9: cout << "OMPPO   = " << inventoryAligned(i.omppo); break;
-        case ROW + 10: cout << "BANSKU  = " << inventoryAligned(i.bansku); break;
-        default: printLeftBorderSpaces(); break;
+    if (y == 0) {
+        cout << "\033[1;31m" << pad(" \xD0\xA2\xD0\x9E\xD0\x92\xD0\x90\xD0\xA0\xD0\xAB", SIDE_W) << RESET;
+        return;
     }
+
+    uint32_t row = 0;
+    for (const auto& e : all) {
+        if (e.count == 0) continue;
+        if (++row != y) continue;
+        char buf[32];
+        snprintf(buf, sizeof(buf), "%-9s%2u  ", e.name, e.count > 99 ? 99 : e.count);
+        cout << "\033[37m" << buf << RESET;
+        return;
+    }
+    if (row == 0 && y == 1) {
+        cout << "\033[2;37m" << pad(" (tyhj\xC3\xA4)", SIDE_W) << RESET;
+        return;
+    }
+    printLeftBorderSpaces();
 }
 
 void PrinterTerm::printStats(Level* l, Stats* stats)
 {
-    cout << "RAHAA: "    << moneyAligned(stats->money);
-    cout << "  VOIMA: "    << moneyAligned(stats->health);
-    cout << "  PROMILLE: " << promilleAligned(stats->promilles);
-    cout << "  NÄLKÄ: " << moneyAligned(stats->hunger);
-    cout << endl;
+    const char* promilleColor = stats->promilles < 10 ? "92" : stats->promilles < 30 ? "93" : "1;91";
+    const char* healthColor = stats->health < 5 ? "1;91" : "97";
+    const char* bellyColor = stats->hunger <= 20 ? "1;91" : stats->hunger <= 50 ? "93" : "97";
 
+    printLeftBorderSpaces();
+    cout << " \033[2;37mRUPLAT\033[0;1;93m " << stats->money << " \xE2\x82\xBD"
+         << "   \033[2;37mVOIMA\033[0;1;" << healthColor << "m " << stats->health
+         << "   \033[2;37mPROMILLE\033[0;1;" << promilleColor << "m " << promilleAligned(stats->promilles) << " \xE2\x80\xB0"
+         << "   \033[2;37mVATSA\033[0;1;" << bellyColor << "m " << stats->hunger << "%"
+         << RESET << "\033[K" << endl;
+
+    printLeftBorderSpaces();
     if (player) {
-        std::string audioLine = l->audio.formatSoundLine(player->coord);
-        if (!audioLine.empty()) {
-            cout << audioLine;
+        auto heard = l->audio.getHeardSounds(player->coord);
+        uint32_t used = 9;
+        bool first = true;
+        if (!heard.empty()) cout << " \033[2;36mKUULET:\033[0m";
+        for (const auto& s : heard) {
+            if (s.text.empty()) continue;
+            uint32_t w = columns(s.text) + 3;
+            if (used + w > common::VIEWPORT_W) break;
+            bool loud = s.type == SoundType::Gunshot || s.type == SoundType::Explosion || s.type == SoundType::Siren;
+            cout << (first ? " " : " \033[2;36m|\033[0m ") << (loud ? "\033[1;91m" : "\033[36m") << s.text << RESET;
+            used += w;
+            first = false;
         }
     }
-    cout << endl;
+    cout << "\033[K" << endl;
 }
 
 void PrinterTerm::printChar(string c)
@@ -114,28 +182,32 @@ void PrinterTerm::printChar(string c)
 
 void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
 {
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
-    cout << "Hakkaamasi mummelit  : " << scoreBoard->mummot << "              " << endl;
-    cout << "Kaikki hakatut oliot : " << scoreBoard->kaikki << "              " << endl;
-    cout << "------------------------------" <<  "              " << endl;
-    cout << "Yhteispistetilanteesi: " << scoreBoard->mummot + scoreBoard->kaikki <<  "              " << endl;
-    cout << "Kiitos P\xD0\x9F""LTSARI 2:n pelaamisesta!" <<  "              " << endl;
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
-    cout << "                                                                " << endl;
+    const char* pad = "                    ";
+    cout << "\033[J" << endl << endl;
+    cout << pad << "\033[1;97;41m  \xD0\x9F\xD0\xA0\xD0\x9E\xD0\xA2\xD0\x9E\xD0\x9A\xD0\x9E\xD0\x9B \xC2\xB7 P\xC3\x96YT\xC3\x84KIRJA  \033[0m" << endl << endl;
+    cout << pad << "\033[2;37mHakatut mummot     \033[0;1;97m" << scoreBoard->mummot << RESET << endl;
+    cout << pad << "\033[2;37mKaikki hakatut     \033[0;1;97m" << scoreBoard->kaikki << RESET << endl;
+    cout << pad << "\033[31m\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"
+                   "\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"
+                   "\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80" << RESET << endl;
+    cout << pad << "\033[1;93mPISTEET            " << scoreBoard->mummot + scoreBoard->kaikki << RESET << endl << endl;
+    cout << pad << "\033[2;37m\xD0\x92\xD1\x81\xD1\x91 \xD0\xB8\xD0\xB4\xD1\x91\xD1\x82 \xD0\xBF\xD0\xBE \xD0\xBF\xD0\xBB\xD0\xB0\xD0\xBD\xD1\x83. Kiitos pelaamisesta.\033[0m" << endl << endl;
 }
 
 void PrinterTerm::printHelp()
 {
-    cout << "P\xD0\x9F""LTSARI 2 - \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80          " << endl;
-    cout << "--los          : line of sight                        " << endl;
-    cout << "--anims        : animaatiot                           " << endl;
-    cout << "--path         : reitinhaku                           " << endl;
-    cout << "--realtime|--rt: reaaliaikamoodi                      " << endl;
-    cout << "--all | -a     : kaikki ominaisuudet                  " << endl;
-    cout << "Tavoite: Paase Kremlin viinakellariin!                " << endl;
+    cout << "P\xD0\x9F""LTSA\xD0\xAF""I 2 \xC2\xB7 \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80" << endl << endl;
+    cout << "  --rt, --realtime   reaaliaikatila (suositeltu)" << endl;
+    cout << "  --los              n\xC3\xA4k\xC3\xB6kentt\xC3\xA4" << endl;
+    cout << "  --anims            animaatiot" << endl;
+    cout << "  --path             NPC:iden reitinhaku" << endl;
+    cout << "  --all, -a          kaikki yll\xC3\xA4 olevat" << endl << endl;
+    cout << "Reaaliaikatilan n\xC3\xA4pp\xC3\xA4imet:" << endl;
+    cout << "  W A S D / I J K L  liiku (k\xC3\xA4vele p\xC3\xA4in = ly\xC3\xB6 / poimi / avaa)" << endl;
+    cout << "  Tab                tavarat: W/S valitse, Q k\xC3\xA4yt\xC3\xA4, E heit\xC3\xA4" << endl;
+    cout << "  T\xC3\xA4ht\xC3\xA4ys            A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti heit\xC3\xA4/ammu, Esc peru" << endl;
+    cout << "  Z                  lopeta" << endl << endl;
+    cout << "Tavoite: p\xC3\xA4\xC3\xA4se Putinin viinakellariin Kremliss\xC3\xA4." << endl;
 }
 
 void PrinterTerm::emptyLine(uint32_t textLen)

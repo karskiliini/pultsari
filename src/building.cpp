@@ -8,6 +8,7 @@
 #include <string>
 #include <iostream>
 #include <exception>
+#include <vector>
 
 using std::string;
 using std::cout;
@@ -32,15 +33,22 @@ std::string Building::typeToChar(const Coord& c) const
 
     if (y == (wallTop + wallBot) / 2)
     {
+        // split into UTF-8 characters so Cyrillic names render whole
         const auto name = getName();
-        const auto len = name.length();
+        std::vector<string> chars;
+        for (size_t i = 0; i < name.size();) {
+            size_t n = 1;
+            const unsigned char b = name[i];
+            if (b >= 0xF0) n = 4; else if (b >= 0xE0) n = 3; else if (b >= 0xC0) n = 2;
+            chars.push_back(name.substr(i, n));
+            i += n;
+        }
+        const uint32_t len = chars.size();
         const uint32_t mid = ((wallRight + wallLeft) / 2);
         const uint32_t left = mid - len/2;
 
         if ((x >= left) && (x < (left + len))) {
-            const auto index = x - left;
-            string ret = name.substr(index, 1);
-            return ret;
+            return chars[x - left];
         }
     }
     return " ";
@@ -206,19 +214,19 @@ Alko::Alko() : Building(BuildingType::EAlko) {
 
 std::string Alko::getName() const
 {
-    return "ALKO";
+    return "VINO-VODKA";
 }
 
 bool Alko::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     if (player->stats.promilles > 14) {
-        msg = "Vartija heitti sinut pihalle. Olet juopunut.";
+        msg = "Myyjä: 'Пошёл вон!' Olet liian kännissä edes Moskovan mittapuulla.";
         return false;
     } else if ((player->stats.promilles < 5) && (player->stats.money >= 15)) {
-        msg = "Tehan olette selvä. Meillä sen voi korjata.";
+        msg = "Myyjä: 'Selvä mies? Täällä? Se korjataan.'";
         return true;
     } else if (player->stats.money < 15) {
-        msg = "Putiikki on kiinni.";
+        msg = "Myyjä: 'Ei ruplia, ei vodkaa.'";
         return false;
     }
     msg = "";
@@ -227,7 +235,7 @@ bool Alko::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 
 bool Alko::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Ja mitas herra ostaa, kalja vai lonkka (1/2)?";
+    msg = "Myyjä: 'Mitä otetaan? Baltika vai Jaguar (1/2)?'";
     return true;
 }
 
@@ -237,18 +245,18 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
     switch(purchase)
     {
         case InputNS::ostakalja:
-            msg = "Kiitos,ja hyvää päivän jatkoa.";
+            msg = "Myyjä: 'Спасибо. Seuraava!'";
             ++player->inventory.kalja;
             player->updateMoney(-10);
             break;
         case InputNS::ostalonkka:
             ++player->inventory.lonkka;
             player->updateMoney(-15);
-            msg = "Kiitos,ja hyvää päivän jatkoa.";
+            msg = "Myyjä: 'Jaguar on kielletty. Se maksaa siksi vähän enemmän.'";
             break;
         default:
         case InputNS::poistualko:
-            msg = "Kiitos,ja hyvää päivän jatkoa.";
+            msg = "Myyjä: 'Hyvää päivänjatkoa. Tai mitä niitä nyt on.'";
             break;
     }
     // queue rage: nearby NPCs get angry waiting for their vodka
@@ -265,7 +273,7 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
     }
 }
 
-std::string Alko::getWalkMsg() const { return "Isket paasi alkon seinaan. Mielenkiintoista."; }
+std::string Alko::getWalkMsg() const { return "Isket pääsi viinakaupan seinään. Jonottajat nauravat."; }
 
 // ISKU
 Isku::Isku() : Building(BuildingType::EIsku) {
@@ -281,12 +289,12 @@ Isku::Isku() : Building(BuildingType::EIsku) {
 
 std::string Isku::getName() const
 {
-    return "ISKU";
+    return "IKEA";
 }
 
 bool Isku::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Putiikki on kiinni.";
+    msg = "IKEA on ollut kiinni vuodesta 2022. Ovessa lukee: 'Мы вернёмся.'";
     return true;
 }
 
@@ -295,7 +303,7 @@ bool Isku::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
     return false;
 }
 void Isku::interact(PlayerNS::Player* player, std::string& msg) { }
-std::string Isku::getWalkMsg() const { return "Iskun seina on iskunkestava,et paassyt sisaan."; }
+std::string Isku::getWalkMsg() const { return "Ikkunoissa on yhä alennuslappuja vuodelta 2022."; }
 
 // DIVARI
 Divari::Divari() : Building(BuildingType::EDivari) {
@@ -311,20 +319,20 @@ Divari::Divari() : Building(BuildingType::EDivari) {
 
 std::string Divari::getName() const
 {
-    return "DIVARI";
+    return "KOMISSIONKA";
 }
 
 bool Divari::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     if (player->stats.promilles > 15) {
-        msg = "Tehän olette sikakännissä. Ulos täältä !";
+        msg = "Panttilainaaja: 'Olet sikakännissä. Ulos täältä!'";
         return false;
     }
     else if ((player->inventory.bootsit == 0) &&
              (player->inventory.pamput == 0) &&
              (player->inventory.ketjut == 0) &&
              (player->inventory.veitset == 0)) {
-           msg = "Emme osta teilta mitaan. Out.";
+           msg = "Panttilainaaja: 'Sinulla ei ole mitään, mitä ostaisin. Пока.'";
            return false;
     }
     return true;
@@ -332,7 +340,7 @@ bool Divari::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 
 bool Divari::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Mitas myisit ? Bootsit=1  Pamppu=2  Ketjut=3  Veitsi=4";
+    msg = "Mitä myyt? Verkkarit=1  Pamppu=2  Ketjut=3  Veitsi=4";
     return true;
 }
 
@@ -347,11 +355,11 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
         switch(item) {
             case 1:
                 if (player->inventory.bootsit < 1) {
-                    msg = "Eihän teillä ole kenkia edes jaloissanne.";
+                    msg = "Sinulla ei ole verkkareita. Housutkin ovat lainassa.";
                 } else {
                     --player->inventory.bootsit;
                     player->updateMoney(100);
-                    msg = "Bootsit meni satasella.";
+                    msg = "Adidas-verkkarit menivät satasella. Kolme raitaa, kolme kertaa hinta.";
                 }
                 break;
             case 2:
@@ -361,16 +369,16 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                     --player->inventory.pamput;
                     uint32_t price = std::rand() % 40 + 1;
                     player->updateMoney(price);
-                    msg = "Pamppu hurahti " + std::to_string(price) + " markalla.";
+                    msg = "Pamppu meni " + std::to_string(price) + " ruplalla. Ei kysytty, kenen se oli.";
                 }
                 break;
             case 3:
                 if (player->inventory.ketjut < 1) {
-                    msg = "Mutta, kun sinulla ei ole yhtikäs yhtään ketjun patkääkään.";
+                    msg = "Sinulla ei ole yhtikäs yhtään ketjun pätkääkään.";
                 } else {
                     --player->inventory.ketjut;
                     player->updateMoney(30);
-                    msg = "Ketjut onnistuit myymaan kolmella kympilla.";
+                    msg = "Myit ketjut kolmellakympillä.";
                 }
                 break;
             case 4:
@@ -380,7 +388,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                     --player->inventory.veitset;
                     uint32_t price = std::rand() % 50 + 1;
                     player->updateMoney(price);
-                    msg = "Voitit veitellas " + std::to_string(price) + " markkaa.";
+                    msg = "Veitsestä sai " + std::to_string(price) + " ruplaa.";
                 }
                 break;
             default:
@@ -390,7 +398,7 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
     }
 }
 
-std::string Divari::getWalkMsg() const { return "Divarin seinä on vankkumaton,vaikka kuinka yrität kävellä sitä päin."; }
+std::string Divari::getWalkMsg() const { return "Panttilainaamon seinä ei anna periksi, vaikka kuinka yrität kävellä sitä päin."; }
 
 
 // KRauta
@@ -407,23 +415,22 @@ KRauta::KRauta() : Building(BuildingType::EKRauta) {
 
 std::string KRauta::getName() const
 {
-    return "K-Rauta";
+    return "STROIMARKET";
 }
 
 bool KRauta::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "K-RAUTAa ei ole ohjelmoitu loppuun.";
+    msg = "Stroimarket on suljettu: 'Remontissa sanktioiden takia.' Varaosia odotetaan Kiinasta.";
     return false;
 }
 
 bool KRauta::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Ja mitas herra ostaa ,kalja vai lonkka (1/2)?";
-    return true;
+    return false;
 }
 
 void KRauta::interact(PlayerNS::Player* player, std::string& msg) { }
-std::string KRauta::getWalkMsg() const { return "K-RAUDAN  seina on vahvempaa tekoa,kuin paasi.Et paassyt sisaan."; }
+std::string KRauta::getWalkMsg() const { return "Rautakaupan seinä on vahvempaa tekoa kuin pääsi. Et päässyt sisään."; }
 
 
 // VANKILA
@@ -454,12 +461,12 @@ void Vankila::npcAct()
 
 std::string Vankila::getName() const
 {
-    return "PUTKA";
+    return "SIZO";
 }
 
 bool Vankila::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Jos haluat putkaan,mene poliisiaseman ovesta.";
+    msg = "Jos haluat tutkintavankilaan, mene politsijan ovesta.";
     return false;
 }
 
@@ -472,7 +479,7 @@ void Vankila::interact(PlayerNS::Player* player, std::string& msg)
 {
 }
 
-std::string Vankila::getWalkMsg() const { return "Isket paasi Vankilan seinaan. Mielenkiintoista."; }
+std::string Vankila::getWalkMsg() const { return "Isket pääsi SIZOn seinään. Sisältä kuuluu koputus takaisin."; }
 
 
 // POLIISIASEMA
@@ -489,12 +496,12 @@ PoliisiAsema::PoliisiAsema() : Building(BuildingType::EPoliisiAsema) {
 
 std::string PoliisiAsema::getName() const
 {
-    return "POLIISI";
+    return "POLITSIJA";
 }
 
 bool PoliisiAsema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Putkaan otetaan kylla juoppoja, tuletko (K/E) ?";
+    msg = "Päivystäjä: 'Juoppoja otetaan aina. Tuletko (K/E)?'";
     return true;
 }
 
@@ -511,11 +518,11 @@ void PoliisiAsema::interact(PlayerNS::Player* player, std::string& msg)
         player->inJail = true;
         msg = "";
     } else {
-        msg = "No haivy sitten !!!";
+        msg = "Päivystäjä: 'No häivy sitten! Пошёл!'";
     }
 }
 
-std::string PoliisiAsema::getWalkMsg() const { return "Isket paasi Vankilan seinaan. Mielenkiintoista."; }
+std::string PoliisiAsema::getWalkMsg() const { return "Isket pääsi poliisiaseman seinään. Joku kirjaa sen ylös."; }
 
 
 // ASEMA
@@ -531,7 +538,7 @@ Asema::Asema() : Building(BuildingType::EAsema) {
 
 std::string Asema::getName() const
 {
-    return "ASEMA";
+    return "VOKZAL";
 }
 
 
@@ -548,7 +555,7 @@ void Asema::npcAct()
 
 bool Asema::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Asemalla voi saada turpaansa!";
+    msg = "Vokzalilla saa turpaansa. Ja junalipun rintamalle.";
     return false;
 }
 
@@ -562,7 +569,7 @@ void Asema::interact(PlayerNS::Player* player, std::string& msg)
 {
 }
 
-std::string Asema::getWalkMsg() const { return "Isket paasi aseman seinaan. Mielenkiintoista."; }
+std::string Asema::getWalkMsg() const { return "Isket pääsi rautatieaseman seinään. Mielenkiintoista."; }
 
 
 // ASEMAN SEINÄ
@@ -581,7 +588,7 @@ std::string Seina::getName() const
     return "";
 }
 
-std::string Seina::getWalkMsg() const { return "Isket paasi aseman seinaan. Mielenkiintoista."; }
+std::string Seina::getWalkMsg() const { return "Betonimuuri. Joku on maalannut siihen Z-kirjaimen."; }
 
 
 // KREMLIN
@@ -692,14 +699,14 @@ bool Hypermarket::getInteractMsg(PlayerNS::Player* player, std::string& msg) con
             msg = "Löydät kaljaa savuiselta hyllyltä!";
             player->inventory.kalja += 2;
         } else if (roll < 35) {
-            msg = "Löydät lenkkiä!";
+            msg = "Löydät doktorskaja-makkaraa!";
             player->inventory.lenkki += 1;
         } else if (roll < 50) {
-            msg = "Löydät lonkkaa!";
+            msg = "Löydät Jaguar-tölkkejä!";
             player->inventory.lonkka += 2;
         } else if (roll < 60) {
             msg = "Löydät vodkaa romahtaneelta hyllyltä!";
-            player->inventory.kalja += 1;
+            player->inventory.vodka += 1;
         } else if (roll < 75) {
             msg = "Hylly kaatuu päällesi!";
             player->damage(3);

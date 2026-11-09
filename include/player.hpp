@@ -39,7 +39,9 @@ public:
     virtual bool puke(DirectionNS::Direction d, Level* level);
     virtual bool throwItem();
 
-    virtual std::string typeToChar() const { return "@"; };
+    // back from the front, the pultsari is now a "veteran"
+    virtual std::string typeToChar() const { return isVeteran() ? "V" : "@"; };
+    bool isVeteran() const;
 
     Inventory inventory;
     bool inJail = false;

@@ -19,6 +19,10 @@ using InputNS::InputType;
 using std::cout;
 using std::endl;
 
+bool Player::isVeteran() const
+{
+    return returnedFromWar && !(level && level->isWarLevel);
+}
 
 Player::Player() : Person(PersonType::pelaaja, {0, 0})
 {
@@ -83,8 +87,8 @@ void Player::updateTurn()
     ++stats.turn;
 
     if (common::realtimeEnabled) {
-        // real-time: faster promille decay
-        if (stats.turn % 80 == 0) {
+        // turns tick 4x per second in real-time: lose 0.1 promille every 50 s
+        if (stats.turn % 200 == 0) {
             updatepromilles(-1);
         }
         // hunger decreases every 40 turns
@@ -116,30 +120,30 @@ bool Player::interact(std::string& msg, Person* source)
     if (source->type == yka) {
         if (common::realtimeEnabled) {
             if (inventory.kalja > 0) {
-                msg = "Ykä pummaa kaljaa. Annat yhden.";
+                msg = "Vasja pummaa kaljaa. Annat yhden.";
                 --inventory.kalja;
                 return true;
             } else {
-                msg = "Ykä taputteleepi palleaasi.";
+                msg = "Vasja taputtelee palleaasi. Nyrkillä.";
                 damage(1);
                 return false;
             }
         }
 
-        msg = "Ykä pummaa yhtä kaljaa, annatko? (k/e)";
+        msg = "Vasja pummaa yhtä kaljaa, annatko? (k/e)";
         printer->showMessage(msg, level);
         char c = InputNS::Input::inputYka();
         switch(c) {
             default:
             case 'k':
             case 'K':
-                msg = "Yka kiitteleepi, ja istuu alas kittaamaan kaljaasi.";
+                msg = "Vasja kiittelee: \"Спасибо, брат!\" ja istuu alas kittaamaan kaljaasi.";
                 --inventory.kalja;
                 return true;
                 break;
             case 'e':
             case 'E':
-                msg = "Yka taputteleepi palleaasi.";
+                msg = "Vasja taputtelee palleaasi. Nyrkillä.";
                 damage(1);
                 return false;
                 break;
@@ -394,7 +398,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 2:
             if (inventory.lonkka == 0) {
-                printer->showMessage("Ei ole giniä...", level, false);
+                printer->showMessage("Ei ole Jaguaria...", level, false);
                 return false;
             } else {
                 --inventory.lonkka;
@@ -402,7 +406,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 3:
             if (inventory.lenkki == 0) {
-                printer->showMessage("Ei ole kiekuralenkkiä...", level, false);
+                printer->showMessage("Ei ole makkaraa...", level, false);
                 return false;
             } else {
                 --inventory.lenkki;
@@ -442,7 +446,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 8:
             if (inventory.bootsit == 0) {
-                printer->showMessage("Ei ole camel bootseja...", level, false);
+                printer->showMessage("Ei ole verkkareita...", level, false);
                 return false;
             } else {
                 --inventory.bootsit;
@@ -450,7 +454,7 @@ bool Player::decrementInventory(uint32_t index)
             break;
         case 9:
             if (inventory.kalat == 0) {
-                printer->showMessage("Ei ole turskaa...", level, false);
+                printer->showMessage("Ei ole voblaa...", level, false);
                 return false;
             } else {
                 --inventory.kalat;
@@ -465,13 +469,32 @@ bool Player::decrementInventory(uint32_t index)
             }
             break;
         case 11:
-            if (inventory.veitset == 0) {
-                printer->showMessage("Ei ole banskuja...", level, false);
+            if (inventory.bansku == 0) {
+                printer->showMessage("Ei ole banaaneja...", level, false);
                 return false;
             } else {
-                --inventory.veitset;
+                --inventory.bansku;
             }
             break;
+        case 13:
+            if (inventory.vodka == 0) {
+                printer->showMessage("Ei ole vodkaa...", level, false);
+                return false;
+            } else {
+                --inventory.vodka;
+                if (inventory.pissVodka.size() > inventory.vodka) inventory.pissVodka.pop_back();
+            }
+            break;
+        case 14:
+            if (inventory.granata == 0) {
+                printer->showMessage("Ei ole kranaatteja...", level, false);
+                return false;
+            } else {
+                --inventory.granata;
+            }
+            break;
+        default:
+            return false;
     }
     return true;
 }

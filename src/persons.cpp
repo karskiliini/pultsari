@@ -68,9 +68,45 @@ Direction Person::randomDirection() const
     }
 }
 
-void Person::say(const std::string& text)
+// Speech bubbles are shown in Latin letters: Russian lines are romanised the Finnish way.
+static string latinize(const string& in)
 {
-    uint32_t bx = (coord.x > text.length()/2) ? coord.x - text.length()/2 : 0;
+    static const char* lower[] = {
+        "a", "b", "v", "g", "d", "e", "\xC5\xBE", "z", "i", "i", "k", "l", "m", "n", "o", "p",
+        "r", "s", "t", "u", "f", "h", "ts", "t\xC5\xA1", "\xC5\xA1", "\xC5\xA1t\xC5\xA1", "", "y", "", "e", "ju", "ja",
+    };
+    static const char* upper[] = {
+        "A", "B", "V", "G", "D", "E", "\xC5\xBD", "Z", "I", "I", "K", "L", "M", "N", "O", "P",
+        "R", "S", "T", "U", "F", "H", "Ts", "T\xC5\xA1", "\xC5\xA0", "\xC5\xA0t\xC5\xA1", "", "Y", "", "E", "Ju", "Ja",
+    };
+
+    string out;
+    for (size_t i = 0; i < in.size(); ++i) {
+        const unsigned char b0 = in[i];
+        const unsigned char b1 = i + 1 < in.size() ? (unsigned char)in[i + 1] : 0;
+        uint32_t cp = 0;
+        if (b0 == 0xD0 || b0 == 0xD1) cp = ((b0 & 0x1F) << 6) | (b1 & 0x3F);
+        if (cp >= 0x410 && cp <= 0x42F)      { out += upper[cp - 0x410]; ++i; }
+        else if (cp >= 0x430 && cp <= 0x44F) { out += lower[cp - 0x430]; ++i; }
+        else if (cp == 0x401)                { out += "Jo"; ++i; }
+        else if (cp == 0x451)                { out += "jo"; ++i; }
+        else out += in[i];
+    }
+    return out;
+}
+
+static uint32_t columns(const string& s)
+{
+    uint32_t n = 0;
+    for (unsigned char c : s) if ((c & 0xC0) != 0x80) ++n;
+    return n;
+}
+
+void Person::say(const std::string& raw)
+{
+    const string text = latinize(raw);
+    const uint32_t half = columns(text) / 2;
+    uint32_t bx = (coord.x > half) ? coord.x - half : 0;
     uint32_t by = (coord.y > 1) ? coord.y - 1 : 0;
     Coord bubblePos { bx, by };
     Animation* anim = new Animation(bubblePos, text, 12);
@@ -85,21 +121,7 @@ Direction Person::getMoveDirection(const Coord& target) const
         // use advanced pathfinding
         PathNS::PathMask mask(level);
         pathmaskHook(&mask);
-        bool found = mask.findPath(coord, target);
-
-        if (found) {
-#if 0
-            printer->pathmask = &mask;
-            printer->print(*level);
-            printer->pathmask = nullptr;
-#endif
-            // path is done, now trace back to origin
-            auto player = level->getPlayer();
-            const auto& pCoord = player->coord;
-            return mask.traceBack(pCoord);
-        } else {
-            return DirectionNS::none;
-        }
+        return mask.firstStep(coord, target);
 
     } else {
         // use classic pultsari 1.0 pathfinding
@@ -242,7 +264,7 @@ bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
 
 bool Mummo::interactpuke(Person* source)
 {
-    printer->showMessage("Ykäs meni mummon niskoille. Se kuoli.", level);
+    printer->showMessage("Vasja kaatui mummon päälle. Mummo kuoli. Русский мир.", level);
     damage(stats.health);
     return true;
 }
@@ -316,7 +338,7 @@ void Cop::npcAct()
             move(d, msg);
         }
         if (random(15)) level->audio.addSound(coord, SoundType::Voice,
-            "Humalainen miliisi laulaa", "Laulua jostain", "...laulua...", 18);
+            "Humalainen politsija laulaa", "Laulua jostain", "...laulua...", 18);
         printer->showMessage(msg, level);
         return;
     }
@@ -334,8 +356,10 @@ void Cop::npcAct()
                         "Katutullia pitää maksaa!",
                         "'Vapaaehtoinen' lahjoitus armeijalle?",
                         "Sinulla on epäilyttävä olemus. Maksa.",
+                        "Деньги давай!",
+                        "Пропуск! Покажи пропуск!",
                     };
-                    say(bribes[std::rand()%4]);
+                    say(bribes[std::rand()%6]);
                     if (p->stats.money >= 10) {
                         uint32_t bribe = std::min(p->stats.money, (uint32_t)(rand()%20 + 10));
                         p->updateMoney(-(int)bribe);
@@ -370,8 +394,10 @@ void Cop::npcAct()
                         "Älä jää tuijottamaan!",
                         "Täällä ei ole mitään nähtävää!",
                         "Paperit kuntoon!",
+                        "Иди сюда!",
+                        "Документы!",
                     };
-                    say(idle[std::rand()%4]);
+                    say(idle[std::rand()%6]);
                 }
             }
         } else if (seesPlayer && coord.distance(p->coord) <= 5) {
@@ -424,7 +450,7 @@ void Cop::npcAct()
     }
     if (alerted) {
         level->audio.addSound(coord, SoundType::Siren,
-            "Miliisi huutaa: STOI!", "Miliisin huutoa", "...huutoa kaukaa...", 25);
+            "Politsija huutaa: СТОЙ!", "Politsijan huutoa", "...huutoa kaukaa...", 25);
     } else if (random(8)) {
         level->audio.addSound(coord, SoundType::WalkieTalkie,
             "Radiopuhelin rahinaa", "Radion rahinaa", "...rahinaa...", 15);
@@ -438,15 +464,15 @@ bool Cop::interact(std::string& msg, Person* source)
     {
         if (random(50))
         {
-            msg = "Huitaiset kyylää!";
+            msg = "Huitaiset politsijaa!";
         } else {
-            msg = "Kyttä kellahtaa ketoon !!!";
+            msg = "Politsija kellahtaa ketoon!!!";
             damage(stats.health);
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }
         level->alertCops(source);
     } else if (source->type == varas) {
-        msg = "Poliisi pidätti varkaan!";
+        msg = "Politsija pidätti varkaan!";
         source->damage(stats.health);
     }
 
@@ -455,7 +481,7 @@ bool Cop::interact(std::string& msg, Person* source)
 
 bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    msg = "Poliisi kuoli ja pudotti pampun.";
+    msg = "Politsija sai osuman ja pudotti pampun.";
     damage(1);
 
     if (source->type == pelaaja) {
@@ -471,7 +497,7 @@ bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
 
 bool Cop::interactpuke(Person* source)
 {
-    printer->showMessage("Polsu tukehtui yrjöös, muut pollarit ei taija tykätä susta.", level);
+    printer->showMessage("Politsija tukehtui oksennukseen. Muut politsijat eivät taida tykätä sinusta.", level);
     level->alertCops(source);
     damage(stats.health);
     return true;
@@ -584,7 +610,7 @@ void Varas::npcAct()
                 uint32_t sum = r % 16 + 1;
                 if (sum > player->stats.money) sum = player->stats.money;
                 player->updateMoney(-sum);
-                msg = "Lompakkosi kevenee " + std::to_string(sum) + " markalla.";
+                msg = "Lompakkosi kevenee " + std::to_string(sum) + " ruplalla.";
                 damage(stats.health);
             }
         } else {
@@ -618,7 +644,7 @@ bool Varas::interact(std::string& msg, Person* source)
             damage(stats.health);
         }
     } else if (source->type == poliisi) {
-        msg = "Poliisi pidätti varkaan!";
+        msg = "Politsija pidätti varkaan!";
         damage(stats.health);
     }
 
@@ -653,7 +679,7 @@ bool Vanki::move(Direction d, std::string& msg)
         if (p)
         {
             if (p->type == poliisi) {
-                msg = "Poliisi hapettaa vankikarkurin!";
+                msg = "Politsija hakkaa vankikarkurin! Rintamalle hänet.";
                 damage(stats.health);
             } else if (p->type == mummo) {
                 msg = "Vankikarkuri tönäisee muorin nurin!";
@@ -773,7 +799,7 @@ bool Vanki::interact(std::string& msg, Person* source)
         msg = "Hakkaat hullun lailla vankikarkuria!";
         damage(1);
     } else if (source->type == poliisi) {
-        msg = "Poliisi ottaa vankikarkurin hallintaotteeseen!!!";
+        msg = "Politsija ottaa vankikarkurin hallintaotteeseen!!!";
         damage(stats.health);
     }
 
@@ -837,7 +863,7 @@ bool Skinhead::move(Direction d, std::string& msg)
         if (p)
         {
             if (p->type == poliisi) {
-                msg = "Skinhead uhoaa poliisille!";
+                msg = "Skinhead uhoaa politsijalle!";
             }
         }
 
@@ -984,7 +1010,7 @@ bool Yka::move(Direction d, std::string& msg)
                 kaljaKesken = received ? 5 : 1;
             } else if (p->type == poliisi) {
                 if (!puhallus) {
-                    msg = "Ykä utelee poliisilta että saisikohan puhaltaa.";
+                    msg = "Vasja kysyy politsijalta, saisiko puhaltaa.";
                     puhallus = true;
                 }
             }
@@ -996,7 +1022,7 @@ bool Yka::move(Direction d, std::string& msg)
             switch(i->type) {
                 case EKalja:
                     msg += (msg == "") ? "" : "\n";
-                    msg += "Ykä löysi maasta kaljan ja lähti lipittämään sitä.";
+                    msg += "Vasja löysi maasta kaljan ja lähti lipittämään sitä.";
                     damage(1);
                     break;
                 default:
@@ -1046,7 +1072,7 @@ bool Yka::interact(std::string& msg, Person* source)
             --p->inventory.kalja;
             damage(stats.health);
         } else {
-            msg = "Mätät Ykää sikana naamaan!";
+            msg = "Mätät Vasjaa sikana naamaan!";
         }
     }
 
@@ -1057,10 +1083,10 @@ bool Yka::interactThrow(Item* item, Person* source, std::string& msg)
 {
     bool hit = random(67);
     if (!hit) {
-        msg = "Ykä ihmettelee mikä ihme suhahti pään vierestä !";
+        msg = "Vasja ihmettelee, mikä suhahti pään vierestä!";
         return false;
     } else {
-        msg = "Ykä simahtaa !";
+        msg = "Vasja simahtaa!";
         damage(stats.health);
         if (source->type == pelaaja) {
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
@@ -1094,7 +1120,7 @@ bool Jengi::move(Direction d, std::string& msg)
     } else {
         auto p = level->getPerson(check);
         if (p && p->type == poliisi) {
-            msg = "Jengiläinen ja poliisi taistelevat!";
+            msg = "Gopnik ja politsija tappelevat!";
         }
     }
     common::checkBounds(coord);
@@ -1124,13 +1150,13 @@ void Jengi::npcAct()
                 uint32_t sum = std::rand() % 20 + 5;
                 if (sum > p->stats.money) sum = p->stats.money;
                 p->updateMoney(-(int)sum);
-                msg = "Jengiläinen ryöstää " + std::to_string(sum) + " markkaa!";
+                msg = "Gopnik ryöstää " + std::to_string(sum) + " ruplaa! \"Семки есть?\"";
             } else if (r == 1) {
                 uint32_t dmg = std::rand() % 3 + 1;
                 p->damage(dmg);
-                msg = "Jengiläinen lyö sinua nyrkillä!";
+                msg = "Gopnik lyö sinua nyrkillä!";
             } else {
-                msg = "Jengiläinen uhkailee sinua.";
+                msg = "Gopnik kyykkii ja uhkailee: \"Есть чё?\"";
             }
             level->alertCops(this);
         } else {
@@ -1155,10 +1181,10 @@ bool Jengi::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja) {
         if (random(40)) {
-            msg = "Jengiläinen iskee takaisin!";
+            msg = "Gopnik iskee takaisin!";
             source->damage(std::rand()%2+1);
         } else {
-            msg = "Moukaroit jengiläisen tajuttomaksi!";
+            msg = "Moukaroit gopnikin tajuttomaksi!";
             damage(stats.health);
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }
@@ -1171,9 +1197,9 @@ bool Jengi::interactThrow(Item* item, Person* source, std::string& msg)
 {
     bool hit = random(50);
     if (!hit) {
-        msg = "Jengiläinen väisti!";
+        msg = "Gopnik väisti!";
     } else {
-        msg = "Jengiläinen sai osuman ja kaatuu!";
+        msg = "Gopnik sai osuman ja kaatuu!";
         damage(stats.health);
         if (source->type == pelaaja)
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
@@ -1206,7 +1232,7 @@ bool Ryostaja::move(Direction d, std::string& msg)
     } else {
         auto p = level->getPerson(check);
         if (p && p->type == poliisi) {
-            msg = "Ryöstäjä ampuu poliisia!";
+            msg = "Ryöstäjä ampuu politsijaa!";
             p->damage(p->stats.health);
             level->alertCops(this);
         }
@@ -1237,7 +1263,7 @@ void Ryostaja::npcAct()
                 if (p->stats.money > 0) {
                     uint32_t take = std::min(p->stats.money, (uint32_t)(rand()%30 + 10));
                     p->updateMoney(-(int)take);
-                    msg = "Ryöstäjä vie " + std::to_string(take) + " markkaa aseella uhaten!";
+                    msg = "Ryöstäjä vie " + std::to_string(take) + " ruplaa aseella uhaten!";
                 } else {
                     p->damage(std::rand()%3+2);
                     msg = "Ryöstäjä ampuu sinua kun ei ole rahaa!";
@@ -1602,6 +1628,11 @@ bool Veteraani::interactThrow(Item* item, Person* source, std::string& msg)
 
 Juoppo::Juoppo(const Coord& pos) : Person(juoppo, pos)
 {
+    static const char* names[] = {
+        "Serjo\xC5\xBE""a", "Vitja", "Kolja", "Tolik", "\xC5\xBD""enja", "Mi\xC5\xA1""a",
+        "Petja", "Vova", "Ljoha", "Sanja", "Griša", "Fedja",
+    };
+    name = names[std::rand() % (sizeof(names) / sizeof(names[0]))];
     stats.health = 4;
     visionRange = 3;
 }
@@ -1664,7 +1695,7 @@ void Juoppo::npcAct()
             "Hic!",
             "*RÖYH*",
             "Vodkaa...",
-            "Missä on ALKO?",
+            "Missä on Vino-Vodka?",
             "Blyat...",
             "Elämä on kaunista...",
             "*horskaa*",
@@ -1690,9 +1721,20 @@ void Juoppo::npcAct()
 bool Juoppo::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja) {
+        Player* player = dynamic_cast<Player*>(source);
+        constexpr uint32_t PRICE = 15;
+        if (player->stats.money >= PRICE && random(40)) {
+            // half of the bottles sold on the street are piss; you find out when you drink
+            player->stats.money -= PRICE;
+            ++player->inventory.vodka;
+            if (random(50)) player->inventory.pissVodka.push_back(name);
+            msg = name + " myy sinulle pullon vodkaa 15 ruplalla. \"Aitoa tavaraa, brat!\"";
+            say("Aitoa, brat!");
+            return true;
+        }
         if (random(50)) {
-            msg = "Juoppo tarjoaa ryyppyä!";
-            dynamic_cast<Player*>(source)->updatepromilles(2);
+            msg = name + " tarjoaa ryyppy\xC3\xA4!";
+            player->updatepromilles(2);
         } else {
             msg = "Juoppo kaatuu päällesi!";
             source->damage(1);
@@ -1811,7 +1853,7 @@ void FSBAgent::npcAct()
                 person->stats.health > 0 && coord.distance(person->coord) < 3) {
                 hasTarget = true;
                 defenTarget = person->coord;
-                msg = "FSB-agentit tarttuvat " + person->typeToChar() + " kiinni!";
+                msg = "FSB-agentit tarttuvat ohikulkijaan. Häntä ei enää nähdä.";
                 person->damage(50);
                 printer->showMessage("DEFENESTRAATIO! Joku lensi ikkunasta!", level);
 

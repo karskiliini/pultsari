@@ -2,3 +2,4 @@
 *.o
 pultsari
 node_modules/
+*.d

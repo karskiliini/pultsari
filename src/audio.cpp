@@ -44,10 +44,9 @@ bool AudioSystem::blockedByWall(const Coord& from, const Coord& to, const Level*
 
     uint32_t walls = 0;
     for (int i = 1; i < steps; ++i) {
-        float t = (float)i / (float)steps;
-        uint32_t cx = from.x + (uint32_t)(dx * t);
-        uint32_t cy = from.y + (uint32_t)(dy * t);
-        Coord c { cx, cy };
+        int cx = (int)from.x + dx * i / steps;
+        int cy = (int)from.y + dy * i / steps;
+        Coord c { (uint32_t)cx, (uint32_t)cy };
         if (lvl->hitBuilding(c) && !lvl->hitWindow(c)) {
             ++walls;
             if (walls >= 2) return true;
@@ -116,7 +115,9 @@ std::string AudioSystem::formatSoundLine(const Coord& listenerPos, uint32_t maxL
     }
 
     if (line.length() > maxLen) {
-        line = line.substr(0, maxLen - 3) + "...";
+        size_t cut = maxLen - 3;
+        while (cut > 0 && ((unsigned char)line[cut] & 0xC0) == 0x80) --cut;
+        line = line.substr(0, cut) + "...";
     }
 
     return line;

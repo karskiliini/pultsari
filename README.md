@@ -1,34 +1,49 @@
-# Pultsari
+# PПLTSAЯI 2: Russki Mir
 
-## basic/
-    pulsubin.bas    the original version of Pultsari 1.0 in QuickBasic 4.5 binary format
-    pultsari.bas    ASCII version of the original binary, with some refactoring done.
-## include/
-                    All the headers for a c++ port.
-## src/
-                    All the source files for a c++ port.
+A satirical roguelike set in Moscow, 2025. You are a pultsari (a street drunk). Collect empty bottles, avoid the politsija, gopniks and FSB, get hold of a propusk and make your way into Putin's wine cellar inside the Kremlin. The game text is in Finnish, with Russian thrown in.
 
-## Build instructions
+## Build
 
-### Windows 10
-- Install [QB64](https://qb64.com/) IDE, open pultsari.bas file and press F5 to compile pultsari.exe.
-- run pultsari.exe
+Needs a C++14 compiler and `make`.
 
-or
+    make
+    ./pultsari --rt --los --anims --path
 
-- Install dosbox
-- Install QB4.5 (Quick Basic 4.5)
-- Open either pulsubin.bas (for the original experience) or pultsari.bas for the updated version.
-- Either run directly in QB4.5 or compile pultsari.exe
+`./pultsari --help` lists all options.
 
+## Play in the browser
 
-### linux
-The compilation requires C++11 gcc  
-$ make clean  
-$ make  
-$ ./pultsari  
-  
-For advanced features try  
-$ ./pultsari --help  
-$ ./pultsari --all  
-  
+Needs Node.js. The server runs the game in a pseudo-terminal and streams it to the page.
+
+    npm install
+    npm start
+
+Then open http://localhost:3000.
+
+## Controls (real-time mode)
+
+| Key | Action |
+| --- | --- |
+| W A S D or I J K L | Move. Walking into someone hits them; walking onto an item picks it up. |
+| Tab | Open the inventory |
+| W / S (inventory) | Select an item |
+| Q (inventory) | Use: drink, eat or shoot |
+| E (inventory) | Throw: starts aiming |
+| A / D (aiming) | Turn the aim |
+| Space (aiming) | Throw or shoot |
+| ESC | Cancel or close |
+| Z | Quit |
+
+## Layout
+
+    include/   C++ headers
+    src/       C++ sources
+    web/       browser client (Node.js server + xterm.js)
+    basic/     the original 1991 QuickBasic version
+    test/      tests
+
+## History
+
+The original Pultsari was written in QuickBasic 4.5 at the turn of 1991–1992 by Jari Maaranen, Tero Maaranen and Kimmo Korhonen. The original sources are in `basic/`: `pulsubin.bas` is the original binary-format file and `pultsari.bas` is a lightly refactored ASCII version. They can be run with [QB64](https://qb64.com/) or with QuickBasic 4.5 in DOSBox.
+
+The game was later ported to C++, and that port became PПLTSAЯI 2.

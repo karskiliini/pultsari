@@ -70,6 +70,11 @@ Level::~Level() {
         delete events;
         events = nullptr;
     }
+
+    for (auto a : animations) delete a;
+    animations.clear();
+    delete thrownItem;
+    thrownItem = nullptr;
 }
 
 void Level::buildingTurn()
@@ -118,8 +123,14 @@ void Level::actThrow(Person* source)
 
         if (hit)
         {
+            Coord landed = thrownItem->coord;
+            bool grenade = thrownItem->type == EGranata;
             delete thrownItem;
             thrownItem = nullptr;
+            if (grenade) {
+                printer->showMessage("KRANAATTI R\xC3\x84J\xC3\x84HT\xC3\x84\xC3\x84!!", this, false);
+                explode(landed, 3, 10, source);
+            }
         }
 
         printer->print(this);
@@ -127,20 +138,43 @@ void Level::actThrow(Person* source)
     }
 }
 
+void Level::stepAnimations()
+{
+    for (auto it = animations.begin(); it != animations.end();) {
+        if ((*it)->act()) {
+            ++it;
+        } else {
+            delete *it;
+            it = animations.erase(it);
+        }
+    }
+}
+
 void Level::playAnimation()
 {
-    bool running = true;
-    while (animation && running)
-    {
-        running = animation->act();
+    // realtime advances animations once per frame in the main loop instead
+    if (common::realtimeEnabled) return;
+
+    while (!animations.empty()) {
+        uint32_t delay = animations.front()->delay;
+        stepAnimations();
         printer->print(this);
-        common::sleep(animation->delay);
+        common::sleep(delay);
     }
+}
 
-    delete animation;
-    animation = nullptr;
-
-    printer->print(this);
+void Level::explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person* source)
+{
+    for (auto& p : persons) {
+        if (p->stats.health > 0 && p->coord.distance(c) <= radius) {
+            p->damage(std::rand() % maxDamage + 1);
+        }
+    }
+    uint32_t x = c.x > 4 ? c.x - 4 : 0;
+    addAnimation(new Animation(Coord{ x, c.y }, "***BOOM***", 8));
+    audio.addSound(c, SoundType::Explosion,
+        "PAUUUUM! Kranaatti r\xC3\xA4j\xC3\xA4ht\xC3\xA4\xC3\xA4!", "R\xC3\xA4j\xC3\xA4hdys!", "...r\xC3\xA4j\xC3\xA4hdys kaukaa...", 40);
+    if (source) alertCops(source);
 }
 
 Person* Level::createPerson(const Coord& coord, PersonType type)
@@ -526,9 +560,19 @@ Vehicle* Level::getVehicleAt(const Coord& c) const
 
 void Level::addAnimation(Animation* animation, bool play)
 {
-    Level::animation = animation;
-    if (play)
-    {
+    if (!common::animsEnabled) {
+        delete animation;
+        return;
+    }
+
+    constexpr size_t MAX_ANIMATIONS = 24;
+    if (animations.size() >= MAX_ANIMATIONS) {
+        delete animations.front();
+        animations.erase(animations.begin());
+    }
+    animations.push_back(animation);
+
+    if (play) {
         playAnimation();
     }
 }

@@ -63,6 +63,9 @@ public:
 
     std::string msg = "";
     bool msgShown = false;
+    static constexpr uint32_t MSG_FRAMES = 60;
+    uint32_t msgTtl = 0;
+    std::string levelName;
 
     PlayerNS::Player* player = nullptr;
     VisionNS::Mask* mask = nullptr;

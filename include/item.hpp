@@ -33,7 +33,8 @@ enum ItemType {
     EPropusk,
     EGranata,
     EVodka,
-    EViinaKellari
+    EViinaKellari,
+    EPutinPoyta
 };
 
 class Level;
@@ -291,11 +292,13 @@ public:
 
 class PutinPoyta : public Item {
 public:
-    PutinPoyta(const Coord& c);
+    PutinPoyta(const Coord& c, const char* glyph);
     virtual ~PutinPoyta() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);
+private:
+    const char* glyph;
 };
 
 #endif

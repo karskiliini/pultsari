@@ -91,7 +91,7 @@ public:
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
-    virtual std::string typeToChar() const { return "V"; };
+    virtual std::string typeToChar() const { return "v"; };
     Coord target;
 };
 
@@ -148,7 +148,7 @@ public:
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
-    virtual std::string typeToChar() const { return "G"; };
+    virtual std::string typeToChar() const { return "g"; };
     bool firstMove = true;
 };
 
@@ -208,6 +208,7 @@ public:
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "J"; };
     uint32_t stumbleCount = 0;
+    std::string name;
 };
 
 class FSBAgent : public Person {
@@ -248,7 +249,7 @@ public:
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
-    virtual std::string typeToChar() const { return "T"; };
+    virtual std::string typeToChar() const { return "A"; };
     uint32_t fireCooldown = 0;
 };
 
@@ -260,7 +261,7 @@ public:
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
-    virtual std::string typeToChar() const { return "V"; };
+    virtual std::string typeToChar() const { return "W"; };
     Coord homePos;
     bool fleeing = false;
 };

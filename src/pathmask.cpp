@@ -1,145 +1,72 @@
 #include "pathmask.hpp"
 #include "level.hpp"
+#include "persons.hpp"
 #include "common.hpp"
-#include "player.hpp"
-#include "coord.hpp"
-#include <exception>
-#include <stdexcept>
-#include <iostream>
+#include <algorithm>
+#include <deque>
+#include <vector>
 
 namespace PathNS {
 
-using std::string;
-using PlayerNS::Player;
-
-PathMask::PathMask(Level* level)
+bool PathMask::blocked(const Coord& c) const
 {
-    PathMask::level = level;
-
-    std::vector<uint32_t> line;
-    for (uint32_t y = 0; y < common::SIZEY; ++y) {
-        for (uint32_t x = 0; x < common::SIZEX; ++x) {
-            line.push_back(0);
-        }
-        mask.push_back(line);
-    }
-}
-
-uint32_t& PathMask::at(const Coord& c)
-{
-    if ((c.x < 0) || (c.y < 0) || (c.x >= common::SIZEX) || (c.y >= common::SIZEY)) {
-        static uint32_t u = 0;
-        return u;
-    }
-
-    auto& s = mask[c.y];
-    return s[c.x];
-}
-
-bool hitPerson(PathNS::PathMask& mask, Coord coord)
-{
-    if (!mask.level->hitPerson(coord))
-    {
-        return false;
-    } else {
-        auto person = mask.level->getPerson(coord);
-        auto type = person->type;
-
-        if ((type == poliisi) && mask.skipCop) return false;
-        if ((type == varas) && mask.skipVaras) return false;
-        if ((type == vanki) && mask.skipConvict) return false;
-    }
-
+    if (level->hitBuilding(c)) return true;
+    Person* p = level->getPerson(c);
+    if (!p) return false;
+    if (p->type == poliisi && skipCop) return false;
+    if (p->type == varas && skipVaras) return false;
+    if (p->type == vanki && skipConvict) return false;
     return true;
 }
 
-bool recursePath(PathNS::PathMask& mask, uint32_t value)
+DirectionNS::Direction PathMask::firstStep(const Coord& from, const Coord& to) const
 {
-    PlayerNS::Player* player = mask.level->getPlayer();
-    const Coord& pCoord = player->coord;
+    if (from == to) return DirectionNS::none;
 
-    for (uint32_t y = 0; y < common::SIZEY; ++y) {
-        for (uint32_t x = 0; x < common::SIZEX; ++x) {
-            Coord dirs[4];
-            dirs[0] = {x, y-1};
-            dirs[1] = {x+1, y};
-            dirs[2] = {x, y+1};
-            dirs[3] = {x-1, y};
+    // search a box around both ends so a call stays cheap on the 400x200 map
+    constexpr int MARGIN = 20;
+    const int x0 = std::max(0, (int)std::min(from.x, to.x) - MARGIN);
+    const int y0 = std::max(0, (int)std::min(from.y, to.y) - MARGIN);
+    const int x1 = std::min((int)common::SIZEX - 1, (int)std::max(from.x, to.x) + MARGIN);
+    const int y1 = std::min((int)common::SIZEY - 1, (int)std::max(from.y, to.y) + MARGIN);
+    const int w = x1 - x0 + 1;
+    const int h = y1 - y0 + 1;
 
-            for (uint32_t i = 0; i < 4; ++i)
-            {
-                Coord coord(x, y);
-                if ((mask.at(coord) == 0) && (mask.at(dirs[i]) == value - 1))
-                {
-                    if (!hitPerson(mask, coord) && !mask.level->hitBuilding(coord))
-                    {
-                        mask.at(coord) = value;
-                    }
+    // first step direction taken from `from` for every reached cell; -1 = unvisited
+    std::vector<int8_t> via(w * h, -1);
+    std::deque<Coord> queue;
 
-                    if (pCoord == coord) {
-                        mask.at(coord) = value;
-                        return true;
-                    }
-                }
-            }
+    const int dx[4] = { 0, 1, 0, -1 };
+    const int dy[4] = { -1, 0, 1, 0 };
+    const DirectionNS::Direction dirs[4] = {
+        DirectionNS::up, DirectionNS::right, DirectionNS::down, DirectionNS::left
+    };
+
+    auto index = [&](int x, int y) { return (y - y0) * w + (x - x0); };
+    via[index(from.x, from.y)] = 4;
+    queue.push_back(from);
+
+    while (!queue.empty()) {
+        Coord c = queue.front();
+        queue.pop_front();
+        const int8_t first = via[index(c.x, c.y)];
+
+        for (int i = 0; i < 4; ++i) {
+            const int nx = (int)c.x + dx[i];
+            const int ny = (int)c.y + dy[i];
+            if (nx < x0 || ny < y0 || nx > x1 || ny > y1) continue;
+            if (via[index(nx, ny)] != -1) continue;
+
+            Coord n { (uint32_t)nx, (uint32_t)ny };
+            const int8_t step = first == 4 ? (int8_t)i : first;
+            if (n == to) return dirs[step];
+            if (blocked(n)) continue;
+
+            via[index(nx, ny)] = step;
+            queue.push_back(n);
         }
     }
-
-    return false;
-}
-
-bool PathMask::findPath(const Coord& coord, const Coord& target)
-{
-    uint32_t value = 1;
-    at(coord) = value;
-
-    bool found = false;
-    while (!found) {
-        found = recursePath(*this, ++value);
-        if (value > 100) // give up
-        {
-            return false;
-        }
-    }
-    return true;
-}
-
-DirectionNS::Direction PathMask::traceBack(const Coord& c)
-{
-    const uint32_t& value = at(c);
-    const uint32_t& next = value - 1;
-
-    Coord dirs[4];
-    dirs[0] = { c.x,     c.y - 1 };
-    dirs[1] = { c.x + 1, c.y     };
-    dirs[2] = { c.x,     c.y + 1 };
-    dirs[3] = { c.x - 1, c.y     };
-
-    std::vector<uint32_t> foundDirs;
-
-    for (uint32_t i = 0; i < 4; ++i) {
-        if (at(dirs[i]) == next) {
-            // found npc character?
-            if (next == 1) {
-                switch(i) {
-                    case 0: return DirectionNS::down;
-                    case 1: return DirectionNS::left;
-                    case 2: return DirectionNS::up;
-                    case 3: return DirectionNS::right;
-                    default:
-                            return DirectionNS::none;
-                }
-            }
-            foundDirs.push_back(i);
-        }
-    }
-    if (foundDirs.size() == 0) {
-        return DirectionNS::none;
-    }
-
-    // correct path found, randomize which one is picked
-    uint32_t pick = (std::rand() % foundDirs.size());
-    return traceBack(dirs[foundDirs[pick]]);
+    return DirectionNS::none;
 }
 
 }

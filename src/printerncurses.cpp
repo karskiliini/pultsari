@@ -186,8 +186,8 @@ void PrinterNcurses::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask,
 
     Animation* anim = nullptr;
     if (common::animsEnabled) {
-        if (l->animation && l->animation->coord.y == worldY) {
-            anim = l->animation;
+        for (auto a : l->animations) {
+            if (a->coord.y == worldY) anim = a;
         }
     }
 

@@ -18,6 +18,8 @@ void Input::raw()
     if (tcgetattr(STDIN_FILENO, &mode) != 0) return;
     originalTerminal = mode;
     cfmakeraw(&mode);
+    // keep output processing so '\n' still returns the cursor to column 0
+    mode.c_oflag |= OPOST | ONLCR;
     if (tcsetattr(STDIN_FILENO, TCSANOW, &mode) == 0) terminalSaved = true;
 }
 
@@ -31,9 +33,10 @@ void Input::noraw()
 
 void Input::waitKey()
 {
+    const bool wasRaw = terminalSaved;
     Input::raw();
     getchar();
-    Input::noraw();
+    if (!wasRaw) Input::noraw();
 }
 
 bool Input::hasInput()

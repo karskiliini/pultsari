@@ -21,6 +21,8 @@
         h1 { color: var(--red); font-size: 1.4em; letter-spacing: 3px; }
         .subtitle { color: var(--muted); font-size: 0.85em; margin-bottom: 8px; }
         #status { color: #ffaa00; margin: 6px 0; font-size: 0.85em; min-height: 1.2em; }
+        .controls { margin-top: 10px; color: var(--muted); font-size: 0.78em; text-align: center; line-height: 2; max-width: 820px; }
+        kbd { background: #1d1d1d; border: 1px solid #444; border-radius: 3px; padding: 1px 5px; color: #ddd; }
         #terminal-container {
             border: 2px solid #333;
             border-top-color: var(--red);
@@ -35,6 +37,12 @@
     <div class="subtitle">Russki Mir · Русский Мир</div>
     <div id="status">Yhdistetään...</div>
     <div id="terminal-container"></div>
+    <div class="controls">
+        <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> liiku (kävele päin = lyö / poimi / avaa) ·
+        <kbd>Tab</kbd> tavarat: <kbd>W</kbd>/<kbd>S</kbd> valitse, <kbd>Q</kbd> käytä, <kbd>E</kbd> heitä ·
+        tähtäys: <kbd>A</kbd>/<kbd>D</kbd> käännä, <kbd>Välilyönti</kbd> heitä/ammu, <kbd>Esc</kbd> peru ·
+        <kbd>Z</kbd> lopeta
+    </div>
 
     <script src="xterm.js"></script>
     <script>
@@ -91,7 +99,7 @@
                             .catch(ended);
                     })();
                 })
-                .catch(() => setStatus('Ei yhteyttä palvelimeen.', '#ff4444'));
+                .catch(() => setStatus('Ei yhteyttä palvelimeen, tai palvelin on täynnä.', '#ff4444'));
         }
 
         function startWebSocket() {

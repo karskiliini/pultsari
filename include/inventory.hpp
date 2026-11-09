@@ -2,6 +2,8 @@
 #define INVENTORY_HPP
 
 #include <cstdint>
+#include <string>
+#include <vector>
 
 struct Inventory {
     uint32_t kalja = 1;
@@ -20,6 +22,8 @@ struct Inventory {
     uint32_t propusk = 0;
     uint32_t granata = 0;
     uint32_t vodka = 0;
+    // sellers of bottles counted in `vodka` that are actually piss
+    std::vector<std::string> pissVodka;
 };
 
 #endif

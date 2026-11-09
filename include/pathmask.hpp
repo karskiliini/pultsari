@@ -3,8 +3,6 @@
 
 #include "coord.hpp"
 #include "direction.hpp"
-#include <vector>
-#include <string>
 
 class Level;
 
@@ -12,17 +10,18 @@ namespace PathNS {
 
 class PathMask {
 public:
-    PathMask(Level* level);
-    virtual ~PathMask() = default;
-    uint32_t& at(const Coord& c);
-    bool findPath(const Coord& coord, const Coord& target);
-    DirectionNS::Direction traceBack(const Coord& c);
+    explicit PathMask(Level* level) : level(level) { }
 
-    std::vector<std::vector<uint32_t>> mask;
+    // first step from `from` towards `to`, or none when no route exists nearby
+    DirectionNS::Direction firstStep(const Coord& from, const Coord& to) const;
+
     Level* level;
     bool skipCop = false;
     bool skipVaras = false;
     bool skipConvict = false;
+
+private:
+    bool blocked(const Coord& c) const;
 };
 
 }
