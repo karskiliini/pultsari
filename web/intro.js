@@ -531,10 +531,11 @@
         let stopTheme = () => {};
         const cues = [
             [2.6, () => window.SFX && SFX.play('cough', 1)],
-            [3.1, () => { window.SFX && SFX.play('vomit', 1); startJet(3, 42, false, 0.0, 0.45); }],
-            [5.0, () => { window.SFX && SFX.play('vomit2', 1); startJet(2, 40, false, 0.45, 0.8); }],
+            // each heave is a real recording (web/sounds), the synthesized gurgle until they load
+            [3.1, () => { window.SFX && SFX.playSample('vomit', 1, 'vomit'); startJet(3, 42, false, 0.0, 0.45); }],
+            [5.0, () => { window.SFX && SFX.playSample('vomit', 1, 'vomit2'); startJet(2, 40, false, 0.45, 0.8); }],
             // the third heave is the longest: a long, wavering jet
-            [7.0, () => { window.SFX && SFX.play('vomit', 1); startJet(4, 44, true, 0.1, 1.0); }],
+            [7.0, () => { window.SFX && SFX.playSample('vomit', 1, 'vomit'); startJet(4, 44, true, 0.1, 1.0); }],
             [7.9, () => window.SFX && SFX.play('vomit2', 0.8)],
         ];
 

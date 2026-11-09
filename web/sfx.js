@@ -8,14 +8,63 @@
     // continuous sources are re-announced every NPC tick; play them sparingly
     const minGapMs = { splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380 };
 
+    // Recorded sounds from Pixabay (web/sounds/CREDITS.md), decoded once the context exists.
+    const sampleFiles = {
+        vomit: ['vomit-soundreality', 'vomiting-velisophigus', 'vomit-dragon-studio',
+                'spew-three', 'paper-bag', 'spew-splatter'],
+    };
+    const samples = {};
+    const lastSample = {};
+    let currentSample = null;
+
+    function loadSamples() {
+        for (const [group, files] of Object.entries(sampleFiles)) {
+            samples[group] = [];
+            for (const f of files) {
+                fetch('sounds/' + f + '.mp3')
+                    .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+                    .then((data) => new Promise((ok, fail) => ctx.decodeAudioData(data, ok, fail)))
+                    .then((buf) => samples[group].push(buf))
+                    .catch(() => {});
+            }
+        }
+    }
+
     function init() {
         if (!ctx) {
             ctx = new (window.AudioContext || window.webkitAudioContext)();
             master = ctx.createGain();
             master.gain.value = 0.6;
             master.connect(ctx.destination);
+            loadSamples();
         }
         if (ctx.state === 'suspended') ctx.resume();
+    }
+
+    // Plays a random recording from the group, never the same one twice in a row; a new one
+    // cuts the previous one short. Falls back to the synthesized sound until they are loaded.
+    function playSample(group, vol, fallback) {
+        if (!ctx || muted) return;
+        const bufs = samples[group] || [];
+        if (bufs.length === 0) { if (fallback) play(fallback, vol); return; }
+        let i = Math.floor(Math.random() * bufs.length);
+        if (bufs.length > 1 && bufs[i] === lastSample[group]) i = (i + 1) % bufs.length;
+        lastSample[group] = bufs[i];
+
+        const t = ctx.currentTime + 0.01;
+        if (currentSample) {
+            currentSample.gain.gain.setTargetAtTime(0.0001, t, 0.05);
+            currentSample.src.stop(t + 0.3);
+        }
+        const src = ctx.createBufferSource();
+        src.buffer = bufs[i];
+        const gain = ctx.createGain();
+        gain.gain.value = Math.max(0.05, Math.min(1, vol));
+        src.connect(gain).connect(master);
+        src.start(t);
+        const me = { src, gain };
+        currentSample = me;
+        src.onended = () => { if (currentSample === me) currentSample = null; };
     }
 
     const level = (v) => Math.max(0.0002, v);
@@ -300,6 +349,7 @@
     window.SFX = {
         init,
         play,
+        playSample,
         startTheme,
         toggleMute() { muted = !muted; return muted; },
     };

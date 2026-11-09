@@ -158,6 +158,17 @@ const server = http.createServer((req, res) => {
         return;
     }
 
+    // recorded sound effects (Pixabay, see web/sounds/CREDITS.md): only plain mp3 file names
+    const sample = url.pathname.match(/\/sounds\/([a-z0-9_-]+\.mp3)$/);
+    if (sample) {
+        fs.readFile(path.join(__dirname, 'sounds', sample[1]), (err, data) => {
+            if (err) { res.writeHead(404); res.end(); return; }
+            res.writeHead(200, { 'Content-Type': 'audio/mpeg', 'Cache-Control': 'max-age=86400' });
+            res.end(data);
+        });
+        return;
+    }
+
     const name = url.pathname.endsWith('/') ? '/' : '/' + path.basename(url.pathname);
     const entry = STATIC[name];
     if (!entry) { res.writeHead(404); res.end('Not found'); return; }
