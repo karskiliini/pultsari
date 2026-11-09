@@ -28,7 +28,9 @@ enum PersonType {
     lapsi,
     kansalainen,
     rotta,
-    pankkirosvo
+    pankkirosvo,
+    rekryytti,      // recruited from Africa with the promise of a civilian job
+    korealainen     // a North Korean soldier, told it was an exercise
 };
 
 #endif

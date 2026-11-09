@@ -261,6 +261,10 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case kotiaiti:
                 p = new Kotiaiti(coord);
                 break;
+            case rekryytti:
+            case korealainen:
+                p = new Varvatty(coord, type);
+                break;
             default:
                 break;
         }
@@ -1126,6 +1130,8 @@ static uint32_t baseSpeed(PersonType t)
         case kansalainen:  return 22;
         case rotta:        return 30;
         case pankkirosvo:  return 26;
+        case rekryytti:    return 19;
+        case korealainen:  return 23;
         default:           return 20;
     }
 }
@@ -1199,6 +1205,8 @@ std::string Level::nameOf(const Person* p) const
         case kansalainen:  return dynamic_cast<const Kansalainen*>(p)->name;
         case rotta:        return "Rotta";
         case pankkirosvo:  return "Pankkiry\xC3\xB6st\xC3\xA4j\xC3\xA4";
+        case rekryytti:    return "Värvätty";
+        case korealainen:  return "Pohjoiskorealainen";
         default:           return "Joku";
     }
 }

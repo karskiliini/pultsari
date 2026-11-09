@@ -287,6 +287,22 @@ public:
     uint32_t fireCooldown = 0;
 };
 
+// Foreign recruits a long way from home. The joke is on whoever brought them here.
+class Varvatty : public Person {
+public:
+    Varvatty(const Coord& pos, PersonType type);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return type == korealainen ? "n" : "h"; }
+private:
+    void step(DirectionNS::Direction d);
+    uint32_t talkCooldown = 0;
+    DirectionNS::Direction march = DirectionNS::right;
+    uint32_t marchLeft = 0;
+    bool gaveRation = false;
+};
+
 class Vartija : public Person {
 public:
     Vartija(const Coord& pos);

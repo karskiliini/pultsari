@@ -498,6 +498,12 @@ static void populatePersons(Level& level, const GameState& gs)
         }
     }
 
+    // foreign recruits, far from home: a few lost Africans, a few North Koreans in step
+    if (gs.phase != GamePhase::War) {
+        for (int i = 0; i < 2 + std::rand() % 3; ++i) level.createPerson(level.freePosition(), rekryytti);
+        for (int i = 0; i < 2 + std::rand() % 2; ++i) level.createPerson(level.freePosition(), korealainen);
+    }
+
     // Sotilaat - appear closer to Kremlin
     if (kremlinProximity > 0.5f) {
         int solCount = (int)((kremlinProximity - 0.5f) * 4);

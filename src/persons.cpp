@@ -1844,6 +1844,107 @@ bool Juoppo::interactThrow(Item* item, Person* source, std::string& msg)
     return true;
 }
 
+// ============ Foreign recruits ============
+
+Varvatty::Varvatty(const Coord& pos, PersonType t) : Person(t, pos)
+{
+    stats.health = t == korealainen ? 8 : 4;
+    visionRange = 8;
+}
+
+void Varvatty::step(DirectionNS::Direction d)
+{
+    Coord next = coord;
+    switch (d) {
+        case DirectionNS::up:    if (next.y > 0) --next.y; break;
+        case DirectionNS::down:  ++next.y; break;
+        case DirectionNS::left:  if (next.x > 0) --next.x; break;
+        case DirectionNS::right: ++next.x; break;
+        default: return;
+    }
+    if (!level->hit(next)) coord = next;
+    else marchLeft = 0;
+    common::checkBounds(coord);
+}
+
+void Varvatty::npcAct()
+{
+    if (talkCooldown) --talkCooldown;
+    Player* p = level->getPlayer();
+    const bool near = p && coord.distance(p->coord) <= 4 && canSeeTarget(p->coord);
+
+    if (type == korealainen) {
+        // marches in straight lines, stops dead to stare at the decadent West
+        if (marchLeft == 0) { march = randomDirection(); marchLeft = 4 + std::rand() % 8; }
+        if (!(near && random(40))) { step(march); --marchLeft; }
+        if (near && !talkCooldown) {
+            static const char* lines[] = {
+                "Tämä on harjoitus. Meille sanottiin, että tämä on harjoitus.",
+                "Kaupoissa on ruokaa. Onko tämä propagandaa?",
+                "Puhelimessa on internet? Koko internet? Kaikille?",
+                "Johtaja ei ole täällä? Kuka sitten taputtaa?",
+                "Kaikki täällä juovat. Kuin johtajan syntymäpäivä, joka päivä.",
+                "Haluan Etelä-Koreaan. Älä kerro kenellekään.",
+                "Minulle ei kerrottu, missä maassa olen. Kysyn sinulta.",
+            };
+            say(lines[std::rand() % 7]);
+            talkCooldown = 30 + std::rand() % 20;
+        }
+        return;
+    }
+
+    // the recruit from Africa wanders about, lost, looking at his phone
+    if (random(45)) step(randomDirection());
+    if (near && !talkCooldown) {
+        static const char* lines[] = {
+            "Minulle luvattiin työ leipomossa. Tämä ei ole leipomo.",
+            "Sopimus oli venäjäksi. Allekirjoitin. Nyt minulla on kypärä.",
+            "Rekrytoija sanoi: turvallisuusalaa. Hän ei sanonut kenen turvallisuutta.",
+            "Missä on lentokenttä? Haluan kotiin.",
+            "Äidille kerron, että olen kunnossa. Älä sinä kerro totuutta.",
+            "Täällä on kylmä. Kukaan ei kertonut, että täällä on näin kylmä.",
+        };
+        say(lines[std::rand() % 6]);
+        talkCooldown = 30 + std::rand() % 20;
+    }
+}
+
+bool Varvatty::interact(std::string& msg, Person* source)
+{
+    Player* player = dynamic_cast<Player*>(source);
+    if (type == korealainen) {
+        if (random(60)) {
+            msg = "Pohjoiskorealainen tekee kunniaa. Varmuuden vuoksi hän tekee kunniaa kaikille.";
+            say("Kunnia!");
+        } else {
+            // a trained soldier: he hits back
+            msg = "Pohjoiskorealainen väistää ja lyö takaisin. Koulutettu mies.";
+            source->damage(2);
+            damage(1);
+        }
+        return true;
+    }
+    if (player && !gaveRation) {
+        gaveRation = true;
+        ++player->inventory.lenkki;
+        msg = "Värvätty antaa sinulle muonapakkauksensa. \"Ota. Minä en saa sitä alas.\"";
+        say("Ota se.");
+        return true;
+    }
+    msg = "Värvätty ei lyö takaisin. Hän on jo saanut tarpeekseen.";
+    damage(1);
+    if (player) ++player->scoreBoard.kaikki;
+    return true;
+}
+
+bool Varvatty::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    damage(2);
+    msg = type == korealainen ? "Pohjoiskorealainen ei edes säpsähdä." : "Värvätty kyyristyy. Hän tuntee tämän jo.";
+    say(type == korealainen ? "..." : "Miksi?");
+    return true;
+}
+
 // ============ FSB Agent ============
 
 FSBAgent::FSBAgent(const Coord& pos) : Person(fsb, pos)

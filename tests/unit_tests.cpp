@@ -444,6 +444,51 @@ TEST(shop_name_hidden_while_inside)
     CHECK(!contains(row, "TESTNAME"));
 }
 
+// ---- foreign recruits ----
+
+TEST(african_recruit_talks_about_the_job_he_was_promised)
+{
+    World w(Coord{ 60, 60 });
+    auto* r = w.spawn(new Varvatty(Coord{ 62, 60 }, rekryytti));
+    for (int i = 0; i < 5; ++i) { r->coord = Coord{ 62, 60 }; r->npcAct(); }
+    bool spoke = false;
+    for (auto a : w.level.animations) if (a->isBubble && a->owner == r) spoke = true;
+    CHECK(spoke);
+    CHECK(r->typeToChar() == "h");
+}
+
+TEST(african_recruit_shares_his_ration_once)
+{
+    World w(Coord{ 60, 60 });
+    auto* r = w.spawn(new Varvatty(Coord{ 61, 60 }, rekryytti));
+    const uint32_t had = w.player.inventory.lenkki;
+    string msg;
+    r->interact(msg, &w.player);
+    r->interact(msg, &w.player);
+    CHECK(w.player.inventory.lenkki == had + 1);
+}
+
+TEST(north_korean_marches_and_hits_back)
+{
+    World w(Coord{ 150, 150 });
+    auto* k = w.spawn(new Varvatty(Coord{ 60, 60 }, korealainen));
+    const Coord start = k->coord;
+    for (int i = 0; i < 20; ++i) k->npcAct();
+    CHECK(k->coord != start);
+    CHECK(k->typeToChar() == "n");
+    bool hit = false;
+    common::realtimeEnabled = false; // no post-hit grace period for this check
+    for (int i = 0; i < 100 && !hit; ++i) {
+        w.player.stats.health = 100;
+        k->stats.health = 100;
+        string msg;
+        k->interact(msg, &w.player);
+        hit = w.player.stats.health < 100;
+    }
+    common::realtimeEnabled = true;
+    CHECK(hit);
+}
+
 // ---- metro ----
 
 TEST(metro_takes_you_to_the_next_station)

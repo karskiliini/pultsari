@@ -307,6 +307,8 @@ const char* personColor(const Person* p)
         case lapsi:        return "1;38;5;214";         // bright orange puffer jacket
         case rotta:        return "38;5;246";           // grey fur
         case pankkirosvo:  return p->armor ? "1;38;5;94" : "1;38;5;160"; // red balaclava; brown vest
+        case rekryytti:    return "38;5;101";  // a uniform that does not fit
+        case korealainen:  return "38;5;65";   // dark green, pressed
         default:           return "37";
     }
 }
