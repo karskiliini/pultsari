@@ -136,8 +136,11 @@
                 } else if (at(title.mask, px[i], py[i]) || at(title.mask, px[i], py[i] + 1)) {
                     // flying slime catches on the title here and there along its length; caught slime
                     // clings and oozes down slowly, water mostly flies on
-                    if (fly[i] && !(t > 0.5 && Math.random() < 0.06)) { vx[i] *= 0.99; vy[i] *= 0.95; }
-                    else { fly[i] = 0; vx[i] *= 0.55 - 0.3 * t; vy[i] *= 0.6 - 0.35 * t; }
+                    if (fly[i]) {
+                        // impact: slime mostly catches, water splashes back off the letter
+                        if (Math.random() < (t > 0.5 ? 0.35 : 0.1)) { fly[i] = 0; vx[i] *= 0.3; vy[i] *= 0.2; }
+                        else if (Math.random() < 0.3) { vy[i] *= -0.35; vx[i] *= 0.7; }
+                    } else { vx[i] *= 0.55 - 0.3 * t; vy[i] *= 0.6 - 0.35 * t; }
                 }
                 // the jet flies freely until it hits something; after that slime drags on everything
                 if (fly[i]) {
@@ -255,8 +258,18 @@
                     const t = Math.min(1, (density[i] - 0.85) / 2.5);
                     const s = thickness[i] / density[i];
                     const r = 205 - 60 * s, g = 220 - 20 * s, b = 140 - 110 * s;
-                    const shade = 1 - (0.25 + 0.4 * s) * t;
-                    d[o] = Math.round(r * shade); d[o + 1] = Math.round(g * shade); d[o + 2] = Math.round(b * shade);
+                    // relief: light from the upper left on the slopes of the blob, shadow on the far side,
+                    // and a wet gloss on the thickest spots, so the thick parts seem to bulge out
+                    const col = i % FW;
+                    const dl = col > 0 ? density[i - 1] : 0, dr = col < FW - 1 ? density[i + 1] : 0;
+                    const du = i >= FW ? density[i - FW] : 0, dd = i + FW < FW * FH ? density[i + FW] : 0;
+                    const slope = ((dr - dl) * 0.6 + (dd - du) * 0.8) / (1 + density[i]);
+                    const light = Math.max(-0.45, Math.min(0.5, slope * 0.9));
+                    const shade = (1 - (0.25 + 0.4 * s) * t) * (1 + light);
+                    const gloss = t > 0.55 && light > 0.12 ? 70 * (t - 0.55) * light * 4 : 0;
+                    d[o] = Math.min(255, Math.round(r * shade + gloss));
+                    d[o + 1] = Math.min(255, Math.round(g * shade + gloss));
+                    d[o + 2] = Math.min(255, Math.round(b * shade + gloss * 0.6));
                     d[o + 3] = Math.round(255 * (0.55 + 0.45 * s));
                 } else {
                     d[o + 3] = 0;
@@ -371,7 +384,11 @@
                     lip[x] = Math.max(lip[x], lip[x] * 0.4 + d.w * 2.4 * f);
                 }
             }
-            ctx.fillStyle = SLIME;
+            const lipGrad = ctx.createLinearGradient(0, lipTop, 0, lipTop + 22);
+            lipGrad.addColorStop(0, '#7aa82c');
+            lipGrad.addColorStop(0.35, '#557f16');
+            lipGrad.addColorStop(1, '#2c4606');
+            ctx.fillStyle = lipGrad;
             ctx.beginPath();
             let open = false;
             for (let x = 0; x <= FW; x++) {
@@ -389,6 +406,13 @@
                 if (tip <= top) continue;
                 const w0 = d.w * 1.4, w1 = Math.max(0.9, d.w * 0.55);
                 const tx = d.x + d.ox, L = tip - top, ty = tip - d.r * 0.6;
+                // round in cross-section: lit on the left, in shadow on the right
+                const g = ctx.createLinearGradient(Math.min(d.x, tx) - w0, 0, Math.max(d.x, tx) + w0, 0);
+                g.addColorStop(0, '#3d600c');
+                g.addColorStop(0.3, '#7cab30');
+                g.addColorStop(0.55, '#4f7a14');
+                g.addColorStop(1, '#223a04');
+                ctx.fillStyle = g;
                 // the strand hangs straight from the root and bends toward the swinging tip
                 ctx.beginPath();
                 ctx.moveTo(d.x - w0 / 2, top);
@@ -399,11 +423,21 @@
                 ctx.fill();
                 ctx.beginPath();
                 ctx.ellipse(tx, tip, d.r, d.r * 1.15, d.ovx * 0.15, 0, Math.PI * 2);
+                const bulb = ctx.createRadialGradient(tx - d.r * 0.4, tip - d.r * 0.45, d.r * 0.1, tx, tip, d.r * 1.2);
+                bulb.addColorStop(0, '#a6d65a');
+                bulb.addColorStop(0.45, '#5a8618');
+                bulb.addColorStop(1, '#243c05');
+                ctx.fillStyle = bulb;
                 ctx.fill();
             }
             for (const p of drops) {
                 ctx.beginPath();
                 ctx.ellipse(p.x, p.y, p.r * 0.85, p.r * (1.1 + Math.min(0.8, p.vy * 0.08)), 0, 0, Math.PI * 2);
+                const dg = ctx.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.4, p.r * 0.1, p.x, p.y, p.r * 1.3);
+                dg.addColorStop(0, '#a6d65a');
+                dg.addColorStop(0.5, '#507c14');
+                dg.addColorStop(1, '#243c05');
+                ctx.fillStyle = dg;
                 ctx.fill();
             }
             // a wet highlight down the left side of each strand
@@ -441,26 +475,34 @@
         let stopTheme = () => {};
         const cues = [
             [2.6, () => window.SFX && SFX.play('cough', 1)],
-            [3.1, () => { window.SFX && SFX.play('vomit', 1); jet = 540; }],
+            [3.1, () => { window.SFX && SFX.play('vomit', 1); startJet(540, 14, false); }],
             [5.0, () => { window.SFX && SFX.play('vomit2', 1); splash(360); }],
             // the third heave is the longest: a long, wavering jet
-            [7.0, () => { window.SFX && SFX.play('vomit', 1); jet = 1000; jetRate = 9; jetLong = true; }],
+            [7.0, () => { window.SFX && SFX.play('vomit', 1); startJet(1000, 9, true); }],
             [7.9, () => window.SFX && SFX.play('vomit2', 0.8)],
         ];
 
         // the first heave: a jet from the left that sweeps across the letters to the right
-        let jet = 0, jetRate = 30, jetLong = false, jetT = 0;
+        // each jet comes down from above the screen, and the drunk turns his head as he heaves:
+        // the stream sweeps from left to right across the title
+        let jet = 0, jetTotal = 1, jetRate = 30, jetLong = false, jetT = 0;
+        function startJet(count, rate, long) { jet = jetTotal = count; jetRate = rate; jetLong = long; jetT = 0; }
         function jetFrame() {
             if (jet <= 0) return;
             jetT++;
-            const srcX = startX / CELL - 14, srcY = (baseY - fs * 0.5) / CELL;
-            // the long heave sways up and down and weakens toward the end
-            const sway = jetLong ? Math.sin(jetT / 9) * 0.35 : 0;
-            const power = jetLong ? 0.75 + 0.35 * Math.min(1, jet / 500) : 1;
+            const progress = 1 - jet / jetTotal;
+            const fallCells = baseY / CELL + 12;          // from above the top edge down to the title
+            const air = 42;                                // steps in the air before it lands
+            const hitX = (startX + (titleW + latinW) * progress) / CELL;
+            const ux = 1.3, uy = fallCells / air - 0.5 * G * air;
+            const srcX = hitX - ux * air, srcY = -12;
+            // the long heave wavers and weakens toward the end
+            const sway = jetLong ? Math.sin(jetT / 7) * 0.25 : 0;
+            const power = jetLong ? 0.8 + 0.3 * Math.min(1, jet / 500) : 1;
             for (let k = 0; k < jetRate && jet > 0; k++, jet--) {
-                emit(srcX + Math.random() * 8, srcY + (Math.random() - 0.5) * 7,
-                     (2.2 + Math.random() * 0.8) * power, -0.75 + sway + Math.random() * 0.35, jet % 2 ? 0 : 1);
-                fly[n - 1] = 120;
+                emit(srcX + (Math.random() - 0.5) * 6, srcY + (Math.random() - 0.5) * 6,
+                     ux * power + (Math.random() - 0.5) * 0.3, uy + sway + (Math.random() - 0.5) * 0.25, jet % 2 ? 0 : 1);
+                fly[n - 1] = 140;
             }
         }
 
@@ -468,8 +510,9 @@
             for (let k = 0; k < count; k++) {
                 const x = latin.minX + Math.random() * (latin.maxX - latin.minX);
                 // the freshest splash is always half water
-                emit(x, latin.minY - 4 - Math.random() * 10, 0.3 + Math.random() * 0.5, 0.3 + Math.random() * 0.4,
+                emit(x - 20, -6 - Math.random() * 12, 0.45 + Math.random() * 0.3, 0.3 + Math.random() * 0.4,
                      k % 2 ? 0 : 1);
+                fly[n - 1] = 140;
             }
         }
 
