@@ -17,6 +17,11 @@ namespace PathNS {
     class PathMask;
 }
 
+// how tall a character is, for line of sight: low ones are seen over
+constexpr uint32_t HEIGHT_FLAT = 0;      // a rat, someone lying on the ground
+constexpr uint32_t HEIGHT_LOW = 1;       // a one-legged veteran, a crawling drunk
+constexpr uint32_t HEIGHT_STANDING = 2;
+
 class Person {
 public:
     Person(PersonType personType, const Coord& pos) : type(personType), coord(pos) { }
@@ -37,6 +42,8 @@ public:
     void setLevel(Level* level) { Person::level = level; }
 
     bool canSeeTarget(const Coord& target) const;
+    // the dead lie flat; the eyes are at the top of the head
+    virtual uint32_t height() const { return stats.health > 0 ? HEIGHT_STANDING : HEIGHT_FLAT; }
     DirectionNS::Direction randomDirection() const;
     void say(const std::string& text);
 
@@ -214,6 +221,8 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const;
+    // sitting on the pavement with one leg, he hides only what's right behind him
+    virtual uint32_t height() const { return (oneLegged && stats.health > 0) ? HEIGHT_LOW : Person::height(); }
     Item* dropItem();
     bool firstMove = true;
     bool aggressive = false;
@@ -234,6 +243,7 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return collapsed ? "_" : "a"; };
+    virtual uint32_t height() const { return collapsed ? HEIGHT_FLAT : Person::height(); }
     bool collapsed = false;
 };
 
@@ -446,6 +456,7 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "r"; };
+    virtual uint32_t height() const { return HEIGHT_FLAT; }
     Coord home;
 };
 

@@ -1606,9 +1606,42 @@ bool Level::blocksLOS(const Coord& c) const
     return false;
 }
 
+static const Person* livePersonAt(const std::vector<Person*>& persons, const Coord& c)
+{
+    for (const auto p : persons) {
+        if (p->coord == c && p->stats.health > 0) return p;
+    }
+    return nullptr;
+}
+
+// Characters have a height. One at or above your eye level hides everything
+// behind it that isn't taller than itself. A lower one (a one-legged veteran
+// when you stand) hides only the square right behind it. Flat ones (rats,
+// someone lying down) hide nothing.
+bool Level::personBlocksView(const Coord& at, const Coord& to, uint32_t eye) const
+{
+    if (at == to) return false;
+    const Person* p = livePersonAt(persons, at);
+    if (!p) return false;
+    const uint32_t h = p->height();
+    if (h == HEIGHT_FLAT) return false;
+
+    const Person* target = livePersonAt(persons, to);
+    const uint32_t targetHeight = target ? target->height() : HEIGHT_FLAT;
+    if (targetHeight > h) return false; // seen over its head
+
+    if (h >= eye) return true;
+    const uint32_t dx = std::max(at.x, to.x) - std::min(at.x, to.x);
+    const uint32_t dy = std::max(at.y, to.y) - std::min(at.y, to.y);
+    return dx <= 1 && dy <= 1;
+}
+
 // return true if visibility ok
 bool Level::raycast(Coord from, const Coord& to) const
 {
+    const Person* viewer = livePersonAt(persons, from);
+    const uint32_t eye = viewer ? viewer->height() : HEIGHT_STANDING;
+
     // solid buildings always show their walls and plates; a walkable interior
     // (the Kremlin) is seen only through windows, the door or from inside
     bool originBuilding = false;
@@ -1634,7 +1667,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.y < to.y) ++from.y;
                 else if (from.y > to.y) --from.y;
-                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
+                block += (blocksLOS(from) || personBlocksView(from, to, eye)) ? 1 : 0;
                 if (block > 0) {
                     break;
                 }
@@ -1643,7 +1676,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.x < to.x) ++from.x;
                 else if (from.x > to.x) --from.x;
-                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
+                block += (blocksLOS(from) || personBlocksView(from, to, eye)) ? 1 : 0;
             }
 
             if (from == to)
@@ -1680,7 +1713,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.x < to.x) ++from.x;
                 else if (from.x > to.x) --from.x;
-                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
+                block += (blocksLOS(from) || personBlocksView(from, to, eye)) ? 1 : 0;
                 if (block > 0) {
                     break;
                 }
@@ -1689,7 +1722,7 @@ bool Level::raycast(Coord from, const Coord& to) const
             {
                 if (from.y < to.y) ++from.y;
                 else if (from.y > to.y) --from.y;
-                block += (blocksLOS(from) || hitPerson(from)) ? 1 : 0;
+                block += (blocksLOS(from) || personBlocksView(from, to, eye)) ? 1 : 0;
             }
 
             if (from == to)

@@ -1102,6 +1102,111 @@ TEST(breathing_smoke_makes_you_cough)
     CHECK(w.printer.saw("Savu") || w.printer.saw("savua"));
 }
 
+// ---- character height and line of sight ----
+
+static bool sees(World& w, uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
+{
+    return w.level.raycast(Coord{ x0, y0 }, Coord{ x1, y1 });
+}
+
+static Veteraani* veteran(World& w, Coord at, bool oneLegged)
+{
+    auto* v = w.spawn(new Veteraani(at));
+    v->oneLegged = oneLegged;
+    return v;
+}
+
+TEST(standing_person_hides_everything_behind)
+{
+    World w;
+    w.spawn(new Mummo({ 52, 50 }));
+    CHECK(!sees(w, 50, 50, 53, 50));
+    CHECK(!sees(w, 50, 50, 56, 50));
+}
+
+TEST(one_legged_veteran_hides_only_the_square_behind)
+{
+    World w;
+    veteran(w, { 52, 50 }, true);
+    CHECK(sees(w, 50, 50, 52, 50));  // the veteran himself
+    CHECK(!sees(w, 50, 50, 53, 50)); // right behind him
+    CHECK(sees(w, 50, 50, 54, 50));  // further back is in sight
+    CHECK(sees(w, 50, 50, 58, 50));
+}
+
+TEST(standing_person_right_behind_a_veteran_is_seen_over_him)
+{
+    World w;
+    veteran(w, { 52, 50 }, true);
+    w.spawn(new Mummo({ 53, 50 }));
+    CHECK(sees(w, 50, 50, 53, 50));
+}
+
+TEST(two_legged_veteran_blocks_like_anyone)
+{
+    World w;
+    veteran(w, { 52, 50 }, false);
+    CHECK(!sees(w, 50, 50, 54, 50));
+}
+
+TEST(rat_does_not_block_the_view)
+{
+    World w;
+    w.spawn(new Rotta({ 52, 50 }));
+    CHECK(sees(w, 50, 50, 53, 50));
+    CHECK(sees(w, 50, 50, 56, 50));
+}
+
+TEST(crawling_player_cannot_see_past_a_veteran)
+{
+    World w;
+    veteran(w, { 52, 50 }, true);
+    w.player.crawling = true;
+    CHECK(!sees(w, 50, 50, 54, 50));
+    // but a standing man behind him towers over his head
+    w.spawn(new Mummo({ 55, 50 }));
+    CHECK(sees(w, 50, 50, 55, 50));
+}
+
+TEST(crawling_player_still_sees_over_a_rat)
+{
+    World w;
+    w.spawn(new Rotta({ 52, 50 }));
+    w.player.crawling = true;
+    CHECK(sees(w, 50, 50, 55, 50));
+}
+
+TEST(crawling_player_hides_behind_a_veteran)
+{
+    World w({ 53, 50 });
+    veteran(w, { 52, 50 }, true);
+    auto* cop = w.spawn(new Cop({ 50, 50 }));
+    CHECK(cop->canSeeTarget(w.player.coord));
+    w.player.crawling = true;
+    CHECK(!cop->canSeeTarget(w.player.coord));
+}
+
+TEST(only_heavy_drinking_makes_you_crawl)
+{
+    World w;
+    w.player.stats.promilles = 10;
+    for (int i = 0; i < 500; ++i) w.player.updateCrawling();
+    CHECK(!w.player.crawling);
+
+    w.player.stats.promilles = 30;
+    bool crawled = false;
+    for (int i = 0; i < 500 && !crawled; ++i) { w.player.updateCrawling(); crawled = w.player.crawling; }
+    CHECK(crawled);
+    CHECK(w.printer.saw("Konttaat"));
+    CHECK(w.player.height() == HEIGHT_LOW);
+
+    // sobering up gets you back on your feet
+    w.player.stats.promilles = 10;
+    w.player.updateCrawling();
+    CHECK(!w.player.crawling);
+    CHECK(w.player.height() == HEIGHT_STANDING);
+}
+
 // ---- timing ----
 
 TEST(frame_clock_holds_twenty_fps)

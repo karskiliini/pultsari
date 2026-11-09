@@ -126,10 +126,24 @@ void Player::diseaseTick()
     if (stage >= 3 && common::realtimeEnabled && turn % 40 == 20 && stats.hunger > 0) --stats.hunger;
 }
 
+void Player::updateCrawling()
+{
+    if (!crawling) {
+        if (stats.promilles > CRAWL_PROMILLES && common::random(2)) {
+            crawling = true;
+            if (printer) printer->showMessage("Jalat pettävät. Konttaat eteenpäin nenä maata viistäen.", level, false);
+        }
+    } else if (stats.promilles <= CRAWL_PROMILLES || common::random(3)) {
+        crawling = false;
+        if (printer) printer->showMessage("Kömmit takaisin jaloillesi.", level, false);
+    }
+}
+
 void Player::updateTurn()
 {
     ++stats.turn;
     diseaseTick();
+    updateCrawling();
 
     if (common::realtimeEnabled) {
         // turns tick 2.5x per second in real-time: lose 0.1 promille every 50 s

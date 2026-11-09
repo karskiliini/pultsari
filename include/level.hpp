@@ -141,6 +141,8 @@ public:
     Vehicle* getVehicleAt(const Coord& c) const;
 
     bool raycast(Coord from, const Coord& to) const;
+    // does someone standing at `at` hide `to` from eyes at height `eye`?
+    bool personBlocksView(const Coord& at, const Coord& to, uint32_t eye) const;
     Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
     Building* raycastBuilding(const Coordinate<int>& from, const Coordinate<int>& vector) const;
 

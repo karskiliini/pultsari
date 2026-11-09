@@ -16,6 +16,8 @@ class Level;
 namespace PlayerNS {
 
 constexpr uint32_t INITIAL_HP = 10;
+// above this many tenths of a promille you may end up crawling on all fours
+constexpr uint32_t CRAWL_PROMILLES = 25;
 
 class Player : public Person {
 public:
@@ -24,6 +26,11 @@ public:
     virtual void updatepromilles(int p);
     virtual void updateMoney(int money);
     void updateTurn();
+    // very drunk: drop to all fours now and then, get up again later
+    void updateCrawling();
+    // crawling puts your eyes down at knee height
+    virtual uint32_t height() const { return (crawling && stats.health > 0) ? HEIGHT_LOW : Person::height(); }
+    bool crawling = false;
     void feedHunger(uint32_t amount);
 
     // a used needle went in; maybe HIV, the player is not told
