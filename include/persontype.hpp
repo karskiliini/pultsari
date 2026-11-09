@@ -20,7 +20,8 @@ enum PersonType {
     juoppo,
     sotilas,
     ilmatorjunta,
-    vartija
+    vartija,
+    putin
 };
 
 #endif

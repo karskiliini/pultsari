@@ -424,3 +424,17 @@ bool ViinaKellari::interact(PlayerNS::Player* player) {
     }
     return false;
 }
+
+// PUTININ PITKÄ PÖYTÄ
+PutinPoyta::PutinPoyta(const Coord& c) : Item(c, EBona) { blocksLOS = false; }
+std::string PutinPoyta::typeToChar() const { return "="; }
+std::string PutinPoyta::getMsg() const {
+    return "Putinin kuuluisa ylipitkä konferenssipöytä. Se on naurettavan pitkä.";
+}
+bool PutinPoyta::interact(PlayerNS::Player* player) {
+    int r = std::rand() % 4;
+    if (r == 2) {
+        player->inventory.kalja += 1;
+    }
+    return true;
+}

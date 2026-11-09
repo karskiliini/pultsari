@@ -296,6 +296,27 @@ void Cop::npcAct()
     Player* p = level->getPlayer();
     bool seesPlayer = canSeeTarget(p->coord);
 
+    if (level->celebrating) {
+        if (random(20)) {
+            static const char* party[] = {
+                "*hic* VAPAUS!",
+                "Putin on kuollut! *RÖYH*",
+                "Vodkaa kaikille!",
+                "*horskaa* Elämä on kaunista!",
+                "Kenraalit juoksee! *hic*",
+                "Ei enää sakkoja! *hic*",
+                "СВОБОДА! *röyh*",
+            };
+            say(party[std::rand()%7]);
+        }
+        if (random(30)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+        printer->showMessage(msg, level);
+        return;
+    }
+
     if (!level->attack)
     {
         if (seesPlayer && coord.distance(p->coord) == 1)
@@ -1588,6 +1609,27 @@ void Juoppo::npcAct()
 {
     string msg = "";
 
+    if (level->celebrating) {
+        if (random(15)) {
+            static const char* party[] = {
+                "PUTIN KUOLI! *RÖYH*",
+                "URAAA! *hic*",
+                "СВОБОДА! *glub*",
+                "Vodkaa! Lisää vodkaa!",
+                "On juhlat!",
+                "*RÖYH* Eläköön!",
+                "Diktaattori on poissa! *hic*",
+            };
+            say(party[std::rand()%7]);
+        }
+        if (random(50)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+        printer->showMessage(msg, level);
+        return;
+    }
+
     // stumble around drunkenly
     if (random(40)) {
         Direction d = randomDirection();
@@ -1686,6 +1728,48 @@ void FSBAgent::npcAct()
 
     string msg = "";
     Player* p = level->getPlayer();
+
+    if (level->putinDead && !level->celebrating) {
+        if (random(10)) {
+            static const char* rage[] = {
+                "УБИТЬ ЕГО!",
+                "За президента!",
+                "Предатель!",
+                "СМЕРТЬ!",
+                "Найти убийцу!",
+                "ТРЕВОГА!!!",
+            };
+            say(rage[std::rand()%6]);
+        }
+        if (p && coord.distance(p->coord) <= visionRange * 2) {
+            Direction d = getMoveDirection(p->coord);
+            move(d, msg);
+            if (coord.distance(p->coord) <= 1) {
+                p->damage(5);
+                say("За Путина!");
+            }
+        }
+        printer->showMessage(msg, level);
+        return;
+    }
+
+    if (level->celebrating) {
+        if (random(15)) {
+            static const char* panic[] = {
+                "Что происходит?!",
+                "*panikoi*",
+                "Президент... нет...",
+                "Эвакуация!",
+            };
+            say(panic[std::rand()%4]);
+        }
+        if (random(20)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+        printer->showMessage(msg, level);
+        return;
+    }
 
     // defenestration event: randomly pick an NPC to throw out a window
     if (defenCooldown > 0) --defenCooldown;
@@ -1812,6 +1896,52 @@ void Sotilas::npcAct()
 
     string msg = "";
     Player* p = level->getPlayer();
+
+    if (level->putinDead && !level->celebrating) {
+        if (random(10)) {
+            static const char* rage[] = {
+                "Тревога!",
+                "Убийца!",
+                "Стрелять!",
+                "За Родину!",
+                "Огонь по готовности!",
+            };
+            say(rage[std::rand()%5]);
+        }
+        if (p && coord.distance(p->coord) <= visionRange * 2) {
+            if (ammo > 0 && coord.distance(p->coord) <= 8) {
+                --ammo;
+                if (random(50)) {
+                    p->damage(std::rand()%4 + 3);
+                    say("Огонь!");
+                }
+            } else {
+                Direction d = getMoveDirection(p->coord);
+                move(d, msg);
+            }
+        }
+        printer->showMessage(msg, level);
+        return;
+    }
+
+    if (level->celebrating) {
+        if (random(20)) {
+            static const char* panic[] = {
+                "Komentoketju katkennut!",
+                "*pudottaa aseen*",
+                "Mitä tapahtui?!",
+                "Kenraali ei vastaa!",
+            };
+            say(panic[std::rand()%4]);
+        }
+        if (random(30)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+        printer->showMessage(msg, level);
+        return;
+    }
+
     bool seesPlayer = canSeeTarget(p->coord);
 
     if (seesPlayer && coord.distance(p->coord) <= visionRange) {
@@ -2062,5 +2192,186 @@ bool Vartija::interact(std::string& msg, Person* source)
 bool Vartija::interactThrow(Item* item, Person* source, std::string& msg)
 {
     msg = "Vartija väistää heittosi.";
+    return true;
+}
+
+// PUTIN
+
+Putin::Putin(const Coord& pos) : Person(putin, pos)
+{
+    stats.health = 15;
+}
+
+void Putin::npcAct()
+{
+    if (stats.health < 5) {
+        // stumbling and crying
+        if (common::random(5)) {
+            static const char* cries[] = {
+                "*nyyhkii* ...judoka... olen judoka...",
+                "*itkee* Missä on Shoigu?!",
+                "*nyyhkii* Tämä ei voi olla totta...",
+                "*horjuu* Länsi... länsi teki tämän...",
+                "*itkee* Я всемогущий... всемогущий...",
+                "*nyyhkii* Kim... Kim auta...",
+            };
+            say(cries[std::rand()%6]);
+        }
+        if (common::random(50)) {
+            auto d = randomDirection();
+            Coord next = coord;
+            switch(d) {
+                case DirectionNS::up: if (next.y > 0) --next.y; break;
+                case DirectionNS::down: ++next.y; break;
+                case DirectionNS::left: if (next.x > 0) --next.x; break;
+                case DirectionNS::right: ++next.x; break;
+                default: break;
+            }
+            if (!level->hitBuilding(next) && !level->hitPerson(next) && !level->hitItem(next)) {
+                coord = next;
+            }
+        }
+        return;
+    }
+
+    if (stats.health < 15) {
+        // hurt Putin paces frantically and rages
+        if (common::random(5)) {
+            static const char* rages[] = {
+                "Я ДЗЮДОИСТ!!! Я ДЗЮДОИСТ!!!",
+                "Heitän sinut rintamalle!",
+                "Minä olen VENÄJÄN PRESIDENTTI!",
+                "На колени, свинья!",
+                "ШОЙГУ! ГЕРАСИМОВ! СЮДА!",
+                "Länsi maksaa tästä!",
+                "Tiedätkö kuka minä olen?!",
+                "Minulla on YDINASEITA!",
+                "Soitan Kimille! SOITAN KIMILLE!",
+                "ОХРАНА! ОХРАНА! ОХРАНА!!!",
+            };
+            say(rages[std::rand()%10]);
+        }
+        if (common::random(15)) {
+            auto d = randomDirection();
+            Coord next = coord;
+            switch(d) {
+                case DirectionNS::up: if (next.y > 0) --next.y; break;
+                case DirectionNS::down: ++next.y; break;
+                case DirectionNS::left: if (next.x > 0) --next.x; break;
+                case DirectionNS::right: ++next.x; break;
+                default: break;
+            }
+            if (!level->hitBuilding(next) && !level->hitPerson(next) && !level->hitItem(next)) {
+                coord = next;
+            }
+        }
+        return;
+    }
+
+    // normal Putin paces around inside the Kremlin, occasionally muttering
+    if (common::random(10)) {
+        static const char* mutters[] = {
+            "Где мой чай...",
+            "Украина будет наша...",
+            "Позвоните Шойгу!",
+            "Запад нас боится...",
+            "Надо позвонить Ким Чен Ыну...",
+            "Столик накрыт?",
+        };
+        say(mutters[std::rand()%6]);
+    }
+
+    if (common::random(30)) {
+        auto d = randomDirection();
+        Coord next = coord;
+        switch(d) {
+            case DirectionNS::up: if (next.y > 0) --next.y; break;
+            case DirectionNS::down: ++next.y; break;
+            case DirectionNS::left: if (next.x > 0) --next.x; break;
+            case DirectionNS::right: ++next.x; break;
+            default: break;
+        }
+        if (!level->hitBuilding(next) && !level->hitPerson(next) && !level->hitItem(next)) {
+            coord = next;
+        }
+    }
+}
+
+bool Putin::interact(std::string& msg, Person* source)
+{
+    level->alertCops(source);
+
+    if (stats.health > 10) {
+        msg = "Putin: 'ОХРАНА! ОХРАНА!!'";
+        source->damage(2);
+        damage(3);
+        return true;
+    }
+
+    if (stats.health > 5) {
+        static const char* rages[] = {
+            "Putin: 'Я ДЗЮДОИСТ! Я тебя сломаю!'",
+            "Putin: 'Heitän sinut RINTAMALLE! RINTAMALLE!'",
+            "Putin: 'Minä olen VENÄJÄN PRESIDENTTI!'",
+            "Putin: 'На колени, свинья!'",
+            "Putin: 'ПОЗВОНИТЕ ШОЙГУ!!!'",
+            "Putin: 'Minulla on musta vyö judossa!'",
+            "Putin: 'Tunnetko judoheiton? TUNNETKO?!'",
+        };
+        msg = rages[std::rand()%7];
+        say("Я ДЗЮДОИСТ!!!");
+        source->damage(1);
+        damage(3);
+        return true;
+    }
+
+    // crying and desperate but still raging
+    static const char* cries[] = {
+        "Putin: '*nyyhkii* ...Я ВСЕМОГУЩИЙ!'",
+        "Putin: '*itkee* JUDOKA! Olen JUDOKA!!!'",
+        "Putin: 'Tämä on LÄNNEN salajuoni! *nyyhkii*'",
+        "Putin: '*itkee* ШОЙГУ! ГЕРАСИМОВ! КОГО-НИБУДЬ!'",
+        "Putin: '*nyyhkii* Minulla on ydinaseita... *nyyhkii*'",
+        "Putin: '*itkee* Kim... Kim auttaisi... *nyyhkii*'",
+        "Putin: '*nyyhkii* Judoheitolla... *horjuu* ...kaadan sinut...'",
+    };
+    msg = cries[std::rand()%7];
+    say("*nyyhkii*");
+    damage(3);
+    return true;
+}
+
+bool Putin::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    level->alertCops(source);
+    damage(2);
+
+    if (stats.health <= 0) {
+        msg = "Putin kaatuu! '*nyyhkii* Это... конец... дзюдоист... не может... проиграть...'";
+        return true;
+    }
+
+    if (stats.health > 10) {
+        msg = "Heittosi osuu Putinia! Putin: 'ОХРАНА!!!'";
+        say("ОХРАНА!!!");
+    } else if (stats.health > 5) {
+        static const char* rages[] = {
+            "Heittosi osuu! Putin: 'Я ДЗЮДОИСТ! En kaadu!'",
+            "Heittosi osuu! Putin: 'Rintamalle! RINTAMALLE!'",
+            "Heittosi osuu! Putin: 'Minä olen PRESIDENTTI!'",
+            "Heittosi osuu! Putin: 'Odotas kun soitan Kimille!'",
+        };
+        msg = rages[std::rand()%4];
+        say("Я ДЗЮДОИСТ!!!");
+    } else {
+        static const char* cries[] = {
+            "Heittosi osuu! Putin: '*itkee* Judoka ei kaadu... ei kaadu...'",
+            "Heittosi osuu! Putin: '*nyyhkii* Шойгу... auta...'",
+            "Heittosi osuu! Putin: '*itkee* Länsi... länsi teki tämän...'",
+            "Heittosi osuu! Putin: '*nyyhkii* ...musta vyö... *nyyhkii*'",
+        };
+        msg = cries[std::rand()%4];
+        say("*nyyhkii*");
+    }
     return true;
 }

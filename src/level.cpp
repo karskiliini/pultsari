@@ -195,6 +195,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case vartija:
                 p = new Vartija(coord);
                 break;
+            case putin:
+                p = new Putin(coord);
+                break;
             default:
                 break;
         }
@@ -256,6 +259,9 @@ void Level::cleanDead()
 
         for (auto& p : persons) {
             if ((p->stats.health == 0) && (p->type != pelaaja)) {
+                if (p->type == putin) {
+                    putinDead = true;
+                }
                 delete p;
                 p = nullptr;
 

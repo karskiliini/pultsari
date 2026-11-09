@@ -289,4 +289,13 @@ public:
     Level* level;
 };
 
+class PutinPoyta : public Item {
+public:
+    PutinPoyta(const Coord& c);
+    virtual ~PutinPoyta() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
 #endif

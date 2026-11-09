@@ -298,6 +298,29 @@ static void populatePersons(Level& level, const GameState& gs)
         }
     }
 
+    // Putin spawns inside the Kremlin + comically long conference table
+    for (auto b : level.buildings) {
+        if (b->type == EKremlin) {
+            Coord putinPos = { (b->wallLeft + b->wallRight) / 2, (b->wallTop + b->wallBot) / 2 };
+            if (!level.hit(putinPos)) {
+                level.createPerson(putinPos, putin);
+            }
+
+            // Putin's famous comically long conference table
+            uint32_t tableY = (b->wallTop + b->wallBot) / 2 - 2;
+            uint32_t tableStartX = b->wallLeft + 5;
+            uint32_t tableEndX = b->wallRight - 5;
+            for (uint32_t x = tableStartX; x <= tableEndX; ++x) {
+                Coord tc { x, tableY };
+                if (!level.hit(tc)) {
+                    PutinPoyta* table = new PutinPoyta(tc);
+                    level.addItem(table);
+                }
+            }
+            break;
+        }
+    }
+
 }
 
 static void populateVehicles(Level& level)
@@ -668,6 +691,25 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         level.cleanDiscardedItems();
                         player.updateTurn();
 
+                        // check Putin death -> celebration
+                        if (level.putinDead && !level.celebrating) {
+                            bool insideKremlin = false;
+                            for (auto b : level.buildings) {
+                                if (b->type == EKremlin) {
+                                    if (player.coord.x > b->wallLeft && player.coord.x < b->wallRight &&
+                                        player.coord.y > b->wallTop && player.coord.y < b->wallBot) {
+                                        insideKremlin = true;
+                                    }
+                                    break;
+                                }
+                            }
+                            if (!insideKremlin) {
+                                level.celebrating = true;
+                                player.killedPutin = true;
+                                printer->showMessage("Kansa tajuaa mitä tapahtui... PUTIN ON KUOLLUT! Juhla alkaa!", &level, false);
+                            }
+                        }
+
                         // check if player is at bus stop and bus is there
                         for (auto& v : level.vehicles) {
                             Bus* bus = dynamic_cast<Bus*>(v);
@@ -773,6 +815,25 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     if (level.events) level.events->update();
                     level.cleanDead();
                     level.cleanDiscardedItems();
+
+                    // check Putin death -> celebration
+                    if (level.putinDead && !level.celebrating) {
+                        bool insideKremlin = false;
+                        for (auto b : level.buildings) {
+                            if (b->type == EKremlin) {
+                                if (player.coord.x > b->wallLeft && player.coord.x < b->wallRight &&
+                                    player.coord.y > b->wallTop && player.coord.y < b->wallBot) {
+                                    insideKremlin = true;
+                                }
+                                break;
+                            }
+                        }
+                        if (!insideKremlin) {
+                            level.celebrating = true;
+                            player.killedPutin = true;
+                            printer->showMessage("Kansa tajuaa mitä tapahtui... PUTIN ON KUOLLUT! Juhla alkaa!", &level, false);
+                        }
+                    }
 
                     if (turn) {
                         player.updateTurn();

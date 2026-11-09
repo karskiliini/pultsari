@@ -586,14 +586,22 @@ std::string Seina::getWalkMsg() const { return "Isket paasi aseman seinaan. Miel
 
 // KREMLIN
 Kremlin::Kremlin() : Building(BuildingType::EKremlin) {
-    wallRight = 72;
+    wallRight = 45;
     wallTop = 0;
-    wallLeft = 58;
-    wallBot = 6;
+    wallLeft = 0;
+    wallBot = 20;
 
     door = DirectionNS::down;
-    windows.push_back({wallLeft, 3});
-    windows.push_back({wallRight, 3});
+    windows.push_back({wallLeft, 5});
+    windows.push_back({wallRight, 5});
+    windows.push_back({wallLeft, 10});
+    windows.push_back({wallRight, 10});
+    windows.push_back({wallLeft, 15});
+    windows.push_back({wallRight, 15});
+    windows.push_back({10, wallTop});
+    windows.push_back({20, wallTop});
+    windows.push_back({30, wallTop});
+    windows.push_back({40, wallTop});
 }
 
 std::string Kremlin::getName() const
@@ -613,42 +621,20 @@ bool Kremlin::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 
 bool Kremlin::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Edess\xC3\xA4si avautuu suuri juhlasali. Putinin p\xC3\xB6yt\xC3\xA4 odottaa. Istuutko? (K/E)";
+    if (level && level->putinDead) {
+        msg = "Kremlin on kaaoksessa. Henkivartijat juoksevat ympäriinsä.";
+    } else {
+        msg = "Valtavat salit kaikuvat askeleistasi. Kreml on sisältä koomisen suuri.";
+    }
     return true;
 }
 
 void Kremlin::interact(PlayerNS::Player* player, std::string& msg)
 {
-    auto choice = Input::getInputPutka();
-
-    int roll = std::rand() % 100;
-    if (choice) {
-        if (roll < 40) {
-            msg = "Putin ny\xC3\xB6kk\xC3\xA4\xC3\xA4: 'Istu, tovarish.' Juot Ch\xC3\xA2teau P\xC3\xA9trus -viini\xC3\xA4...\n";
-            msg += "Mutta vodkaan on lis\xC3\xA4tty Novitshokia! N\xC3\xA4k\xC3\xB6si sumenee...";
-            player->damage(std::rand()%5 + 3);
-            player->updatepromilles(10);
-            if (std::rand() % 100 < 50) {
-                msg += "\nPutin: 'Tarvitsen lis\xC3\xA4\xC3\xA4 miehi\xC3\xA4 rintamalle.'";
-                player->inJail = true;
-            } else {
-                msg += "\nOnnistut hoippumaan viinakellariin...";
-                player->wonGame = true;
-            }
-        } else {
-            msg = "Putin: 'Hyv\xC3\xA4 mies. Juo!' Maistelet viinej\xC3\xA4...\n";
-            msg += "Putin sammuu p\xC3\xB6yt\xC3\xA4\xC3\xA4n! Nyt on tilaisuutesi!";
-            player->wonGame = true;
-        }
+    if (level && level->putinDead) {
+        msg = "Kaaos! Pääse ulos Kremlistä!";
     } else {
-        if (roll < 30) {
-            msg = "Putin: 'Miksi et istu? Vartijat!'";
-            player->damage(std::rand()%3 + 2);
-            player->inJail = true;
-        } else {
-            msg = "Livahtadit juhlap\xC3\xB6yd\xC3\xA4n ohi kohti viinakellaria...";
-            player->wonGame = true;
-        }
+        msg = "Kuljet loputtomien salien läpi. Katto häviää korkeuksiin.";
     }
 }
 

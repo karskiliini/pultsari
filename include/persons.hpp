@@ -265,4 +265,15 @@ public:
     bool fleeing = false;
 };
 
+class Putin : public Person {
+public:
+    Putin(const Coord& pos);
+    virtual ~Putin() = default;
+
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "\xD0\x9F"; };
+};
+
 #endif

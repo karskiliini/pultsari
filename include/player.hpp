@@ -55,6 +55,7 @@ public:
     uint32_t warLevelsCompleted = 0;
     bool hasKremlinPass = false;
     bool wonGame = false;
+    bool killedPutin = false;
 };
 
 }

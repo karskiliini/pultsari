@@ -93,6 +93,8 @@ public:
     bool pathFinding = false;
     bool isWarLevel = false;
     bool isBolshoi = false;
+    bool putinDead = false;
+    bool celebrating = false;
 };
 
 
