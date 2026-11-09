@@ -159,6 +159,8 @@ public:
     bool isBolshoi = false;
     bool putinDead = false;
     bool celebrating = false;
+    // the player is dead and the world just carries on: nobody notices the body
+    bool playerDead = false;
 
     AudioSystem audio;
 };

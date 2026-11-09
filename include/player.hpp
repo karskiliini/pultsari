@@ -40,7 +40,7 @@ public:
     virtual bool throwItem();
 
     // back from the front, the pultsari is now a "veteran"
-    virtual std::string typeToChar() const { return isVeteran() ? "V" : "@"; };
+    virtual std::string typeToChar() const { return stats.health == 0 ? "x" : isVeteran() ? "V" : "@"; };
     bool isVeteran() const;
 
     Inventory inventory;

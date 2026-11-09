@@ -380,7 +380,7 @@ void Level::droneImpact(const Coord& c, Building* target)
     if (refinery) refinery->burning = 900;
 
     const PlayerNS::Player* player = getPlayer();
-    if (player && canHear(player->coord, c, 60, true)) {
+    if (player && !playerDead && canHear(player->coord, c, 60, true)) {
         if (refinery) printer->showMessage("DRONE-ISKU! \xD0\x9D\xD0\x9F\xD0\x97 syttyi palamaan! Myrkyllist\xC3\xA4 savua!", this, false);
         else if (target) printer->showMessage("DRONE-ISKU! " + target->getName() + " sai osuman!", this, false);
         else printer->showMessage("DRONE-ISKU!", this, false);
@@ -937,7 +937,7 @@ std::string Level::nameOf(const Person* p) const
 static bool tryPickpocket(Level* level, Person* p)
 {
     PlayerNS::Player* player = level->getPlayer();
-    if (!player || player->stats.money == 0 || p->coord.distance(player->coord) > 1) return false;
+    if (!player || level->playerDead || player->stats.money == 0 || p->coord.distance(player->coord) > 1) return false;
     if ((uint32_t)(std::rand() % 800) >= theftMotivation(p->type)) return false;
 
     const uint32_t amount = std::max<uint32_t>(1, player->stats.money * (5 + std::rand() % 26) / 100);

@@ -82,6 +82,9 @@ public:
     std::string levelName;
     // accidental-discharge risk while aiming a pistol (0..1), or negative when not shooting
     float aimRisk = -1.0f;
+    // map view size in cells; grows when the camera zooms out after death
+    uint32_t viewW = 80;
+    uint32_t viewH = 28;
     int aimLength = 20;     // a lowered pistol's laser only reaches a few steps
 
     PlayerNS::Player* player = nullptr;

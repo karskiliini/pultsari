@@ -37,7 +37,8 @@ void PrinterWeb::print(Level* l)
 {
     string j = "{\"t\":\"frame\",\"msg\":" + jsonString(msg) +
                ",\"lvl\":" + jsonString(levelName) +
-               ",\"cam\":[" + to_string(l->cameraX) + "," + to_string(l->cameraY) + "]";
+               ",\"cam\":[" + to_string(l->cameraX) + "," + to_string(l->cameraY) + "]" +
+               ",\"cols\":" + to_string(viewW) + (l->playerDead ? ",\"dead\":1" : "");
 
     if (player) {
         const auto& s = player->stats;
@@ -68,7 +69,7 @@ void PrinterWeb::print(Level* l)
 
     // map rows as runs of glyphs sharing an SGR colour
     j += ",\"rows\":[";
-    for (uint32_t y = 0; y < common::VIEWPORT_H; ++y) {
+    for (uint32_t y = 0; y < viewH; ++y) {
         j += y ? ",[" : "[";
         string text;
         string color;

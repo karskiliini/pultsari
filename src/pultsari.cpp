@@ -17,6 +17,8 @@
 #include <iostream>
 #include <exception>
 #include <cmath>
+#include <chrono>
+#include <algorithm>
 #include <cstdlib>
 
 using std::cout;
@@ -600,8 +602,92 @@ static InputNS::InputType applyDrunkEffects(InputNS::InputType input, PlayerNS::
     return input;
 }
 
-void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFinding)
+// After death the world carries on as if nothing happened. The body stays where
+// it fell; in the browser the camera slowly zooms out until the whole city is
+// a speck, and then the intro plays again. Any key starts a new life at once.
+static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, Printer* printer, const std::string& cause)
 {
+    constexpr uint32_t FRAME_MS = 50;
+    constexpr uint32_t WORLD_TICK = 8;
+    constexpr uint32_t ZOOM_MS = 22000;
+    const bool web = common::webMode();
+
+    level.playerDead = true;
+    mask.enabled = false; // the camera rises above the rooftops
+    level.audio.clear();
+    printer->removeMessage();
+
+    const std::string card = cause + " Onneksi Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 syntyy joka p\xC3\xA4iv\xC3\xA4 uusia juoppoja.";
+    if (web) {
+        common::webSend("{\"t\":\"death\",\"cause\":" + common::jsonString(cause) +
+                        ",\"mummot\":" + std::to_string(player.scoreBoard.mummot) +
+                        ",\"kaikki\":" + std::to_string(player.scoreBoard.kaikki) + "}");
+    } else {
+        printer->setMessage(card + " Paina mit\xC3\xA4 tahansa n\xC3\xA4pp\xC3\xA4int\xC3\xA4.");
+    }
+
+    while (InputNS::Input::getRawCharNonBlocking() != 0) { }
+
+    const float maxZoom = (float)common::SIZEX / common::VIEWPORT_W;
+    bool zoomedOut = false;
+    // big frames take time to build, so the zoom follows the wall clock, not frame counts
+    const auto start = std::chrono::steady_clock::now();
+    for (uint32_t frame = 0;; ++frame) {
+        const uint32_t t = (uint32_t)std::chrono::duration_cast<std::chrono::milliseconds>(
+            std::chrono::steady_clock::now() - start).count();
+        bool key = false;
+        for (char k; (k = InputNS::Input::getRawCharNonBlocking()) != 0;) key = true;
+        if (key && t > 800) break;
+
+        level.npcFrame(FRAME_MS);
+        level.vehicleFrame(FRAME_MS);
+        if (frame % WORLD_TICK == 0) {
+            level.audio.clear();
+            level.buildingTurn();
+            level.spreadNews();
+            level.updateVehicles();
+            level.skyTick();
+            if (level.events) level.events->update();
+        }
+        level.cleanDead();
+        level.cleanDiscardedItems();
+        level.stepAnimations();
+        printer->msgTtl = 0;
+        printer->removeMessage();
+
+        if (web) {
+            // the same zoom rate all the way: the view grows by a constant factor per second
+            const float progress = std::min(1.0f, (float)t / ZOOM_MS);
+            const float zoom = std::pow(maxZoom, progress);
+            printer->viewW = std::min<uint32_t>(common::SIZEX, (uint32_t)(common::VIEWPORT_W * zoom));
+            printer->viewH = std::min<uint32_t>(common::SIZEY, (uint32_t)(common::VIEWPORT_H * zoom));
+            const int cx = (int)player.coord.x - (int)printer->viewW / 2;
+            const int cy = (int)player.coord.y - (int)printer->viewH / 2;
+            level.cameraX = std::max(0, std::min(cx, (int)(common::SIZEX - printer->viewW)));
+            level.cameraY = std::max(0, std::min(cy, (int)(common::SIZEY - printer->viewH)));
+            // big views are heavy to send: fewer frames the further out we are
+            const uint32_t every = 1 + printer->viewW * printer->viewH / 5000;
+            if (frame % every == 0) printer->print(&level);
+            if (t > ZOOM_MS + 2000) { zoomedOut = true; break; }
+        } else {
+            printer->setMessage(card + " Paina mit\xC3\xA4 tahansa n\xC3\xA4pp\xC3\xA4int\xC3\xA4.");
+            printer->print(&level);
+        }
+        common::sleep(FRAME_MS);
+    }
+
+    printer->viewW = common::VIEWPORT_W;
+    printer->viewH = common::VIEWPORT_H;
+    if (zoomedOut) {
+        // back to the intro; the page sends a key when it is over
+        common::webSend("{\"t\":\"restart\"}");
+        while (InputNS::Input::getRawCharNonBlocking() == 0) common::sleep(20);
+    }
+}
+
+bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFinding)
+{
+    bool restart = false;
 #ifdef ANIMATIONS_ENABLED
     common::animsEnabled = animsEnabled;
 #endif
@@ -1144,25 +1230,23 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         gameState.sendToWar();
                         nextLevel = true;
                     } else {
-                        printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä... Game over!");
-                        printer->print(&level);
-                        quit = true;
+                        mourn(level, mask, player, printer, "Kuolit putkaan sotaoikeuden j\xC3\xA4lkeen. Kukaan ei kysynyt per\xC3\xA4\xC3\xA4n.");
+                        quit = restart = true;
                     }
                     break;
                 } else if (player.stats.health < 1) {
-                    quit = true;
-                    printer->setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
-                    printer->print(&level);
+                    mourn(level, mask, player, printer, "SURUVIESTI: Olet heitt\xC3\xA4nyt henkesi.");
+                    quit = restart = true;
                     break;
                 } else if (player.stats.promilles < 1) {
-                    quit = true;
-                    printer->setMessage("Yhktäkkii tajuat krapuliuksen tulevan. Et kestä enää...");
-                    printer->print(&level);
+                    player.stats.health = 0;
+                    mourn(level, mask, player, printer, "SURUVIESTI: Krapula vei sinut.");
+                    quit = restart = true;
                     break;
                 } else if (player.stats.promilles > 34 && common::random(10)) {
-                    quit = true;
-                    printer->setMessage("HIC ! .... Kompastut omiin jalkoihisi...huomaat ettet elä ennee...");
-                    printer->print(&level);
+                    player.stats.health = 0;
+                    mourn(level, mask, player, printer, "SURUVIESTI: Joit itsesi hengilt\xC3\xA4.");
+                    quit = restart = true;
                     break;
                 }
 
@@ -1318,10 +1402,12 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         common::sleep(2000);
     }
 
+    if (restart) return true;
     if (!skipWaitKey) InputNS::Input::waitKey();
     printer->endGame();
     printer->printScore(&player.scoreBoard);
     InputNS::Input::waitKey();
+    return false;
 }
 
 int init(int argc, char *argv[], Printer* printer)
@@ -1381,7 +1467,8 @@ int init(int argc, char *argv[], Printer* printer)
     }
 
     try {
-        mainloop(printer, stage, losEnabled, animsEnabled, pathFinding);
+        // every death is followed by a new drunk; Z quits for good
+        while (mainloop(printer, stage, losEnabled, animsEnabled, pathFinding)) { }
     }
     catch(const std::out_of_range& e)
     {

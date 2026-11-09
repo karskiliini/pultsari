@@ -2,7 +2,10 @@
 // and layers pixel effects (blood, explosions) on top. No terminal involved.
 (function () {
     const COLS = 80, ROWS = 28;
-    const CW = 10, CH = 18;          // cell size in CSS pixels
+    const CW = 10, CH = 18;          // normal cell size in CSS pixels
+    const W = COLS * CW, H = ROWS * CH;
+    // the grid can grow when the camera zooms out; cells shrink to fit the canvas
+    let cols = COLS, rows = ROWS, cw = CW, ch = CH;
     const FONT = '15px ui-monospace, "Cascadia Code", Menlo, Consolas, monospace';
     const FONT_BOLD = 'bold ' + FONT;
 
@@ -84,7 +87,7 @@
     // world cell -> screen pixel (cell centre)
     function toScreen(wx, wy) {
         if (!frame) return [0, 0];
-        return [(wx - frame.cam[0]) * CW + CW / 2, (wy - frame.cam[1]) * CH + CH / 2];
+        return [(wx - frame.cam[0]) * cw + cw / 2, (wy - frame.cam[1]) * ch + ch / 2];
     }
 
     // ---------- effects ----------
@@ -124,7 +127,21 @@
     // ---------- messages from the game ----------
     function handle(m) {
         switch (m.t) {
-            case 'frame': frame = m; updateUi(m); break;
+            case 'frame':
+                frame = m;
+                cols = m.cols || COLS;
+                rows = m.rows.length || ROWS;
+                cw = W / cols;
+                ch = H / rows;
+                updateUi(m);
+                if (!m.dead) ui.death.hidden = true;
+                break;
+            case 'death':
+                ui.death.hidden = false;
+                ui.deathCause.textContent = m.cause;
+                ui.deathScore.textContent = `Hakatut mummot ${m.mummot} · Kaikki hakatut ${m.kaikki}`;
+                break;
+            case 'restart': if (ui.onRestart) ui.onRestart(); break;
             case 'invmenu': invMenu = m; invMenuAt = performance.now(); break;
             case 'aim': aim = m; aimAt = performance.now(); break;
             case 'snd': if (window.SFX) SFX.play(m.n, m.v); break;
@@ -183,7 +200,10 @@
             canvas.style.filter = `brightness(${mood.b.toFixed(3)}) saturate(${mood.s.toFixed(3)}) hue-rotate(${swim.toFixed(1)}deg)`;
         }
         ctx.fillStyle = '#000';
-        ctx.fillRect(0, 0, COLS * CW, ROWS * CH);
+        ctx.fillRect(0, 0, W, H);
+        const scale = cw / CW;         // effects shrink with the zoom
+        const tiny = cw < 5;           // too small for letters: draw each glyph as a pixel block
+        const font = `${Math.max(4, Math.round(ch * 0.83))}px ui-monospace, "Cascadia Code", Menlo, Consolas, monospace`;
         ctx.textBaseline = 'middle';
         ctx.textAlign = 'center';
 
@@ -194,29 +214,36 @@
                 for (const [text, sgr] of runs) {
                     const st = parseSgr(sgr);
                     const n = Array.from(text).length;
-                    if (st.bg) { ctx.fillStyle = st.bg; ctx.fillRect(x * CW, y * CH, n * CW, CH); }
+                    if (st.bg) { ctx.fillStyle = st.bg; ctx.fillRect(x * cw, y * ch, n * cw + 0.5, ch + 0.5); }
                     x += n;
                 }
             });
             // stains lie on the ground under everyone
             for (const s of stains) {
                 const [sx, sy] = toScreen(s.wx - 0.5, s.wy - 0.5);
-                const px = sx + s.ox, py = sy + s.oy;
-                if (px < -20 || py < -20 || px > COLS * CW + 20 || py > ROWS * CH + 20) continue;
+                const px = sx + s.ox * scale, py = sy + s.oy * scale;
+                if (px < -20 || py < -20 || px > W + 20 || py > H + 20) continue;
                 ctx.fillStyle = s.color;
-                if (s.round) { ctx.beginPath(); ctx.arc(px, py, s.size, 0, Math.PI * 2); ctx.fill(); }
-                else ctx.fillRect(Math.round(px), Math.round(py), s.size, s.size);
+                const size = Math.max(1, s.size * scale);
+                if (s.round) { ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI * 2); ctx.fill(); }
+                else ctx.fillRect(Math.round(px), Math.round(py), size, size);
             }
             // glyphs
             frame.rows.forEach((runs, y) => {
                 let x = 0;
                 for (const [text, sgr] of runs) {
                     const st = parseSgr(sgr);
-                    ctx.font = st.bold ? FONT_BOLD : FONT;
+                    ctx.font = cw === CW ? (st.bold ? FONT_BOLD : FONT) : (st.bold ? 'bold ' : '') + font;
                     ctx.fillStyle = st.fg;
                     ctx.globalAlpha = st.dim ? 0.55 : 1;
-                    for (const ch of text) {
-                        if (ch !== ' ') ctx.fillText(ch, x * CW + CW / 2, y * CH + CH / 2 + 1);
+                    for (const g of text) {
+                        if (g !== ' ') {
+                            if (tiny) {
+                                if (g !== '.') ctx.fillRect(x * cw, y * ch + ch * 0.2, Math.max(1, cw), Math.max(1, ch * 0.6));
+                            } else {
+                                ctx.fillText(g, x * cw + cw / 2, y * ch + ch / 2 + 1);
+                            }
+                        }
                         x++;
                     }
                 }
@@ -232,7 +259,7 @@
             p.life -= dt;
             const [sx, sy] = toScreen(p.wx - 0.5, p.wy - 0.5);
             ctx.fillStyle = p.color;
-            ctx.fillRect(Math.round(sx + p.ox), Math.round(sy + p.oy), p.size, p.size);
+            ctx.fillRect(Math.round(sx + p.ox * scale), Math.round(sy + p.oy * scale), Math.max(1, p.size * scale), Math.max(1, p.size * scale));
             if (p.life <= 0) {
                 if (p.stain) addStain(p.wx, p.wy, p.ox, p.oy, p.color, p.size, false);
                 particles.splice(i, 1);
@@ -244,12 +271,13 @@
             const k = f.t / 0.35;
             if (k >= 1) { flashes.splice(i, 1); continue; }
             const [sx, sy] = toScreen(f.wx - 0.5, f.wy - 0.5);
-            const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, f.r * (0.6 + k));
+            const r = f.r * scale;
+            const g = ctx.createRadialGradient(sx, sy, 0, sx, sy, r * (0.6 + k));
             g.addColorStop(0, `rgba(255,240,180,${0.9 * (1 - k)})`);
             g.addColorStop(0.4, `rgba(255,140,30,${0.6 * (1 - k)})`);
             g.addColorStop(1, 'rgba(255,60,0,0)');
             ctx.fillStyle = g;
-            ctx.fillRect(sx - f.r * 2, sy - f.r * 2, f.r * 4, f.r * 4);
+            ctx.fillRect(sx - r * 2, sy - r * 2, r * 4, r * 4);
         }
 
         // aiming line, and the accidental-discharge meter while a pistol is cocked

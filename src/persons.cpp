@@ -70,6 +70,7 @@ Person* Person::currentTarget()
 bool Person::canSeeTarget(const Coord& target) const
 {
     if (blind) return false;
+    if (level->playerDead && level->getPlayer() && target == level->getPlayer()->coord) return false;
     // someone standing in a bush can only be spotted from right next to it
     if (level->hitLOSBlocker(target) && coord.distance(target) > 1) return false;
     if (visionRange == 0) return true;
@@ -81,7 +82,7 @@ bool Person::canSeeTarget(const Coord& target) const
 
 void Person::report(const std::string& msg)
 {
-    if (msg.empty()) return;
+    if (msg.empty() || level->playerDead) return;
     const Person* p = level->getPlayer();
     if (!p) return;
     const bool seen = coord.distance(p->coord) <= 12 && level->raycast(p->coord, coord);

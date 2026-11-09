@@ -278,6 +278,7 @@ const char* personColor(const Person* p)
     if (p->clothing) return p->clothing;
     switch (p->type) {
         case pelaaja:
+            if (p->stats.health == 0) return "1;31";   // the body
             return static_cast<const Player*>(p)->isVeteran()
                 ? "1;38;5;107"          // faded front-line khaki
                 : "1;38;5;180";         // the pultsari's shabby beige coat
@@ -358,7 +359,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 {
     uint32_t worldY = y + (uint32_t)l->cameraY;
     vector<std::pair<string, string>> cells;
-    cells.reserve(common::VIEWPORT_W);
+    cells.reserve(viewW);
     auto emit = [&](const string& glyph, const string& color) { cells.emplace_back(glyph, color); };
 
     struct RowAnim { uint32_t x; vector<string> chars; const char* color; };
@@ -403,7 +404,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         }
     }
 
-    for (uint32_t vx = 0; vx < common::VIEWPORT_W; ++vx) {
+    for (uint32_t vx = 0; vx < viewW; ++vx) {
         uint32_t x = vx + (uint32_t)l->cameraX;
         Coord coord { x, worldY };
         bool found = false;

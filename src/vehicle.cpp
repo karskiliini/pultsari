@@ -309,6 +309,10 @@ void Car::frame(uint32_t ms)
     if (level->getVehicleAt(next)) return;
 
     Person* p = level->getPerson(next);
+    if (p && p->type == pelaaja && level->playerDead) {
+        common::hitEvent(next, 2);
+        p = nullptr;
+    }
     if (p) {
         // mostly the driver leans on the horn; sometimes they don't brake at all
         if (waiting < 6 && common::random(80)) {
