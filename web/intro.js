@@ -38,6 +38,13 @@
         const cyrX = Math.round(latinX + (latinW - cyrW) / 2);
         const cyrY = Math.round(baseY + fs * 1.15); // the very next line
         const floorY = Math.round(cyrY + fs * 1.6);
+        // darkening over the background picture so the title and the vomit stay readable
+        const shade = ctx.createLinearGradient(0, 0, 0, H);
+        const stop = (v) => Math.min(1, Math.max(0, v / H));
+        shade.addColorStop(0, 'rgba(0,0,0,0.2)');
+        shade.addColorStop(stop(baseY - fs * 2.2), 'rgba(0,0,0,0.5)');
+        shade.addColorStop(stop(floorY + fs * 1.8), 'rgba(0,0,0,0.5)');
+        shade.addColorStop(1, 'rgba(0,0,0,0.15)');
 
         // ---- masks at fluid resolution ----
         const FW = Math.ceil(W / CELL);
@@ -991,7 +998,13 @@
             updateDrips();
 
             ctx.clearRect(0, 0, W, HT);
-            ctx.fillStyle = '#000';
+            if (!montageAt && window.AdArt) {
+                // the game ad burns behind the title; darkest where the letters and the vomit are
+                AdArt.draw(ctx, W, H, t);
+                ctx.fillStyle = shade;
+            } else {
+                ctx.fillStyle = '#000';
+            }
             ctx.fillRect(0, 0, W, H);
 
             if (montageAt) {

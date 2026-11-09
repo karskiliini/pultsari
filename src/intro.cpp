@@ -2,8 +2,11 @@
 #include "printer.hpp"
 #include "input.hpp"
 #include "common.hpp"
+#include "introart.hpp"
 #include <string>
 #include <iostream>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 namespace IntroNS {
 
@@ -30,6 +33,72 @@ static void wait(uint32_t ms)
     }
 }
 
+// The game ad as the background picture: the largest version that fits the
+// terminal, centred under the title text. Nothing is drawn if none fits.
+static const IntroArt::Picture* picture = nullptr;
+static int picX = 1, picY = 1;   // screen position of its top left cell (1-based)
+
+static void placePicture()
+{
+    picture = nullptr;
+    winsize ws{};
+    if (ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) != 0 || ws.ws_col == 0)
+        return;
+    for (int i = 0; i < IntroArt::PICTURE_COUNT; ++i) {
+        const auto& p = IntroArt::PICTURES[i];
+        // keep the last row free so the terminal never scrolls
+        if (p.cols <= ws.ws_col && p.rows < ws.ws_row) {
+            picture = &p;
+            break;
+        }
+    }
+    if (!picture)
+        return;
+    constexpr int TEXT_CENTER = 55; // middle of the title and its vomit
+    picX = TEXT_CENTER - picture->cols / 2;
+    if (picX + picture->cols - 1 > ws.ws_col) picX = ws.ws_col - picture->cols + 1;
+    if (picX < 1) picX = 1;
+    picY = 1;
+}
+
+static string colour(int fg, int bg)
+{
+    return "\033[38;5;" + std::to_string(fg) + ";48;5;" + std::to_string(bg) + "m";
+}
+
+static void drawPicture()
+{
+    if (!picture)
+        return;
+    const auto& p = *picture;
+    string out;
+    for (int y = 0; y < p.rows; ++y) {
+        out += "\033[" + std::to_string(picY + y) + ";" + std::to_string(picX) + "H";
+        int lastFg = -1, lastBg = -1;
+        for (int x = 0; x < p.cols; ++x) {
+            const int fg = p.fg[y * p.cols + x], bg = p.bg[y * p.cols + x];
+            if (fg != lastFg || bg != lastBg) {
+                out += colour(fg, bg);
+                lastFg = fg; lastBg = bg;
+            }
+            out += p.chars[y][x];
+        }
+        out += "\033[0m";
+    }
+    cout << out;
+}
+
+// What the picture shows at screen position (y, x), 1-based: used to repaint
+// a cell after something moved over it.
+static string pictureCell(int y, int x)
+{
+    if (!picture || y < picY || x < picX || y >= picY + picture->rows || x >= picX + picture->cols)
+        return " ";
+    const auto& p = *picture;
+    const int py = y - picY, px = x - picX;
+    return colour(p.fg[py * p.cols + px], p.bg[py * p.cols + px]) + p.chars[py][px] + "\033[0m";
+}
+
 static void typewrite(const string& text, uint32_t delayMs)
 {
     for (size_t i = 0; i < text.length(); ++i) {
@@ -51,8 +120,10 @@ void Intro::show()
     constexpr int CENTER_X = 30;
     constexpr int TITLE_Y = 4;
 
-    // clear screen
+    // clear screen, then the game ad as the background
     cout << "\033[2J\033[H";
+    placePicture();
+    drawPicture();
 
     // typewrite the title letter by letter
     char posBuf[64];
@@ -125,7 +196,7 @@ void Intro::show()
             cout.flush();
             wait(14);
             at(y, SUB_X + i);
-            cout << " ";
+            cout << pictureCell(y, SUB_X + i);
         }
         at(CYR_Y, SUB_X + i);
         cout << "\033[1;31m" << cyrillic[i] << "\033[0m";
@@ -161,6 +232,8 @@ void Intro::show()
     }
     InputNS::Input::noraw();
 
+    // the picture is larger than the game screen: leave nothing of it behind
+    cout << "\033[0m\033[2J\033[H";
     printer->clear();
 }
 

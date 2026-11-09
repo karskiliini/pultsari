@@ -56,11 +56,13 @@
         #death .hint { color: #f2d34a; margin-top: 6px; }
         #start {
             position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; z-index: 6;
-            align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.88);
-            font-size: 1.1em; cursor: pointer; text-align: center; padding: 16px;
+            align-items: center; justify-content: flex-end; background: rgba(0, 0, 0, 0.25);
+            font-size: 1.1em; cursor: pointer; text-align: center; padding: 16px 16px 5%;
+            text-shadow: 0 0 4px #000, 0 0 8px #000, 0 0 12px #000;
         }
         #start strong { color: var(--red); letter-spacing: 2px; }
-        #start span { color: var(--muted); font-size: 0.8em; }
+        #start strong { background: rgba(0, 0, 0, 0.7); padding: 4px 10px; }
+        #start span { color: #bbb; font-size: 0.8em; background: rgba(0, 0, 0, 0.7); padding: 2px 8px; }
         .controls { margin-top: 10px; color: var(--muted); font-size: 0.78em; text-align: center; line-height: 2; max-width: 820px; }
         kbd { background: #1d1d1d; border: 1px solid #444; border-radius: 3px; padding: 1px 5px; color: #ddd; }
         #mute { margin-left: 8px; background: #1d1d1d; color: #ddd; border: 1px solid #444; border-radius: 3px; padding: 2px 8px; font: inherit; font-size: 0.9em; cursor: pointer; }
@@ -118,6 +120,8 @@
 
     <script src="sfx.js"></script>
     <script src="montage.js"></script>
+    <script src="adart-data.js"></script>
+    <script src="adart.js"></script>
     <script src="intro.js"></script>
     <script src="game.js"></script>
     <script>
@@ -216,6 +220,8 @@
 
         // browsers only allow audio after a user gesture, so start on the first key or click
         const startOverlay = $('start');
+        // the game ad, animated, behind the start screen; the intro draws it on its own canvas
+        const stopStartArt = window.AdArt ? AdArt.mount($('screen'), 5) : () => {};
         let started = false;
         function start(e) {
             if (started) return;
@@ -223,6 +229,7 @@
             if (e) { e.preventDefault(); e.stopPropagation(); }
             SFX.init();
             startOverlay.remove();
+            stopStartArt();
             setStatus('', '');
             window.removeEventListener('keydown', start, true);
             const launch = () => {
