@@ -8,12 +8,17 @@
         const W = container.clientWidth;
         const H = container.clientHeight;
         const dpr = window.devicePixelRatio || 1;
+        // the canvas reaches past the screen's bottom border down to the window edge,
+        // so the vomit can pile up on the border and ooze over it, out of sight
+        const rect = container.getBoundingClientRect();
+        const HT = Math.max(H + 40, Math.round(window.innerHeight - rect.top));
 
         const canvas = document.createElement('canvas');
         canvas.width = Math.round(W * dpr);
-        canvas.height = Math.round(H * dpr);
-        Object.assign(canvas.style, { position: 'absolute', inset: '0', width: W + 'px', height: H + 'px', background: '#000', zIndex: 5 });
-        container.appendChild(canvas);
+        canvas.height = Math.round(HT * dpr);
+        Object.assign(canvas.style, { position: 'fixed', left: rect.left + 'px', top: rect.top + 'px',
+                                      width: W + 'px', height: HT + 'px', background: 'transparent', zIndex: 50 });
+        document.body.appendChild(canvas);
         const ctx = canvas.getContext('2d');
         ctx.scale(dpr, dpr);
 
@@ -36,7 +41,7 @@
 
         // ---- masks at fluid resolution ----
         const FW = Math.ceil(W / CELL);
-        const FH = Math.ceil(H / CELL);
+        const FH = Math.ceil(HT / CELL);
         function textMask(text, x, y) {
             const c = document.createElement('canvas');
             c.width = FW; c.height = FH;
@@ -62,9 +67,10 @@
         const cyr = textMask(cyrText, cyrX, cyrY);
         const filled = new Uint8Array(FW * FH);
         let filledCount = 0;
-        // the vomit runs off the bottom of the screen, smearing the edge a little on the way
-        const bottomCell = FH - 1;
-        const smear = new Uint8Array(FW * 2);
+        // the vomit first piles up on the screen's bottom border, then oozes over it and drips away
+        const floorCell = Math.floor(H / CELL) - 1;
+        const smear = new Uint8Array(FW * 3); // stains on the border rows
+        const leakSpots = [];
 
         // ---- fluid: particles with gravity, pressure, cohesion and viscosity ----
         const MAX = 1600;
@@ -72,17 +78,19 @@
         const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
         // 0 = watery, 1 = thick slime: every splash is half water, the rest stays thick
         const thick = new Float32Array(MAX);
+        const rest = new Uint16Array(MAX);   // frames spent lying on the border
+        const leak = new Uint8Array(MAX);    // 1 = oozing over the edge
         let n = 0;
         const G = 0.03, R0 = 1.15, H_ = 2.3, K = 0.09, COH = 0.009, VISC = 0.13;
         const grid = new Map();
 
         function emit(x, y, ux, uy, th = 1) {
             if (n >= MAX) return;
-            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; n++;
+            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; rest[n] = 0; leak[n] = 0; n++;
         }
         function remove(i) {
             n--;
-            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n];
+            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n]; rest[i] = rest[n]; leak[i] = leak[n];
         }
         const at = (mask, x, y) => {
             const cx = x | 0, cy = y | 0;
@@ -132,11 +140,37 @@
                 px[i] += vx[i]; py[i] += vy[i];
                 if (px[i] < 1) { px[i] = 1; vx[i] *= -0.3; }
                 if (px[i] > FW - 2) { px[i] = FW - 2; vx[i] *= -0.3; }
-                if (py[i] >= bottomCell) {
+                if (!leak[i] && py[i] >= floorCell) {
+                    // lands on the border and pools there
+                    py[i] = floorCell; if (vy[i] > 0) vy[i] *= -0.05; vx[i] *= 0.85;
                     const sx = px[i] | 0;
-                    if (Math.random() < 0.3) smear[(Math.random() < 0.6 ? FW : 0) + sx] = 1 + (thick[i] > 0.5);
-                    remove(i);
-                    continue;
+                    if (rest[i] === 0 && Math.random() < 0.25) smear[(Math.random() < 0.5 ? FW : 0) + sx] = 1 + (thick[i] > 0.5);
+                    if (rest[i] < 65000) rest[i]++;
+                    if (leakSpots.length < 7 && rest[i] === 1 && Math.random() < 0.015) leakSpots.push(px[i]);
+                    // the puddle creeps toward the nearest drip and slowly goes over the edge there
+                    let near = -1, best = 1e9;
+                    for (const sp of leakSpots) { const d = Math.abs(sp - px[i]); if (d < best) { best = d; near = sp; } }
+                    if (near >= 0) {
+                        vx[i] += Math.sign(near - px[i]) * 0.004;
+                        if (best < 2.5 && rest[i] > 40 + 160 * thick[i] && Math.random() < 0.04) {
+                            leak[i] = 1; py[i] = floorCell + 0.6; vy[i] = 0.02;
+                            smear[2 * FW + (px[i] | 0)] = 2;
+                            // slime pulls its neighbours over the edge with it: a strand, not a drop
+                            for (let j = 0; j < n; j++) {
+                                if (leak[j] || j === i || rest[j] < 15) continue;
+                                if (Math.abs(px[j] - px[i]) < 1.6 && Math.random() < 0.5) {
+                                    leak[j] = 1; py[j] = floorCell + 0.2; vy[j] = 0.01; px[j] = px[i] + (Math.random() - 0.5) * 0.8;
+                                }
+                            }
+                        }
+                    }
+                } else if (leak[i]) {
+                    // hanging slime: oozes slowly at first, then lets go and falls
+                    const below = py[i] - floorCell;
+                    const cap = 0.03 + 0.018 * below * (1.2 - thick[i]);
+                    if (vy[i] > cap) vy[i] = cap;
+                    vx[i] *= 0.6;
+                    if (py[i] >= FH - 1) { remove(i); continue; }
                 }
                 // drips that land in the Cyrillic letters set there and form the word
                 const cx = px[i] | 0, cy = py[i] | 0;
@@ -187,6 +221,14 @@
             thickness.fill(0);
             for (let i = 0; i < n; i++) {
                 const cx = px[i] | 0, cy = py[i] | 0;
+                if (leak[i]) {
+                    // a hanging string of slime back up to the border
+                    const len = Math.min(cy - floorCell, 3 + ((i * 7) % 4));
+                    for (let k = 1; k <= len; k++) {
+                        const y = cy - k;
+                        if (y >= 0 && y < FH) { density[y * FW + cx] += 1; thickness[y * FW + cx] += thick[i]; }
+                    }
+                }
                 for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
                     const x = cx + ox, y = cy + oy;
                     if (x < 0 || y < 0 || x >= FW || y >= FH) continue;
@@ -199,9 +241,10 @@
             for (let i = 0; i < FW * FH; i++) {
                 const o = i * 4;
                 const row = (i / FW) | 0;
-                if (row >= FH - 2 && smear[(row - (FH - 2)) * FW + (i % FW)]) {
-                    // stains left on the bottom edge: slime darker than the watery splashes
-                    const slime = smear[(row - (FH - 2)) * FW + (i % FW)] === 2;
+                const sr = row - floorCell;
+                if (sr >= 0 && sr < 3 && density[i] < 0.85 && smear[sr * FW + (i % FW)]) {
+                    // stains left on the bottom border: slime darker than the watery splashes
+                    const slime = smear[sr * FW + (i % FW)] === 2;
                     d[o] = slime ? 70 : 140; d[o + 1] = slime ? 105 : 160; d[o + 2] = slime ? 20 : 70; d[o + 3] = 210;
                     continue;
                 }
@@ -227,6 +270,8 @@
 
         function text(str, x, y, color, size) {
             ctx.font = size ? `bold ${size}px ui-monospace, Menlo, monospace` : font;
+            ctx.textAlign = 'left';
+            ctx.textBaseline = 'alphabetic';
             ctx.fillStyle = color;
             ctx.fillText(str, x, y);
         }
@@ -268,8 +313,25 @@
             }
             step(); step();
 
+            ctx.clearRect(0, 0, W, HT);
             ctx.fillStyle = '#000';
             ctx.fillRect(0, 0, W, H);
+
+            if (montageAt) {
+                // the credits own the screen; the last of the vomit still drips off the border below it
+                if (!montageDone && !Montage.draw(ctx, W, H, t - montageAt)) montageDone = true;
+                if (montageDone) { ctx.fillStyle = '#000'; ctx.fillRect(0, 0, W, H); Montage.titleCard(ctx, W, H, 1); }
+                if (montageDone && Math.floor(t * 2) % 2 === 0) {
+                    text('Paina mitä tahansa näppäintä  ·  Välilyönti aloittaa heti',
+                         W / 2 - fs * 7.6, H - fs * 1.2, '#ddd', fs * 0.4);
+                }
+                ctx.save();
+                ctx.beginPath(); ctx.rect(0, H - 2 * CELL, W, HT - H + 2 * CELL); ctx.clip();
+                drawFluid();
+                ctx.restore();
+                requestAnimationFrame(frame);
+                return;
+            }
 
             const typed = Math.min(titleText.length, Math.floor(t / 0.11));
             text(titleText.slice(0, typed), startX, baseY, '#fff');
@@ -287,16 +349,8 @@
 
             // then the opening credits roll, to the theme
             if (doneAt && t - doneAt > 2.6 && window.Montage) {
-                if (!montageAt) {
-                    montageAt = t;
-                    stopTheme = window.SFX ? SFX.startTheme(Montage.duration() + 1) : () => {};
-                }
-                if (!montageDone && !Montage.draw(ctx, W, H, t - montageAt)) montageDone = true;
-                if (montageDone) Montage.titleCard(ctx, W, H, 1);
-                if (montageDone && Math.floor(t * 2) % 2 === 0) {
-                    text('Paina mitä tahansa näppäintä  ·  Välilyönti aloittaa heti',
-                         W / 2 - fs * 7.6, H - fs * 1.2, '#ddd', fs * 0.4);
-                }
+                montageAt = t;
+                stopTheme = window.SFX ? SFX.startTheme(Montage.duration() + 1) : () => {};
             }
             requestAnimationFrame(frame);
         }
@@ -316,7 +370,7 @@
             // Space starts the game; any other key skips ahead, and once the credits are done, starts too
             if (e.key === ' ' || montageDone) { finish(); return; }
             if (montageAt) { montageDone = true; stopTheme(); }
-            else if (doneAt) { montageAt = -1; montageDone = true; }
+            else if (doneAt) { montageAt = -1; montageDone = true; stopTheme(); }
         }
         window.addEventListener('keydown', onKey, true);
         canvas.addEventListener('click', () => { if (montageDone) finish(); });
