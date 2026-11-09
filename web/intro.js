@@ -62,8 +62,9 @@
         const cyr = textMask(cyrText, cyrX, cyrY);
         const filled = new Uint8Array(FW * FH);
         let filledCount = 0;
-        // the vomit runs all the way down and pools against the bottom edge of the screen
-        const floorCell = FH - 2;
+        // the vomit runs off the bottom of the screen, smearing the edge a little on the way
+        const bottomCell = FH - 1;
+        const smear = new Uint8Array(FW * 2);
 
         // ---- fluid: particles with gravity, pressure, cohesion and viscosity ----
         const MAX = 1600;
@@ -131,7 +132,12 @@
                 px[i] += vx[i]; py[i] += vy[i];
                 if (px[i] < 1) { px[i] = 1; vx[i] *= -0.3; }
                 if (px[i] > FW - 2) { px[i] = FW - 2; vx[i] *= -0.3; }
-                if (py[i] >= floorCell) { py[i] = floorCell; vy[i] *= -0.1; vx[i] *= 0.92; }
+                if (py[i] >= bottomCell) {
+                    const sx = px[i] | 0;
+                    if (Math.random() < 0.3) smear[(Math.random() < 0.6 ? FW : 0) + sx] = 1 + (thick[i] > 0.5);
+                    remove(i);
+                    continue;
+                }
                 // drips that land in the Cyrillic letters set there and form the word
                 const cx = px[i] | 0, cy = py[i] | 0;
                 if (at(cyr.mask, cx, cy) && !filled[cy * FW + cx] && Math.random() < 0.45) {
@@ -192,6 +198,13 @@
             const d = img.data;
             for (let i = 0; i < FW * FH; i++) {
                 const o = i * 4;
+                const row = (i / FW) | 0;
+                if (row >= FH - 2 && smear[(row - (FH - 2)) * FW + (i % FW)]) {
+                    // stains left on the bottom edge: slime darker than the watery splashes
+                    const slime = smear[(row - (FH - 2)) * FW + (i % FW)] === 2;
+                    d[o] = slime ? 70 : 140; d[o + 1] = slime ? 105 : 160; d[o + 2] = slime ? 20 : 70; d[o + 3] = 210;
+                    continue;
+                }
                 if (filled[i]) {
                     const [r, g, b] = wordColor((i / FW) | 0, i % FW);
                     d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;

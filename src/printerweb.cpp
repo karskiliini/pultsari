@@ -25,7 +25,7 @@ void PrinterWeb::printChar(string c)
 void PrinterWeb::printScore(const ScoreBoard* scoreBoard)
 {
     const uint32_t total = scoreBoard->mummot + scoreBoard->kaikki;
-    webSend("{\"t\":\"score\",\"mummot\":" + to_string(scoreBoard->mummot) +
+    webSend("{\"t\":\"score\",\"babuškat\":" + to_string(scoreBoard->mummot) +
             ",\"kaikki\":" + to_string(scoreBoard->kaikki) + ",\"total\":" + to_string(total) + "}");
 }
 

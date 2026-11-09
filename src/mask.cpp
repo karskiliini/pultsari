@@ -43,7 +43,7 @@ void Mask::init()
     // standing in a lit room shows the whole room
     const Building* litRoom = nullptr;
     for (auto b : level->buildings) {
-        if (b->lit && b->hitBuilding(c)) { litRoom = b; break; }
+        if ((b->lit || b->walkable) && b->hitBuilding(c)) { litRoom = b; break; }
     }
 
     uint32_t startX = (level->cameraX > 0) ? (uint32_t)level->cameraX : 0;

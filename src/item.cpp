@@ -94,7 +94,7 @@ bool Pamppu::interact(PlayerNS::Player* player)
 Veitsi::Veitsi(const Coord& c) : Item(c, EVeitsi) { }
 std::string Veitsi::typeToChar() const { return "/"; }
 std::string Veitsi::getMsg() const {
-    return "Teroita veitsesi mummoihin.";
+    return "Teroita veitsesi babuškoihin.";
 }
 bool Veitsi::interact(PlayerNS::Player* player)
 {
@@ -154,7 +154,7 @@ bool Kala::interact(PlayerNS::Player* player)
 Omppo::Omppo(const Coord& c) : Item(c, EOmppo) { }
 std::string Omppo::typeToChar() const { return "o"; }
 std::string Omppo::getMsg() const {
-    return "Omppo. Sen voi syödä, jos uskaltaa.";
+    return "Antonovka. Sen voi syödä, jos uskaltaa.";
 }
 bool Omppo::interact(PlayerNS::Player* player)
 {
@@ -236,7 +236,7 @@ Viesti::Viesti(const Coord& c) : Item(c, EViesti) { }
 std::string Viesti::typeToChar() const { return "?"; }
 std::string Viesti::getMsg() const {
     const vector<string> viestit = {
-        "Mummoilla on rahaa. Ja eläke, jota ei makseta.",
+        "Babuškailla on rahaa. Ja eläke, jota ei makseta.",
         "Politsijat ovat käyneet punttisalilla. Ja ottaneet sinun lompakkosi.",
         "Rupla on vakaa. Vakaasti alaspäin.",
         "Älä seiso ikkunan lähellä.",
@@ -244,25 +244,25 @@ std::string Viesti::getMsg() const {
         "Propusk avaa Kremlin portit.",
         "Всё идёт по плану.",
         "Vodka ei jäädy. Sinä jäädyt.",
-        "Mummot tietävät, missä FSB asuu.",
+        "Babuškat tietävät, missä FSB asuu.",
         "Границы России нигде не заканчиваются.",
         "Импортозамещение: iPhone on nyt puinen.",
         "Kremlin viinakellari on Putinin pöydän päässä.",
         "Varkaille kannattaa antaa pamppua.",
         "Vankikarkuri kupsahtaa vasta kolmannella pampulla.",
         "Voblaa kannattaa syödä harkiten.",
-        "Mummot saattavat huitaista käsilaukulla.",
+        "Babuškat saattavat huitaista käsilaukulla.",
         "Viinakauppa ei myy humaltuneille. Teoriassa.",
         "Panttilainaamo ei osta juopuneilta.",
         "Varo paskaa. Siihen liukastuu.",
         "Gopnikit kyykkivät. Älä katso heitä silmiin.",
-        "Vasja lainaa kaljaa. Vasja ei koskaan palauta.",
+        "Yevgeni lainaa pivoa. Yevgeni ei koskaan palauta.",
         "Vokzalilta lähtee juna rintamalle. Paluulippuja ei myydä.",
         "IKEA palaa. Joskus. Мы вернёмся.",
         "Televisio kertoo, että kaikki on hyvin. Televisio ei valehtele.",
         "Jos otat, et aja. Jos et ota, sinut värvätään.",
         "Vinkki: politsijat vaarantavat terveytesi!",
-        "Груз 200 ei ole kaljamerkki.",
+        "Груз 200 ei ole pivomerkki.",
         "Burb!",
         };
 

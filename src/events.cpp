@@ -256,7 +256,7 @@ void EnvironmentEvents::defenestration()
         "Kuulet huudon ylhäältä... joku tippui ikkunasta.",
         "Näet liikkeen kerrostalon katolla... joku putoaa!",
         "Sirpaleet räsähtävät! Joku lensi ikkunasta.",
-        "'Se oli itsemurha', kuulet poliisin sanovan...",
+        "'Se oli itsemurha', kuulet politsijan sanovan...",
     };
 
     uint32_t idx = std::rand() % 4;
@@ -405,7 +405,7 @@ void EnvironmentEvents::militaryParade()
     for (auto& p : level->persons) {
         if (p->stats.health > 0 && p->coord.y >= paradeY - 1 && p->coord.y <= paradeY + 1) {
             if (p->type == pelaaja) {
-                level->printer->showMessage("Sotilaspoliisi: 'Pois tielt\xC3\xA4 tai rintamalle!'", level, false);
+                level->printer->showMessage("Sotilaspolitsija: 'Pois tielt\xC3\xA4 tai rintamalle!'", level, false);
                 p->damage(std::rand()%2 + 1);
             } else if (p->type != poliisi && p->type != fsb) {
                 p->damage(std::rand()%2 + 1);

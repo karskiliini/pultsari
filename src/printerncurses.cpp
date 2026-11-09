@@ -87,17 +87,17 @@ void PrinterNcurses::printInventory(uint32_t /* y */, Inventory* inventory)
     constexpr uint32_t x_offset = 1;
     const auto& i = *inventory;
 
-    mvwprintw((WINDOW*)inventorywindow, 1, x_offset, (std::string("1. KALJAA    ") + inventoryAligned(i.kalja)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 2, x_offset, (std::string("2. LONKKA    ") + inventoryAligned(i.lonkka)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 3, x_offset, (std::string("3. LENKKI    ") + inventoryAligned(i.lenkki)).c_str());
+    mvwprintw((WINDOW*)inventorywindow, 1, x_offset, (std::string("1. PIVOA    ") + inventoryAligned(i.kalja)).c_str());
+    mvwprintw((WINDOW*)inventorywindow, 2, x_offset, (std::string("2. JAGUAR    ") + inventoryAligned(i.lonkka)).c_str());
+    mvwprintw((WINDOW*)inventorywindow, 3, x_offset, (std::string("3. MAKKARA    ") + inventoryAligned(i.lenkki)).c_str());
     mvwprintw((WINDOW*)inventorywindow, 4, x_offset, (std::string("4. KETJUT    ") + inventoryAligned(i.ketjut)).c_str());
     mvwprintw((WINDOW*)inventorywindow, 5, x_offset, (std::string("5. VEITSET   ") + inventoryAligned(i.veitset)).c_str());
     mvwprintw((WINDOW*)inventorywindow, 6, x_offset, (std::string("6. KIVET     ") + inventoryAligned(i.kivet)).c_str());
     mvwprintw((WINDOW*)inventorywindow, 7, x_offset, (std::string("7. PAMPUT    ") + inventoryAligned(i.pamput)).c_str());
     mvwprintw((WINDOW*)inventorywindow, 8, x_offset, (std::string("8. BOOTSIT   ") + inventoryAligned(i.bootsit)).c_str());
     mvwprintw((WINDOW*)inventorywindow, 9, x_offset, (std::string("9. KALAT     ") + inventoryAligned(i.kalat)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 10, x_offset, (std::string("A. OMPPO     ") + inventoryAligned(i.omppo)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 11, x_offset, (std::string("B. BANSKU    ") + inventoryAligned(i.bansku)).c_str());
+    mvwprintw((WINDOW*)inventorywindow, 10, x_offset, (std::string("A. ANTONOVKA     ") + inventoryAligned(i.omppo)).c_str());
+    mvwprintw((WINDOW*)inventorywindow, 11, x_offset, (std::string("B. BANAANI    ") + inventoryAligned(i.bansku)).c_str());
 }
 
 void PrinterNcurses::printStats(Level* l, Stats* stats)
@@ -123,12 +123,12 @@ void PrinterNcurses::printChar(string c)
 
 void PrinterNcurses::printScore(const ScoreBoard* scoreBoard)
 {
-    mvwprintw((WINDOW*)engameWindow, 6, 10, (std::string("Hakkaamasi mummelit  : ") + std::to_string(scoreBoard->mummot) + "              " + "\n").c_str());
+    mvwprintw((WINDOW*)engameWindow, 6, 10, (std::string("Hakkaamasi babuškat  : ") + std::to_string(scoreBoard->mummot) + "              " + "\n").c_str());
     mvwprintw((WINDOW*)engameWindow, 7, 10, (std::string("Kaikki hakatut oliot : ") + std::to_string(scoreBoard->kaikki) + "              " + "\n").c_str());
     mvwprintw((WINDOW*)engameWindow, 8, 10, (std::string("------------------------------") + "              " + "\n").c_str());
     mvwprintw((WINDOW*)engameWindow, 9, 10, ("Yhteispistetilanteesi: " + std::to_string(scoreBoard->mummot + scoreBoard->kaikki) +  "              ").c_str());
 
-    mvwprintw((WINDOW*)engameWindow, 13, 10, "Kiitos Pultsarin pelaamisesta!              \n");
+    mvwprintw((WINDOW*)engameWindow, 13, 10, "Kiitos Bomžin pelaamisesta!              \n");
 
 
     box((WINDOW*)engameWindow, 0, 0);

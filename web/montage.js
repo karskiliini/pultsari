@@ -34,7 +34,7 @@
             ],
         },
         {
-            who: 'SEKÄ', name: 'MUMMO, 84', line: 'Pelasti perunat droonilta. Taas.',
+            who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Pelasti perunat droonilta. Taas.',
             color: '#d07a9a',
             art: [
                 '      __',
@@ -49,7 +49,7 @@
             },
         },
         {
-            who: 'SEKÄ', name: 'PULTSARI', line: 'Korjaa Ladan teipillä ja vodkalla.',
+            who: 'SEKÄ', name: 'BOMŽ', line: 'Korjaa Ladan teipillä ja vodkalla.',
             color: '#e2b46a',
             art: [
                 '   [VODKA]   ~~~~~~ teippiä ~~~~~~',

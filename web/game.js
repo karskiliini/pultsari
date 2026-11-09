@@ -211,7 +211,7 @@
             case 'death':
                 ui.death.hidden = false;
                 ui.deathCause.textContent = m.cause;
-                ui.deathScore.textContent = `Hakatut mummot ${m.mummot} · Kaikki hakatut ${m.kaikki}`;
+                ui.deathScore.textContent = `Hakatut babuškat ${m.mummot} · Kaikki hakatut ${m.kaikki}`;
                 break;
             case 'restart': if (ui.onRestart) ui.onRestart(); break;
             case 'invmenu': invMenu = m; invMenuAt = performance.now(); break;
@@ -225,7 +225,7 @@
             case 'text': ui.text.hidden = false; ui.text.textContent += m.s; break;
             case 'score':
                 ui.text.hidden = false;
-                ui.text.textContent += `\n\nПРОТОКОЛ · PÖYTÄKIRJA\n\nHakatut mummot   ${m.mummot}\nKaikki hakatut   ${m.kaikki}\nPISTEET          ${m.total}\n\nВсё идёт по плану. Kiitos pelaamisesta.`;
+                ui.text.textContent += `\n\nПРОТОКОЛ · PÖYTÄKIRJA\n\nHakatut babuškat   ${m.mummot}\nKaikki hakatut   ${m.kaikki}\nPISTEET          ${m.total}\n\nВсё идёт по плану. Kiitos pelaamisesta.`;
                 break;
         }
     }

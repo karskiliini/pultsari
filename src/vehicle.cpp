@@ -342,7 +342,7 @@ void Car::frame(uint32_t ms)
         if (script == Script::Chase && blocker == chasing) {
             chasing->script = Script::Parked;
             script = Script::Parked;
-            level->audio.addSound(coord, SoundType::Fight, "RYS\xC3\x84YS! Poliisi rammaa pakoauton!", "Kolarin ryskett\xC3\xA4", "...kolarin rysk\xC3\xA4ys...", 40);
+            level->audio.addSound(coord, SoundType::Fight, "RYS\xC3\x84YS! Politsija rammaa pakoauton!", "Kolarin ryskett\xC3\xA4", "...kolarin rysk\xC3\xA4ys...", 40);
             common::boomEvent(next, 1);
         }
         return;

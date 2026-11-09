@@ -625,7 +625,7 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
     const std::string card = cause + " Onneksi Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 syntyy joka p\xC3\xA4iv\xC3\xA4 uusia juoppoja.";
     if (web) {
         common::webSend("{\"t\":\"death\",\"cause\":" + common::jsonString(cause) +
-                        ",\"mummot\":" + std::to_string(player.scoreBoard.mummot) +
+                        ",\"babuškat\":" + std::to_string(player.scoreBoard.mummot) +
                         ",\"kaikki\":" + std::to_string(player.scoreBoard.kaikki) + "}");
     } else {
         printer->setMessage(card + " Paina mit\xC3\xA4 tahansa n\xC3\xA4pp\xC3\xA4int\xC3\xA4.");
@@ -847,7 +847,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             common::sound("glug");
                             player.updatepromilles(2);
                             feedHunger(2);
-                        } else printer->showMessage("Ei kaljaa.", &level, false);
+                        } else printer->showMessage("Ei pivoa.", &level, false);
                         break;
                     case 1: // lonkka (Jaguar)
                         if (inv.lonkka > 0) {
@@ -884,7 +884,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             --inv.lenkki; player.powerup(1);
                             printer->showMessage("Mamamamakkaraa.", &level, false);
                             feedHunger(25);
-                        } else printer->showMessage("Ei lenkkiä.", &level, false);
+                        } else printer->showMessage("Ei makkaraa.", &level, false);
                         break;
                     case 4: // kala
                         if (inv.kalat > 0) {
@@ -896,14 +896,14 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     case 5: // omppo
                         if (inv.omppo > 0) {
                             --inv.omppo;
-                            if (random(50)) { player.damage(1); printer->showMessage("Omppo oli pilaantunut.", &level, false); }
+                            if (random(50)) { player.damage(1); printer->showMessage("Antonovka oli pilaantunut.", &level, false); }
                             else { player.powerup(2); printer->showMessage("orb.", &level, false); feedHunger(15); }
-                        } else printer->showMessage("Ei omppoa.", &level, false);
+                        } else printer->showMessage("Ei antonovkaa.", &level, false);
                         break;
                     case 6: // bansku
                         if (inv.bansku > 0) {
                             --inv.bansku;
-                            if (random(50)) { printer->showMessage("Bansku ei vaikuttanut.", &level, false); feedHunger(5); }
+                            if (random(50)) { printer->showMessage("Banaani ei vaikuttanut.", &level, false); feedHunger(5); }
                             else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); feedHunger(10); }
                         } else printer->showMessage("Ei banaania.", &level, false);
                         break;
@@ -1267,13 +1267,13 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 if (player.inJail) {
                     player.inJail = false;
                     if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
-                        printer->setMessage("Poliisit vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
+                        printer->setMessage("Politsijat vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
                         printer->print(&level);
                         common::sleep(2000);
                         gameState.sendToWar();
                         nextLevel = true;
                     } else {
-                        mourn(level, mask, player, printer, "Kuolit putkaan sotaoikeuden j\xC3\xA4lkeen. Kukaan ei kysynyt per\xC3\xA4\xC3\xA4n.");
+                        mourn(level, mask, player, printer, "Kuolit SIZOssa sotaoikeuden j\xC3\xA4lkeen. Kukaan ei kysynyt per\xC3\xA4\xC3\xA4n.");
                         quit = restart = true;
                     }
                     break;
@@ -1382,13 +1382,13 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 if (player.inJail) {
                     player.inJail = false;
                     if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
-                        printer->setMessage("Poliisit vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
+                        printer->setMessage("Politsijat vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
                         printer->print(&level);
                         InputNS::Input::waitKey();
                         gameState.sendToWar();
                         nextLevel = true;
                     } else {
-                        printer->setMessage("Putkassa... Game over!");
+                        printer->setMessage("SIZOssa... Game over!");
                         printer->print(&level);
                         quit = true;
                     }

@@ -517,6 +517,11 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         if (!found) {
             roadCell(l, coord, c, color);
             col = color;
+            if (groundVisible && col.empty()) {
+                for (auto b : l->buildings) {
+                    if (b->walkable && b->hitBuilding(coord) && !b->hitWall(coord)) { col = "48;5;52"; break; }
+                }
+            }
             // drifting gas: grey exhaust, yellowish toxic smoke
             if (groundVisible) {
                 const int gasKind = l->gasAt(coord);
@@ -583,12 +588,12 @@ void Printer::print(Level* level)
 std::vector<OverlayItem> overlayItems(const Inventory* inventory)
 {
     return {
-        {"KALJA",     inventory->kalja,    true,  true,  "[E] juo  "},
+        {"PIVO",     inventory->kalja,    true,  true,  "[E] juo  "},
         {"JAGUAR",    inventory->lonkka,   true,  true,  "[E] juo  "},
         {"VODKA",     inventory->vodka,    true,  true,  "[E] juo  "},
         {"MAKKARA",   inventory->lenkki,   true,  true,  "[E] syö  "},
         {"VOBLA",     inventory->kalat,    true,  true,  "[E] syö  "},
-        {"OMPPO",     inventory->omppo,    true,  true,  "[E] syö  "},
+        {"ANTONOVKA",     inventory->omppo,    true,  true,  "[E] syö  "},
         {"BANAANI",   inventory->bansku,   true,  true,  "[E] syö  "},
         {"KETJUT",    inventory->ketjut,   false, true,  "         "},
         {"VEITSI",    inventory->veitset,  false, true,  "         "},

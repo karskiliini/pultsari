@@ -515,7 +515,7 @@ void Level::robberyTick()
             r.police->reckless = true;
             r.police->speed = 100;
             r.police->direction = -1;
-            if (heard(r.police->coord, 40)) printer->showMessage("Poliisiauto l\xC3\xA4htee takaa-ajoon!", this, false);
+            if (heard(r.police->coord, 40)) printer->showMessage("Politsijan auto l\xC3\xA4htee takaa-ajoon!", this, false);
         }
         if (r.car->gone || r.car->script == Car::Script::Parked) {
             r.stage = Robbery::Stage::Idle;
@@ -1083,12 +1083,12 @@ std::string Level::nameOf(const Person* p) const
 {
     switch (p->type) {
         case juoppo:       return dynamic_cast<const Juoppo*>(p)->name;
-        case mummo:        return "Mummo";
+        case mummo:        return "Babuška";
         case poliisi:      return "Politsija";
         case varas:        return "Varas";
         case vanki:        return "Pakovanki";
         case skinhead:     return "Skinhead";
-        case yka:          return "Vasja";
+        case yka:          return "Yevgeni";
         case jengi:        return "Gopnik";
         case ryostaja:     return "Ry\xC3\xB6st\xC3\xA4j\xC3\xA4";
         case diileri:      return "Diileri";
@@ -1126,7 +1126,7 @@ static bool tryPickpocket(Level* level, Person* p)
     if (isWeak(p)) {
         p->fleeActions = 20;
         const Veteraani* v = dynamic_cast<const Veteraani*>(p);
-        p->say(p->type == lapsi ? "H\xC3\xA4h\xC3\xA4\xC3\xA4! Kiitti rahoista, pultsari!"
+        p->say(p->type == lapsi ? "H\xC3\xA4h\xC3\xA4\xC3\xA4! Kiitti rahoista, bomž!"
                : (v && v->oneLegged) ? "*k\xC3\xB6p\xC3\xB6tt\xC3\xA4\xC3\xA4 karkuun*" : "*kipitt\xC3\xA4\xC3\xA4 karkuun*");
     } else {
         p->say("Mit\xC3\xA4 tuijotat? Haluatko lis\xC3\xA4\xC3\xA4?");
@@ -1266,7 +1266,8 @@ bool Level::blocksLOS(const Coord& c) const
     {
         if (b->hitBuilding(c))
         {
-            if (b->hitWall(c) && !b->hitWindow(c) && !b->hitDoor(c))
+            const bool seeThroughWindow = b->hitWindow(c) && (!b->walkable || b->lit);
+            if (b->hitWall(c) && !seeThroughWindow && !b->hitDoor(c))
                 return true;
         }
     }

@@ -114,8 +114,8 @@ void PrinterTerm::printInventory(uint32_t y, Inventory* inventory)
 {
     const auto& i = *inventory;
     const SideEntry all[] = {
-        {"KALJA", i.kalja}, {"JAGUAR", i.lonkka}, {"VODKA", i.vodka},
-        {"MAKKARA", i.lenkki}, {"VOBLA", i.kalat}, {"OMPPO", i.omppo},
+        {"PIVO", i.kalja}, {"JAGUAR", i.lonkka}, {"VODKA", i.vodka},
+        {"MAKKARA", i.lenkki}, {"VOBLA", i.kalat}, {"ANTONOVKA", i.omppo},
         {"BANAANI", i.bansku}, {"KETJUT", i.ketjut}, {"VEITSET", i.veitset},
         {"KIVET", i.kivet}, {"PAMPUT", i.pamput}, {"VERKKARIT", i.bootsit},
         {"KRANAATIT", i.granata}, {"PISTOOLI", i.pistooli}, {"AMMUKSET", i.ammukset},
@@ -185,7 +185,7 @@ void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
     const char* pad = "                    ";
     cout << "\033[J" << endl << endl;
     cout << pad << "\033[1;97;41m  \xD0\x9F\xD0\xA0\xD0\x9E\xD0\xA2\xD0\x9E\xD0\x9A\xD0\x9E\xD0\x9B \xC2\xB7 P\xC3\x96YT\xC3\x84KIRJA  \033[0m" << endl << endl;
-    cout << pad << "\033[2;37mHakatut mummot     \033[0;1;97m" << scoreBoard->mummot << RESET << endl;
+    cout << pad << "\033[2;37mHakatut babuškat     \033[0;1;97m" << scoreBoard->mummot << RESET << endl;
     cout << pad << "\033[2;37mKaikki hakatut     \033[0;1;97m" << scoreBoard->kaikki << RESET << endl;
     cout << pad << "\033[31m\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"
                    "\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80\xE2\x94\x80"

@@ -210,6 +210,7 @@ Coord Building::getSpawn() const
 
 // ALKO
 Alko::Alko() : Building(BuildingType::EAlko) {
+    walkable = true;
     wallRight = 20;
     wallTop = 0;
     wallLeft = 0;
@@ -315,6 +316,7 @@ std::string Isku::getWalkMsg() const { return "Ikkunoissa on yhä alennuslappuja
 
 // DIVARI
 Divari::Divari() : Building(BuildingType::EDivari) {
+    walkable = true;
     wallRight = 20;
     wallTop = 23;
     wallLeft = 0;
@@ -530,7 +532,7 @@ void PoliisiAsema::interact(PlayerNS::Player* player, std::string& msg)
     }
 }
 
-std::string PoliisiAsema::getWalkMsg() const { return "Isket pääsi poliisiaseman seinään. Joku kirjaa sen ylös."; }
+std::string PoliisiAsema::getWalkMsg() const { return "Isket pääsi politsija-aseman seinään. Joku kirjaa sen ylös."; }
 
 
 // ASEMA
@@ -660,6 +662,7 @@ std::string Kremlin::getWalkMsg() const { return "Kremlin muurit ovat läpäisem
 // HYPERMARKET
 
 Hypermarket::Hypermarket() : Building(BuildingType::EHypermarket) {
+    walkable = true;
     wallRight = 25;
     wallTop = 0;
     wallLeft = 0;
@@ -706,7 +709,7 @@ bool Hypermarket::getInteractMsg(PlayerNS::Player* player, std::string& msg) con
         // inside the burning building - chance to find loot
         int roll = std::rand() % 100;
         if (roll < 20) {
-            msg = "Löydät kaljaa savuiselta hyllyltä!";
+            msg = "Löydät pivoa savuiselta hyllyltä!";
             player->inventory.kalja += 2;
         } else if (roll < 35) {
             msg = "Löydät doktorskaja-makkaraa!";
