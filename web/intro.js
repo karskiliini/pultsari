@@ -240,7 +240,7 @@
             if (t > 1.6) text(latinText, latinX, baseY, t > 3.1 ? '#b9d36a' : '#fff');
             if (t > 2.6) text('*RÖKH*', startX - fs * 0.2, baseY + fs * 0.9, '#e0b030', fs * 0.42);
             if (t > 3.1) text('*BLAAARGH*', startX - fs * 0.6, baseY + fs * 1.6, '#f0c040', fs * 0.5);
-            if (t > 5.0) text('*ÖÖÖRRRKKK*', latinX + latinW + fs * 0.3, baseY + fs * 0.6, '#f0c040', fs * 0.45);
+            if (t > 5.0) text('*ÖÖÖRRRKKK*', latinX + latinW * 0.45, baseY - fs * 1.15, '#f0c040', fs * 0.45);
 
             drawFluid();
 
