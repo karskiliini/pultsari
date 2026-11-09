@@ -573,6 +573,7 @@ static void populateVehicles(Level& level)
 
 // thrown by Z: the game starts over with a fresh drunk
 struct RestartGame {};
+static bool restartedByZ = false;
 
 static bool processInput(InputNS::InputType input, PlayerNS::Player& player, Level* level, Printer& printer)
 {
@@ -786,7 +787,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
         if (welcome) {
             welcome = false;
-            std::string welcomeMsg = "Tervetuloa P\xD0\x9F""LTSARI 2:een! \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80";
+            std::string welcomeMsg = restartedByZ ? "Uusi pultsari her\xC3\xA4\xC3\xA4 penkilt\xC3\xA4. Edellisest\xC3\xA4 ei kukaan kysy."
+                : "Tervetuloa P\xD0\x9F""LTSARI 2:een! \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80";
+            restartedByZ = false;
             printer->showMessage(welcomeMsg, &level, false);
         } else {
             printer->showMessage(gameState.getLevelName(), &level, false);
@@ -1289,6 +1292,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         printer->printAimLine(&level, player.coord.x, player.coord.y, lowered);
                     }
 
+                } catch (const RestartGame&) {
+                    throw;
                 } catch(...) {
                     quit = true;
                     skipWaitKey = true;
@@ -1404,6 +1409,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     if (turn) {
                         player.updateTurn();
                     }
+                } catch (const RestartGame&) {
+                    throw;
                 } catch(...) {
                     quit = true;
                     skipWaitKey = true;
@@ -1554,7 +1561,7 @@ int init(int argc, char *argv[], Printer* printer)
             try {
                 if (!mainloop(printer, stage, losEnabled, animsEnabled, pathFinding)) break;
             } catch (const RestartGame&) {
-                printer->setMessage("Uusi pultsari her\xC3\xA4\xC3\xA4 penkilt\xC3\xA4.");
+                restartedByZ = true;
             }
         }
     }

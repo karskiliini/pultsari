@@ -4,3 +4,6 @@ pultsari
 node_modules/
 *.d
 package-lock.json
+tests/unit_tests
+tests/*.o
+tests/*.d
