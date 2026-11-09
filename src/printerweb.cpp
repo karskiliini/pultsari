@@ -1,5 +1,6 @@
 #include "printerweb.hpp"
 #include "level.hpp"
+#include "building.hpp"
 #include "player.hpp"
 #include "scoreboard.hpp"
 #include "inventory.hpp"
@@ -33,8 +34,29 @@ void PrinterWeb::printHelp()
     printChar("PПLTSAЯI 2 · Русский Мир\n");
 }
 
+// buildings and streets for the overview map (Tab in the browser)
+void PrinterWeb::sendCityMap(Level* l)
+{
+    string j = "{\"t\":\"map\",\"w\":" + to_string(common::SIZEX) + ",\"h\":" + to_string(common::SIZEY) + ",\"b\":[";
+    bool first = true;
+    for (auto b : l->buildings) {
+        j += string(first ? "" : ",") + "[" + to_string(b->wallLeft) + "," + to_string(b->wallTop) + "," +
+             to_string(b->wallRight) + "," + to_string(b->wallBot) + "," + jsonString(b->getName()) + "," +
+             to_string((int)b->type) + "]";
+        first = false;
+    }
+    j += "],\"r\":[";
+    first = true;
+    for (const auto& r : l->roads) {
+        j += string(first ? "" : ",") + "[" + (r.horizontal ? "1" : "0") + "," + to_string(r.pos) + "," + jsonString(r.name) + "]";
+        first = false;
+    }
+    webSend(j + "]}");
+}
+
 void PrinterWeb::print(Level* l)
 {
+    if (++framesSinceMap > 40) { framesSinceMap = 0; sendCityMap(l); }
     string j = "{\"t\":\"frame\",\"msg\":" + jsonString(msg) +
                ",\"lvl\":" + jsonString(levelName) +
                ",\"cam\":[" + to_string(l->cameraX) + "," + to_string(l->cameraY) + "]" +

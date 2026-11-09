@@ -55,6 +55,62 @@
     const MAX_STAINS = 4000;
     let lastTime = performance.now();
     let mood = { b: 1, s: 1 };
+    let cityMap = null;
+    let mapOpen = false;
+
+    // overview of the whole city: streets, buildings and a blinking "you are here"
+    const BUILDING_COLORS = { 8: '#7a1a1a', 9: '#3d3a2a', 10: '#2b3550', 11: '#4a3a10', 12: '#24402c' };
+    function drawCityMap(now) {
+        const m = cityMap;
+        const pad = 24, sx = (W - pad * 2) / m.w, sy = (H - pad * 2 - 18) / m.h;
+        const X = (x) => pad + x * sx, Y = (y) => pad + 18 + y * sy;
+        ctx.fillStyle = '#080808';
+        ctx.fillRect(0, 0, W, H);
+        ctx.strokeStyle = '#d52b1e';
+        ctx.strokeRect(pad - 4, pad + 14, W - pad * 2 + 8, H - pad * 2 - 10);
+        ctx.font = 'bold 13px ui-monospace, Menlo, monospace';
+        ctx.textAlign = 'left';
+        ctx.fillStyle = '#d52b1e';
+        ctx.fillText('МОСКВА · MOSKOVA', pad, pad + 4);
+        ctx.fillStyle = '#f2d34a';
+        ctx.textAlign = 'right';
+        ctx.fillText(frame && frame.lvl ? frame.lvl : '', W - pad, pad + 4);
+        // streets
+        ctx.fillStyle = '#3a3a3a';
+        for (const [hor, pos] of m.r) {
+            if (hor) ctx.fillRect(X(0), Y(pos), m.w * sx, 3 * sy);
+            else ctx.fillRect(X(pos), Y(0), 3 * sx, m.h * sy);
+        }
+        ctx.font = '9px ui-monospace, Menlo, monospace';
+        ctx.fillStyle = '#8a8a8a';
+        for (const [hor, pos, name] of m.r) {
+            if (hor) { ctx.textAlign = 'left'; ctx.fillText(name, X(2), Y(pos) - 3); }
+            else { ctx.save(); ctx.translate(X(pos) - 3, Y(4)); ctx.rotate(Math.PI / 2); ctx.textAlign = 'left'; ctx.fillText(name, 0, 0); ctx.restore(); }
+        }
+        // buildings
+        for (const [x0, y0, x1, y1, name, type] of m.b) {
+            ctx.fillStyle = BUILDING_COLORS[type] || '#4a4a4a';
+            ctx.fillRect(X(x0), Y(y0), (x1 - x0 + 1) * sx, (y1 - y0 + 1) * sy);
+            if (name) {
+                ctx.fillStyle = '#ddd';
+                ctx.textAlign = 'center';
+                ctx.fillText(name, X((x0 + x1) / 2), Y((y0 + y1) / 2) + 3);
+            }
+        }
+        // you are here
+        if (frame && frame.pos && Math.floor(now / 350) % 2 === 0) {
+            const px = X(frame.pos[0]), py = Y(frame.pos[1]);
+            ctx.fillStyle = '#ff3030';
+            ctx.beginPath(); ctx.arc(px, py, 4, 0, Math.PI * 2); ctx.fill();
+            ctx.font = 'bold 11px ui-monospace, Menlo, monospace';
+            ctx.textAlign = 'left';
+            ctx.fillText('SINÄ', px + 7, py + 4);
+        }
+        ctx.textAlign = 'center';
+        ctx.fillStyle = '#777';
+        ctx.font = '11px ui-monospace, Menlo, monospace';
+        ctx.fillText('Tab sulkee kartan', W / 2, H - 8);
+    }
 
     // colour mood follows the promilles: near a hangover the world goes dark and
     // grey, drunk it gets bright and vivid, very drunk the colours start to swim
@@ -143,6 +199,7 @@
                 break;
             case 'restart': if (ui.onRestart) ui.onRestart(); break;
             case 'invmenu': invMenu = m; invMenuAt = performance.now(); break;
+            case 'map': cityMap = m; break;
             case 'aim': aim = m; aimAt = performance.now(); break;
             case 'snd': if (window.SFX) SFX.play(m.n, m.v); break;
             case 'hit': blood(m); break;
@@ -197,7 +254,9 @@
             mood.b += (target.b - mood.b) * Math.min(1, dt * 1.5);
             mood.s += (target.s - mood.s) * Math.min(1, dt * 1.5);
             const swim = prom > 30 ? Math.sin(now / 900) * Math.min(25, (prom - 30) * 1.2) : 0;
-            canvas.style.filter = `brightness(${mood.b.toFixed(3)}) saturate(${mood.s.toFixed(3)}) hue-rotate(${swim.toFixed(1)}deg)`;
+            // the map is printed paper: no hangover gloom on it
+            canvas.style.filter = mapOpen ? 'none'
+                : `brightness(${mood.b.toFixed(3)}) saturate(${mood.s.toFixed(3)}) hue-rotate(${swim.toFixed(1)}deg)`;
         }
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
@@ -318,6 +377,7 @@
             }
         }
         drawInvMenu(now);
+        if (mapOpen && cityMap) drawCityMap(now);
         requestAnimationFrame(render);
     }
 
@@ -336,5 +396,5 @@
         ui.menu.querySelector('h3').textContent = invMenu.throw ? 'HEITÄ MITÄ?' : 'ТОВАРЫ · TAVARAT';
     }
 
-    window.Game = { setup, handle };
+    window.Game = { setup, handle, toggleMap: () => { mapOpen = !mapOpen; return mapOpen; } };
 })();

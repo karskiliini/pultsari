@@ -638,7 +638,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow, bool 
     cout << buf;
     for (int i = 0; i < 30; ++i) cout << "\xE2\x95\x90";
     cout << "\xE2\x95\x9D";
-    snprintf(buf, sizeof(buf), "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 E k\xC3\xA4yt\xC3\xA4 \xC2\xB7 F heit\xC3\xA4 \xC2\xB7 Tab sulje ",
+    snprintf(buf, sizeof(buf), "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 E k\xC3\xA4yt\xC3\xA4 \xC2\xB7 F heit\xC3\xA4 \xC2\xB7 Q sulje ",
             OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
     cout << buf;
 

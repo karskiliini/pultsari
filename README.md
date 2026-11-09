@@ -25,7 +25,8 @@ Then open http://localhost:3000.
 | Key | Action |
 | --- | --- |
 | W A S D or I J K L | Move. Walking into someone hits them; walking onto an item picks it up. |
-| Tab | Open the inventory |
+| Tab | City map (browser); in the terminal, the inventory |
+| Q | Open the inventory |
 | W / S (inventory) | Select an item |
 | E (inventory) | Use: drink, eat or draw the pistol |
 | F (inventory) | Throw: starts aiming |

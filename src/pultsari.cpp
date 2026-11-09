@@ -968,7 +968,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 's': case 'k': queuedMove = InputNS::down; break;
                                 case 'a': case 'j': queuedMove = InputNS::left; break;
                                 case 'd': case 'l': queuedMove = InputNS::right; break;
-                                case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
+                                case 'q': case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
                                 case 'f': {
                                     // F asks what to throw: the menu opens on the first throwable thing carried
                                     int first = -1;
@@ -1044,7 +1044,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 'f': // throw -> aim mode
                                     startThrowAim(invIndexToThrowNum(invSelection));
                                     break;
-                                case '\t': case 27: // tab or ESC closes
+                                case 'q': case '\t': case 27: // Q, Tab or ESC closes
                                     mode = Mode::Normal;
                                     break;
                             }
