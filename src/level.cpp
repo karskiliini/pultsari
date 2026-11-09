@@ -98,6 +98,7 @@ void Level::npcTurn()
         string msg = "";
         if (p->stats.health > 0)
         {
+            HurtBy who(this, nameOf(p));
             p->npcAct();
         }
     }
@@ -196,6 +197,7 @@ void Level::playAnimation()
 void Level::explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person* source)
 {
     common::boomEvent(c, radius);
+    HurtBy who(this, !source ? "r\xC3\xA4j\xC3\xA4hdys" : source->type == pelaaja ? "oma kranaattisi" : nameOf(source) + " (kranaatti)");
     for (auto& p : persons) {
         if (p->stats.health > 0 && p->coord.distance(c) <= radius) {
             p->damage(std::rand() % maxDamage + 1);
@@ -468,6 +470,7 @@ void Level::droneImpact(const Coord& c, Building* target)
     addAnimation(new Animation(Coord{ c.x > 5 ? c.x - 5 : 0, c.y }, "===BOOM===", 10));
     audio.addSound(c, SoundType::Explosion,
         "VALTAVA R\xC3\x84J\xC3\x84HDYS! Drooni iski!", "R\xC3\xA4j\xC3\xA4hdys!", "...kaukainen r\xC3\xA4j\xC3\xA4hdys...", 60);
+    HurtBy who(this, "drooni");
     for (auto p : persons) {
         if (p->stats.health > 0 && p->coord.distance(c) <= 4) p->damage(std::rand() % 6 + 2);
     }
@@ -690,6 +693,7 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
         Person* p = getPerson(c);
         if (p && p != shooter && p->stats.health > 0 && common::random(hitPercent)) {
             common::setHitDirection(dx > 0.4f ? 1 : dx < -0.4f ? -1 : 0, dy > 0.4f ? 1 : dy < -0.4f ? -1 : 0);
+            HurtBy who(this, shooter->type == pelaaja ? "oma luotisi" : nameOf(shooter) + " (ampui sinua)");
             p->damage(damage);
             return p;
         }
@@ -794,11 +798,13 @@ void Level::skyTick()
         const int kind = gasAt(p->coord);
         if (kind == 3 && common::random(20)) {
             if (p->type == pelaaja) {
+                HurtBy who(this, "tulipalon savu");
                 if (common::random(30)) p->damage(1);
                 printer->showMessage(common::random(50) ? "Savu kirvelee silmi\xC3\xA4. *K\xC3\xB6h k\xC3\xB6h*" : "Vedät palaneen muovin savua keuhkoihin.", this, false);
                 common::sound("cough", 0.6f);
             }
         } else if (kind == 2 && common::random(35)) {
+            HurtBy who(this, "jalostamon myrkkysavu");
             p->damage(1);
             if (p->type == pelaaja) {
                 printer->showMessage("Myrkyllinen savu polttaa keuhkojasi! *K\xC3\x96H K\xC3\x96H*", this, false);
@@ -1510,6 +1516,7 @@ void Level::npcFrame(uint32_t ms)
             if (common::random(60)) {
                 // a sniff of hydrocarbons: a quick buzz, at a price
                 pl->updatepromilles(1);
+                HurtBy who(this, "Ladan pakokaasu");
                 if (common::random(40)) pl->damage(1);
                 static const char* lines[] = {
                     "Vedät pakokaasua henkeen.",
@@ -1529,6 +1536,7 @@ void Level::npcFrame(uint32_t ms)
         p->energy += p->speed * ms;
         if (p->energy >= 10000) {
             p->energy = std::min<uint32_t>(p->energy - 10000, 10000);
+            HurtBy who(this, nameOf(p));
             if (p->fleeActions > 0) {
                 --p->fleeActions;
                 fleeStep(this, p);

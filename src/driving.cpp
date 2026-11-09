@@ -327,6 +327,7 @@ void Car::drive(uint32_t ms)
                 level->audio.addSound(driverCell(), SoundType::Fight, "RYSÄYS! Pellit rytisee", "Kolarin ryskett\xC3\xA4", "...kolarin rysk\xC3\xA4ys...", 30);
                 if (player) {
                     const uint32_t dmg = (uint32_t)((impact - 1.5f) / 4.0f) + 1;
+                    HurtBy who(level, "rattijuoppous (kolaroit " + name() + ":lla)");
                     player->damage(dmg);
                     string what = outside ? "Kaupungin raja tulee vastaan" : other ? "Ajat kiinni: " + other->name() : "Ajat p\xC3\xA4in sein\xC3\xA4\xC3\xA4";
                     if (printer) printer->showMessage("RYS\xC3\x84YS! " + what + "! Otsa kolahtaa rattiin.", level, false);
@@ -348,6 +349,7 @@ void Car::drive(uint32_t ms)
             if (hitPlayer && (playerAtWheel || level->playerDead)) continue;
             const float impact = std::fabs(velocity);
             if (impact < 0.8f) { stop = true; break; }   // a nudge: they are in the way
+            HurtBy who(level, playerAtWheel ? "oma autosi" : name() + ", joka ajoi ylitsesi");
             p->damage((uint32_t)(1 + impact / 3.0f));
             common::setHitDirection(std::cos(a) > 0.4f ? 1 : std::cos(a) < -0.4f ? -1 : 0, std::sin(a) > 0.4f ? 1 : std::sin(a) < -0.4f ? -1 : 0);
             common::hitEvent(cell, (uint32_t)(2 + impact / 3.0f));
@@ -652,6 +654,7 @@ bool leaveCar(PlayerNS::Player* player, Level* level)
     if (speed > 3.0f) {
         // out of a moving car: the street is hard
         const uint32_t dmg = 1 + (uint32_t)(speed / 5.0f);
+        HurtBy who(level, "asfaltti (hypp\xC3\xA4sit liikkuvasta autosta)");
         player->damage(dmg);
         common::hitEvent(out, dmg + 1);
         printer->showMessage("Hypp\xC3\xA4\xC3\xA4t liikkuvasta autosta ja kieri\xC3\xA4t katua pitkin! Auto jatkaa matkaa ilman sinua.", level, false);

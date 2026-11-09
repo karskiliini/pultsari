@@ -368,6 +368,7 @@ void Car::frame(uint32_t ms)
             return;
         }
         waiting = 0;
+        HurtBy who(level, model + ", joka ajoi ylitsesi");
         p->damage(std::rand() % 2 + 2);
         if (p->type == pelaaja) {
             level->printer->showMessage(model + " t\xC3\xB6ytt\xC3\xA4\xC3\xA4 sinut kumoon! Kuski ei edes hidasta.", level, false);

@@ -209,6 +209,7 @@ void PrinterTerm::printHelp()
     cout << "  --los              n\xC3\xA4k\xC3\xB6kentt\xC3\xA4" << endl;
     cout << "  --anims            animaatiot" << endl;
     cout << "  --path             NPC:iden reitinhaku" << endl;
+    cout << "  --car              auto avaimineen heti vieress\xC3\xA4 (ajamisen kokeiluun)" << endl;
     cout << "  --all, -a          kaikki yll\xC3\xA4 olevat" << endl << endl;
     cout << "Reaaliaikatilan n\xC3\xA4pp\xC3\xA4imet:" << endl;
     cout << "  W A S D / I J K L  liiku (k\xC3\xA4vele p\xC3\xA4in = ly\xC3\xB6 / poimi / avaa)" << endl;

@@ -8,7 +8,8 @@ const WebSocket = require('ws');
 const PORT = process.env.PORT || 3000;
 const ROOT = path.join(__dirname, '..');
 const GAME = path.join(ROOT, 'pultsari');
-const GAME_ARGS = ['--rt', '--los', '--anims', '--path'];
+// PULTSARI_ARGS adds options for trying things out, e.g. PULTSARI_ARGS=--car
+const GAME_ARGS = ['--rt', '--los', '--anims', '--path', ...(process.env.PULTSARI_ARGS || '').split(' ').filter(Boolean)];
 
 const STATIC = {
     '/': [path.join(__dirname, 'index.html'), 'text/html; charset=utf-8'],

@@ -1555,7 +1555,17 @@ TEST(driving_shot_driver_who_rams_comes_at_the_shooter)
     CHECK(closest < 3.0f);
     CHECK(w.player.stats.health < 30);
     CHECK(w.printer.saw("p\xC3\xA4\xC3\xA4llesi"));
+    CHECK(contains(w.player.lastHurtBy, "ajoi ylitsesi"));   // named on the death notice
     CHECK(car->ai != Car::Ai::Ram);   // and then away
+}
+
+TEST(death_notice_knows_who_shot_you)
+{
+    World w(Coord{ 60, 46 });
+    Person* cop = w.spawn(new Cop(Coord{ 60, 40 }));
+    std::this_thread::sleep_for(std::chrono::milliseconds(750));
+    w.level.fireBullet(cop, (float)M_PI / 2, 10, 3, 100);
+    CHECK(w.player.lastHurtBy == "Politsija (ampui sinua)");
 }
 
 TEST(driving_a_bullet_can_kill_the_driver)

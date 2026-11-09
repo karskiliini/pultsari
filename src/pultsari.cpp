@@ -765,6 +765,26 @@ static void populateVehicles(Level& level)
 // thrown by Z: the game starts over with a fresh drunk
 struct RestartGame {};
 static bool restartedByZ = false;
+// --car: a car with the keys in waits right next to where you wake up (for trying out driving)
+static bool startByCar = false;
+
+static void parkCarByPlayer(Level& level, const Coord& at)
+{
+    for (int tries = 0; tries < 400; ++tries) {
+        const int dx = 3 + tries % 12, dy = (tries / 12) % 2 ? -(1 + tries / 24) : 1 + tries / 24;
+        const Coord c { (uint32_t)((int)at.x + dx), (uint32_t)std::max(2, (int)at.y + dy) };
+        Car* car = new Car(c, true, 1);
+        car->level = &level;
+        car->driverInside = false;
+        car->engineOn = false;
+        car->keysIn = true;
+        car->makeFree();
+        bool free = !car->cells().empty();
+        for (const auto& cell : car->cells()) free = free && !level.hit(cell) && !level.getVehicleAt(cell);
+        if (free) { level.addVehicle(car); return; }
+        delete car;
+    }
+}
 
 static bool processInput(InputNS::InputType input, PlayerNS::Player& player, Level* level, Printer& printer)
 {
@@ -827,6 +847,7 @@ static InputNS::InputType applyDrunkEffects(InputNS::InputType input, PlayerNS::
         printer.showMessage("Sua janottaa !!!", level);
     } else if (player.stats.promilles > 28 && common::random(5)) {
         printer.showMessage("Oksennat !!", level);
+        HurtBy who(level, "oma oksennuksesi");
         player.damage(1);
         if (input != InputNS::quit)
             input = InputNS::throwup;
@@ -838,7 +859,7 @@ static InputNS::InputType applyDrunkEffects(InputNS::InputType input, PlayerNS::
 // it fell; in the browser the camera slowly zooms out until the whole city is
 // a speck, and then the intro plays again. Any key starts a new life at once.
 // the death certificate says something else: officially there is no epidemic
-static const char* AIDS_DEATH = "SURUVIESTI: AIDS vei sinut. Kuolintodistukseen kirjattiin keuhkokuume, koska virallisesti Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 ei ole HIV-epidemiaa.";
+static const char* AIDS_DEATH = "Olet kuollut. Tappajasi: AIDS. Kuolintodistukseen kirjattiin keuhkokuume, koska virallisesti Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 ei ole HIV-epidemiaa.";
 
 static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, Printer* printer, const std::string& cause)
 {
@@ -860,9 +881,21 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
     level.audio.clear();
     printer->removeMessage();
 
-    const std::string card = cause + " Onneksi Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 syntyy joka p\xC3\xA4iv\xC3\xA4 uusia juoppoja.";
+    // you are dead, this is who did it, and a few words of comfort
+    static const char* comfort[] = {
+        "Ei se mit\xC3\xA4\xC3\xA4n. Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 syntyy joka p\xC3\xA4iv\xC3\xA4 uusia juoppoja.",
+        "\xC3\x84l\xC3\xA4 sure. Pullo j\xC3\xA4i kesken, mutta joku muu juo sen loppuun.",
+        "Lep\xC3\xA4\xC3\xA4 rauhassa. Krapula ei tule en\xC3\xA4\xC3\xA4 koskaan.",
+        "Sinua kaivataan. Ainakin pullonpalautusluukulla.",
+        "Et ollut ensimm\xC3\xA4inen etk\xC3\xA4 j\xC3\xA4\xC3\xA4 viimeiseksi. Vova kiitt\xC3\xA4\xC3\xA4 palveluksestasi.",
+        "\xC3\x84iti olisi silti ylpe\xC3\xA4. Ehk\xC3\xA4.",
+        "Taivaassa on Alko, ja se on aina auki.",
+    };
+    const std::string words = comfort[std::rand() % (sizeof(comfort) / sizeof(comfort[0]))];
+    const std::string card = cause + " " + words;
     if (web) {
         common::webSend("{\"t\":\"death\",\"cause\":" + common::jsonString(cause) +
+                        ",\"comfort\":" + common::jsonString(words) +
                         ",\"mummot\":" + std::to_string(player.scoreBoard.mummot) +
                         ",\"kaikki\":" + std::to_string(player.scoreBoard.kaikki) + "}");
     } else {
@@ -982,6 +1015,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         populatePersons(level, gameState);
         populateItems(level, gameState);
         populateVehicles(level);
+        if (startByCar && !gameState.hasBeenToWar) parkCarByPlayer(level, player.coord);
 
         // fires burn everywhere; random disasters only from the third level and at the front
         level.events = new EnvironmentEvents(&level, gameState.phase != GamePhase::War && level.stage <= 2);
@@ -1134,6 +1168,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 printer->showMessage(seller + " myi sinulle n\xC3\xA4k\xC3\xB6j\xC3\xA4\xC3\xA4n kusta pullossa, hyi! Oksennat.", &level, false);
                                 level.audio.addSound(player.coord, SoundType::Vomit,
                                     "BL\xC3\x84\xC3\x84\xC3\x84RGH! Oksennat kaaressa!", "Joku oksentaa", "...ykin\xC3\xA4\xC3\xA4...", 15);
+                                HurtBy who(&level, seller + " (kusipullo)");
                                 player.damage(2);
                                 level.addItem(new Oksennus(player.coord));
                             } else {
@@ -1394,6 +1429,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             if (random(35)) {
                                 const bool knee = random(25);
                                 common::hitEvent(player.coord, knee ? 8 : 4);
+                                HurtBy who(&level, "oma pistoolisi");
                                 player.damage(knee ? std::rand() % 6 + 6 : std::rand() % 4 + 2);
                                 printer->showMessage(knee ? "PAM! Ase laukesi ja ammuit itse\xC3\xA4si polveen! Kipu on sanoinkuvaamaton."
                                                           : "PAM! Ase laukesi ja ammuit itse\xC3\xA4si jalkaan! AUTS!", &level, false);
@@ -1555,22 +1591,23 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         gameState.sendToWar();
                         nextLevel = true;
                     } else {
-                        mourn(level, mask, player, printer, "Kuolit SIZOssa sotaoikeuden j\xC3\xA4lkeen. Kukaan ei kysynyt per\xC3\xA4\xC3\xA4n.");
+                        mourn(level, mask, player, printer, "Olet kuollut. Tappajasi: sotaoikeus, SIZOn sellissä.");
                         quit = restart = true;
                     }
                     break;
                 } else if (player.stats.health < 1) {
-                    mourn(level, mask, player, printer, player.diedOfAids() ? AIDS_DEATH : "SURUVIESTI: Olet heitt\xC3\xA4nyt henkesi.");
+                    mourn(level, mask, player, printer, player.diedOfAids() ? std::string(AIDS_DEATH) : "Olet kuollut. Tappajasi: " +
+                          (player.lastHurtBy.empty() ? std::string("Moskova itse") : player.lastHurtBy) + ".");
                     quit = restart = true;
                     break;
                 } else if (player.stats.promilles < 1) {
                     player.stats.health = 0;
-                    mourn(level, mask, player, printer, "SURUVIESTI: Krapula vei sinut.");
+                    mourn(level, mask, player, printer, "Olet kuollut. Tappajasi: krapula.");
                     quit = restart = true;
                     break;
                 } else if (player.stats.promilles > 34 && common::random(10)) {
                     player.stats.health = 0;
-                    mourn(level, mask, player, printer, "SURUVIESTI: Joit itsesi hengilt\xC3\xA4.");
+                    mourn(level, mask, player, printer, "Olet kuollut. Tappajasi: vodka. Joit itsesi hengilt\xC3\xA4.");
                     quit = restart = true;
                     break;
                 }
@@ -1760,6 +1797,8 @@ int init(int argc, char *argv[], Printer* printer)
             printer->printHelp();
             InputNS::Input::waitKey();
             return 0;
+        } else if (a == "--car") {
+            startByCar = true;
         } else if (a == "--path") {
             pathFinding = true;
         } else if ((a == "--realtime") || (a == "--rt")) {

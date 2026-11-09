@@ -117,6 +117,7 @@ void EnvironmentEvents::addFiresAround(const Coord& c)
 
 void EnvironmentEvents::droneStrike()
 {
+    HurtBy who(level, "drooni");
     if (droneCooldown > 0) {
         --droneCooldown;
         return;
@@ -139,6 +140,7 @@ void EnvironmentEvents::droneStrike()
 
 void EnvironmentEvents::aaFire()
 {
+    HurtBy who(level, "ilmatorjunnan sirpaleet");
     if (aaCooldown > 0) {
         --aaCooldown;
         return;
@@ -191,6 +193,7 @@ void EnvironmentEvents::aaFire()
 
 void EnvironmentEvents::updateFires()
 {
+    HurtBy who(level, "tulipalo");
     auto it = fires.begin();
     while (it != fires.end()) {
         if (it->ttl > 0) {
@@ -204,6 +207,7 @@ void EnvironmentEvents::updateFires()
 
 void EnvironmentEvents::spreadFire()
 {
+    HurtBy who(level, "tulipalo");
     if (fires.empty()) return;
 
     std::vector<Fire> newFires;
@@ -230,6 +234,7 @@ void EnvironmentEvents::spreadFire()
 
 void EnvironmentEvents::fireDamage()
 {
+    HurtBy who(level, "tulipalo");
     for (const auto& f : fires) {
         for (auto& p : level->persons) {
             if (p->stats.health > 0 && p->coord == f.coord) {
@@ -244,6 +249,7 @@ void EnvironmentEvents::fireDamage()
 
 void EnvironmentEvents::gasAttack()
 {
+    HurtBy who(level, "kaasuisku");
     if (gasActive) return;
 
     // pick a building as gas target
@@ -271,6 +277,7 @@ void EnvironmentEvents::gasAttack()
 
 void EnvironmentEvents::defenestration()
 {
+    HurtBy who(level, "ikkuna (putosit)");
     // FSB throws someone out of a window - ambient event
     static const char* msgs[] = {
         "Kuulet huudon ylhäältä... joku tippui ikkunasta.",
@@ -303,6 +310,7 @@ void EnvironmentEvents::defenestration()
 
 void EnvironmentEvents::novichok()
 {
+    HurtBy who(level, "novit\xC5\xA1ok");
     // random novichok poisoning attempt on the street
     uint32_t px = std::rand() % common::SIZEX;
     uint32_t py = std::rand() % common::SIZEY;
@@ -367,6 +375,7 @@ void EnvironmentEvents::randomEvent()
 
 void EnvironmentEvents::artilleryBarrage()
 {
+    HurtBy who(level, "tykist\xC3\xB6");
     level->printer->showMessage("TYKISTÖISKU!! Maahan!!", level, false);
 
     int shells = 3 + std::rand()%4;
@@ -398,6 +407,7 @@ void EnvironmentEvents::artilleryBarrage()
 
 void EnvironmentEvents::meatAssault()
 {
+    HurtBy who(level, "lihamyllyrynn\xC3\xA4kk\xC3\xB6");
     level->printer->showMessage("LIHAHYÖKKÄYS! Pakkovärvätyt rynnäköivät!", level, false);
 
     // spawn 3-5 skinheads from the right edge rushing left
@@ -413,6 +423,7 @@ void EnvironmentEvents::meatAssault()
 
 void EnvironmentEvents::militaryParade()
 {
+    HurtBy who(level, "paraatin panssarivaunu");
     level->printer->showMessage("SOTILASPARAATI! Kolonna marssii kadulla!", level, false);
 
     uint32_t paradeY = std::rand() % (common::SIZEY - 4) + 2;
@@ -440,6 +451,7 @@ void EnvironmentEvents::militaryParade()
 
 void EnvironmentEvents::hypermarketFire()
 {
+    HurtBy who(level, "hypermarketin palo");
     for (auto b : level->buildings) {
         if (b->type == EHypermarket) {
             Hypermarket* hm = dynamic_cast<Hypermarket*>(b);

@@ -66,6 +66,7 @@ public:
     std::vector<int> stolenItems;
     uint32_t brawlActions = 0;
     bool hasLoot() const { return stolenMoney > 0 || stolenBottles > 0 || !stolenItems.empty(); }
+    std::string lastHurtBy;     // the player: who or what hurt you last
     bool armor = false; // a bulletproof vest takes the sting out of most hits
     // individual clothing colour (xterm-256 SGR), overrides the per-type colour
     const char* clothing = nullptr;

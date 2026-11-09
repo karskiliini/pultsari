@@ -237,6 +237,7 @@
             case 'death':
                 ui.death.hidden = false;
                 ui.deathCause.textContent = m.cause;
+                if (ui.deathComfort) ui.deathComfort.textContent = m.comfort || '';
                 ui.deathScore.textContent = `Hakatut babuškat ${m.mummot} · Kaikki hakatut ${m.kaikki}`;
                 break;
             case 'restart': if (ui.onRestart) ui.onRestart(); break;

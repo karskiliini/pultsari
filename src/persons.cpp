@@ -51,6 +51,7 @@ void Person::damage(uint32_t damage)  {
         report("Luotiliivi pys\xC3\xA4ytti luodin!");
     }
     common::hitEvent(coord, damage);
+    if (type == pelaaja && damage > 0 && level) lastHurtBy = level->hurtBy;
     if (damage >= stats.health) {
         stats.health = 0;
     } else {

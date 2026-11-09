@@ -203,6 +203,17 @@ public:
     bool playerDead = false;
 
     AudioSystem audio;
+
+    // who or what is hurting people right now, for the player's death notice
+    std::string hurtBy;
+};
+
+// names the source of harm for as long as it is in scope
+struct HurtBy {
+    Level* level;
+    std::string previous;
+    HurtBy(Level* l, const std::string& who) : level(l), previous(l ? l->hurtBy : "") { if (l) l->hurtBy = who; }
+    ~HurtBy() { if (level) level->hurtBy = previous; }
 };
 
 

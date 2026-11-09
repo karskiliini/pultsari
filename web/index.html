@@ -90,7 +90,7 @@
                     <div id="death" hidden>
                         <div class="cross">✝</div>
                         <div class="cause" id="deathCause"></div>
-                        <div>Onneksi Venäjällä syntyy joka päivä uusia juoppoja.</div>
+                        <div id="deathComfort"></div>
                         <div class="score" id="deathScore"></div>
                         <div class="hint">Paina mitä tahansa näppäintä aloittaaksesi uudelleen.</div>
                     </div>
@@ -137,7 +137,7 @@
         Game.setup({
             canvas: $('map'), msg: $('msg'), level: $('level'), money: $('money'), hp: $('hp'),
             prom: $('prom'), belly: $('belly'), sick: $('sick'), sickBox: $('sickBox'), drv: $('drv'), gear: $('gear'), rpm: $('rpm'), kmh: $('kmh'), wheel: $('wheel'), drvflags: $('drvflags'), sounds: $('sounds'), inv: $('inv'), menu: $('menu'), text: $('text'),
-            death: $('death'), deathCause: $('deathCause'), deathScore: $('deathScore'),
+            death: $('death'), deathCause: $('deathCause'), deathComfort: $('deathComfort'), deathScore: $('deathScore'),
             // the camera has zoomed all the way out: play the intro, then start the next drunk
             onRestart: () => {
                 introPlaying = true;
