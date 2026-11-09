@@ -30,6 +30,8 @@ public:
 
     void buildingTurn();
     void npcTurn();
+    // real time: every NPC acts when its own initiative has built up enough energy
+    void npcFrame(uint32_t ms);
     void actThrow(Person* source);
     void playAnimation();
 

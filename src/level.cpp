@@ -654,8 +654,55 @@ bool Level::addBuilding(Building* building)
     return true;
 }
 
+// base initiative per kind of person (actions per second x10)
+static uint32_t baseSpeed(PersonType t)
+{
+    switch (t) {
+        case vanki:        return 30; // runs for it
+        case varas:        return 32;
+        case skinhead:     return 27;
+        case jengi:        return 28;
+        case ryostaja:     return 28;
+        case fsb:          return 28;
+        case poliisi:      return 25;
+        case sotilas:      return 25;
+        case ilmatorjunta: return 25;
+        case vartija:      return 24;
+        case veteraani:    return 22;
+        case diileri:      return 22;
+        case yka:          return 18;
+        case putin:        return 18;
+        case shoigu:
+        case gerasimov:    return 18;
+        case juoppo:       return 15; // drunk: slow
+        case medvedev:     return 14;
+        case mummo:        return 12;
+        case avustaja:     return 10; // blind drunk
+        default:           return 20;
+    }
+}
+
+void Level::npcFrame(uint32_t ms)
+{
+    // index loop: an NPC's action may add people
+    for (size_t i = 0; i < persons.size(); ++i) {
+        Person* p = persons[i];
+        if (p->type == pelaaja || p->stats.health == 0) continue;
+        p->energy += p->speed * ms;
+        if (p->energy >= 10000) {
+            p->energy = std::min<uint32_t>(p->energy - 10000, 10000);
+            p->npcAct();
+        }
+    }
+}
+
 bool Level::addPerson(Person* person)
 {
+    if (person->type != pelaaja) {
+        // everyone has their own pace
+        person->speed = baseSpeed(person->type) * (80 + std::rand() % 41) / 100;
+        person->energy = std::rand() % 10000;
+    }
     // eyesight differs from person to person
     if (person->type != pelaaja && person->visionRange > 0)
         person->visionRange = std::max<uint32_t>(1, person->visionRange * (70 + std::rand() % 61) / 100);

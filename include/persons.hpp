@@ -47,6 +47,9 @@ public:
     bool pathFinding = false;
 
     uint32_t visionRange = 0;
+    // initiative: actions per second x10; energy builds up each frame until it is enough to act
+    uint32_t speed = 20;
+    uint32_t energy = 0;
     bool blind = false;
     bool hasRadio = false;
     // show an NPC's message only if the player can see or hear this person

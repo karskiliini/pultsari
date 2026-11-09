@@ -552,6 +552,8 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             InputNS::Input::raw();
 
             uint32_t npcTick = 0;
+            InputNS::InputType queuedMove = InputNS::inputpending;
+            uint32_t msSinceMove = 1000;
             constexpr uint32_t NPC_INTERVAL = 8; // NPCs act 2.5 times a second
             constexpr uint32_t FRAME_MS = 50;
 
@@ -693,16 +695,24 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                     switch (mode) {
                     case Mode::Normal: {
-                        InputNS::InputType input = InputNS::inputpending;
                         if (c != 0) {
                             switch(c) {
-                                case 'w': case 'i': input = InputNS::up; break;
-                                case 's': case 'k': input = InputNS::down; break;
-                                case 'a': case 'j': input = InputNS::left; break;
-                                case 'd': case 'l': input = InputNS::right; break;
+                                case 'w': case 'i': queuedMove = InputNS::up; break;
+                                case 's': case 'k': queuedMove = InputNS::down; break;
+                                case 'a': case 'j': queuedMove = InputNS::left; break;
+                                case 'd': case 'l': queuedMove = InputNS::right; break;
                                 case '\t': mode = Mode::Inventory; invSelection = 0; break;
                                 default: break;
                             }
+                        }
+
+                        // the drunker you are, the longer each step takes; an early key waits its turn
+                        InputNS::InputType input = InputNS::inputpending;
+                        const uint32_t stepMs = 90 + player.stats.promilles * 8;
+                        if (queuedMove != InputNS::inputpending && msSinceMove >= stepMs) {
+                            input = queuedMove;
+                            queuedMove = InputNS::inputpending;
+                            msSinceMove = 0;
                         }
 
                         if (input != InputNS::inputpending) {
@@ -780,11 +790,15 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
                     }
 
+                    msSinceMove += FRAME_MS;
+                    level.npcFrame(FRAME_MS);
+                    level.cleanDead();
+
                     ++npcTick;
                     if (npcTick >= NPC_INTERVAL) {
                         npcTick = 0;
                         level.buildingTurn();
-                        level.npcTurn();
+                        level.spreadNews();
                         level.updateVehicles();
                         if (level.events) level.events->update();
 
