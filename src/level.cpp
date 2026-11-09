@@ -290,6 +290,20 @@ bool Level::isAlive(const Person* p) const
     return false;
 }
 
+void Level::roadsAt(const Coord& c, const Road*& h, const Road*& v) const
+{
+    h = v = nullptr;
+    for (const auto& r : roads) {
+        if (!r.contains(c)) continue;
+        if (r.horizontal) h = &r; else v = &r;
+    }
+}
+
+void Level::vehicleFrame(uint32_t ms)
+{
+    for (auto v : vehicles) v->frame(ms);
+}
+
 bool Level::isLit(const Coord& c) const
 {
     for (auto b : buildings) {
@@ -683,6 +697,7 @@ static uint32_t baseSpeed(PersonType t)
         case avustaja:     return 10; // blind drunk
         case kotiaiti:     return 11;
         case lapsi:        return 34;
+        case kansalainen:  return 22;
         default:           return 20;
     }
 }
@@ -700,6 +715,7 @@ static uint32_t theftMotivation(PersonType t)
         case skinhead:     return 20;
         case juoppo:       return 15;
         case yka:          return 15;
+        case kansalainen:  return 3;
         case poliisi:      return 10;
         case sotilas:      return 8;
         case avustaja:     return 8;
@@ -752,6 +768,7 @@ std::string Level::nameOf(const Person* p) const
         case avustaja:     return "Avustaja";
         case kotiaiti:     return "Koti\xC3\xA4iti";
         case lapsi:        return "Lapsi";
+        case kansalainen:  return dynamic_cast<const Kansalainen*>(p)->name;
         default:           return "Joku";
     }
 }

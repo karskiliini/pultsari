@@ -76,6 +76,20 @@ static void populateItems(Level& level, const GameState& gs)
     }
 }
 
+// Moscow's streets: they run between the buildings and give the city its shape
+static void populateRoads(Level& level)
+{
+    level.roads = {
+        { true, 46, "NOVYI ARBAT" },
+        { true, 112, "TVERSKAJA UL." },
+        { true, 150, "LENINSKI PR." },
+        { false, 15, "LENINGRADSKOJE SH." },
+        { false, 135, "SADOVOJE KOLTSO" },
+        { false, 235, "KUTUZOVSKI PR." },
+        { false, 340, "PROSPEKT MIRA" },
+    };
+}
+
 static void populateBuildings(Level& level, const GameState& gs)
 {
     if (gs.phase == GamePhase::War) {
@@ -130,6 +144,26 @@ static void populateBuildings(Level& level, const GameState& gs)
     b = new Seina();
     b->setOffset(180, 50);
     level.addBuilding(b);
+
+    // Western shops along Tverskaja, all closed since 2022
+    {
+        struct Shop { const char* name; const char* sign; uint32_t x; };
+        const Shop shops[] = {
+            { "McDONALD'S", "Ikkunassa lukee nyt 'Vkusno i totska'. Logo on sama, ilman M:\xC3\xA4\xC3\xA4.", 40 },
+            { "STARBUCKS", "Kyltiss\xC3\xA4 lukee 'Stars Coffee'. Sama nainen, eri kruunu.", 65 },
+            { "H&M", "Mallinuket seisovat alasti. Ne ovat odottaneet vuodesta 2022.", 90 },
+            { "ZARA", "Kyltiss\xC3\xA4 lukee nyt 'Maag'. Samat vaatteet, eri lappu.", 150 },
+            { "APPLE STORE", "Takahuoneessa myyd\xC3\xA4\xC3\xA4n harmaan tuonnin iPhoneja kolminkertaisella hinnalla.", 180 },
+            { "NIKE", "Ikkunassa on kiinalaisia lenkkareita. Swooshit ovat v\xC3\xA4\xC3\xA4rin p\xC3\xA4in.", 250 },
+            { "UNIQLO", "P\xC3\xB6ly\xC3\xA4. Paljon p\xC3\xB6ly\xC3\xA4.", 280 },
+            { "LEVI'S", "Farkkuja ei ole. On 'Lev'is'-farkkuja Kirgisiasta.", 300 },
+        };
+        for (const auto& s : shops) {
+            b = new SuljettuLiike(s.name, s.sign);
+            b->setOffset(s.x, 117);
+            level.addBuilding(b);
+        }
+    }
 
     // Kremlin - far northeast (the goal)
     b = new Kremlin();
@@ -260,6 +294,14 @@ static void populatePersons(Level& level, const GameState& gs)
         level.createPerson(level.freePosition(), diileri);
     if (random(30))
         level.createPerson(level.freePosition(), diileri);
+
+    // ordinary Muscovites, each with their own name, job and errands
+    for (int i = 0; i < 25; ++i) {
+        Kansalainen* k = new Kansalainen(level.freePosition());
+        k->pathFinding = level.pathFinding;
+        k->printer = level.printer;
+        if (!level.addPerson(k)) delete k;
+    }
 
     // drunk housewives with their foul-mouthed kids
     for (int i = 0; i < 2 + std::rand() % 2; ++i) {
@@ -412,7 +454,23 @@ static void populateVehicles(Level& level)
     if (level.isWarLevel) return;
 
     {
-        constexpr uint32_t BUS_ROUTE_Y = 110;
+        // two or three cars per lane, both directions
+        for (const auto& r : level.roads) {
+            for (int lane = 0; lane < 2; ++lane) {
+                const uint32_t pos = r.pos + (lane ? 2 : 0);
+                const int dir = lane ? 1 : -1;
+                for (int k = 0; k < 2 + std::rand() % 2; ++k) {
+                    const uint32_t along = std::rand() % (r.horizontal ? common::SIZEX : common::SIZEY);
+                    const Coord c = r.horizontal ? Coord{ along, pos } : Coord{ pos, along };
+                    if (level.hit(c) || level.getVehicleAt(c)) continue;
+                    level.addVehicle(new Car(c, r.horizontal, dir));
+                }
+            }
+        }
+    }
+
+    {
+        constexpr uint32_t BUS_ROUTE_Y = 112; // top lane of Tverskaja
         constexpr uint32_t BUS_STOP_X = 70;
 
         Bus* bus = new Bus(BUS_ROUTE_Y, BUS_STOP_X);
@@ -538,6 +596,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         }
 
         level.addPerson(&player);
+        if (gameState.phase != GamePhase::War) populateRoads(level);
         populateBuildings(level, gameState);
         populatePersons(level, gameState);
         populateItems(level, gameState);
@@ -805,6 +864,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                     msSinceMove += FRAME_MS;
                     level.npcFrame(FRAME_MS);
+                    level.vehicleFrame(FRAME_MS);
                     level.cleanDead();
 
                     ++npcTick;

@@ -192,9 +192,49 @@ string Printer::promilleAligned(uint32_t value) const
 
 namespace {
 
+// Streets: grey asphalt, a yellow centre line, zebra crossings next to junctions
+// and the street name painted along the kerb lane.
+bool roadCell(const Level* l, const Coord& c, string& glyph, const char*& color)
+{
+    const Road* h = nullptr;
+    const Road* v = nullptr;
+    l->roadsAt(c, h, v);
+    if (!h && !v) return false;
+
+    glyph = " ";
+    color = "48;5;236";
+    if (h && v) return true; // junction
+
+    const Road& r = h ? *h : *v;
+    const uint32_t along = r.horizontal ? c.x : c.y;
+    const uint32_t across = (r.horizontal ? c.y : c.x) - r.pos;
+
+    for (const auto& other : l->roads) {
+        if (other.horizontal == r.horizontal) continue;
+        if (along + 1 == other.pos || along == other.pos + 3) {
+            glyph = r.horizontal ? "\xE2\x96\x88" : "\xE2\x96\x80";
+            color = (across % 2 == 0) ? "97;48;5;236" : "37;48;5;236";
+            return true;
+        }
+    }
+    if (across == 1) {
+        if (along % 4 < 2) { glyph = r.horizontal ? "\xE2\x94\x80" : "\xE2\x94\x82"; color = "33;48;5;236"; }
+        return true;
+    }
+    if (across == 0) {
+        const uint32_t idx = along % 70;
+        if (idx >= 3 && idx - 3 < r.name.size()) {
+            glyph = string(1, r.name[idx - 3]);
+            color = "37;48;5;236";
+        }
+    }
+    return true;
+}
+
 // A person's colour is their clothing or skin (xterm 256-colour palette).
 const char* personColor(const Person* p)
 {
+    if (p->clothing) return p->clothing;
     switch (p->type) {
         case pelaaja:
             return static_cast<const Player*>(p)->isVeteran()
@@ -260,10 +300,10 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
     uint32_t worldY = y + (uint32_t)l->cameraY;
     string line;
     string current;
-    auto emit = [&](const string& glyph, const char* color) {
+    auto emit = [&](const string& glyph, const string& color) {
         if (current != color) {
             line += "\033[0m";
-            if (*color) line += string("\033[") + color + "m";
+            if (!color.empty()) line += "\033[" + color + "m";
             current = color;
         }
         line += glyph;
@@ -328,8 +368,12 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
         }
 
         if (!found && !mask->visible(coord)) {
-            c = ".";
-            color = "2;90";
+            // out of sight the streets still show faintly, so you can tell where you are
+            const Road* h = nullptr;
+            const Road* v = nullptr;
+            l->roadsAt(coord, h, v);
+            c = (h || v) ? " " : ".";
+            color = (h || v) ? "48;5;234" : "2;90";
             found = true;
         }
 
@@ -375,7 +419,7 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             for (const auto& v : l->vehicles) {
                 if (v->hitVehicle(coord)) {
                     c = v->typeToChar();
-                    color = "1;93;40";
+                    color = v->color();
                     found = true;
                     break;
                 }
@@ -403,7 +447,19 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             }
         }
 
-        emit(c, color);
+        string col = color;
+        if (!found) {
+            roadCell(l, coord, c, color);
+            col = color;
+        } else if (col.find("48;") == string::npos && col != "2;90") {
+            // people, items and cars on a street keep the asphalt underneath
+            const Road* h = nullptr;
+            const Road* v = nullptr;
+            l->roadsAt(coord, h, v);
+            if (h || v) col += col.empty() ? "48;5;236" : ";48;5;236";
+        }
+
+        emit(c, col);
     }
     line += "\033[0m";
     printChar(line);

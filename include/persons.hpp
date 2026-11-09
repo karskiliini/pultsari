@@ -53,6 +53,8 @@ public:
     // pickpocketing: money taken from the player, and how many more actions to run away
     uint32_t stolenMoney = 0;
     uint32_t fleeActions = 0;
+    // individual clothing colour (xterm-256 SGR), overrides the per-type colour
+    const char* clothing = nullptr;
     bool blind = false;
     bool hasRadio = false;
     // show an NPC's message only if the player can see or hear this person
@@ -373,6 +375,24 @@ public:
     Kotiaiti* mother = nullptr;
 private:
     void stepTowards(const Coord& target, bool away);
+};
+
+// An ordinary Muscovite with a name, a job, their own clothes and their own errands.
+class Kansalainen : public Person {
+public:
+    Kansalainen(const Coord& pos);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return glyph; };
+    std::string name;
+    std::string job;
+private:
+    void pickDestination();
+    std::string glyph;
+    std::string jobLine;
+    Coord destination;
+    uint32_t panic = 0;
 };
 
 #endif

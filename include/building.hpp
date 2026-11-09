@@ -21,7 +21,8 @@ enum BuildingType {
     EAsema,
     ESeina,
     EKremlin,
-    EHypermarket
+    EHypermarket,
+    EClosedShop
 };
 
 class Level;
@@ -187,6 +188,18 @@ public:
     uint32_t fireTurn = 0;
     std::vector<Coord> fireSpots;
     std::vector<Coord> smokeSpots;
+};
+
+// A Western shop that pulled out of Russia in 2022 and never came back.
+class SuljettuLiike : public Building {
+public:
+    SuljettuLiike(const std::string& name, const std::string& sign);
+    virtual std::string getName() const { return name; }
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual std::string getWalkMsg() const;
+private:
+    std::string name;
+    std::string sign;
 };
 
 #endif

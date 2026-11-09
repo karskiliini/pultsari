@@ -25,7 +25,8 @@ enum PersonType {
     gerasimov,
     avustaja,
     kotiaiti,
-    lapsi
+    lapsi,
+    kansalainen
 };
 
 #endif

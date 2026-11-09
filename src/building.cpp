@@ -804,3 +804,28 @@ void Hypermarket::startFire()
     fireSpots.push_back({cx + 1, cy});
     fireSpots.push_back({cx, cy + 1});
 }
+
+// CLOSED WESTERN SHOPS
+
+SuljettuLiike::SuljettuLiike(const std::string& name, const std::string& sign)
+    : Building(BuildingType::EClosedShop), name(name), sign(sign)
+{
+    wallLeft = 0;
+    wallRight = 14;
+    wallTop = 0;
+    wallBot = 4;
+    door = DirectionNS::up;
+    windows.push_back({3, wallTop});
+    windows.push_back({11, wallTop});
+}
+
+bool SuljettuLiike::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Ovi on lukossa. Lapussa: 'Suljettu toistaiseksi. 03/2022.' " + sign;
+    return false;
+}
+
+std::string SuljettuLiike::getWalkMsg() const
+{
+    return name + " on ollut kiinni vuodesta 2022. Ikkunat ovat p\xC3\xB6lyss\xC3\xA4.";
+}

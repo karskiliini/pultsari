@@ -22,6 +22,17 @@ namespace PlayerNS{
     class Player;
 };
 
+// A three-tile-wide street across the whole map; the middle row/column is the centre line.
+struct Road {
+    bool horizontal;
+    uint32_t pos;       // top row (horizontal) or left column (vertical)
+    std::string name;
+    bool contains(const Coord& c) const {
+        const uint32_t v = horizontal ? c.y : c.x;
+        return v >= pos && v <= pos + 2;
+    }
+};
+
 class Level {
 public:
     Level() = default;
@@ -103,6 +114,11 @@ public:
     std::vector<Person*> persons;
     std::vector<Item*> items;
     std::vector<Vehicle*> vehicles;
+    std::vector<Road> roads;
+    // the horizontal and vertical road at a cell (either may be null)
+    void roadsAt(const Coord& c, const Road*& h, const Road*& v) const;
+    // cars move on their own clock, every frame
+    void vehicleFrame(uint32_t ms);
     Item* thrownItem = nullptr;
     std::vector<Animation*> animations;
     void stepAnimations();

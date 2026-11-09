@@ -6,6 +6,7 @@
 #include "coord.hpp"
 #include "animation.hpp"
 #include "pathmask.hpp"
+#include "vehicle.hpp"
 #include <string>
 #include <iostream>
 #include <chrono>
@@ -3094,6 +3095,107 @@ bool Lapsi::interactThrow(Item* item, Person* source, std::string& msg)
 {
     msg = "Osuit lapseen. Ohikulkijat paheksuvat.";
     say("\xC3\x84ITIIII!");
+    damage(1);
+    level->alertCops(source);
+    return true;
+}
+
+// ============ Ordinary Muscovites ============
+
+Kansalainen::Kansalainen(const Coord& pos) : Person(kansalainen, pos), destination(pos)
+{
+    static const char* names[] = {
+        "Irina", "Nina", "Boris", "Lena", "Kostja", "Dima", "Tanja", "Fjodor",
+        "Rita", "Zoja", "Juri", "Uljana", "Ksenija", "Ivan", "Eduard", "Hristina",
+    };
+    struct Job { const char* job; const char* line; };
+    static const Job jobs[] = {
+        { "opettaja", "Palkka tuli taas my\xC3\xB6h\xC3\xA4ss\xC3\xA4. Ruplissa." },
+        { "taksikuski", "Navigaattori n\xC3\xA4ytt\xC3\xA4\xC3\xA4 Kiovaa. Taas." },
+        { "el\xC3\xA4kel\xC3\xA4inen", "El\xC3\xA4ke riitt\xC3\xA4\xC3\xA4 leip\xC3\xA4\xC3\xA4n. Puoleen leip\xC3\xA4\xC3\xA4n." },
+        { "opiskelija", "VPN on kielletty. K\xC3\xA4yt\xC3\xA4n kahta." },
+        { "virkamies", "Min\xC3\xA4 vain noudatan ohjeita." },
+        { "tiktokkaaja", "Kuvaan videon. Siin\xC3\xA4 ei ole mit\xC3\xA4\xC3\xA4n poliittista." },
+        { "kuriiri", "Pakettisi on matkalla. Ehk\xC3\xA4." },
+        { "sairaanhoitaja", "L\xC3\xA4\xC3\xA4kkeet loppuivat. Tuontikorvaus tulee ensi vuonna." },
+        { "rakennusmies", "Rakennan siltaa Krimille. Kolmatta kertaa." },
+        { "pappi", "Siunaan tankkeja. 500 ruplaa kappale." },
+        { "propagandisti", "Kaikki menee suunnitelman mukaan! Kerro muillekin." },
+        { "taiteilija", "Maalaan vain kukkia. En mit\xC3\xA4\xC3\xA4n keltaista ja sinist\xC3\xA4." },
+    };
+    static const char* clothes[] = {
+        "38;5;67", "38;5;95", "38;5;131", "38;5;137", "38;5;101", "38;5;145",
+        "38;5;174", "38;5;110", "38;5;180", "38;5;73", "38;5;139", "38;5;150",
+    };
+    name = names[std::rand() % 16];
+    const Job& j = jobs[std::rand() % 12];
+    job = j.job;
+    jobLine = j.line;
+    clothing = clothes[std::rand() % 12];
+    glyph = std::string(1, (char)(name[0] - 'A' + 'a'));
+    stats.health = 4;
+    visionRange = 7;
+}
+
+void Kansalainen::pickDestination()
+{
+    // errands mostly follow the streets
+    if (!level->roads.empty() && random(75)) {
+        const Road& r = level->roads[std::rand() % level->roads.size()];
+        const uint32_t along = std::rand() % (r.horizontal ? common::SIZEX : common::SIZEY);
+        const uint32_t side = random(50) ? r.pos - 1 : r.pos + 3;
+        destination = r.horizontal ? Coord{ along, side } : Coord{ side, along };
+        if (coord.distance(destination) > 40) destination = Coord{ coord.x + std::rand() % 41 - 20, coord.y + std::rand() % 21 - 10 };
+    } else {
+        destination = Coord{ coord.x + std::rand() % 41 - 20, coord.y + std::rand() % 21 - 10 };
+    }
+}
+
+void Kansalainen::npcAct()
+{
+    // gunfire and explosions send people running
+    for (const auto& s : level->audio.getHeardSounds(coord)) {
+        if (s.type == SoundType::Gunshot || s.type == SoundType::Explosion) {
+            if (!panic) say(random(50) ? "Ammutaan! Juoskaa!" : "Pomogite!");
+            panic = 8;
+            break;
+        }
+    }
+    if (knowsPutinDead && random(6)) say(random(50) ? "Onko se totta?!" : "Svoboda!");
+    else if (!panic && random(4)) say(jobLine);
+
+    Coord target = destination;
+    if (panic) {
+        --panic;
+        target = Coord{ coord.x + std::rand() % 9 - 4, coord.y + std::rand() % 9 - 4 };
+    } else if (coord.distance(destination) <= 1 || random(2)) {
+        pickDestination();
+        target = destination;
+    }
+
+    Coord next = coord;
+    switch (getMoveDirection(target)) {
+        case DirectionNS::up:    if (next.y > 0) --next.y; break;
+        case DirectionNS::down:  ++next.y; break;
+        case DirectionNS::left:  if (next.x > 0) --next.x; break;
+        case DirectionNS::right: ++next.x; break;
+        default: break;
+    }
+    if (next.x < common::SIZEX && next.y < common::SIZEY && !level->hit(next) && !level->getVehicleAt(next)) coord = next;
+    else pickDestination();
+}
+
+bool Kansalainen::interact(std::string& msg, Person* source)
+{
+    msg = name + ", " + job + ": 'Olen " + name + ". " + jobLine + "'";
+    say("Ei tyrkit\xC3\xA4 kiitos.");
+    return true;
+}
+
+bool Kansalainen::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Osuit ohikulkijaan (" + name + ", " + job + ").";
+    say("Hei! Politsija!");
     damage(1);
     level->alertCops(source);
     return true;

@@ -4,6 +4,7 @@
 #include "printer.hpp"
 #include "common.hpp"
 #include "input.hpp"
+#include "persons.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -26,7 +27,7 @@ bool Vehicle::hitVehicle(const Coord& c) const
 
 // Bus
 Bus::Bus(uint32_t route_y, uint32_t stop_x)
-    : Vehicle(Coord{79, route_y}, route_y), stopX(stop_x)
+    : Vehicle(Coord{common::SIZEX - 1, route_y}, route_y), stopX(stop_x)
 {
 }
 
@@ -49,7 +50,7 @@ void Bus::update()
     }
 
     if (coord.x == 0) {
-        coord.x = 79;
+        coord.x = common::SIZEX - 1;
     }
 }
 
@@ -209,4 +210,73 @@ BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
     common::sleep(1500);
 
     return result;
+}
+
+// Car
+Car::Car(const Coord& pos, bool horizontal, int dir)
+    : Vehicle(pos, pos.y), horizontal(horizontal)
+{
+    direction = dir;
+    struct Model { const char* name; const char* paint; uint32_t speed; };
+    static const Model models[] = {
+        { "Lada",        "1;97", 45 },
+        { "Lada",        "1;91", 45 },
+        { "Lada",        "1;38;5;180", 40 },
+        { "Volga",       "1;38;5;238", 50 },
+        { "UAZ",         "1;38;5;64", 40 },
+        { "Gelendvagen", "1;38;5;232;48;5;250", 70 },
+        { "Politsijan auto", "1;97;44", 60 },
+    };
+    const Model& m = models[std::rand() % 7];
+    model = m.name;
+    paint = m.paint;
+    speed = m.speed * (80 + std::rand() % 41) / 100;
+}
+
+std::string Car::typeToChar() const
+{
+    return horizontal ? (direction > 0 ? "\xE2\x96\xB6" : "\xE2\x97\x80") : (direction > 0 ? "\xE2\x96\xBC" : "\xE2\x96\xB2");
+}
+
+void Car::frame(uint32_t ms)
+{
+    energy += speed * ms;
+    if (energy < 10000) return;
+    energy -= 10000;
+
+    Coord next = coord;
+    const uint32_t limit = horizontal ? common::SIZEX : common::SIZEY;
+    uint32_t& axis = horizontal ? next.x : next.y;
+    if (direction > 0) axis = axis + 1 >= limit ? 0 : axis + 1;
+    else axis = axis == 0 ? limit - 1 : axis - 1;
+
+    if (level->getVehicleAt(next)) return;
+
+    Person* p = level->getPerson(next);
+    if (p) {
+        // mostly the driver leans on the horn; sometimes they don't brake at all
+        if (waiting < 6 && common::random(80)) {
+            ++waiting;
+            if (waiting == 1) {
+                level->audio.addSound(coord, SoundType::Engine,
+                    "T\xC3\x96\xC3\x96T! " + model + " t\xC3\xB6\xC3\xB6tt\xC3\xA4\xC3\xA4", "Autontorvi", "...t\xC3\xB6\xC3\xB6ttely\xC3\xA4...", 15);
+            }
+            return;
+        }
+        waiting = 0;
+        p->damage(std::rand() % 2 + 2);
+        if (p->type == pelaaja) {
+            level->printer->showMessage(model + " t\xC3\xB6ytt\xC3\xA4\xC3\xA4 sinut kumoon! Kuski ei edes hidasta.", level, false);
+        } else {
+            p->report(model + " ajaa jalankulkijan yli. Kukaan ei pys\xC3\xA4hdy.");
+        }
+        level->audio.addSound(coord, SoundType::Fight, "KOLAHDUS! Auto osuu ihmiseen", "Kolahdus", "...kolahdus...", 18);
+        // the victim is thrown to the side of the lane
+        Coord side = p->coord;
+        if (horizontal) side.y += (side.y % 2) ? 1 : -1; else side.x += (side.x % 2) ? 1 : -1;
+        if (!level->hit(side)) p->coord = side;
+        return;
+    }
+    waiting = 0;
+    coord = next;
 }
