@@ -79,6 +79,7 @@
         const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
         // 0 = watery, 1 = thick slime: every splash is half water, the rest stays thick
         const thick = new Float32Array(MAX);
+        const fly = new Uint8Array(MAX);     // >0: airborne jet, frames left
         const rest = new Uint16Array(MAX);   // frames spent lying on the border
         let n = 0;
         const G = 0.03, R0 = 1.15, H_ = 2.3, K = 0.09, COH = 0.009, VISC = 0.13;
@@ -86,11 +87,11 @@
 
         function emit(x, y, ux, uy, th = 1) {
             if (n >= MAX) return;
-            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; rest[n] = 0; n++;
+            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; rest[n] = 0; fly[n] = 0; n++;
         }
         function remove(i) {
             n--;
-            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n]; rest[i] = rest[n];
+            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n]; rest[i] = rest[n]; fly[i] = fly[n];
         }
         const at = (mask, x, y) => {
             const cx = x | 0, cy = y | 0;
@@ -130,10 +131,15 @@
                 // the vomit sticks to the letters and oozes off their bottoms: slime slowly, water quickly
                 if (at(latin.mask, px[i], py[i]) || at(latin.mask, px[i], py[i] + 1)) {
                     vx[i] *= 0.93 - 0.23 * t; vy[i] *= 0.95 - 0.2 * t;
+                    fly[i] = 0;
                 }
-                // thick slime drags on everything
-                vx[i] *= 1 - 0.05 * t; vy[i] *= 1 - 0.035 * t;
-                const sp = Math.hypot(vx[i], vy[i]), top = 1.7 - 0.9 * t;
+                // the jet flies freely until it hits something; after that slime drags on everything
+                if (fly[i]) {
+                    if (--fly[i] === 0 || rest[i]) fly[i] = 0;
+                    continue;
+                }
+                vx[i] *= 1 - 0.012 * t; vy[i] *= 1 - 0.035 * t;
+                const sp = Math.hypot(vx[i], vy[i]), top = 2.8 - 1.3 * t;
                 if (sp > top) { vx[i] *= top / sp; vy[i] *= top / sp; }
             }
             for (let i = n - 1; i >= 0; i--) {
@@ -142,7 +148,7 @@
                 if (px[i] > FW - 2) { px[i] = FW - 2; vx[i] *= -0.3; }
                 if (py[i] >= floorCell) {
                     // lands on the border and pools there
-                    py[i] = floorCell; if (vy[i] > 0) vy[i] *= -0.05; vx[i] *= 0.85;
+                    py[i] = floorCell; if (vy[i] > 0) vy[i] *= -0.05; vx[i] *= 0.975;
                     const sx = px[i] | 0;
                     if (rest[i] === 0 && Math.random() < 0.25) smear[(Math.random() < 0.5 ? FW : 0) + sx] = 1 + (thick[i] > 0.5);
                     if (rest[i] < 65000) rest[i]++;
@@ -255,7 +261,12 @@
                     if (n === 0 || rest[i] < 30 || colCount[px[i] | 0] < 2) continue;
                     const x = px[i] * CELL;
                     if (drips.some((d) => Math.abs(d.x - x) < 16)) continue;
+                    // the strand inherits the puddle's flow under it
+                    let mv = 0, mc = 0;
+                    for (let j = 0; j < n; j++) if (rest[j] > 0 && Math.abs(px[j] - px[i]) < 4) { mv += vx[j]; mc++; }
+                    mv = mc ? mv / mc : 0;
                     drips.push({ x, len: 0, w: 3 + Math.random() * Math.random() * 9, vol: 3, starve: 0,
+                                 ox: 0, ovx: mv * CELL * 1.6 + (Math.random() - 0.5) * 0.4, bvx: mv * CELL * 0.6,
                                  maxLen: 25 + Math.random() * Math.max(30, (HT - H) * 0.8),
                                  speed: 0.1 + Math.random() * 0.16 });
                     break;
@@ -275,24 +286,50 @@
                     if (bi >= 0 && best < 3 * CELL + d.w) { remove(bi); d.vol += 1; fed = true; }
                 }
                 d.starve = fed ? 0 : d.starve + 1;
+
+                // the root slides with the puddle; the tip swings like a slow pendulum
+                d.x += d.bvx; d.bvx *= 0.992;
+                if (d.x < 2) { d.x = 2; d.bvx = Math.abs(d.bvx); }
+                if (d.x > W - 2) { d.x = W - 2; d.bvx = -Math.abs(d.bvx); }
+                const spring = 0.06 / (d.len + 8);
+                d.ovx += -d.ox * spring + (Math.random() - 0.5) * 0.03;
+                // surface tension: neighbouring strands and the pool around pull the tip sideways
+                for (const o of drips) {
+                    if (o === d) continue;
+                    const dx = (o.x + o.ox) - (d.x + d.ox);
+                    if (Math.abs(dx) < 28) d.ovx += Math.sign(dx) * 0.006 * (1 - Math.abs(dx) / 28);
+                }
+                d.ovx *= 0.988;
+                d.ox += d.ovx;
+                const lim = d.len * 0.55;
+                if (d.ox > lim) { d.ox = lim; d.ovx *= -0.3; } else if (d.ox < -lim) { d.ox = -lim; d.ovx *= -0.3; }
                 d.len += d.speed * (0.35 + Math.min(1.6, d.vol / 14));
                 d.r = Math.min(d.w * 0.95, 1.4 + Math.sqrt(d.vol) * 0.7);
                 if ((d.vol > 18 + d.w * 4 && Math.random() < 0.015) || d.len > d.maxLen) {
                     // the heavy drop lets go; the strand snaps back up and keeps oozing
-                    drops.push({ x: d.x, y: lipTop + d.len, r: d.r, vy: d.speed });
+                    drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: d.r, vy: d.speed, vx: d.ovx });
                     d.vol *= 0.25;
+                    d.ovx *= -0.5; // recoil
                     d.len *= 0.35 + Math.random() * 0.3;
                     d.maxLen = 25 + Math.random() * Math.max(30, (HT - H) * 0.8);
                 }
                 if (d.starve > 90 && d.vol < 4) {
                     // the puddle is gone here: the strand thins to a hair and breaks
                     d.w *= 0.985;
-                    if (d.w < 0.7) { drops.push({ x: d.x, y: lipTop + d.len, r: Math.max(1, d.r * 0.7), vy: 0.3 }); drips.splice(k, 1); }
+                    if (d.w < 0.7) { drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: Math.max(1, d.r * 0.7), vy: 0.3, vx: d.ovx }); drips.splice(k, 1); }
+                }
+            }
+            for (let a = drips.length - 1; a >= 0; a--) {
+                for (let b = a - 1; b >= 0; b--) {
+                    const A = drips[a], B = drips[b];
+                    if (Math.abs(A.x - B.x) > (A.w + B.w) * 0.5) continue;
+                    B.vol += A.vol; B.w = Math.max(A.w, B.w) * 1.1; B.len = Math.max(A.len, B.len);
+                    B.ovx = (A.ovx + B.ovx) * 0.5; drips.splice(a, 1); break;
                 }
             }
             for (let k = drops.length - 1; k >= 0; k--) {
                 const p = drops[k];
-                p.vy += 0.16; p.y += p.vy;
+                p.vy += 0.16; p.y += p.vy; p.x += p.vx; p.vx *= 0.996;
                 if (p.y > HT + 20) drops.splice(k, 1);
             }
         }
@@ -329,15 +366,17 @@
                 const tip = lipTop + d.len;
                 if (tip <= top) continue;
                 const w0 = d.w * 1.4, w1 = Math.max(0.9, d.w * 0.55);
+                const tx = d.x + d.ox, L = tip - top, ty = tip - d.r * 0.6;
+                // the strand hangs straight from the root and bends toward the swinging tip
                 ctx.beginPath();
                 ctx.moveTo(d.x - w0 / 2, top);
-                ctx.quadraticCurveTo(d.x - w1 / 2, top + (tip - top) * 0.25, d.x - w1 / 2, tip - d.r * 0.6);
-                ctx.lineTo(d.x + w1 / 2, tip - d.r * 0.6);
-                ctx.quadraticCurveTo(d.x + w1 / 2, top + (tip - top) * 0.25, d.x + w0 / 2, top);
+                ctx.bezierCurveTo(d.x - w1 / 2, top + L * 0.35, tx - w1 / 2, top + L * 0.6, tx - w1 / 2, ty);
+                ctx.lineTo(tx + w1 / 2, ty);
+                ctx.bezierCurveTo(tx + w1 / 2, top + L * 0.6, d.x + w1 / 2, top + L * 0.35, d.x + w0 / 2, top);
                 ctx.closePath();
                 ctx.fill();
                 ctx.beginPath();
-                ctx.ellipse(d.x, tip, d.r, d.r * 1.15, 0, 0, Math.PI * 2);
+                ctx.ellipse(tx, tip, d.r, d.r * 1.15, d.ovx * 0.15, 0, Math.PI * 2);
                 ctx.fill();
             }
             for (const p of drops) {
@@ -351,12 +390,13 @@
             for (const d of drips) {
                 const tip = lipTop + d.len;
                 if (d.len < 6) continue;
+                const tx = d.x + d.ox;
                 ctx.beginPath();
                 ctx.moveTo(d.x - d.w * 0.25, lipTop + 3);
-                ctx.lineTo(d.x - d.w * 0.12, tip - d.r * 0.8);
+                ctx.bezierCurveTo(d.x - d.w * 0.2, lipTop + d.len * 0.35, tx - d.w * 0.12, lipTop + d.len * 0.6, tx - d.w * 0.12, tip - d.r * 0.8);
                 ctx.stroke();
                 ctx.beginPath();
-                ctx.arc(d.x - d.r * 0.35, tip - d.r * 0.35, d.r * 0.3, 0, Math.PI * 2);
+                ctx.arc(tx - d.r * 0.35, tip - d.r * 0.35, d.r * 0.3, 0, Math.PI * 2);
                 ctx.stroke();
             }
         }
@@ -379,15 +419,27 @@
         let stopTheme = () => {};
         const cues = [
             [2.6, () => window.SFX && SFX.play('cough', 1)],
-            [3.1, () => { window.SFX && SFX.play('vomit', 1); splash(520); }],
+            [3.1, () => { window.SFX && SFX.play('vomit', 1); jet = 540; }],
             [5.0, () => { window.SFX && SFX.play('vomit2', 1); splash(360); }],
         ];
+
+        // the first heave: a jet from the left that sweeps across the letters to the right
+        let jet = 0;
+        function jetFrame() {
+            if (jet <= 0) return;
+            const srcX = (startX + titleW * 0.15) / CELL, srcY = (baseY - fs * 0.55) / CELL;
+            for (let k = 0; k < 30 && jet > 0; k++, jet--) {
+                emit(srcX + Math.random() * 8, srcY + (Math.random() - 0.5) * 7,
+                     2.2 + Math.random() * 0.8, -0.75 + Math.random() * 0.35, jet % 2 ? 0 : 1);
+                fly[n - 1] = 120;
+            }
+        }
 
         function splash(count) {
             for (let k = 0; k < count; k++) {
                 const x = latin.minX + Math.random() * (latin.maxX - latin.minX);
                 // the freshest splash is always half water
-                emit(x, latin.minY - 4 - Math.random() * 10, (Math.random() - 0.5) * 0.4, 0.3 + Math.random() * 0.4,
+                emit(x, latin.minY - 4 - Math.random() * 10, 0.3 + Math.random() * 0.5, 0.3 + Math.random() * 0.4,
                      k % 2 ? 0 : 1);
             }
         }
@@ -404,6 +456,7 @@
                 doneAt = t;
                 window.SFX && SFX.play('balalaika', 1);
             }
+            jetFrame();
             step(); step();
             updateDrips();
 
