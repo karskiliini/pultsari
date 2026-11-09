@@ -215,16 +215,61 @@
             },
         },
         {
-            who: 'ERITYISESSÄ ROOLISSA', name: 'PRESIDENTTI', line: 'Neuvottelee nukkejen kanssa.',
+            who: 'ERITYISESSÄ ROOLISSA', name: 'VOVA', line: 'Pitää kenraalinsa turvav\u00e4lin p\u00e4\u00e4ss\u00e4.',
             color: '#f2d34a',
-            art: [
-                '  ___                                                     _  _ ',
-                ' (o_o)  ________________________________________________ (z)(o)',
-                ' /|=|\\ |________________________________________________|/|\\/|\\',
-                '  |_|_  ||                                            ||  | |  |',
-                '  |  |  ||                                            ||  ^  ^ ',
-                '                     naurettavan pitkä pöytä                     ',
-            ],
+            dur: 7.0,
+            // camera work: close on Vova, a quick pull back, then a long pan left along the table
+            // to the two generals at the far end
+            render(ctx, W, H, t, fs) {
+                const ease = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
+                const L = 150;                                 // the table, in cells
+                const cw0 = ctx.measureText('M').width, ch0 = fs * 1.2;
+                const zoom = 3.4 - 2.4 * ease((t - 1.1) / 0.6);   // big on Vova, then pulled back fast
+                const camX = (L + 5) - 13 * ease((t - 1.1) / 0.6) - (L + 4) * ease((t - 2.0) / 4.0);
+                const camY = 1.6 + 0.9 * ease((t - 1.1) / 0.6);
+                const cw = cw0 * zoom, ch = ch0 * zoom;
+                const sx = (wx) => W / 2 + (wx - camX) * cw;
+                const sy = (wy) => H * 0.42 + (wy - camY) * ch;
+                ctx.font = `${Math.round(fs * zoom)}px ui-monospace, "Cascadia Code", Menlo, monospace`;
+                const text = (str, wx, wy, color) => { ctx.fillStyle = color; ctx.fillText(str, sx(wx), sy(wy)); };
+
+                // the table: a polished top and a front edge, legs at the ends and every so often
+                const top = '_'.repeat(L);
+                text(' ' + top, 0, 1, '#c8b27a');
+                text('|' + top + '|', 0, 2, '#c8b27a');
+                for (let lx = 1; lx < L - 8; lx += 37) text('||', lx, 3, '#8f7c50'), text('||', lx, 4, '#8f7c50');
+                text('||', L - 2, 3, '#8f7c50'); text('||', L - 2, 4, '#8f7c50');
+                // a shine running along the surface
+                ctx.globalAlpha = 0.25;
+                text('~'.repeat(L - 4), 2, 1.55, '#fff');
+                ctx.globalAlpha = 1;
+
+                // Vova in his chair at the near end: an old man, alone
+                const vx = L + 2;
+                text(' ___ ', vx, -1, '#e6e0d0');
+                text('(ò_ó)', vx, 0, '#e6e0d0');
+                text('/|=|\\', vx, 1, '#4b5d8a');
+                text(' |_|_', vx, 2, '#4b5d8a');
+                text(' |  |', vx, 3, '#6b5a3a');
+                if (t < 1.1) text('*nyyh*', vx + 5.5, -0.6, '#f2d34a');
+
+                // the caption lies on the table and drifts past as the camera goes by
+                text('naurettavan pitkä pöytä', L * 0.3, 0.3, '#f2d34a');
+
+                // at the far end: the two generals, in their own chairs, very far away
+                const gx = -12;
+                text('(o_o)  (ò_ò)', gx, 0, '#e0d8c0');
+                text('/|█|\\  /|█|\\', gx, 1, '#5b6b3a');
+                text(' |_|_   |_|_', gx, 2, '#5b6b3a');
+                text(' |  |   |  |', gx, 3, '#6b5a3a');
+                ctx.font = `bold ${Math.round(fs * zoom * 0.8)}px ui-monospace, Menlo, monospace`;
+                text('ŠOIGU', gx - 0.5, -1.4, '#f2d34a');
+                text('GERASIMOV', gx + 5.5, -1.4, '#f2d34a');
+                if (t > 6.0) {
+                    ctx.font = `${Math.round(fs * zoom * 0.7)}px ui-monospace, Menlo, monospace`;
+                    text('"Kaikki menee hyvin, herra presidentti!"', gx - 6, -2.6, '#ddd');
+                }
+            },
         },
         {
             who: 'SEKÄ', name: 'VKUSNO I TOTŠKA', line: 'Ei ole sama. Jono on silti sama.',
@@ -346,6 +391,15 @@
         // quick zoom-in cut and a white flash between scenes, like the eighties
         const zoom = 1.25 - Math.min(0.25, local * 0.6);
         const fs = Math.max(12, Math.round(W / 46));
+        if (s.render) {
+            // a scene with its own camera work
+            ctx.save();
+            ctx.font = `${fs}px ui-monospace, "Cascadia Code", Menlo, monospace`;
+            ctx.textBaseline = 'middle';
+            ctx.textAlign = 'left';
+            s.render(ctx, W, H, local, fs);
+            ctx.restore();
+        } else {
         ctx.save();
         ctx.translate(W / 2, H * 0.42);
         ctx.scale(zoom, zoom);
@@ -359,6 +413,7 @@
         s.art.forEach((line, i) => ctx.fillText(line, x, y + i * ch));
         if (s.anim) s.anim(ctx, local, x, y, cw, ch);
         ctx.restore();
+        }
 
         // the credit bar slides in from the left
         const slide = Math.min(1, local / 0.35);
