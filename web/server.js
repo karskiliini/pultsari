@@ -5,7 +5,8 @@ const crypto = require('crypto');
 const { spawn } = require('child_process');
 const WebSocket = require('ws');
 
-const PORT = process.env.PORT || 3000;
+// always port 3000, whatever PORT says: one game, one address
+const PORT = 3000;
 const ROOT = path.join(__dirname, '..');
 const GAME = path.join(ROOT, 'pultsari');
 // PULTSARI_ARGS adds options for trying things out, e.g. PULTSARI_ARGS=--car
@@ -198,6 +199,17 @@ wss.on('connection', (ws, req) => {
     ws.on('message', (d) => game.write(d.toString()));
     ws.on('close', () => game.kill());
 });
+
+function onListenError(err) {
+    if (err.code === 'EADDRINUSE') {
+        console.error(`Port ${PORT} is already in use: another game server is running. Stop it first.`);
+        process.exit(1);
+    }
+    throw err;
+}
+// ws passes the http server's errors on to its own object too
+server.on('error', onListenError);
+wss.on('error', onListenError);
 
 server.listen(PORT, '0.0.0.0', () => {
     console.log(`Grand Tyr Moscow running at http://localhost:${PORT}`);
