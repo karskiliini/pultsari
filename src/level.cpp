@@ -170,6 +170,7 @@ void Level::playAnimation()
 
 void Level::explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person* source)
 {
+    common::boomEvent(c, radius);
     for (auto& p : persons) {
         if (p->stats.health > 0 && p->coord.distance(c) <= radius) {
             p->damage(std::rand() % maxDamage + 1);

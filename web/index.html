@@ -4,52 +4,91 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>PПLTSAЯI 2: Russki Mir</title>
-    <link rel="stylesheet" href="xterm.css">
     <style>
-        :root { --bg: #0b0b0b; --fg: #e6e6e6; --red: #d52b1e; --muted: #777; }
+        :root { --bg: #0b0b0b; --fg: #e6e6e6; --red: #d52b1e; --muted: #777; --mono: ui-monospace, "Cascadia Code", Menlo, Consolas, monospace; }
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body {
-            background: var(--bg);
-            color: var(--fg);
-            font-family: ui-monospace, "Cascadia Code", "Fira Code", monospace;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            min-height: 100vh;
-            padding: 12px 16px;
+            background: var(--bg); color: var(--fg); font-family: var(--mono);
+            display: flex; flex-direction: column; align-items: center; min-height: 100vh; padding: 12px 16px;
         }
         h1 { color: var(--red); font-size: 1.4em; letter-spacing: 3px; }
         .subtitle { color: var(--muted); font-size: 0.85em; margin-bottom: 8px; }
-        #status { color: #ffaa00; margin: 6px 0; font-size: 0.85em; min-height: 1.2em; }
-        .controls { margin-top: 10px; color: var(--muted); font-size: 0.78em; text-align: center; line-height: 2; max-width: 820px; }
-        kbd { background: #1d1d1d; border: 1px solid #444; border-radius: 3px; padding: 1px 5px; color: #ddd; }
-        #terminal-wrap { position: relative; }
+        #status { color: #ffaa00; margin: 4px 0; font-size: 0.85em; min-height: 1.2em; }
+        #game { display: flex; gap: 10px; align-items: flex-start; max-width: 100%; }
+        #side { width: 130px; font-size: 13px; padding-top: 48px; }
+        #side h2 { color: var(--red); font-size: 13px; margin-bottom: 4px; }
+        #inv { list-style: none; }
+        #inv li { display: flex; justify-content: space-between; color: #cfcfcf; line-height: 1.5; }
+        #inv li.empty { color: var(--muted); }
+        #main { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
+        #msg { min-height: 1.3em; font-weight: bold; font-size: 14px; }
+        #frame { border: 2px solid var(--red); position: relative; background: #000; overflow: auto; max-width: 100%; }
+        #framebar { display: flex; justify-content: space-between; font-size: 13px; }
+        #framebar .title { background: var(--red); color: #fff; font-weight: bold; padding: 0 6px; }
+        #level { color: #f2d34a; font-weight: bold; }
+        #screen { position: relative; }
+        canvas { display: block; }
+        #hud { font-size: 14px; display: flex; gap: 18px; flex-wrap: wrap; }
+        #hud .lbl { color: var(--muted); }
+        #hud b { color: #fff; }
+        #hud b.good { color: #5ee05e; } #hud b.warn { color: #f2d34a; } #hud b.bad { color: #ff4d4d; }
+        #sounds { font-size: 13px; color: #3fb8b8; min-height: 1.3em; }
+        #sounds:not(:empty)::before { content: "KUULET: "; color: #2b7b7b; }
+        #sounds span + span::before { content: " | "; color: #2b7b7b; }
+        #sounds .loud { color: #ff5050; font-weight: bold; }
+        #menu { position: absolute; left: 50%; top: 40px; transform: translateX(-50%); background: #a3150f; color: #fff;
+                border: 3px double #fff; padding: 6px 10px; font-size: 13px; z-index: 3; }
+        #menu h3 { font-size: 13px; text-align: center; margin-bottom: 4px; }
+        #menu td { padding: 0 6px; }
+        #menu tr.sel { background: #fff; color: #000; font-weight: bold; }
+        #menu tr.none { opacity: 0.55; }
+        #menu p { margin-top: 4px; font-size: 12px; text-align: center; }
+        #text { position: absolute; inset: 0; background: rgba(0,0,0,0.9); color: #ddd; white-space: pre-wrap;
+                padding: 24px; font-size: 14px; z-index: 4; overflow: auto; }
         #start {
-            position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px;
-            align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.85);
-            color: var(--fg); font-size: 1.1em; cursor: pointer; text-align: center; padding: 16px;
+            position: absolute; inset: 0; display: flex; flex-direction: column; gap: 10px; z-index: 6;
+            align-items: center; justify-content: center; background: rgba(0, 0, 0, 0.88);
+            font-size: 1.1em; cursor: pointer; text-align: center; padding: 16px;
         }
         #start strong { color: var(--red); letter-spacing: 2px; }
         #start span { color: var(--muted); font-size: 0.8em; }
-        #mute { margin-left: 8px; background: #1d1d1d; color: #ddd; border: 1px solid #444; border-radius: 3px; padding: 2px 8px; font: inherit; font-size: 0.8em; cursor: pointer; }
-        #terminal-container {
-            border: 2px solid #333;
-            border-top-color: var(--red);
-            background: #000;
-            max-width: 100%;
-            overflow-x: auto;
-        }
+        .controls { margin-top: 10px; color: var(--muted); font-size: 0.78em; text-align: center; line-height: 2; max-width: 820px; }
+        kbd { background: #1d1d1d; border: 1px solid #444; border-radius: 3px; padding: 1px 5px; color: #ddd; }
+        #mute { margin-left: 8px; background: #1d1d1d; color: #ddd; border: 1px solid #444; border-radius: 3px; padding: 2px 8px; font: inherit; font-size: 0.9em; cursor: pointer; }
+        @media (max-width: 1000px) { #side { display: none; } }
     </style>
 </head>
 <body>
     <h1>PПLTSAЯI 2</h1>
     <div class="subtitle">Russki Mir · Русский Мир</div>
     <div id="status">Paina näppäintä aloittaaksesi.</div>
-    <div id="terminal-wrap">
-        <div id="terminal-container"></div>
-        <div id="start">
-            <strong>PAINA MITÄ TAHANSA NÄPPÄINTÄ</strong>
-            <span>tai klikkaa aloittaaksesi, äänet päälle · välilyönti aloittaa pelin heti</span>
+    <div id="game">
+        <aside id="side"><h2>ТОВАРЫ</h2><ul id="inv"></ul></aside>
+        <div id="main">
+            <div id="msg"></div>
+            <div id="framebar"><span class="title">PПLTSAЯI 2 · Русский Мир</span><span id="level"></span></div>
+            <div id="frame">
+                <div id="screen">
+                    <canvas id="map"></canvas>
+                    <div id="menu" hidden>
+                        <h3>ТОВАРЫ · TAVARAT</h3>
+                        <table><tbody></tbody></table>
+                        <p>W/S selaa · Q käytä · E heitä · Tab sulje</p>
+                    </div>
+                    <div id="text" hidden></div>
+                    <div id="start">
+                        <strong>PAINA MITÄ TAHANSA NÄPPÄINTÄ</strong>
+                        <span>tai klikkaa aloittaaksesi, äänet päälle · välilyönti aloittaa pelin heti</span>
+                    </div>
+                </div>
+            </div>
+            <div id="hud">
+                <span><span class="lbl">RUPLAT</span> <b id="money">–</b></span>
+                <span><span class="lbl">VOIMA</span> <b id="hp">–</b></span>
+                <span><span class="lbl">PROMILLE</span> <b id="prom">–</b></span>
+                <span><span class="lbl">VATSA</span> <b id="belly">–</b></span>
+            </div>
+            <div id="sounds"></div>
         </div>
     </div>
     <div class="controls">
@@ -60,40 +99,37 @@
         <button id="mute" type="button">Äänet: päällä</button>
     </div>
 
-    <script src="xterm.js"></script>
     <script src="sfx.js"></script>
     <script src="intro.js"></script>
+    <script src="game.js"></script>
     <script>
-        const status = document.getElementById('status');
-        function setStatus(text, color) { status.textContent = text; status.style.color = color; }
+        const $ = (id) => document.getElementById(id);
+        const status = $('status');
+        function setStatus(text, color) { status.textContent = text; status.style.color = color || ''; }
 
-        if (typeof Terminal === 'undefined') {
-            setStatus('Terminaalikirjaston lataus epäonnistui.', '#ff4444');
-            throw new Error('xterm missing');
-        }
-
-        const term = new Terminal({
-            cols: 100,
-            rows: 35,
-            fontSize: 14,
-            fontFamily: 'ui-monospace, "Cascadia Code", "Fira Code", "Courier New", monospace',
-            theme: { background: '#000000', foreground: '#e6e6e6', cursor: '#d52b1e' },
-            cursorBlink: false,
-            scrollback: 0,
+        Game.setup({
+            canvas: $('map'), msg: $('msg'), level: $('level'), money: $('money'), hp: $('hp'),
+            prom: $('prom'), belly: $('belly'), sounds: $('sounds'), inv: $('inv'), menu: $('menu'), text: $('text'),
         });
-        term.open(document.getElementById('terminal-container'));
-        term.focus();
 
         let send = () => {};
         let transport = null;
 
+        function receive(lines) {
+            for (const line of lines.split('\n')) {
+                if (!line) continue;
+                let m;
+                try { m = JSON.parse(line); } catch (e) { continue; }
+                if (m.t === 'end') { ended(); continue; }
+                if (m.t === 'full') { setStatus('Palvelin on täynnä. Yritä hetken päästä uudelleen.', '#ff4444'); continue; }
+                Game.handle(m);
+            }
+        }
         function connected(kind) {
             transport = kind;
-            setStatus('Yhdistetty.', '#44ff44');
-            setTimeout(() => { if (status.textContent === 'Yhdistetty.') setStatus('', ''); }, 2000);
-            term.focus();
+            setStatus('', '');
         }
-        function ended() { setStatus('Yhteys päättyi. Päivitä sivu pelataksesi uudelleen.', '#ff4444'); }
+        function ended() { setStatus('Peli päättyi. Päivitä sivu pelataksesi uudelleen.', '#ff4444'); }
 
         function startPolling() {
             fetch('api/new', { method: 'POST' })
@@ -112,8 +148,8 @@
                     };
                     (function poll() {
                         fetch('api/poll?id=' + id, { cache: 'no-store' })
-                            .then((r) => (r.status === 204 ? { data: '' } : r.ok ? r.json() : Promise.reject()))
-                            .then((m) => { if (m.data) term.write(m.data); if (m.done) ended(); else poll(); })
+                            .then((r) => (r.status === 204 ? { messages: [] } : r.ok ? r.json() : Promise.reject()))
+                            .then((m) => { receive(m.messages.join('\n')); if (m.done) ended(); else poll(); })
                             .catch(ended);
                     })();
                 })
@@ -131,24 +167,28 @@
                 connected('ws');
                 send = (d) => { if (ws.readyState === WebSocket.OPEN) ws.send(d); };
             };
-            ws.onmessage = (e) => term.write(e.data);
+            ws.onmessage = (e) => receive(e.data);
             ws.onclose = () => {
                 clearTimeout(fallback);
                 if (transport === 'ws') ended(); else if (!transport) startPolling();
             };
         }
 
-        // the game asks for sound effects with OSC 777 "snd;<name>;<volume>"
-        term.parser.registerOscHandler(777, (data) => {
-            const [kind, name, vol] = data.split(';');
-            if (kind === 'snd') SFX.play(name, parseFloat(vol) || 1);
-            return true;
-        });
-
-        term.onData((d) => send(d));
+        // keys go to the game as the characters it expects
+        function onGameKey(e) {
+            if (!transport || e.ctrlKey || e.metaKey || e.altKey) return;
+            let ch = null;
+            if (e.key === 'Tab') ch = '\t';
+            else if (e.key === 'Escape') ch = '\x1b';
+            else if (e.key === 'Enter') ch = '\r';
+            else if (e.key.length === 1) ch = e.key.toLowerCase();
+            if (ch === null) return;
+            e.preventDefault();
+            send(ch);
+        }
 
         // browsers only allow audio after a user gesture, so start on the first key or click
-        const startOverlay = document.getElementById('start');
+        const startOverlay = $('start');
         let started = false;
         function start(e) {
             if (started) return;
@@ -160,20 +200,20 @@
             window.removeEventListener('keydown', start, true);
             const launch = () => {
                 setStatus('Yhdistetään...', '#ffaa00');
-                term.focus();
+                window.addEventListener('keydown', onGameKey);
                 startWebSocket();
             };
             // Space skips the intro and starts the game straight away
             if (e && e.key === ' ') launch();
-            else WebIntro.play(document.getElementById('terminal-wrap'), launch);
+            else WebIntro.play($('screen'), launch);
         }
         window.addEventListener('keydown', start, true);
         startOverlay.addEventListener('click', start);
 
-        const muteButton = document.getElementById('mute');
+        const muteButton = $('mute');
         muteButton.addEventListener('click', () => {
             muteButton.textContent = SFX.toggleMute() ? 'Äänet: pois' : 'Äänet: päällä';
-            term.focus();
+            muteButton.blur();
         });
     </script>
 </body>

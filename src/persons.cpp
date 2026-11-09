@@ -43,6 +43,7 @@ void Person::damage(uint32_t damage)  {
         if (now - lastHit < std::chrono::milliseconds(700)) return;
         lastHit = now;
     }
+    common::hitEvent(coord, damage);
     if (damage >= stats.health) {
         stats.health = 0;
     } else {

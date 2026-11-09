@@ -32,13 +32,68 @@ void sleep(uint32_t ms)
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
-void sound(const char* name, float volume)
+bool webMode()
 {
     static const bool web = std::getenv("PULTSARI_WEB") != nullptr;
-    if (!web) return;
-    char buf[64];
-    snprintf(buf, sizeof(buf), "\033]777;snd;%s;%.2f\007", name, volume);
-    cout << buf << std::flush;
+    return web;
+}
+
+void webSend(const std::string& json)
+{
+    if (!webMode()) return;
+    cout << '\x1e' << json << '\n' << std::flush;
+}
+
+std::string jsonString(const std::string& s)
+{
+    std::string out = "\"";
+    for (unsigned char c : s) {
+        switch (c) {
+            case '"':  out += "\\\""; break;
+            case '\\': out += "\\\\"; break;
+            case '\n': out += "\\n"; break;
+            case '\r': break;
+            case '\t': out += "\\t"; break;
+            default:
+                if (c < 0x20) { char b[8]; snprintf(b, sizeof(b), "\\u%04x", c); out += b; }
+                else out += (char)c;
+        }
+    }
+    return out + "\"";
+}
+
+void sound(const char* name, float volume)
+{
+    if (!webMode()) return;
+    char buf[96];
+    snprintf(buf, sizeof(buf), "{\"t\":\"snd\",\"n\":\"%s\",\"v\":%.2f}", name, volume);
+    webSend(buf);
+}
+
+static int hitDx = 0, hitDy = 0;
+
+void setHitDirection(int dx, int dy)
+{
+    hitDx = dx;
+    hitDy = dy;
+}
+
+void hitEvent(const Coord& at, uint32_t damage)
+{
+    if (!webMode()) return;
+    char buf[128];
+    snprintf(buf, sizeof(buf), "{\"t\":\"hit\",\"x\":%u,\"y\":%u,\"n\":%u,\"dx\":%d,\"dy\":%d}",
+             at.x, at.y, damage, hitDx, hitDy);
+    hitDx = hitDy = 0;
+    webSend(buf);
+}
+
+void boomEvent(const Coord& at, uint32_t radius)
+{
+    if (!webMode()) return;
+    char buf[96];
+    snprintf(buf, sizeof(buf), "{\"t\":\"boom\",\"x\":%u,\"y\":%u,\"r\":%u}", at.x, at.y, radius);
+    webSend(buf);
 }
 
 }

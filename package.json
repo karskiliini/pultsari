@@ -1,7 +1,7 @@
 {
   "name": "pultsari",
   "version": "2.0.0",
-  "description": "PПLTSAЯI 2: Russki Mir — browser client for the terminal game",
+  "description": "PПLTSAЯI 2: Russki Mir — browser client: the C++ game streams JSON frames that the page draws on a canvas",
   "private": true,
   "scripts": {
     "start": "make && node web/server.js"
@@ -11,8 +11,6 @@
     "url": "git+https://github.com/karskiliini/pultsari.git"
   },
   "dependencies": {
-    "@xterm/xterm": "^5.5.0",
-    "node-pty": "^1.1.0",
     "ws": "^8.22.2"
   }
 }

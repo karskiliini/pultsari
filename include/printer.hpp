@@ -24,6 +24,18 @@ struct ScoreBoard;
 struct Inventory;
 struct Stats;
 
+struct OverlayItem {
+    const char* name;
+    uint32_t count;
+    bool canUse;
+    bool canThrow;
+    const char* useLabel;
+};
+// the inventory overlay rows, in the order the game's inventory keys expect
+std::vector<OverlayItem> overlayItems(const Inventory* inventory);
+// viewport cells of the aiming line
+std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle);
+
 class Printer {
 public:
     virtual void clear() { };
@@ -56,6 +68,8 @@ public:
     void removeMessage();
 
     virtual void printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask);
+    // one map row as (glyph, SGR colour) cells; the renderers turn it into ANSI or JSON
+    std::vector<std::pair<std::string, std::string>> rowCells(Level* l, uint32_t y);
     virtual void print(Level* level);
     virtual void printErr(const std::string& msg);
     virtual void printInventoryOverlay(Inventory* inventory, int selectedRow);

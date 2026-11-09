@@ -107,6 +107,7 @@ void EnvironmentEvents::droneStrike()
         level->printer->showMessage("DRONE-ISKU! Pommi putoaa!", level, false);
     }
 
+    common::boomEvent(strikeCoord, 4);
     Animation* anim = new Animation(strikeCoord, "===BOOM===", 10);
     level->addAnimation(anim);
 
@@ -378,6 +379,7 @@ void EnvironmentEvents::artilleryBarrage()
         uint32_t sy = std::rand() % common::SIZEY;
         Coord shellCoord { sx, sy };
 
+        common::boomEvent(shellCoord, 3);
         Animation* anim = new Animation(shellCoord, "*KRUMP*", 6);
         level->addAnimation(anim);
 

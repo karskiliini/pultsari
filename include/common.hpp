@@ -26,9 +26,20 @@ extern bool realtimeEnabled;
 bool random(uint32_t pct);
 bool checkBounds(Coord& coord);
 void sleep(uint32_t ms);
+// Browser mode (PULTSARI_WEB): the game talks to the web client in JSON messages,
+// one per line, each starting with an ASCII record separator (0x1E).
+bool webMode();
+void webSend(const std::string& json);
+std::string jsonString(const std::string& s);
+
 // Ask the browser client to play a synthesized sound effect (volume 0..1).
-// Sent as an OSC escape the web terminal intercepts; only when PULTSARI_WEB is set.
 void sound(const char* name, float volume = 1.0f);
+
+// Visual events for the browser's pixel effects (world coordinates).
+void hitEvent(const Coord& at, uint32_t damage);
+void boomEvent(const Coord& at, uint32_t radius);
+// direction of the next hit (e.g. a bullet), so the blood sprays the right way
+void setHitDirection(int dx, int dy);
 
 } // namespace common
 

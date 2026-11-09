@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const pty = require('node-pty');
+const { spawn } = require('child_process');
 const WebSocket = require('ws');
 
 const PORT = process.env.PORT || 3000;
@@ -12,25 +12,10 @@ const GAME_ARGS = ['--rt', '--los', '--anims', '--path'];
 
 const STATIC = {
     '/': [path.join(__dirname, 'index.html'), 'text/html; charset=utf-8'],
-    '/xterm.js': [path.join(ROOT, 'node_modules/@xterm/xterm/lib/xterm.js'), 'text/javascript'],
-    '/xterm.css': [path.join(ROOT, 'node_modules/@xterm/xterm/css/xterm.css'), 'text/css'],
+    '/game.js': [path.join(__dirname, 'game.js'), 'text/javascript'],
     '/sfx.js': [path.join(__dirname, 'sfx.js'), 'text/javascript'],
     '/intro.js': [path.join(__dirname, 'intro.js'), 'text/javascript'],
 };
-
-// node-pty's macOS prebuild ships spawn-helper without the execute bit when npm
-// skips its install script; without it every spawn fails with "posix_spawnp failed"
-function ensureSpawnHelperExecutable() {
-    const base = path.dirname(require.resolve('node-pty/package.json'));
-    const candidates = [
-        path.join(base, 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper'),
-        path.join(base, 'build', 'Release', 'spawn-helper'),
-    ];
-    for (const file of candidates) {
-        try { fs.chmodSync(file, 0o755); } catch (e) { /* not present on this platform */ }
-    }
-}
-ensureSpawnHelperExecutable();
 
 const MAX_GAMES = Number(process.env.MAX_GAMES || 20);
 const MAX_GAMES_PER_IP = Number(process.env.MAX_GAMES_PER_IP || 3);
@@ -41,17 +26,17 @@ function clientIp(req) {
     return req.socket.remoteAddress || 'unknown';
 }
 
-// returns null when the server or this client already runs too many games
-function spawnGame(ip) {
+// The game runs as a plain child process: it reads key presses on stdin and
+// writes one JSON message per line on stdout, each starting with 0x1E.
+// Returns null when the server or this client already runs too many games.
+function spawnGame(ip, onMessages, onExit) {
     if (running >= MAX_GAMES || (perIp.get(ip) || 0) >= MAX_GAMES_PER_IP) return null;
-    let game;
+    let child;
     try {
-        game = pty.spawn(GAME, GAME_ARGS, {
-            name: 'xterm-256color',
-            cols: 100,
-            rows: 35,
+        child = spawn(GAME, GAME_ARGS, {
             cwd: ROOT,
-            env: { ...process.env, TERM: 'xterm-256color', LANG: 'C.UTF-8', PULTSARI_WEB: '1' },
+            env: { ...process.env, LANG: 'C.UTF-8', PULTSARI_WEB: '1' },
+            stdio: ['pipe', 'pipe', 'inherit'],
         });
     } catch (e) {
         console.error('Pelin käynnistys epäonnistui:', e.message);
@@ -59,46 +44,65 @@ function spawnGame(ip) {
     }
     running++;
     perIp.set(ip, (perIp.get(ip) || 0) + 1);
-    game.onExit(() => {
+
+    let pending = '';
+    child.stdout.setEncoding('utf8');
+    child.stdout.on('data', (chunk) => {
+        pending += chunk;
+        const lines = pending.split('\n');
+        pending = lines.pop();
+        const messages = lines.filter((l) => l.charCodeAt(0) === 0x1e).map((l) => l.slice(1));
+        if (messages.length) onMessages(messages);
+    });
+    child.on('error', (e) => console.error('Peliprosessin virhe:', e.message));
+    child.on('exit', () => {
         running--;
         const n = (perIp.get(ip) || 1) - 1;
         if (n > 0) perIp.set(ip, n); else perIp.delete(ip);
+        onExit();
     });
-    return game;
+    child.stdin.on('error', () => {});
+    return {
+        write: (keys) => { if (!child.killed && child.stdin.writable) child.stdin.write(keys); },
+        kill: () => { try { child.kill(); } catch (e) {} },
+    };
 }
 
-const END_MSG = '\r\n\x1b[1;31m=== PELI PÄÄTTYI — päivitä sivu ===\x1b[0m\r\n';
+const END_MSG = '{"t":"end"}';
 
 // HTTP polling sessions for proxies that don't pass WebSockets.
 const sessions = new Map();
 const SESSION_IDLE_MS = 60000;
 
 function newSession(ip) {
-    const game = spawnGame(ip);
-    if (!game) return null;
     const id = crypto.randomBytes(16).toString('hex');
-    const s = { game, buf: '', waiter: null, done: false, seen: Date.now() };
-    s.game.onData((d) => { s.buf += d; flush(s); });
-    s.game.onExit(() => { s.buf += END_MSG; s.done = true; flush(s); });
+    const s = { game: null, queue: [], waiter: null, done: false, seen: Date.now() };
+    s.game = spawnGame(ip,
+        (messages) => { s.queue.push(...messages); flush(s); },
+        () => { s.queue.push(END_MSG); s.done = true; flush(s); });
+    if (!s.game) return null;
     sessions.set(id, s);
     return id;
 }
 
 function flush(s) {
-    if (!s.waiter || (!s.buf && !s.done)) return;
+    if (!s.waiter || (!s.queue.length && !s.done)) return;
     const res = s.waiter;
     s.waiter = null;
     clearTimeout(res.timer);
+    // a slow poller only needs the latest frame, plus every non-frame message
+    const lastFrame = s.queue.map((m) => m.startsWith('{"t":"frame"')).lastIndexOf(true);
+    const out = s.queue.filter((m, i) => i === lastFrame || !m.startsWith('{"t":"frame"'));
+    s.queue = [];
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
-    res.end(JSON.stringify({ data: s.buf, done: s.done }));
-    s.buf = '';
+    res.end(JSON.stringify({ messages: out, done: s.done }));
 }
 
 setInterval(() => {
     const now = Date.now();
     for (const [id, s] of sessions) {
         if (now - s.seen > SESSION_IDLE_MS) {
-            try { s.game.kill(); } catch (e) {}
+            s.game.kill();
             sessions.delete(id);
         }
     }
@@ -132,7 +136,11 @@ const server = http.createServer((req, res) => {
         if (s.waiter) { s.waiter.writeHead(204); s.waiter.end(); clearTimeout(s.waiter.timer); }
         s.waiter = res;
         res.timer = setTimeout(() => {
-            if (s.waiter === res) { s.waiter = null; res.writeHead(200, { 'Content-Type': 'application/json' }); res.end('{"data":""}'); }
+            if (s.waiter === res) {
+                s.waiter = null;
+                res.writeHead(200, { 'Content-Type': 'application/json' });
+                res.end('{"messages":[]}');
+            }
         }, 20000);
         flush(s);
         return;
@@ -151,18 +159,17 @@ const server = http.createServer((req, res) => {
 const wss = new WebSocket.Server({ server });
 
 wss.on('connection', (ws, req) => {
-    const game = spawnGame(clientIp(req));
+    const send = (text) => { if (ws.readyState === WebSocket.OPEN) ws.send(text); };
+    const game = spawnGame(clientIp(req),
+        (messages) => send(messages.join('\n')),
+        () => { send(END_MSG); ws.close(); });
     if (!game) {
-        ws.send('\r\n\x1b[1;31mPalvelin on täynnä. Yritä hetken päästä uudelleen.\x1b[0m\r\n');
+        send('{"t":"full"}');
         ws.close();
         return;
     }
-    game.onData((d) => { if (ws.readyState === WebSocket.OPEN) ws.send(d); });
-    game.onExit(() => {
-        if (ws.readyState === WebSocket.OPEN) { ws.send(END_MSG); ws.close(); }
-    });
     ws.on('message', (d) => game.write(d.toString()));
-    ws.on('close', () => { try { game.kill(); } catch (e) {} });
+    ws.on('close', () => game.kill());
 });
 
 server.listen(PORT, '0.0.0.0', () => {

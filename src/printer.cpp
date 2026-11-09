@@ -299,17 +299,26 @@ const char* buildingColor(const Building* b, const string& glyph)
 
 void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask)
 {
-    uint32_t worldY = y + (uint32_t)l->cameraY;
     string line;
     string current;
-    auto emit = [&](const string& glyph, const string& color) {
-        if (current != color) {
+    for (const auto& cell : rowCells(l, y)) {
+        if (current != cell.second) {
             line += "\033[0m";
-            if (!color.empty()) line += "\033[" + color + "m";
-            current = color;
+            if (!cell.second.empty()) line += "\033[" + cell.second + "m";
+            current = cell.second;
         }
-        line += glyph;
-    };
+        line += cell.first;
+    }
+    line += "\033[0m";
+    printChar(line);
+}
+
+vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
+{
+    uint32_t worldY = y + (uint32_t)l->cameraY;
+    vector<std::pair<string, string>> cells;
+    cells.reserve(common::VIEWPORT_W);
+    auto emit = [&](const string& glyph, const string& color) { cells.emplace_back(glyph, color); };
 
     struct RowAnim { uint32_t x; vector<string> chars; const char* color; };
     vector<RowAnim> rowAnims;
@@ -463,8 +472,7 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
 
         emit(c, col);
     }
-    line += "\033[0m";
-    printChar(line);
+    return cells;
 }
 
 void Printer::print(Level* level)
@@ -503,21 +511,10 @@ void Printer::print(Level* level)
     printerRefresh();
 }
 
-void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
+// row order must match useInventoryItem / invIndexToThrowNum in pultsari.cpp
+std::vector<OverlayItem> overlayItems(const Inventory* inventory)
 {
-    constexpr int OVERLAY_X = 25;
-    constexpr int OVERLAY_Y = 5;
-
-    struct InvItem {
-        const char* name;
-        uint32_t count;
-        bool canUse;
-        bool canThrow;
-        const char* useLabel;
-    };
-
-    // row order must match useInventoryItem / invIndexToThrowNum in pultsari.cpp
-    InvItem items[] = {
+    return {
         {"KALJA",     inventory->kalja,    true,  true,  "[Q] juo  "},
         {"JAGUAR",    inventory->lonkka,   true,  true,  "[Q] juo  "},
         {"VODKA",     inventory->vodka,    true,  true,  "[Q] juo  "},
@@ -534,7 +531,15 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
         {"PISTOOLI",  inventory->pistooli, true,  false, "[Q] ammu "},
         {"AMMUKSET",  inventory->ammukset, false, false, "         "},
     };
-    constexpr int NUM_ITEMS = sizeof(items) / sizeof(items[0]);
+}
+
+void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
+{
+    constexpr int OVERLAY_X = 25;
+    constexpr int OVERLAY_Y = 5;
+
+    const auto items = overlayItems(inventory);
+    const int NUM_ITEMS = (int)items.size();
     const char* frame = "\033[0;41;97m";
 
     char buf[256];
@@ -572,8 +577,9 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
     cout.flush();
 }
 
-void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
+std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle)
 {
+    std::vector<std::pair<int, int>> cells;
     float dx = cos(angle);
     float dy = sin(angle);
     float fx = (float)px;
@@ -589,19 +595,23 @@ void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
             break;
 
         Coord c { (uint32_t)ix, (uint32_t)iy };
-        if (level->hitBuilding(c)) break;
+        if (level->hitWall(c)) break;
 
         int vx = ix - level->cameraX;
         int vy = iy - level->cameraY;
         if (vx < 0 || vy < 0 || vx >= (int)common::VIEWPORT_W || vy >= (int)common::VIEWPORT_H)
             break;
+        cells.emplace_back(vx, vy);
+    }
+    return cells;
+}
 
+void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
+{
+    for (const auto& c : aimCells(level, px, py, angle)) {
         // map starts below the message line and top border, right of the inventory column and border
-        int termX = vx + 15;
-        int termY = vy + 3;
-
         char buf[64];
-        snprintf(buf, sizeof(buf), "\033[%d;%dH\033[91m*\033[0m", termY, termX);
+        snprintf(buf, sizeof(buf), "\033[%d;%dH\033[91m*\033[0m", c.second + 3, c.first + 15);
         cout << buf;
     }
     cout.flush();

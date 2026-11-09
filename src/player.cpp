@@ -577,6 +577,7 @@ bool Player::shoot(DirectionNS::Direction dir)
     Person* target = level->raycast(from, d);
     if (target) {
         string msg = "";
+        common::setHitDirection(d.x, d.y);
         target->damage(5);
         if (target->stats.health <= 0) {
             msg = "PAM! Osuma! Kohde kaatuu maahan.";
