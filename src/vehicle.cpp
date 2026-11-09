@@ -279,27 +279,20 @@ Car::Car(const Coord& pos, bool horiz, int dir, Kind kind)
     loot = kind == Kind::Getaway;
     if (kind == Kind::Limousine) m = { "Vovan limusiini", "38;5;16", 55, 10 };
     limousine = kind == Kind::Limousine;
+    armoured = limousine;
+    police = kind == Kind::Police;
+    keysIn = true;      // whoever drives it has the key in the ignition
     model = m.name;
     paint = m.paint;
     length = horizontal ? m.length : 2;
     speed = kind == Kind::Random ? m.speed * (80 + std::rand() % 41) / 100 : m.speed;
 }
 
-std::string Car::glyphAt(uint32_t i) const
-{
-    // the limousine's long black body has a row of tinted windows
-    if (limousine && i > 1 && i + 2 < length && i % 2 == 0) return "\xE2\x96\x92";
-    return Vehicle::glyphAt(i);
-}
-
-const char* Car::colorAt(uint32_t i) const
-{
-    if (limousine) return (i > 1 && i + 2 < length && i % 2 == 0) || i == 0 ? "1;38;5;250" : "38;5;16";
-    return paint;
-}
-
 void Car::frame(uint32_t ms)
 {
+    if (freeMode) { drive(ms); return; }
+    // a car with nobody alive at the wheel goes nowhere
+    if (!driverInside || driverDead) return;
     if (script == Script::Parked || gone) return;
     energy += speed * ms;
     if (energy < 10000) return;

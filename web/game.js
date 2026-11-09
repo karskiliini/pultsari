@@ -274,6 +274,25 @@
                 if (sick) ui.sick.textContent = sick >= 5 ? 'AIDS' : 'HIV+ ' + '●'.repeat(sick) + '○'.repeat(4 - sick);
             }
         }
+        if (ui.drv) {
+            ui.drv.hidden = !m.drv;
+            if (m.drv) {
+                const [gear, rpm, kmh, wheel, clutch, engine, grind, bearing] = m.drv;
+                ui.gear.textContent = gear;
+                const bars = Math.min(8, Math.round(rpm / 825));
+                ui.rpm.innerHTML = '';
+                for (let k = 0; k < 8; k++) {
+                    const b = document.createElement('span');
+                    b.textContent = k < bars ? '▮' : '▯';
+                    b.style.color = k >= bars ? '#555' : k >= 7 ? '#ff4d4d' : k >= 5 ? '#f2d34a' : '#5ee05e';
+                    ui.rpm.appendChild(b);
+                }
+                ui.kmh.textContent = kmh + ' km/h ' + String(bearing).padStart(3, '0') + '°';
+                const pos = Math.round(wheel / 100 * 3) + 3;
+                ui.wheel.textContent = '◄' + [0, 1, 2, 3, 4, 5, 6].map((k) => k === pos ? '╪' : k === 3 ? '·' : '─').join('') + '►';
+                ui.drvflags.textContent = [clutch ? 'KYTKIN' : '', engine ? '' : 'SAMMUNUT', grind ? 'KRRRK' : ''].filter(Boolean).join(' ');
+            }
+        }
         ui.sounds.innerHTML = '';
         for (const [text, loud] of (m.snd || []).slice(0, 4)) {
             const s = document.createElement('span');
@@ -470,5 +489,5 @@
         ui.menu.querySelector('h3').textContent = invMenu.throw ? 'HEITÄ MITÄ?' : 'ТОВАРЫ · TAVARAT';
     }
 
-    window.Game = { setup, handle, toggleMap: () => { mapOpen = !mapOpen; return mapOpen; } };
+    window.Game = { setup, handle, toggleMap: () => { mapOpen = !mapOpen; return mapOpen; }, isDriving: () => !!(frame && frame.drv) };
 })();

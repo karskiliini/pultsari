@@ -17,6 +17,7 @@
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
+#include <algorithm>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -1245,6 +1246,241 @@ TEST(location_follows_the_player)
 
     w.level.isWarLevel = true;
     CHECK(w.level.locationAt(Coord{ 60, 113 }).empty());
+}
+
+// ---- driving ----
+
+// a car standing next to the player, its driver gone and the engine idling
+static Car* parkedCar(World& w, Coord at = Coord{ 60, 50 }, bool police = false)
+{
+    Car* car = new Car(at, true, 1, police ? Car::Kind::Police : Car::Kind::Random);
+    w.level.addVehicle(car);
+    car->script = Car::Script::Parked;
+    car->driverInside = false;
+    return car;
+}
+
+static void frames(World& w, int n, DriveControls c)
+{
+    for (int i = 0; i < n; ++i) {
+        if (w.player.driving) w.player.driving->controls = c;
+        w.level.vehicleFrame(50);
+        updateDriverGaze(&w.player, 50);
+    }
+}
+
+TEST(driving_cars_draw_72_directions_with_the_front_marked)
+{
+    World w;
+    Car* car = parkedCar(w);
+    car->makeFree();
+    std::vector<string> looks;
+    for (int h = 0; h < Car::HEADINGS; ++h) {
+        car->heading = h;
+        car->headingF = h * 2.0f * (float)M_PI / Car::HEADINGS;
+        car->drive(0);
+        const auto body = car->cells();
+        CHECK(body.size() >= 2);
+        string look;
+        int glass = 0;
+        float cx = 0, cy = 0, gx = 0, gy = 0;
+        for (size_t i = 0; i < body.size(); ++i) {
+            look += std::to_string((int)body[i].x - (int)body[0].x) + "," + std::to_string((int)body[i].y) + car->glyphAt(i) + car->colorAt(i) + ";";
+            cx += body[i].x; cy += body[i].y;
+            if (string(car->colorAt(i)) == "1;96") { ++glass; gx = body[i].x; gy = body[i].y; }
+        }
+        cx /= body.size(); cy /= body.size();
+        // one windscreen, and it is on the side the car is heading
+        CHECK(glass == 1);
+        const float a = h * 2.0f * (float)M_PI / Car::HEADINGS;
+        CHECK((gx - cx) * std::cos(a) + (gy - cy) * 2.0f * std::sin(a) > -0.01f);
+        looks.push_back(look);
+    }
+    std::sort(looks.begin(), looks.end());
+    const size_t distinct = std::unique(looks.begin(), looks.end()) - looks.begin();
+    CHECK(distinct >= 24);   // the outline changes all the way round, even standing still
+}
+
+TEST(driving_police_car_left_running_can_be_taken)
+{
+    World w(Coord{ 60, 49 });
+    Car* car = parkedCar(w, Coord{ 60, 50 }, true);
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    CHECK(w.player.driving == car);
+    CHECK(car->freeMode && car->playerAtWheel && car->engineOn);
+    CHECK(w.printer.saw("Politsijan auto"));
+}
+
+TEST(driving_dead_driver_is_dragged_out)
+{
+    World w(Coord{ 60, 49 });
+    Car* car = parkedCar(w);
+    car->driverInside = true;
+    car->driverDead = true;
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    CHECK(w.printer.saw("revit kuskin ruumiin"));
+    CHECK(w.player.driving == car);
+}
+
+TEST(driving_empty_car_without_keys_stays)
+{
+    World w(Coord{ 60, 49 });
+    Car* car = parkedCar(w);
+    car->keysIn = false;
+    car->engineOn = false;
+    CHECK(!enterNearbyCar(&w.player, &w.level));
+    CHECK(w.player.driving == nullptr);
+    CHECK(w.printer.saw("avaimia"));
+}
+
+TEST(driving_moving_lane_car_cannot_be_entered)
+{
+    World w(Coord{ 60, 49 });
+    Car* car = new Car(Coord{ 60, 50 }, true, 1);
+    w.level.addVehicle(car);
+    CHECK(!enterNearbyCar(&w.player, &w.level));
+    CHECK(w.printer.saw("ajaa ohi"));
+}
+
+TEST(driving_clutch_down_revs_freely_and_letting_go_moves_the_car)
+{
+    World w(Coord{ 60, 49 });
+    parkedCar(w);
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    Car* car = w.player.driving;
+    DriveControls c; c.shift = 1; c.clutch = true;
+    frames(w, 1, c);
+    CHECK(car->gear == 1);
+    DriveControls rev; rev.clutch = true; rev.throttle = 2;
+    frames(w, 12, rev);
+    CHECK(car->rpm > 5000);
+    CHECK(std::fabs(car->velocity) < 0.1f);
+    const float x0 = car->px;
+    DriveControls go; go.throttle = 2;
+    frames(w, 20, go);
+    CHECK(car->engineOn);
+    CHECK(car->velocity > 3.0f);
+    CHECK(car->px > x0 + 1.0f);
+    CHECK(w.player.coord == car->driverCell());
+}
+
+TEST(driving_every_gear_change_crunches)
+{
+    World w(Coord{ 60, 49 });
+    parkedCar(w);
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    Car* car = w.player.driving;
+    for (int k = 0; k < 3; ++k) {
+        DriveControls c; c.shift = 1; c.clutch = true;
+        frames(w, 1, c);
+        CHECK(car->grindMs > 0);
+        frames(w, 10, DriveControls{});
+    }
+    CHECK(w.printer.saw("vaihde"));
+    // S + Space goes down a gear
+    DriveControls down; down.shift = -1; down.clutch = true;
+    frames(w, 1, down);
+    CHECK(car->gear == 2);
+}
+
+TEST(driving_third_gear_from_standstill_stalls)
+{
+    World w(Coord{ 60, 49 });
+    parkedCar(w);
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    Car* car = w.player.driving;
+    car->gear = 3;
+    car->clutchBite = 0.0f;
+    frames(w, 30, DriveControls{});
+    CHECK(!car->engineOn);
+    CHECK(w.printer.saw("sammuu"));
+}
+
+TEST(driving_into_a_wall_hurts)
+{
+    World w(Coord{ 60, 49 });
+    w.add(new Alko(), 72, 47);
+    parkedCar(w);
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    Car* car = w.player.driving;
+    car->gear = 2;
+    car->velocity = 10.0f;
+    car->rpm = 10.0f * 2.0f * 250.0f;
+    const uint32_t hp = w.player.stats.health = 20;
+    DriveControls go; go.throttle = 1;
+    frames(w, 30, go);
+    CHECK(w.player.stats.health < hp);
+    CHECK(w.printer.saw("RYS"));
+    CHECK(car->px < 72.0f);
+}
+
+TEST(driving_get_out_leaves_the_car_running)
+{
+    World w(Coord{ 60, 49 });
+    Car* car = parkedCar(w);
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    CHECK(leaveCar(&w.player, &w.level));
+    CHECK(w.player.driving == nullptr);
+    CHECK(!car->playerAtWheel);
+    CHECK(!car->hitVehicle(w.player.coord));
+    CHECK(car->engineOn);
+}
+
+TEST(driving_drunk_eyes_wander_more_than_sober_ones)
+{
+    auto wander = [](uint32_t promilles) {
+        World w(Coord{ 60, 49 });
+        parkedCar(w);
+        enterNearbyCar(&w.player, &w.level);
+        w.player.stats.promilles = promilles;
+        float worst = 0, sum = 0;
+        for (int i = 0; i < 2000; ++i) {
+            updateDriverGaze(&w.player, 50);
+            float off = std::fabs(w.player.gaze - w.player.driving->heading * 2.0f * (float)M_PI / Car::HEADINGS);
+            if (off > M_PI) off = 2 * M_PI - off;
+            worst = std::max(worst, off);
+            sum += off;
+        }
+        return std::make_pair(worst, sum / 2000);
+    };
+    const auto sober = wander(2), drunk = wander(30);
+    CHECK(sober.second < 0.25f);           // mostly on the road
+    CHECK(drunk.second > sober.second);
+    CHECK(drunk.first > 0.8f);             // and now and then far off it
+}
+
+TEST(driving_vision_follows_the_gaze)
+{
+    World w(Coord{ 60, 49 });
+    parkedCar(w);
+    w.mask.enable();
+    CHECK(enterNearbyCar(&w.player, &w.level));
+    w.player.stats.promilles = 0;
+    w.player.gaze = 0;        // straight ahead, east
+    w.player.gazeOffset = 0;
+    w.player.camLeadX = w.player.camLeadY = 0;
+    w.level.updateCamera();
+    w.mask.init();
+    const Coord me = w.player.coord;
+    CHECK(w.mask.visible(Coord{ me.x + 18, me.y }));     // far down the road ahead
+    CHECK(!w.mask.visible(Coord{ me.x - 18, me.y }));    // nothing behind
+    CHECK(w.mask.visible(Coord{ me.x - 1, me.y }));      // right around the car
+}
+
+TEST(driving_a_bullet_can_kill_the_driver)
+{
+    World w(Coord{ 60, 46 });
+    w.player.inventory.pistooli = 1;
+    Car* car = new Car(Coord{ 60, 50 }, true, 1);
+    w.level.addVehicle(car);
+    car->script = Car::Script::Parked;
+    bool killed = false;
+    for (int i = 0; i < 60 && !killed; ++i) {
+        w.level.fireBullet(&w.player, (float)M_PI / 2, 10, 5, 100);
+        killed = car->driverDead;
+    }
+    CHECK(killed);
+    CHECK(enterNearbyCar(&w.player, &w.level) == false);   // too far to reach the door
 }
 
 int main(int argc, char** argv)

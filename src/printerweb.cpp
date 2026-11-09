@@ -1,4 +1,6 @@
 #include "printerweb.hpp"
+#include "vehicle.hpp"
+#include <cmath>
 #include "mask.hpp"
 #include "animation.hpp"
 #include "level.hpp"
@@ -70,6 +72,12 @@ void PrinterWeb::print(Level* l)
         j += ",\"hud\":[" + to_string(s.money) + "," + to_string(s.health) + "," +
              to_string(s.promilles) + "," + to_string(s.hunger) + "," + to_string(s.kopecks) + "," + to_string(player->diseaseStage()) + "]";
         j += ",\"pos\":[" + to_string(player->coord.x) + "," + to_string(player->coord.y) + "]";
+        if (const Car* car = player->driving) {
+            // gauges: gear, rpm, km/h, wheel (-100..100), clutch, engine running, gearbox crunching, bearing
+            j += ",\"drv\":[" + jsonString(Car::gearName(car->gear)) + "," + to_string((int)car->rpm) + "," +
+                 to_string((int)car->kmh()) + "," + to_string((int)std::lround(car->steerPos * 100)) + "," +
+                 (car->clutchDown ? "1" : "0") + "," + (car->engineOn ? "1" : "0") + "," + (car->grindMs ? "1" : "0") + "," + to_string(car->bearing()) + "]";
+        }
 
         j += ",\"snd\":[";
         bool first = true;

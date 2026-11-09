@@ -6,7 +6,7 @@
     let muted = false;
     const lastPlayed = {};
     // continuous sources are re-announced every NPC tick; play them sparingly
-    const minGapMs = { splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380, horn: 1200 };
+    const minGapMs = { grind: 250, crash: 300, starter: 700, splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380, horn: 1200 };
 
     // Recorded sounds from Pixabay (web/sounds/CREDITS.md), decoded once the context exists.
     const sampleFiles = {
@@ -257,6 +257,43 @@
                 burst(t + i * 0.22, v * 0.8, { type: 'bandpass', freq: 700, q: 1.2, decay: 0.14, dur: 0.16 });
             }
         },
+        // the gearbox: teeth grinding against teeth, a rasping crunch
+        grind(t, v) {
+            const n = noise(0.4);
+            const f = ctx.createBiquadFilter();
+            f.type = 'bandpass';
+            f.frequency.setValueAtTime(1800, t);
+            f.frequency.linearRampToValueAtTime(900, t + 0.35);
+            f.Q.value = 3;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(level(0.8 * v), t + 0.02);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+            const lfo = ctx.createOscillator();
+            lfo.type = 'square';
+            lfo.frequency.value = 55;
+            const depth = ctx.createGain();
+            depth.gain.value = 0.6 * v;
+            lfo.connect(depth).connect(g.gain);
+            n.connect(f).connect(g).connect(master);
+            n.start(t); n.stop(t + 0.4);
+            lfo.start(t); lfo.stop(t + 0.4);
+        },
+        // metal into metal
+        crash(t, v) {
+            thump(t, v, 70, 0.4);
+            burst(t, v, { type: 'lowpass', freq: 900, decay: 0.35, dur: 0.4 });
+            for (let i = 0; i < 6; i++) {
+                burst(t + Math.random() * 0.3, v * 0.4, { type: 'bandpass', freq: 2500 + Math.random() * 3000, q: 5, decay: 0.07, dur: 0.08 });
+            }
+        },
+        // the starter motor churning
+        starter(t, v) {
+            for (let i = 0; i < 5; i++) {
+                tone(t + i * 0.13, v * 0.5, { type: 'sawtooth', f0: 70, f1: 55, dur: 0.11, peak: 0.4 });
+            }
+        },
+        door(t, v) { thump(t, v * 0.7, 160, 0.1); burst(t, v * 0.3, { type: 'bandpass', freq: 1500, q: 2, decay: 0.04, dur: 0.05 }); },
         vomit(t, v) { gurgle(t, v, 1.0, 500); },
         vomit2(t, v) { gurgle(t, v, 1.3, 380); },
         // a wet slap: a low, short burst of mush with a few lumps after it

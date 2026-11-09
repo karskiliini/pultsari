@@ -430,6 +430,8 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 
     vector<const Person*> persons;
     for (const auto& p : l->persons) {
+        // at the wheel you are inside the car, not on top of it
+        if (p == (const Person*)player && player->driving) continue;
         if (p->coord.y == worldY) {
             persons.push_back(p);
         }

@@ -705,6 +705,37 @@ static void populateVehicles(Level& level)
         }
     }
 
+    // cars parked by the kerb, nobody in them; now and then the keys are left in the ignition
+    {
+        int parked = 0;
+        for (int tries = 0; !level.roads.empty() && tries < 200 && parked < 6 + (int)(std::rand() % 4); ++tries) {
+            const Road& r = level.roads[std::rand() % level.roads.size()];
+            const bool before = std::rand() % 2;
+            const uint32_t across = before ? r.pos - 1 : r.pos + 3;
+            const uint32_t along = 6 + std::rand() % ((r.horizontal ? common::SIZEX : common::SIZEY) - 12);
+            const Coord at = r.horizontal ? Coord{ along, across } : Coord{ across, along };
+            // the car faces the way traffic goes on that side, parked a little crooked
+            const int dir = before ? -1 : 1;
+            Car* car = new Car(at, r.horizontal, dir);
+            car->level = &level;
+            car->driverInside = false;
+            car->engineOn = false;
+            car->keysIn = common::random(35);
+            car->makeFree();
+            car->heading = (car->heading + (std::rand() % 3) - 1 + Car::HEADINGS) % Car::HEADINGS;
+            car->headingF = car->heading * 2.0f * 3.14159265f / Car::HEADINGS;
+            car->drive(0);
+            bool free = true;
+            for (const auto& cell : car->cells()) {
+                const Road* h = nullptr;
+                const Road* v = nullptr;
+                level.roadsAt(cell, h, v);
+                free = free && !level.hit(cell) && !level.getVehicleAt(cell) && !h && !v;
+            }
+            if (free && !car->cells().empty()) { level.addVehicle(car); ++parked; } else delete car;
+        }
+    }
+
     // Putin's overlong limousine on Novyi Arbat, a police car ahead and behind
     {
         const uint32_t lane = 46;
@@ -817,6 +848,14 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
     const bool web = common::webMode();
 
     level.playerDead = true;
+    if (Car* car = player.driving) {
+        // the car rolls on with a dead drunk at the wheel
+        car->playerAtWheel = false;
+        car->driverInside = true;
+        car->driverDead = true;
+        car->throttlePos = 0;
+        player.driving = nullptr;
+    }
     mask.enabled = false; // the camera rises above the rooftops
     level.audio.clear();
     printer->removeMessage();
@@ -998,6 +1037,33 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             uint32_t aimHeldMs = 0;
             float aimRisk = 0.0f;
 
+            // driving: a terminal sends no key-up, so a held key is a key that keeps repeating.
+            // Shift (the clutch) shows as capital letters; the browser sends 0x0E/0x0F for Shift down/up.
+            uint32_t clutchHoldMs = 0;
+            bool clutchLatched = false;
+            uint32_t brakeMs = 0;
+            uint32_t brakeRecentMs = 0;  // S pressed just now: Space shifts down instead of up
+            player.driving = nullptr;
+            // the keys that drive the car; anything else falls through to the usual keys
+            auto driveKey = [&](char c) -> bool {
+                Car* car = player.driving;
+                if (!car) return false;
+                // the terminal's key repeat starts only after a pause: hold a little longer than that
+                const bool upper = c >= 'A' && c <= 'Z';
+                if (upper) clutchHoldMs = 450;
+                switch (c) {
+                    case 'w': case 'i': case 'W': case 'I': ++car->controls.throttle; return true;
+                    case 's': case 'k': case 'S': case 'K': brakeMs = 400; brakeRecentMs = 450; return true;
+                    case 'a': case 'j': case 'A': case 'J': --car->controls.steer; return true;
+                    case 'd': case 'l': case 'D': case 'L': ++car->controls.steer; return true;
+                    case ' ': car->controls.shift = brakeRecentMs > 0 ? -1 : 1; return true;
+                    case 0x0e: clutchLatched = true; return true;
+                    case 0x0f: clutchLatched = false; return true;
+                    case 'e': case 'E': leaveCar(&player, &level); return true;
+                    default: return upper;
+                }
+            };
+
             // overlay row -> Player::decrementInventory / Item::createItem index
             // rows: kalja jaguar vodka makkara vobla omppo banaani ketjut veitsi kivi pamppu verkkarit kranaatti
             auto invIndexToThrowNum = [](int idx) -> uint32_t {
@@ -1168,8 +1234,13 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                     switch (mode) {
                     case Mode::Normal: {
+                        if (c != 0 && player.driving && driveKey(c)) break;
                         if (c != 0) {
                             switch(c) {
+                                case 'e': // get into the car next to you
+                                    enterNearbyCar(&player, &level);
+                                    queuedMove = InputNS::inputpending;
+                                    break;
                                 case 'w': case 'i': queuedMove = InputNS::up; break;
                                 case 's': case 'k': queuedMove = InputNS::down; break;
                                 case 'a': case 'j': queuedMove = InputNS::left; break;
@@ -1204,6 +1275,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             }
                         }
 
+                        if (player.driving) { queuedMove = InputNS::inputpending; break; }
                         // the drunker you are, the longer each step takes; an early key waits its turn
                         InputNS::InputType input = InputNS::inputpending;
                         const uint32_t stepMs = 80 + player.stats.promilles * 5;
@@ -1353,8 +1425,16 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
 
                     msSinceMove += FRAME_MS;
+                    if (Car* car = player.driving) {
+                        car->controls.brake = brakeMs > 0;
+                        car->controls.clutch = clutchLatched || clutchHoldMs > 0;
+                    }
+                    clutchHoldMs = clutchHoldMs > FRAME_MS ? clutchHoldMs - FRAME_MS : 0;
+                    brakeMs = brakeMs > FRAME_MS ? brakeMs - FRAME_MS : 0;
+                    brakeRecentMs = brakeRecentMs > FRAME_MS ? brakeRecentMs - FRAME_MS : 0;
                     level.npcFrame(FRAME_MS);
                     level.vehicleFrame(FRAME_MS);
+                    updateDriverGaze(&player, FRAME_MS);
                     level.cleanDead();
 
                     ++npcTick;

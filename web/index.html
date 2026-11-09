@@ -106,6 +106,7 @@
                 <span><span class="lbl">PROMILLE</span> <b id="prom">–</b></span>
                 <span><span class="lbl">VATSA</span> <b id="belly">–</b></span>
                 <span id="sickBox" hidden><span class="lbl">TERVEYS</span> <b id="sick" class="bad">–</b></span>
+                <span id="drv" hidden><span class="lbl">AUTO</span> <b id="gear">N</b> <span id="rpm"></span> <b id="kmh">0 km/h</b> <span id="wheel"></span> <b id="drvflags" class="bad"></b></span>
             </div>
             <div id="sounds"></div>
         </div>
@@ -115,6 +116,8 @@
         <kbd>Tab</kbd> kartta · <kbd>Q</kbd> tavarat (<kbd>E</kbd> käytä, <kbd>F</kbd> heitä) · <kbd>F</kbd> heitä jotain ·
         <kbd>Välilyönti</kbd> nosta ase / ammu · <kbd>Esc</kbd> laske ase / vyölle ·
         tähtäys: <kbd>A</kbd>/<kbd>D</kbd> käännä, <kbd>Välilyönti</kbd> heitä/ammu, <kbd>Esc</kbd> peru ·
+        <kbd>E</kbd> nouse autoon / autosta ·
+        ajaessa: <kbd>W</kbd> kaasu, <kbd>Shift</kbd> kytkin, <kbd>Välilyönti</kbd> vaihde ylös, <kbd>S</kbd>+<kbd>Välilyönti</kbd> alas, <kbd>S</kbd> jarru, <kbd>A</kbd>/<kbd>D</kbd> ratti ·
         <kbd>Z</kbd> restart
         <button id="mute" type="button">Äänet: päällä</button>
     </div>
@@ -133,7 +136,7 @@
 
         Game.setup({
             canvas: $('map'), msg: $('msg'), level: $('level'), money: $('money'), hp: $('hp'),
-            prom: $('prom'), belly: $('belly'), sick: $('sick'), sickBox: $('sickBox'), sounds: $('sounds'), inv: $('inv'), menu: $('menu'), text: $('text'),
+            prom: $('prom'), belly: $('belly'), sick: $('sick'), sickBox: $('sickBox'), drv: $('drv'), gear: $('gear'), rpm: $('rpm'), kmh: $('kmh'), wheel: $('wheel'), drvflags: $('drvflags'), sounds: $('sounds'), inv: $('inv'), menu: $('menu'), text: $('text'),
             death: $('death'), deathCause: $('deathCause'), deathScore: $('deathScore'),
             // the camera has zoomed all the way out: play the intro, then start the next drunk
             onRestart: () => {
@@ -206,9 +209,35 @@
             };
         }
 
+        // at the wheel W A S D are pedals and the steering wheel: they act for as long as they are
+        // held, so the page repeats them itself (the browser stops repeating a key once another
+        // is pressed). Shift is the clutch: 0x0E when pressed, 0x0F when let go.
+        const DRIVE_KEYS = 'wasdijkl';
+        const held = new Set();
+        setInterval(() => {
+            if (!transport || !Game.isDriving()) return;
+            for (const k of held) send(k);
+        }, 50);
+        // Shift goes to the game only at the wheel: in a shop menu any key would close it
+        window.addEventListener('keyup', (e) => {
+            if (e.key === 'Shift') { if (transport && Game.isDriving()) send('\x0f'); return; }
+            if (e.key.length === 1) held.delete(e.key.toLowerCase());
+        });
+        window.addEventListener('blur', () => { held.clear(); if (transport && Game.isDriving()) send('\x0f'); });
+
         // keys go to the game as the characters it expects
         function onGameKey(e) {
             if (!transport || introPlaying || e.ctrlKey || e.metaKey || e.altKey) return;
+            if (e.key === 'Shift') { if (!e.repeat && Game.isDriving()) send('\x0e'); return; }
+            if (e.key.length === 1 && DRIVE_KEYS.includes(e.key.toLowerCase())) {
+                const k = e.key.toLowerCase();
+                if (Game.isDriving()) {
+                    e.preventDefault();
+                    if (!held.has(k)) { held.add(k); send(k); }
+                    return;
+                }
+                held.add(k);
+            }
             let ch = null;
             // Tab is the city map, drawn by the page; it never reaches the game
             if (e.key === 'Tab') { e.preventDefault(); Game.toggleMap(); return; }

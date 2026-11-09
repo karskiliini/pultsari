@@ -1,4 +1,5 @@
 #include "printerterm.hpp"
+#include "vehicle.hpp"
 #include "level.hpp"
 #include "player.hpp"
 #include "scoreboard.hpp"
@@ -161,7 +162,10 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
          << RESET << "\033[K" << endl;
 
     printLeftBorderSpaces();
-    if (player) {
+    if (player && player->driving) {
+        // at the wheel the gauges take the line the sounds would use
+        cout << " " << drivingHud(player->driving);
+    } else if (player) {
         auto heard = l->audio.getHeardSounds(player->coord, player->hearingPercent());
         uint32_t used = 9;
         bool first = true;

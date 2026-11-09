@@ -12,6 +12,7 @@
 #include <string>
 
 class Level;
+class Car;
 
 namespace PlayerNS {
 
@@ -62,6 +63,15 @@ public:
 
     Inventory inventory;
     bool inJail = false;
+
+    // at the wheel of a car, and where the eyes are
+    Car* driving = nullptr;
+    float gaze = 0.0f;           // radians, clockwise from east, on screen proportions
+    float gazeOffset = 0.0f;     // how far the eyes have strayed from the road
+    float glanceTarget = 0.0f;
+    uint32_t glanceMs = 0;
+    uint32_t gazeClockMs = 0;
+    float camLeadX = 0.0f, camLeadY = 0.0f;
 
     ScoreBoard scoreBoard;
 

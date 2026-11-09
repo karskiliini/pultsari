@@ -31,6 +31,11 @@ void Level::updateCamera()
     if (!p) return;
     cameraX = (int32_t)p->coord.x - (int32_t)common::VIEWPORT_W / 2;
     cameraY = (int32_t)p->coord.y - (int32_t)common::VIEWPORT_H / 2;
+    if (p->driving) {
+        // at the wheel the view runs ahead to where you are looking
+        cameraX += (int32_t)std::lround(p->camLeadX);
+        cameraY += (int32_t)std::lround(p->camLeadY);
+    }
     if (cameraX < 0) cameraX = 0;
     if (cameraY < 0) cameraY = 0;
     if (cameraX > (int32_t)(sizex - common::VIEWPORT_W))
@@ -512,6 +517,14 @@ void Level::robberyTick()
         if (auto rob = dynamic_cast<Pankkirosvo*>(p)) if (rob->stats.health > 0) robbers.push_back(rob);
     }
 
+    // someone took the getaway car (or the driver was shot): the robbery falls apart
+    if (r.stage != Robbery::Stage::Idle && r.car && (r.car->freeMode || r.car->driverDead || !r.car->driverInside)) {
+        r.stage = Robbery::Stage::Idle;
+        r.car = nullptr;
+        if (r.police && r.police->freeMode) r.police = nullptr;
+    }
+    if (r.police && r.police->freeMode) r.police = nullptr;
+
     switch (r.stage) {
     case Robbery::Stage::Idle: {
         if (r.cooldown > 0) { --r.cooldown; return; }
@@ -572,6 +585,9 @@ void Level::robberyTick()
         if (r.police && !r.policeParked && r.police->coord.x <= r.car->coord.x + 12) {
             r.police->script = Car::Script::Parked;
             r.policeParked = true;
+            // they leave it running, doors open, keys in
+            r.police->driverInside = false;
+            r.police->engineOn = true;
             for (int k = 0; k < 2; ++k) {
                 Person* cop = createPerson(Coord{ r.police->coord.x + k * 2, r.car->laneY - 1 }, poliisi);
                 if (cop && !robbers.empty()) {
@@ -595,7 +611,9 @@ void Level::robberyTick()
     case Robbery::Stage::Returning:
         if (!robbers.empty()) break;
         if (r.boarded == 0) {
-            // every robber is dead: the car stays where it is, glovebox and all
+            // every robber is dead: the driver runs for it, leaving the car, glovebox and all
+            r.car->driverInside = false;
+            if (heard(r.car->coord, 30)) printer->showMessage("Pakoauton kuski jÃ¤ttÃ¤Ã¤ auton kÃ¤ymÃ¤Ã¤n ja juoksee karkuun!", this, false);
             r.stage = Robbery::Stage::Idle;
             r.car = nullptr;
             break;
@@ -613,6 +631,8 @@ void Level::robberyTick()
         // the police give chase, not caring whom they run over
         if (r.police && !r.police->gone && r.police->script != Car::Script::Chase &&
             r.car->script == Car::Script::Flee) {
+            // the officers who got out jump back in
+            r.police->driverInside = true;
             r.police->script = Car::Script::Chase;
             r.police->chasing = r.car;
             r.police->reckless = true;
@@ -645,6 +665,8 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
     const float dx = std::cos(angle), dy = std::sin(angle);
     float x = shooter->coord.x + 0.5f, y = shooter->coord.y + 0.5f;
     Coord last = shooter->coord;
+    const Vehicle* ownCar = getVehicleAt(shooter->coord);   // shooting out of a car window
+    const Vehicle* lastCar = ownCar;
     for (uint32_t step = 0; step < range * 2; ++step) {
         x += dx * 0.5f;
         y += dy * 0.5f;
@@ -653,6 +675,23 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
         if (c == last) continue;
         last = c;
         if (hitWall(c)) return nullptr;
+        if (Vehicle* v = getVehicleAt(c)) {
+            if (v != lastCar) {
+                lastCar = v;
+                // through the windscreen the driver may be hit; otherwise the bodywork often stops it
+                Car* car = dynamic_cast<Car*>(v);
+                if (car && car->driverInside && !car->driverDead && !car->playerAtWheel && !car->armoured && common::random(30)) {
+                    car->driverDead = true;
+                    if (car->freeMode) { car->throttlePos = 0; }
+                    common::hitEvent(c, 4);
+                    audio.addSound(c, SoundType::Glass, "KLIRR! Luoti tuulilasin lÃ¤pi", "Lasi sÃ¤rkyy", "...lasin helinÃ¤Ã¤...", 20);
+                    if (shooter->type == pelaaja && printer)
+                        printer->showMessage("Osuit kuskiin! " + car->name() + " pysÃ¤htyy. Kuski lysÃ¤htÃ¤Ã¤ rattia vasten.", this, false);
+                    return nullptr;
+                }
+                if (car && common::random(car->armoured ? 100 : 50)) return nullptr;
+            }
+        }
         Person* p = getPerson(c);
         if (p && p != shooter && p->stats.health > 0 && common::random(hitPercent)) {
             common::setHitDirection(dx > 0.4f ? 1 : dx < -0.4f ? -1 : 0, dy > 0.4f ? 1 : dy < -0.4f ? -1 : 0);

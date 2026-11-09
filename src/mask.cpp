@@ -4,6 +4,7 @@
 #include "player.hpp"
 #include "coord.hpp"
 #include "building.hpp"
+#include "vehicle.hpp"
 #include <exception>
 #include <stdexcept>
 
@@ -64,7 +65,8 @@ void Mask::init()
 
             if (litRoom && litRoom->hitBuilding(dc)) {
                 line[x] = '.';
-            } else if (c.distance(dc) < (level->isLit(dc) ? sight * 2 : sight)) {
+            } else if (p->driving ? gazeSees(p, c, dc, level->isLit(dc) ? sight * 2 : sight)
+                                  : c.distance(dc) < (level->isLit(dc) ? sight * 2 : sight)) {
                 if (level->raycast(c, dc)) {
                     line[x] = '.';
                 } else {
