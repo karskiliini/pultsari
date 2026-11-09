@@ -50,7 +50,9 @@ public:
 
     bool decrementInventory(uint32_t index);
     bool executeThrow(uint32_t itemNum, DirectionNS::Direction dir);
+    bool executeThrowAt(uint32_t itemNum, float angle);
     bool shoot(DirectionNS::Direction dir);
+    bool shootAt(float angle);
 
     bool sentToWar = false;
     bool returnedFromWar = false;

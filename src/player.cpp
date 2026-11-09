@@ -9,6 +9,7 @@
 #include "vehicle.hpp"
 #include <iostream>
 #include <string>
+#include <cmath>
 #include <exception>
 
 namespace PlayerNS {
@@ -552,7 +553,41 @@ bool Player::executeThrow(uint32_t itemNum, DirectionNS::Direction dir)
     return true;
 }
 
+static float dirAngle(DirectionNS::Direction d)
+{
+    switch (d) {
+        case DirectionNS::right: return 0.0f;
+        case DirectionNS::down:  return 1.5708f;
+        case DirectionNS::left:  return 3.14159f;
+        default:                 return -1.5708f;
+    }
+}
+
+bool Player::executeThrowAt(uint32_t itemNum, float angle)
+{
+    if (level->isWarLevel && std::rand() % 100 < 15) {
+        printer->showMessage("Heitto ep\xC3\xA4""onnistuu! Liukkaat k\xC3\xA4""det!", level, false);
+        damage(1);
+        return true;
+    }
+    Item* i = Item::createItem(itemNum, coord);
+    i->thrown = true;
+    i->angled = true;
+    i->fx = coord.x + 0.5f;
+    i->fy = coord.y + 0.5f;
+    i->fdx = std::cos(angle);
+    i->fdy = std::sin(angle);
+    level->addThrownItem(i);
+    level->actThrow(this);
+    return true;
+}
+
 bool Player::shoot(DirectionNS::Direction dir)
+{
+    return shootAt(dirAngle(dir));
+}
+
+bool Player::shootAt(float angle)
 {
     if (inventory.ammukset == 0) {
         printer->showMessage("Ei ammuksia!", level, false);
@@ -572,30 +607,13 @@ bool Player::shoot(DirectionNS::Direction dir)
         }
     }
 
-    Coordinate<int> from { static_cast<int>(coord.x), static_cast<int>(coord.y) };
-    auto d = dirToCoord(dir);
-
     level->audio.addSound(coord, SoundType::Gunshot,
         "PAM! Pistooli pamahtaa!", "Pistoolinlaukaus", "...pamaus kaukaa...", 30);
+    level->alertCops(this, 30);
 
-    Person* target = level->raycast(from, d);
-    if (target) {
-        string msg = "";
-        common::setHitDirection(d.x, d.y);
-        target->damage(5);
-        if (target->stats.health <= 0) {
-            msg = "PAM! Osuma! Kohde kaatuu maahan.";
-            level->alertCops(this, 30);
-        } else {
-            msg = "PAM! Osuma!";
-            level->alertCops(this, 30);
-        }
-        printer->showMessage(msg, level, false);
-    } else {
-        printer->showMessage("PAM! Huti.", level, false);
-        level->alertCops(this, 30);
-    }
-
+    Person* target = level->fireBullet(this, angle, 20, 5, 90);
+    if (!target) printer->showMessage("PAM! Huti.", level, false);
+    else printer->showMessage(target->stats.health == 0 ? "PAM! Osuma! Kohde kaatuu maahan." : "PAM! Osuma!", level, false);
     return true;
 }
 

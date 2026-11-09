@@ -60,6 +60,10 @@ public:
 
     bool thrown = false;
     Coordinate<int> throwVec { 0, 0 };
+    // a throw at any angle: exact position and direction, and how many cells it has flown
+    bool angled = false;
+    float fx = 0, fy = 0, fdx = 0, fdy = 0;
+    uint32_t flight = 0;
     bool blocksLOS = false;
 };
 

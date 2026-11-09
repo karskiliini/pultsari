@@ -111,7 +111,10 @@ void Level::actThrow(Person* source)
             hit = p->interactThrow(thrownItem, source, msg);
             printer->showMessage(msg, this, false);
         } else {
-            if (hitBuilding(thrownItem->coord))
+            if (thrownItem->flight > 14) {
+                printer->showMessage("Heitto putoaa maahan.", this, false);
+                hit = true;
+            } else if (hitWall(thrownItem->coord))
             {
                 printer->showMessage("Osuit seinään.", this, false);
                 hit = true;

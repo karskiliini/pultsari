@@ -1,4 +1,5 @@
 #include "item.hpp"
+#include <algorithm>
 #include "persons.hpp"
 #include "level.hpp"
 #include "player.hpp"
@@ -11,8 +12,19 @@ using std::vector;
 
 void Item::actThrow(Level* level)
 {
-    coord.x += throwVec.x;
-    coord.y += throwVec.y;
+    ++flight;
+    if (!angled) {
+        coord.x += throwVec.x;
+        coord.y += throwVec.y;
+        return;
+    }
+    // advance along the aimed line until the item enters the next cell
+    for (int i = 0; i < 8; ++i) {
+        fx += fdx * 0.5f;
+        fy += fdy * 0.5f;
+        const Coord next { (uint32_t)std::max(0.0f, fx), (uint32_t)std::max(0.0f, fy) };
+        if (next != coord) { coord = next; return; }
+    }
 }
 
 Item* Item::createItem(uint32_t index, Coord coord) {

@@ -780,6 +780,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
             // aim state
             float aimAngle = 0.0f;
+            float aimNow = 0.0f;        // aimAngle plus the wobble, where the weapon really points
+            uint32_t aimClockMs = 0;
             // the pistol: holstered, in hand (lowered, laser on the ground) or aimed
             bool gunDrawn = false;
             bool rifleRaised = false;   // the weapon in hand is the assault rifle
@@ -792,11 +794,6 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             // inventory item-to-throw mapping
             // maps inventory overlay row to decrementInventory() index
             // the aim angle snapped to one of the four directions
-            auto aimDirection = [&]() {
-                const float dx = cosf(aimAngle), dy = sinf(aimAngle);
-                if (fabsf(dx) > fabsf(dy)) return dx > 0 ? DirectionNS::right : DirectionNS::left;
-                return dy > 0 ? DirectionNS::down : DirectionNS::up;
-            };
             // the longer you hold a cocked pistol, the likelier it goes off by itself
             uint32_t aimHeldMs = 0;
             float aimRisk = 0.0f;
@@ -957,6 +954,13 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     for (char k; (k = InputNS::Input::getRawCharNonBlocking()) != 0;) keys += k;
                     if (keys.empty()) keys += '\0';
 
+                    // the aim never holds still: two waves on top of where you point, wider the drunker you are
+                    aimClockMs += FRAME_MS;
+                    {
+                        const float amp = 0.10f + player.stats.promilles / 80.0f;
+                        aimNow = aimAngle + amp * (0.65f * sinf(aimClockMs / 260.0f) + 0.35f * sinf(aimClockMs / 113.0f + 1.3f));
+                    }
+
                     for (const char c : keys) {
                     if (c == 'z') throw std::out_of_range("quit!");
 
@@ -1053,8 +1057,6 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
 
                     case Mode::Aim: {
-                        float sway = sinf((float)aimTick * 0.15f) * (float)player.stats.promilles / 100.0f;
-                        aimAngle += sway * 0.05f;
 
                         if (c != 0) {
                             switch(c) {
@@ -1075,7 +1077,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         }
                                         --player.inventory.ammukset;
                                         const float spread = ((std::rand() % 100) - 50) / 110.0f * (1.0f + player.stats.promilles / 30.0f);
-                                        Person* hit = level.fireBullet(&player, aimAngle + spread, 18, std::rand() % 3 + 3, 85);
+                                        Person* hit = level.fireBullet(&player, aimNow + spread, 18, std::rand() % 3 + 3, 85);
                                         level.audio.addSound(player.coord, SoundType::Gunshot,
                                             "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri laulaa!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
                                         level.alertCops(&player, 35);
@@ -1083,11 +1085,11 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         break; // the rifle stays up
                                     }
                                     if (aimIsShooting) {
-                                        player.shoot(aimDirection());
+                                        player.shootAt(aimNow);
                                         aimIsShooting = false;
                                     } else {
                                         if (player.decrementInventory(aimItemNum))
-                                            player.executeThrow(aimItemNum, aimDirection());
+                                            player.executeThrowAt(aimItemNum, aimNow);
                                     }
                                     mode = Mode::Normal;
                                     break;
@@ -1138,7 +1140,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         const float fullMs = 10000.0f / (1.0f + player.stats.promilles / 15.0f);
                         aimRisk = std::min(1.0f, aimHeldMs / fullMs);
                         if ((float)(std::rand() % 10000) < aimRisk * aimRisk * 0.05f * 10000.0f) {
-                            player.shoot(aimDirection());
+                            player.shootAt(aimNow);
                             printer->showMessage("PAM! Ase laukesi vahingossa!", &level, false);
                             aimIsShooting = false;
                             mode = Mode::Normal;
@@ -1244,7 +1246,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     } else if (mode == Mode::Aim) {
                         printer->aimRisk = aimIsShooting ? aimRisk : -1.0f;
                         printer->aimLength = 20;
-                        printer->printAimLine(&level, player.coord.x, player.coord.y, aimAngle);
+                        printer->printAimLine(&level, player.coord.x, player.coord.y, aimNow);
                     } else if (gunDrawn) {
                         // laser from the lowered pistol, a few steps ahead on the ground
                         printer->aimRisk = -1.0f;
