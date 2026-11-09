@@ -1566,6 +1566,8 @@ TEST(death_notice_knows_who_shot_you)
     std::this_thread::sleep_for(std::chrono::milliseconds(750));
     w.level.fireBullet(cop, (float)M_PI / 2, 10, 3, 100);
     CHECK(w.player.lastHurtBy == "Politsija (ampui sinua)");
+    // let the moment of grace after the hit pass, so the next test's hit counts
+    std::this_thread::sleep_for(std::chrono::milliseconds(750));
 }
 
 TEST(driving_a_bullet_can_kill_the_driver)
