@@ -552,7 +552,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             InputNS::Input::raw();
 
             uint32_t npcTick = 0;
-            constexpr uint32_t NPC_INTERVAL = 5;
+            constexpr uint32_t NPC_INTERVAL = 8; // NPCs act 2.5 times a second
             constexpr uint32_t FRAME_MS = 50;
 
             enum class Mode { Normal, Inventory, Aim };

@@ -87,8 +87,8 @@ void Player::updateTurn()
     ++stats.turn;
 
     if (common::realtimeEnabled) {
-        // turns tick 4x per second in real-time: lose 0.1 promille every 50 s
-        if (stats.turn % 200 == 0) {
+        // turns tick 2.5x per second in real-time: lose 0.1 promille every 50 s
+        if (stats.turn % 125 == 0) {
             updatepromilles(-1);
         }
         // hunger decreases every 40 turns

@@ -8,6 +8,7 @@
 #include "pathmask.hpp"
 #include <string>
 #include <iostream>
+#include <chrono>
 
 using std::string;
 using PlayerNS::Player;
@@ -33,6 +34,14 @@ void Person::powerup(uint32_t damage)  {
 }
 
 void Person::damage(uint32_t damage)  {
+    // in real time the player gets a moment to react after each hit
+    if (type == pelaaja && common::realtimeEnabled) {
+        using clock = std::chrono::steady_clock;
+        static clock::time_point lastHit;
+        const auto now = clock::now();
+        if (now - lastHit < std::chrono::milliseconds(700)) return;
+        lastHit = now;
+    }
     if (damage >= stats.health) {
         stats.health = 0;
     } else {
@@ -59,6 +68,8 @@ Person* Person::currentTarget()
 bool Person::canSeeTarget(const Coord& target) const
 {
     if (blind) return false;
+    // someone standing in a bush can only be spotted from right next to it
+    if (level->hitLOSBlocker(target) && coord.distance(target) > 1) return false;
     if (visionRange == 0) return true;
     // lit places are seen from twice as far
     const uint32_t range = level->isLit(target) ? visionRange * 2 : visionRange;
