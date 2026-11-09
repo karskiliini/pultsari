@@ -489,10 +489,26 @@ static void populateVehicles(Level& level)
                 for (int k = 0; k < 2 + std::rand() % 2; ++k) {
                     const uint32_t along = std::rand() % (r.horizontal ? common::SIZEX : common::SIZEY);
                     const Coord c = r.horizontal ? Coord{ along, pos } : Coord{ pos, along };
-                    if (level.hit(c) || level.getVehicleAt(c)) continue;
-                    level.addVehicle(new Car(c, r.horizontal, dir));
+                    Car* car = new Car(c, r.horizontal, dir);
+                    bool free = true;
+                    for (const auto& cell : car->cells()) free = free && !level.hit(cell) && !level.getVehicleAt(cell);
+                    if (free) level.addVehicle(car); else delete car;
                 }
             }
+        }
+    }
+
+    // Putin's overlong limousine on Novyi Arbat, a police car ahead and behind
+    {
+        const uint32_t lane = 46;
+        const uint32_t x = 200;
+        Car* front = new Car(Coord{ x - 8, lane }, true, -1, Car::Kind::Police);
+        Car* limo = new Car(Coord{ x, lane }, true, -1, Car::Kind::Limousine);
+        Car* back = new Car(Coord{ x + 13, lane }, true, -1, Car::Kind::Police);
+        for (Car* car : { front, limo, back }) {
+            bool free = true;
+            for (const auto& cell : car->cells()) free = free && !level.getVehicleAt(cell);
+            if (free) level.addVehicle(car); else delete car;
         }
     }
 

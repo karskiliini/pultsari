@@ -20,15 +20,62 @@ void Vehicle::update()
 {
 }
 
+std::vector<Coord> Vehicle::cells() const
+{
+    std::vector<Coord> out;
+    const uint32_t limit = horizontal ? common::SIZEX : common::SIZEY;
+    for (uint32_t i = 0; i < length; ++i) {
+        Coord c = coord;
+        uint32_t& axis = horizontal ? c.x : c.y;
+        // body cells trail behind the front, wrapping around the map edge
+        axis = (uint32_t)(((int64_t)axis - (int64_t)direction * i + limit) % limit);
+        out.push_back(c);
+    }
+    return out;
+}
+
+int Vehicle::cellIndex(const Coord& c) const
+{
+    const auto body = cells();
+    for (size_t i = 0; i < body.size(); ++i) {
+        if (body[i] == c) return (int)i;
+    }
+    return -1;
+}
+
 bool Vehicle::hitVehicle(const Coord& c) const
 {
-    return (c.x == coord.x && c.y == coord.y);
+    return cellIndex(c) >= 0;
+}
+
+// a boxy car: arrow at the front, solid body, half block at the back
+std::string Vehicle::glyphAt(uint32_t i) const
+{
+    if (i == 0) {
+        if (horizontal) return direction > 0 ? "\xE2\x96\xB6" : "\xE2\x97\x80";
+        return direction > 0 ? "\xE2\x96\xBC" : "\xE2\x96\xB2";
+    }
+    if (i + 1 == length && horizontal) return direction > 0 ? "\xE2\x96\x90" : "\xE2\x96\x8C";
+    return "\xE2\x96\x88";
 }
 
 // Bus
 Bus::Bus(uint32_t route_y, uint32_t stop_x)
-    : Vehicle(Coord{common::SIZEX - 1, route_y}, route_y), stopX(stop_x)
+    : Vehicle(Coord{common::SIZEX - 8, route_y}, route_y), stopX(stop_x)
 {
+    length = 7;
+}
+
+// a long yellow bus with a row of windows
+std::string Bus::glyphAt(uint32_t i) const
+{
+    if (i == 0 || i + 1 == length) return Vehicle::glyphAt(i);
+    return (i % 2) ? "\xE2\x96\x88" : "\xE2\x96\x92";
+}
+
+const char* Bus::colorAt(uint32_t i) const
+{
+    return (i % 2 || i == 0 || i + 1 == length) ? "1;93" : "1;96";
 }
 
 void Bus::update()
@@ -54,10 +101,6 @@ void Bus::update()
     }
 }
 
-string Bus::typeToChar() const
-{
-    return "B";
-}
 
 // Bus mini-game
 BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
@@ -213,29 +256,42 @@ BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
 }
 
 // Car
-Car::Car(const Coord& pos, bool horizontal, int dir)
-    : Vehicle(pos, pos.y), horizontal(horizontal)
+Car::Car(const Coord& pos, bool horiz, int dir, Kind kind)
+    : Vehicle(pos, pos.y)
 {
+    horizontal = horiz;
     direction = dir;
-    struct Model { const char* name; const char* paint; uint32_t speed; };
+    struct Model { const char* name; const char* paint; uint32_t speed; uint32_t length; };
+    // Moscow traffic is mostly Ladas: small and boxy
     static const Model models[] = {
-        { "Lada",        "1;97", 45 },
-        { "Lada",        "1;91", 45 },
-        { "Lada",        "1;38;5;180", 40 },
-        { "Volga",       "1;38;5;238", 50 },
-        { "UAZ",         "1;38;5;64", 40 },
-        { "Gelendvagen", "1;38;5;232;48;5;250", 70 },
-        { "Politsijan auto", "1;97;44", 60 },
+        { "Lada", "1;97", 42, 3 }, { "Lada", "1;91", 42, 3 }, { "Lada", "1;38;5;180", 38, 3 },
+        { "Lada", "1;38;5;109", 40, 3 }, { "Lada", "1;38;5;143", 40, 3 }, { "Lada", "1;97", 44, 3 },
+        { "Lada", "1;38;5;167", 40, 3 },
+        { "Volga", "1;38;5;245", 48, 4 },
+        { "UAZ", "1;38;5;64", 38, 3 },
+        { "Gelendvagen", "1;38;5;240", 70, 4 },
     };
-    const Model& m = models[std::rand() % 7];
+    Model m = models[std::rand() % 10];
+    if (kind == Kind::Police) m = { "Politsijan auto", "1;94", 55, 4 };
+    if (kind == Kind::Limousine) m = { "Putinin limusiini", "38;5;16", 55, 10 };
+    limousine = kind == Kind::Limousine;
     model = m.name;
     paint = m.paint;
-    speed = m.speed * (80 + std::rand() % 41) / 100;
+    length = horizontal ? m.length : 2;
+    speed = kind == Kind::Random ? m.speed * (80 + std::rand() % 41) / 100 : m.speed;
 }
 
-std::string Car::typeToChar() const
+std::string Car::glyphAt(uint32_t i) const
 {
-    return horizontal ? (direction > 0 ? "\xE2\x96\xB6" : "\xE2\x97\x80") : (direction > 0 ? "\xE2\x96\xBC" : "\xE2\x96\xB2");
+    // the limousine's long black body has a row of tinted windows
+    if (limousine && i > 1 && i + 2 < length && i % 2 == 0) return "\xE2\x96\x92";
+    return Vehicle::glyphAt(i);
+}
+
+const char* Car::colorAt(uint32_t i) const
+{
+    if (limousine) return (i > 1 && i + 2 < length && i % 2 == 0) || i == 0 ? "1;38;5;250" : "38;5;16";
+    return paint;
 }
 
 void Car::frame(uint32_t ms)

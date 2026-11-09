@@ -428,9 +428,10 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 
         if (!found) {
             for (const auto& v : l->vehicles) {
-                if (v->hitVehicle(coord)) {
-                    c = v->typeToChar();
-                    color = v->color();
+                const int part = v->cellIndex(coord);
+                if (part >= 0) {
+                    c = v->glyphAt(part);
+                    color = v->colorAt(part);
                     found = true;
                     break;
                 }

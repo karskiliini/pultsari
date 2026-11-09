@@ -6,6 +6,7 @@
 #include "input.hpp"
 #include "building.hpp"
 #include "animation.hpp"
+#include "vehicle.hpp"
 #include <iostream>
 #include <string>
 #include <exception>
@@ -713,7 +714,12 @@ bool Player::move(DirectionNS::Direction d, Level* level)
     }
 
     if (!blocked) {
-        Person* p = level->checkPerson(check);
+        if (Vehicle* car = level->getVehicleAt(check)) {
+            msg = car->name() + " on tiell\xC3\xA4. Kolautat p\xC3\xA4\xC3\xA4si sen kylkeen.";
+            printer->showMessage(msg, level, false);
+            blocked = true;
+        }
+        Person* p = blocked ? nullptr : level->checkPerson(check);
         if (p && p->stolenMoney > 0) {
             // caught the pickpocket
             msg = "Sait kiinni! Otat rahasi takaisin: " + std::to_string(p->stolenMoney) + " ruplaa.";
