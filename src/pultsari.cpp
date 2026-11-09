@@ -17,6 +17,7 @@
 #include <iostream>
 #include <exception>
 #include <cmath>
+#include <cstdlib>
 
 using std::cout;
 using std::endl;
@@ -1120,7 +1121,8 @@ int init(int argc, char *argv[], Printer* printer)
 
     common::realtimeEnabled = realtime;
 
-    {
+    // the browser client plays its own intro
+    if (!std::getenv("PULTSARI_WEB")) {
         IntroNS::Intro i(printer);
         i.show();
     }

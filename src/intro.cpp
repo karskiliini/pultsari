@@ -17,17 +17,32 @@ Intro::~Intro()
     printer->endIntro();
 }
 
+// Space skips the intro; any other key pressed meanwhile is swallowed, not echoed
+static bool skipped = false;
+
+static void wait(uint32_t ms)
+{
+    while (!skipped && ms > 0) {
+        if (InputNS::Input::getRawCharNonBlocking() == ' ') { skipped = true; return; }
+        const uint32_t slice = ms < 20 ? ms : 20;
+        common::sleep(slice);
+        ms -= slice;
+    }
+}
+
 static void typewrite(const string& text, uint32_t delayMs)
 {
     for (size_t i = 0; i < text.length(); ++i) {
         cout << text[i];
         cout.flush();
-        common::sleep(delayMs);
+        wait(delayMs);
     }
 }
 
 void Intro::show()
 {
+    skipped = false;
+    InputNS::Input::raw();
     const string anykey = "Paina nappia jatkaaksesi";
 
     printer->cursorHome();
@@ -51,34 +66,34 @@ void Intro::show()
 
     // subtitle sits right after the 12-column "PПLTSAЯI 2: "
     const int SUB_X = CENTER_X + 12;
-    const int CYR_Y = TITLE_Y + 7;
+    const int CYR_Y = TITLE_Y + 1; // the Cyrillic forms on the very next line
     auto at = [&](int y, int x) {
         snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", y, x);
         cout << posBuf;
     };
 
-    common::sleep(500);
+    wait(500);
     cout << "\033[1;37mRusski Mir\033[0m";
     cout.flush();
-    common::sleep(1200);
+    wait(1200);
 
     at(TITLE_Y + 2, CENTER_X);
     cout << "\033[33m*R\xC3\x96KH*\033[0m";
     cout.flush();
     common::sound("cough");
-    common::sleep(600);
+    wait(600);
 
     // vomit hits the subtitle
     at(TITLE_Y, SUB_X);
     cout << "\033[32;1mRusski Mir\033[0m";
     cout.flush();
-    common::sleep(400);
+    wait(400);
 
     at(TITLE_Y + 4, CENTER_X - 2);
     cout << "\033[33;1m*BLAAARGH*\033[0m";
     cout.flush();
     common::sound("vomit");
-    common::sleep(600);
+    wait(600);
 
     // drip trails run down from the letters
     const char* trail[] = { ":", ".", "|", ":", ".", ";", "'" };
@@ -89,14 +104,14 @@ void Intro::show()
             cout << "\033[32;2m" << trail[(i + row) % 7] << "\033[0m";
         }
         cout.flush();
-        common::sleep(120);
+        wait(120);
     }
 
     at(TITLE_Y + 3, SUB_X + 13);
     cout << "\033[33;1m*\xC3\x96\xC3\x96\xC3\x96RRRKKK*\033[0m";
     cout.flush();
     common::sound("vomit2");
-    common::sleep(500);
+    wait(500);
 
     // the drips pool into "Русский Мир", one letter at a time
     const char* cyrillic[] = {
@@ -108,7 +123,7 @@ void Intro::show()
             at(y, SUB_X + i);
             cout << "\033[32;1mo\033[0m";
             cout.flush();
-            common::sleep(14);
+            wait(14);
             at(y, SUB_X + i);
             cout << " ";
         }
@@ -116,14 +131,14 @@ void Intro::show()
         cout << "\033[1;31m" << cyrillic[i] << "\033[0m";
         cout.flush();
         common::sound("drip", 0.5f);
-        common::sleep(50);
+        wait(50);
     }
-    common::sleep(300);
+    wait(300);
 
     at(CYR_Y + 1, SUB_X - 2);
     cout << "\033[32;2m~.~~~.~..~~.~~.\033[0m";
     cout.flush();
-    common::sleep(500);
+    wait(500);
 
     // balalaika sounds
     snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 13, CENTER_X - 5);
@@ -133,7 +148,7 @@ void Intro::show()
             "\xE2\x99\xAA \xD0\xBA\xD0\xB0\xD0\xBB\xD0\xB8\xD0\xBD\xD0\xBA\xD0\xB0 \xE2\x99\xAA\033[0m";
     cout.flush();
     common::sound("balalaika");
-    common::sleep(1500);
+    wait(1500);
 
     snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 24, CENTER_X);
     cout << posBuf;
@@ -141,7 +156,10 @@ void Intro::show()
 
     cout.flush();
 
-    InputNS::Input::waitKey();
+    if (!skipped) {
+        while (InputNS::Input::getRawCharNonBlocking() == 0) common::sleep(20);
+    }
+    InputNS::Input::noraw();
 
     printer->clear();
 }

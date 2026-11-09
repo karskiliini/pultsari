@@ -143,6 +143,9 @@ void Level::actThrow(Person* source)
 void Level::stepAnimations()
 {
     for (auto it = animations.begin(); it != animations.end();) {
+        // real-time frames are 50 ms: floating texts move every 4th frame (~1 s in all)
+        const uint32_t every = (common::realtimeEnabled && !(*it)->isBubble) ? 4 : 1;
+        if (++(*it)->tick % every != 0) { ++it; continue; }
         if ((*it)->act()) {
             ++it;
         } else {

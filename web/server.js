@@ -15,6 +15,7 @@ const STATIC = {
     '/xterm.js': [path.join(ROOT, 'node_modules/@xterm/xterm/lib/xterm.js'), 'text/javascript'],
     '/xterm.css': [path.join(ROOT, 'node_modules/@xterm/xterm/css/xterm.css'), 'text/css'],
     '/sfx.js': [path.join(__dirname, 'sfx.js'), 'text/javascript'],
+    '/intro.js': [path.join(__dirname, 'intro.js'), 'text/javascript'],
 };
 
 // node-pty's macOS prebuild ships spawn-helper without the execute bit when npm

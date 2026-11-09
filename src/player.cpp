@@ -44,7 +44,7 @@ void Player::updateMoney(int money)
 
     string ptext = std::to_string(abs(money));
 
-    string text = prefix + ptext + "$";
+    string text = prefix + ptext + "\xE2\x82\xBD";
     uint32_t diff = text.length() / 2;
     diff = (coord.x < diff) ? 0 : coord.x - diff;
     Coord textCoord { diff, coord.y };
@@ -66,7 +66,7 @@ void Player::updatepromilles(int p)
 
     string ptext = std::to_string(abs(p)/10) + "." + std::to_string(abs(p)%10);
 
-    string text = prefix + ptext + "%.";
+    string text = prefix + ptext + "\xE2\x80\xB0";
     uint32_t diff = text.length() / 2;
     diff = (coord.x < diff) ? 0 : coord.x - diff;
     Coord textCoord { diff, coord.y };
