@@ -355,7 +355,7 @@
                     let mv = 0, mc = 0;
                     for (let j = 0; j < n; j++) if (rest[j] > 0 && Math.abs(px[j] - px[i]) < 4) { mv += vx[j]; mc++; }
                     mv = mc ? mv / mc : 0;
-                    drips.push({ x, len: 0, w: 3 + Math.random() * Math.random() * 9, vol: 3, starve: 0,
+                    drips.push({ x, dead: false, len: 0, w: 3 + Math.random() * Math.random() * 9, vol: 3, starve: 0,
                                  ox: 0, ovx: mv * CELL * 1.6 + (Math.random() - 0.5) * 0.4, bvx: mv * CELL * 0.6,
                                  maxLen: 25 + Math.random() * Math.max(30, (HT - H) * 0.8),
                                  speed: 0.1 + Math.random() * 0.16 });
@@ -406,7 +406,7 @@
                 if (d.starve > 90 && d.vol < 4) {
                     // the puddle is gone here: the strand thins to a hair and breaks
                     d.w *= 0.985;
-                    if (d.w < 0.7) { drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: Math.max(1, d.r * 0.7), vy: 0.3, vx: d.ovx }); drips.splice(k, 1); }
+                    if (d.w < 0.7) { drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: Math.max(1, d.r * 0.7), vy: 0.3, vx: d.ovx }); d.dead = true; drips.splice(k, 1); }
                 }
             }
             for (let a = drips.length - 1; a >= 0; a--) {
@@ -414,7 +414,7 @@
                     const A = drips[a], B = drips[b];
                     if (Math.abs(A.x - B.x) > (A.w + B.w) * 0.5) continue;
                     B.vol += A.vol; B.w = Math.max(A.w, B.w) * 1.1; B.len = Math.max(A.len, B.len);
-                    B.ovx = (A.ovx + B.ovx) * 0.5; drips.splice(a, 1); break;
+                    B.ovx = (A.ovx + B.ovx) * 0.5; A.dead = true; drips.splice(a, 1); break;
                 }
             }
             for (let k = drops.length - 1; k >= 0; k--) {
@@ -424,7 +424,190 @@
             }
         }
 
-        const SLIME = '#4b7414', GLOSS = 'rgba(205,240,120,0.5)';
+        const GLOSS = 'rgba(205,240,120,0.5)';
+        // one vertical shade for everything that hangs from the border, so the lip, the strands
+        // and the threads between them read as a single mass of slime with no seams
+        let slimeGrad = null;
+        function slimeFill() {
+            if (slimeGrad) return slimeGrad;
+            const span = Math.max(30, HT + 20 - lipTop);
+            slimeGrad = ctx.createLinearGradient(0, lipTop, 0, lipTop + span);
+            slimeGrad.addColorStop(0, '#7aa82c');
+            slimeGrad.addColorStop(Math.min(0.9, 6 / span), '#5f8a1c');
+            slimeGrad.addColorStop(Math.min(0.95, 16 / span), '#4a7212');
+            slimeGrad.addColorStop(1, '#33550b');
+            return slimeGrad;
+        }
+
+        // A strand's centreline and width from inside the lip down to the drop. Where it leaves the
+        // lip it flares out like a meniscus, it is thinnest in the middle and swells into the drop.
+        const GEO_N = 26;
+        const filletOf = (d) => 2.5 + d.w * 1.3;
+        function strandGeo(d) {
+            const yL = lipTop + d.base;
+            const top = lipTop - 0.5;
+            const tip = lipTop + d.len;
+            const g = d.geo || (d.geo = { pts: [] });
+            g.ok = tip > yL + 2;
+            if (!g.ok) return g;
+            const tx = d.x + d.ox, ty = tip - d.r * 0.6, L = ty - top;
+            const w0 = d.w * 1.25, w1 = Math.max(0.9, d.w * 0.5);
+            const fil = filletOf(d), D = fil * 1.3;
+            g.pts.length = 0;
+            for (let k = 0; k <= GEO_N; k++) {
+                const s = Math.pow(k / GEO_N, 1.8), u = 1 - s;   // more points near the root
+                // straight down from the root, bending toward the swinging tip
+                const x = (u * u * u + 3 * u * u * s) * d.x + (3 * u * s * s + s * s * s) * tx;
+                const y = u * u * u * top + 3 * u * u * s * (top + L * 0.35) + 3 * u * s * s * (top + L * 0.6) + s * s * s * ty;
+                const dy = y - yL;
+                const neck = 1 - Math.min(1, Math.max(0, dy) / Math.max(6, L * 0.5));
+                let w = w1 + (w0 - w1) * neck * neck;
+                // a quarter-ellipse fillet: level with the lip where it starts, vertical where it meets the strand
+                if (dy <= 0) w += 2 * fil;
+                else if (dy < D) { const q = 1 - dy / D; w += 2 * fil * (1 - Math.sqrt(1 - q * q)); }
+                w += d.r * 0.6 * Math.max(0, (s - 0.75) / 0.25);
+                g.pts.push({ x, y, w });
+            }
+            g.yL = yL; g.tip = tip; g.tx = tx; g.ty = ty; g.fil = fil;
+            return g;
+        }
+        // the point at fraction s of the way from where the strand leaves the lip to its drop
+        function strandAt(g, s) {
+            const y = g.yL + s * (g.ty - g.yL), p = g.pts;
+            for (let k = 1; k < p.length; k++) {
+                if (p[k].y >= y) {
+                    const a = p[k - 1], b = p[k], f = (y - a.y) / Math.max(1e-6, b.y - a.y);
+                    return { x: a.x + (b.x - a.x) * f, y, w: a.w + (b.w - a.w) * f };
+                }
+            }
+            const l = p[p.length - 1];
+            return { x: l.x, y: l.y, w: l.w };
+        }
+        function strandPath(g) {
+            const p = g.pts;
+            ctx.beginPath();
+            ctx.moveTo(p[0].x - p[0].w / 2, p[0].y);
+            for (let k = 1; k < p.length; k++) ctx.lineTo(p[k].x - p[k].w / 2, p[k].y);
+            for (let k = p.length - 1; k >= 0; k--) ctx.lineTo(p[k].x + p[k].w / 2, p[k].y);
+            ctx.closePath();
+        }
+
+        // ---- bridges: slime stays stuck between strands that hang close together ----
+        // Very close ones share a web, a film from the lip down to a sagging, thicker rim;
+        // further apart a thread sags between them and its slime runs into a bead at the
+        // bottom. Both stretch thinner as the strands swing apart, and snap.
+        const bridges = [];
+        function sagOf(br) {
+            const slack = br.rest / (br.strain * br.strain);
+            return Math.min(28, (br.web ? 0.22 : 0.3) * slack + br.bead * 1.2);
+        }
+        function updateBridges() {
+            const live = drips.filter((d) => d.geo && d.geo.ok && d.len > 12);
+            live.sort((a, b) => a.x - b.x);
+            for (let k = 1; k < live.length && bridges.length < 9; k++) {
+                const a = live[k - 1], b = live[k];
+                const gap = Math.abs((b.x + b.ox * 0.5) - (a.x + a.ox * 0.5));
+                if (gap > 70 || Math.random() > 0.02) continue;
+                if (bridges.some((br) => (br.a === a && br.b === b) || (br.a === b && br.b === a))) continue;
+                const web = gap < 32;
+                const sa = web ? 0.15 + Math.random() * 0.3 : 0.25 + Math.random() * 0.5;
+                const sb = web ? Math.max(0.1, Math.min(0.6, sa + (Math.random() - 0.5) * 0.25)) : 0.25 + Math.random() * 0.5;
+                const A = strandAt(a.geo, sa), B = strandAt(b.geo, sb);
+                bridges.push({ a, b, sa, sb, web, rest: Math.hypot(B.x - A.x, B.y - A.y),
+                               thick: web ? 1.4 + Math.random() * 0.8 : 0.7 + Math.random() * 0.9,
+                               bead: 0, life: 260 + Math.random() * 900, strain: 1 });
+            }
+            for (let k = bridges.length - 1; k >= 0; k--) {
+                const br = bridges[k];
+                if (br.a.dead || br.b.dead || !br.a.geo.ok || !br.b.geo.ok) { bridges.splice(k, 1); continue; }
+                const A = strandAt(br.a.geo, br.sa), B = strandAt(br.b.geo, br.sb);
+                br.A = A; br.B = B;
+                br.strain = Math.hypot(B.x - A.x, B.y - A.y) / Math.max(4, br.rest);
+                br.thick *= 0.999;
+                if (!br.web) br.bead = Math.min(2.6, br.bead + 0.01);
+                // the slime pulls the two strands toward each other
+                const dir = Math.sign(B.x - A.x), pull = 0.004 * Math.min(2, br.strain);
+                br.a.ovx += dir * pull; br.b.ovx -= dir * pull;
+                br.sag = sagOf(br);
+                if (--br.life < 0 || br.strain > (br.web ? 1.6 : 1.9) || br.thick / Math.sqrt(br.strain) < 0.35) {
+                    // it snaps and what hung at the bottom falls
+                    drops.push({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 + br.sag,
+                                 r: Math.max(1, br.web ? br.thick * 1.2 : br.bead), vy: 0.2, vx: 0 });
+                    bridges.splice(k, 1);
+                }
+            }
+        }
+        // quadratic curve that sags by `sag` below the line from A to B
+        const sagCtl = (A, B, sag) => [(A.x + B.x) / 2, (A.y + B.y) / 2 + 2 * sag];
+        function drawWeb(br) {
+            let { a, b, A, B } = br;
+            if (A.x > B.x) { [a, b] = [b, a]; [A, B] = [B, A]; }
+            const [cx, cy] = sagCtl(A, B, br.sag);
+            const film = ctx.createLinearGradient(0, lipTop, 0, Math.max(A.y, B.y) + br.sag);
+            film.addColorStop(0, 'rgba(95,138,28,0.9)');
+            film.addColorStop(1, 'rgba(70,110,18,0.5)');
+            ctx.fillStyle = film;
+            ctx.beginPath();
+            ctx.moveTo(A.x, lipTop);
+            for (const p of a.geo.pts) if (p.y < A.y) ctx.lineTo(p.x + p.w * 0.3, p.y);
+            ctx.lineTo(A.x, A.y);
+            ctx.quadraticCurveTo(cx, cy, B.x, B.y);
+            const pb = b.geo.pts;
+            for (let k = pb.length - 1; k >= 0; k--) if (pb[k].y < B.y) ctx.lineTo(pb[k].x - pb[k].w * 0.3, pb[k].y);
+            ctx.lineTo(B.x, lipTop);
+            ctx.closePath();
+            ctx.fill();
+        }
+        function drawWebRim(br) {
+            const { A, B } = br;
+            const [cx, cy] = sagCtl(A, B, br.sag);
+            const th = Math.max(0.6, br.thick / Math.sqrt(br.strain));
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = slimeFill();
+            ctx.lineWidth = th * 1.6;
+            ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.quadraticCurveTo(cx, cy, B.x, B.y); ctx.stroke();
+            ctx.strokeStyle = 'rgba(205,240,120,0.4)';
+            ctx.lineWidth = 0.6;
+            ctx.beginPath(); ctx.moveTo(A.x, A.y - th * 0.4); ctx.quadraticCurveTo(cx, cy - th * 0.4, B.x, B.y - th * 0.4); ctx.stroke();
+        }
+        function drawThread(br) {
+            const { A, B } = br;
+            const [cx, cy] = sagCtl(A, B, br.sag);
+            const th = Math.max(0.45, br.thick / Math.sqrt(br.strain));
+            // thick where it leaves each strand, thinnest in the middle
+            const N = 14, up = [], dn = [];
+            for (let k = 0; k <= N; k++) {
+                const t = k / N, u = 1 - t;
+                const x = u * u * A.x + 2 * u * t * cx + t * t * B.x;
+                const y = u * u * A.y + 2 * u * t * cy + t * t * B.y;
+                const dx = 2 * u * (cx - A.x) + 2 * t * (B.x - cx), dy = 2 * u * (cy - A.y) + 2 * t * (B.y - cy);
+                const l = Math.hypot(dx, dy) || 1, nx = -dy / l, ny = dx / l;
+                const w = th * (1 + 1.8 * (Math.exp(-t / 0.08) + Math.exp(-u / 0.08))) / 2;
+                up.push(x + nx * w, y + ny * w);
+                dn.push(x - nx * w, y - ny * w);
+            }
+            ctx.fillStyle = slimeFill();
+            ctx.beginPath();
+            ctx.moveTo(up[0], up[1]);
+            for (let k = 2; k < up.length; k += 2) ctx.lineTo(up[k], up[k + 1]);
+            for (let k = dn.length - 2; k >= 0; k -= 2) ctx.lineTo(dn[k], dn[k + 1]);
+            ctx.closePath();
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(205,240,120,0.35)';
+            ctx.lineWidth = 0.5;
+            ctx.beginPath(); ctx.moveTo(A.x, A.y - th * 0.3); ctx.quadraticCurveTo(cx, cy - th * 0.3, B.x, B.y - th * 0.3); ctx.stroke();
+        }
+        function drawBead(x, y, r) {
+            ctx.beginPath();
+            ctx.ellipse(x, y, r * 0.9, r * 1.1, 0, 0, Math.PI * 2);
+            const bg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.3);
+            bg.addColorStop(0, '#a6d65a');
+            bg.addColorStop(0.5, '#507c14');
+            bg.addColorStop(1, '#243c05');
+            ctx.fillStyle = bg;
+            ctx.fill();
+        }
+
         function drawDrips() {
             drawTrickles();
             // the lip: the puddle bulging over the edge, deeper where it is thicker and around each strand
@@ -433,18 +616,26 @@
                 for (let o = -4; o <= 4; o++) { const c = x + o; if (c >= 0 && c < FW) sum += colCount[c] * (1 - Math.abs(o) / 5); }
                 lip[x] = sum > 0.5 ? Math.min(22, Math.sqrt(sum) * 3.2) : 0;
             }
+            // each strand sags the lip into a short level shelf as wide as its fillet, so the fillet
+            // can curve out of it without a step
             for (const d of drips) {
+                const c = Math.min(FW - 1, Math.max(0, (d.x / CELL) | 0));
+                d.base = Math.max(lip[c], 1 + d.w * 0.6);
+            }
+            for (const d of drips) {
+                const half = (d.w * 1.25 / 2 + filletOf(d)) / CELL;
                 const c = d.x / CELL;
-                for (let x = Math.max(0, (c - 10) | 0); x < Math.min(FW, c + 10); x++) {
-                    const f = Math.exp(-Math.pow((x - c) * CELL / (d.w * 1.7), 2));
-                    lip[x] = Math.max(lip[x], lip[x] * 0.4 + d.w * 2.4 * f);
+                for (let x = Math.max(0, Math.floor(c - half)); x <= Math.min(FW - 1, Math.ceil(c + half)); x++) {
+                    lip[x] = Math.max(lip[x], d.base);
                 }
             }
-            const lipGrad = ctx.createLinearGradient(0, lipTop, 0, lipTop + 22);
-            lipGrad.addColorStop(0, '#7aa82c');
-            lipGrad.addColorStop(0.35, '#557f16');
-            lipGrad.addColorStop(1, '#2c4606');
-            ctx.fillStyle = lipGrad;
+            for (const d of drips) strandGeo(d);
+            updateBridges();
+
+            // webs hang behind everything, a translucent film between their strands
+            for (const br of bridges) if (br.web) drawWeb(br);
+
+            ctx.fillStyle = slimeFill();
             ctx.beginPath();
             let open = false;
             for (let x = 0; x <= FW; x++) {
@@ -455,36 +646,48 @@
             }
             ctx.fill();
 
-            // the strands: wide where they leave the lip, thin in the middle, a round drop at the tip
+            // the strands, in the same slime as the lip so they grow out of it
             for (const d of drips) {
-                const top = lipTop + (lip[Math.min(FW - 1, (d.x / CELL) | 0)] || 0) * 0.6;
-                const tip = lipTop + d.len;
-                if (tip <= top) continue;
-                const w0 = d.w * 1.4, w1 = Math.max(0.9, d.w * 0.55);
-                const tx = d.x + d.ox, L = tip - top, ty = tip - d.r * 0.6;
-                // round in cross-section: lit on the left, in shadow on the right
-                const g = ctx.createLinearGradient(Math.min(d.x, tx) - w0, 0, Math.max(d.x, tx) + w0, 0);
-                g.addColorStop(0, '#3d600c');
-                g.addColorStop(0.3, '#7cab30');
-                g.addColorStop(0.55, '#4f7a14');
-                g.addColorStop(1, '#223a04');
-                ctx.fillStyle = g;
-                // the strand hangs straight from the root and bends toward the swinging tip
-                ctx.beginPath();
-                ctx.moveTo(d.x - w0 / 2, top);
-                ctx.bezierCurveTo(d.x - w1 / 2, top + L * 0.35, tx - w1 / 2, top + L * 0.6, tx - w1 / 2, ty);
-                ctx.lineTo(tx + w1 / 2, ty);
-                ctx.bezierCurveTo(tx + w1 / 2, top + L * 0.6, d.x + w1 / 2, top + L * 0.35, d.x + w0 / 2, top);
-                ctx.closePath();
+                if (!d.geo.ok) continue;
+                strandPath(d.geo);
                 ctx.fill();
+            }
+            for (const br of bridges) if (br.web) drawWebRim(br); else drawThread(br);
+
+            // round in cross-section: a lit stripe on the left, shadow on the right; it fades in
+            // below the lip so the root stays one with it
+            ctx.lineCap = 'butt';
+            for (const d of drips) {
+                const g = d.geo;
+                if (!g.ok) continue;
+                const p = g.pts;
+                for (let k = 1; k < p.length; k++) {
+                    const a = p[k - 1], b = p[k];
+                    const fade = Math.min(1, Math.max(0, (b.y - g.yL) / (g.fil * 2)));
+                    if (fade <= 0) continue;
+                    const w = (a.w + b.w) / 2;
+                    ctx.globalAlpha = fade;
+                    ctx.strokeStyle = 'rgba(160,210,80,0.45)';
+                    ctx.lineWidth = w * 0.25;
+                    ctx.beginPath(); ctx.moveTo(a.x - a.w * 0.22, a.y); ctx.lineTo(b.x - b.w * 0.22, b.y); ctx.stroke();
+                    ctx.strokeStyle = 'rgba(18,34,2,0.5)';
+                    ctx.lineWidth = w * 0.3;
+                    ctx.beginPath(); ctx.moveTo(a.x + a.w * 0.3, a.y); ctx.lineTo(b.x + b.w * 0.3, b.y); ctx.stroke();
+                }
+                ctx.globalAlpha = 1;
                 ctx.beginPath();
-                ctx.ellipse(tx, tip, d.r, d.r * 1.15, d.ovx * 0.15, 0, Math.PI * 2);
-                const bulb = ctx.createRadialGradient(tx - d.r * 0.4, tip - d.r * 0.45, d.r * 0.1, tx, tip, d.r * 1.2);
+                ctx.ellipse(g.tx, g.tip, d.r, d.r * 1.15, d.ovx * 0.15, 0, Math.PI * 2);
+                const bulb = ctx.createRadialGradient(g.tx - d.r * 0.4, g.tip - d.r * 0.45, d.r * 0.1, g.tx, g.tip, d.r * 1.2);
                 bulb.addColorStop(0, '#a6d65a');
                 bulb.addColorStop(0.45, '#5a8618');
-                bulb.addColorStop(1, '#243c05');
+                bulb.addColorStop(1, '#2a4506');
                 ctx.fillStyle = bulb;
                 ctx.fill();
+            }
+            for (const br of bridges) {
+                if (br.web || br.bead < 0.6) continue;
+                const [cx, cy] = sagCtl(br.A, br.B, br.sag);
+                drawBead((br.A.x + 2 * cx + br.B.x) / 4, (br.A.y + 2 * cy + br.B.y) / 4 + br.bead * 0.5, br.bead);
             }
             for (const p of drops) {
                 ctx.beginPath();
@@ -496,19 +699,22 @@
                 ctx.fillStyle = dg;
                 ctx.fill();
             }
-            // a wet highlight down the left side of each strand
+            // a wet highlight down the left side of each strand and on its drop
             ctx.strokeStyle = GLOSS;
             ctx.lineWidth = 0.8;
             for (const d of drips) {
-                const tip = lipTop + d.len;
-                if (d.len < 6) continue;
-                const tx = d.x + d.ox;
+                const g = d.geo;
+                if (!g.ok || d.len < 6) continue;
                 ctx.beginPath();
-                ctx.moveTo(d.x - d.w * 0.25, lipTop + 3);
-                ctx.bezierCurveTo(d.x - d.w * 0.2, lipTop + d.len * 0.35, tx - d.w * 0.12, lipTop + d.len * 0.6, tx - d.w * 0.12, tip - d.r * 0.8);
+                let started = false;
+                for (const p of g.pts) {
+                    if (p.y < g.yL + g.fil * 1.2 || p.y > g.tip - d.r * 0.8) continue;
+                    const x = p.x - p.w * 0.3;
+                    if (started) ctx.lineTo(x, p.y); else { ctx.moveTo(x, p.y); started = true; }
+                }
                 ctx.stroke();
                 ctx.beginPath();
-                ctx.arc(tx - d.r * 0.35, tip - d.r * 0.35, d.r * 0.3, 0, Math.PI * 2);
+                ctx.arc(g.tx - d.r * 0.35, g.tip - d.r * 0.35, d.r * 0.3, 0, Math.PI * 2);
                 ctx.stroke();
             }
         }
