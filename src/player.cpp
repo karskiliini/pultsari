@@ -227,6 +227,7 @@ bool Player::interactThrow(Item* item, Person* source, std::string& msg)
 void Player::resetPosition()
 {
     coord = {common::PLAYER_START_X, common::PLAYER_START_Y};
+    heading.reset();
 }
 
 bool Player::drink(Level* level)
@@ -746,6 +747,9 @@ bool Player::move(DirectionNS::Direction d, Level* level)
         case DirectionNS::none:
             return false;
     }
+
+    // facing turns towards the step even if the way is blocked
+    heading.step((int)check.x - (int)coord.x, (int)check.y - (int)coord.y);
 
     string msg;
     Building* b = checkDoor(level, check);

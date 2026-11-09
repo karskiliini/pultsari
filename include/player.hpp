@@ -8,6 +8,7 @@
 #include "scoreboard.hpp"
 #include "stats.hpp"
 #include "disease.hpp"
+#include "gaze.hpp"
 #include <cstdint>
 #include <string>
 
@@ -63,6 +64,9 @@ public:
 
     Inventory inventory;
     bool inJail = false;
+
+    // weighted walking direction, steers where the player looks on foot
+    VisionNS::Heading heading;
 
     // at the wheel of a car, and where the eyes are
     Car* driving = nullptr;

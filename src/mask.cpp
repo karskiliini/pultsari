@@ -7,6 +7,9 @@
 #include "vehicle.hpp"
 #include <exception>
 #include <stdexcept>
+#include <algorithm>
+#include <cmath>
+#include <cstdlib>
 
 namespace VisionNS {
 
@@ -31,6 +34,55 @@ void Mask::enable()
     enabled = true;
 }
 
+namespace {
+
+Vec toVec(const Coord& from, const Coord& to)
+{
+    return { (float)to.x - (float)from.x, (float)to.y - (float)from.y };
+}
+
+float length(const Vec& v)
+{
+    return std::sqrt(v.x * v.x + v.y * v.y);
+}
+
+}
+
+Vec Mask::gazeDirection(const Vec& walk)
+{
+    // glancing sideways now and then
+    if (glances && glanceTurns == 0 && common::random(GLANCE_CHANCE)) {
+        glanceTurns = common::random(25) ? 2 : 1;
+        float span = GLANCE_MAX_ANGLE - GLANCE_MIN_ANGLE;
+        glanceAngle = GLANCE_MIN_ANGLE + span * (float)(std::rand() % 101) / 100.f;
+        if (std::rand() % 2) glanceAngle = -glanceAngle;
+    }
+    if (glanceTurns > 0) {
+        --glanceTurns;
+        return rotate(walk, glanceAngle);
+    }
+
+    // otherwise stare at the nearest person in front
+    Player* p = level->getPlayer();
+    const Coord& c = p->coord;
+
+    const Person* nearest = nullptr;
+    float nearestDist = FOCUS_RANGE;
+    for (auto o : level->persons) {
+        if (o == p) continue;
+        Vec d = toVec(c, o->coord);
+        float dist = length(d);
+        if (dist >= nearestDist) continue;
+        if (angleBetween(walk, d) > FOCUS_SEARCH_ANGLE) continue;
+        if (!level->raycast(c, o->coord)) continue;
+        nearest = o;
+        nearestDist = dist;
+    }
+
+    if (nearest) return toVec(c, nearest->coord);
+    return walk;
+}
+
 void Mask::init()
 {
     if (!enabled) return;
@@ -49,6 +101,12 @@ void Mask::init()
 
     // HIV narrows the world as it progresses
     const uint32_t sight = Disease::visionDistance(VISION_DISTANCE, p->diseaseStage());
+    const float sickness = (float)sight / (float)VISION_DISTANCE;
+
+    // the eyes follow the walking direction; drunkenness narrows the cone
+    const Vec walk = p->heading.dir();
+    const Vec gaze = gazeDirection(walk);
+    const float cone = coneScale(p->stats.promilles);
 
     uint32_t startX = (level->cameraX > 0) ? (uint32_t)level->cameraX : 0;
     uint32_t startY = (level->cameraY > 0) ? (uint32_t)level->cameraY : 0;
@@ -62,18 +120,31 @@ void Mask::init()
         {
             Coord dc { x, y };
             auto& line = mask[y];
+            line[x] = ' ';
 
             if (litRoom && litRoom->hitBuilding(dc)) {
                 line[x] = '.';
-            } else if (p->driving ? gazeSees(p, c, dc, level->isLit(dc) ? sight * 2 : sight)
-                                  : c.distance(dc) < (level->isLit(dc) ? sight * 2 : sight)) {
-                if (level->raycast(c, dc)) {
+                continue;
+            }
+
+            // at the wheel the eyes follow the road (see driving.cpp)
+            if (p->driving) {
+                if (gazeSees(p, c, dc, level->isLit(dc) ? sight * 2 : sight) && level->raycast(c, dc)) {
                     line[x] = '.';
-                } else {
-                    line[x] = ' ';
                 }
-            } else {
-                line[x] = ' ';
+                continue;
+            }
+
+            Vec d = toVec(c, dc);
+            float dist = length(d);
+            if (dist > FOCUS_RANGE) continue;
+
+            float range = visionRange(angleBetween(gaze, d), angleBetween(walk, d), cone);
+            range *= sickness * (level->isLit(dc) ? 1.f : DARK_SCALE);
+            range = std::max(range, NEAR_RANGE);
+
+            if (dist <= range && level->raycast(c, dc)) {
+                line[x] = '.';
             }
         }
     }

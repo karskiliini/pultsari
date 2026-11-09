@@ -5,6 +5,7 @@
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
+#include "gaze.hpp"
 #include "disease.hpp"
 #include "item.hpp"
 #include "level.hpp"
@@ -85,6 +86,7 @@ struct World {
         player.printer = &printer;
         player.coord = at;
         level.addPerson(&player);
+        mask.glances = false; // keep vision deterministic
     }
     template <class B> B* add(B* b, uint32_t x, uint32_t y) { b->setOffset(x, y); level.addBuilding(b); return b; }
     template <class P> P* spawn(P* p) { p->printer = &printer; level.addPerson(p); return p; }
@@ -496,6 +498,70 @@ TEST(shop_name_hidden_while_inside)
     string row;
     for (const auto& cell : w.printer.rowCells(&w.level, 102 - (uint32_t)w.level.cameraY)) row += cell.first;
     CHECK(!contains(row, "TESTNAME"));
+}
+
+// walk with keys: d = right, w = up, a = left, s = down
+static float walkHeading(const string& keys)
+{
+    VisionNS::Heading h;
+    for (char k : keys) h.step(k == 'd' ? 1 : k == 'a' ? -1 : 0, k == 's' ? 1 : k == 'w' ? -1 : 0);
+    return h.degrees();
+}
+
+TEST(heading_is_weighted_average_of_steps)
+{
+    // zigzag right/up averages to north-east
+    const float a = walkHeading("dwdwdwdwdwdw"), b = walkHeading("dwdwdwdwdwdwd");
+    CHECK((a + b) / 2.f > 40.f && (a + b) / 2.f < 50.f);
+    // one step up after a long run right: still mostly right
+    const float once = walkHeading("dddddw");
+    CHECK(once > 10.f && once < 30.f);
+    // two steps up: clearly more, about 45
+    const float twice = walkHeading("dddddww");
+    CHECK(twice > 38.f && twice < 52.f);
+}
+
+TEST(vision_reaches_far_ahead_and_short_behind)
+{
+    World w(Coord{ 50, 50 });
+    w.mask.enable();
+    w.level.updateCamera();
+    w.mask.init();                              // facing right at start
+    CHECK(w.mask.visible(Coord{ 62, 50 }));     // 12 ahead
+    CHECK(!w.mask.visible(Coord{ 42, 50 }));    // 8 behind
+    CHECK(w.mask.visible(Coord{ 48, 50 }));     // right behind your back
+    for (int i = 0; i < 8; ++i) w.player.heading.step(-1, 0);
+    w.mask.init();                              // turned around
+    CHECK(w.mask.visible(Coord{ 42, 50 }));
+    CHECK(!w.mask.visible(Coord{ 62, 50 }));
+}
+
+TEST(vision_stares_at_nearest_person_in_front)
+{
+    World w(Coord{ 50, 50 });
+    w.spawn(new Mummo(Coord{ 56, 42 }));        // up-right, inside the front half
+    w.mask.enable();
+    w.level.updateCamera();
+    w.mask.init();
+    CHECK(w.mask.visible(Coord{ 60, 42 }));     // next to the granny, where the eyes go
+    CHECK(!w.mask.visible(Coord{ 62, 56 }));    // straight-ish ahead but off to the other side
+}
+
+TEST(drunk_vision_cone_is_narrower)
+{
+    CHECK(VisionNS::coneScale(2) == 1.f);
+    CHECK(VisionNS::coneScale(15) < 1.f);
+    CHECK(VisionNS::coneScale(40) == VisionNS::DRUNK_CONE_SCALE);
+    World w(Coord{ 50, 50 });
+    w.mask.enable();
+    w.level.updateCamera();
+    const Coord aside { 56, 45 };               // ~40 degrees off the walking direction
+    w.mask.init();
+    CHECK(w.mask.visible(aside));
+    w.player.stats.promilles = 30;
+    w.mask.init();
+    CHECK(!w.mask.visible(aside));
+    CHECK(w.mask.visible(Coord{ 60, 50 }));     // still sees straight ahead
 }
 
 // ---- foreign recruits ----
