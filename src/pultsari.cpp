@@ -789,7 +789,14 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 printer->removeMessage();
 
                 try {
-                    char c = InputNS::Input::getRawCharNonBlocking();
+                    // drain every key that arrived since the last frame: held-down keys
+                    // repeat faster than frames, and a backlog would keep the player
+                    // walking long after the key is released
+                    std::string keys;
+                    for (char k; (k = InputNS::Input::getRawCharNonBlocking()) != 0;) keys += k;
+                    if (keys.empty()) keys += '\0';
+
+                    for (const char c : keys) {
                     if (c == 'z') throw std::out_of_range("quit!");
 
                     switch (mode) {
@@ -886,6 +893,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         }
                         ++aimTick;
                         break;
+                    }
                     }
                     }
 
