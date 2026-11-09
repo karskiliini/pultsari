@@ -18,7 +18,8 @@ enum PersonType {
     veteraani,
     fsb,
     juoppo,
-    sotilas
+    sotilas,
+    ilmatorjunta
 };
 
 #endif

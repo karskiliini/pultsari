@@ -1874,3 +1874,70 @@ bool Sotilas::interactThrow(Item* item, Person* source, std::string& msg)
     }
     return true;
 }
+
+// ============ ITYksikko (Air Defense) ============
+
+ITYksikko::ITYksikko(const Coord& pos) : Person(ilmatorjunta, pos)
+{
+    stats.health = 25;
+    visionRange = 0;
+    fireCooldown = 8 + std::rand()%8;
+}
+
+void ITYksikko::npcAct()
+{
+    if (fireCooldown > 0) {
+        --fireCooldown;
+        return;
+    }
+    fireCooldown = 8 + std::rand()%8;
+
+    static const char* fire_lines[] = {
+        "TULI!",
+        "Kohde havaittu!",
+        "Ilmatorjunta ampuu!",
+        "OGON!",
+    };
+    say(fire_lines[std::rand()%4]);
+
+    Animation* anim = new Animation(coord, "***", 5);
+    anim->coordMove = Coordinate<int>(0, -1);
+    level->addAnimation(anim);
+
+    int dx = std::rand()%17 - 8;
+    int dy = std::rand()%17 - 8;
+    int fx = (int)coord.x + dx;
+    int fy = (int)coord.y + dy;
+    if (fx < 0) fx = 0;
+    if (fy < 0) fy = 0;
+    if (fx >= (int)common::SIZEX) fx = common::SIZEX - 1;
+    if (fy >= (int)common::SIZEY) fy = common::SIZEY - 1;
+    Coord debrisCoord { (uint32_t)fx, (uint32_t)fy };
+
+    for (auto& p : level->persons) {
+        if (p->stats.health > 0 && p != this && p->coord.distance(debrisCoord) <= 1) {
+            uint32_t dmg = std::rand()%3 + 1;
+            p->damage(dmg);
+            if (p->type == pelaaja) {
+                printer->showMessage("Sirpaleita putoaa taivaalta!", level, false);
+            }
+        }
+    }
+}
+
+bool ITYksikko::interact(std::string& msg, Person* source)
+{
+    if (source->type == pelaaja) {
+        msg = "Yrität potkaista IT-asemaa! Miehistö tarttuu sinuun kiinni!";
+        source->damage(std::rand()%2 + 1);
+        dynamic_cast<Player*>(source)->inJail = true;
+    }
+    return true;
+}
+
+bool ITYksikko::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Heittosi kimpoaa IT-asemasta.";
+    damage(1);
+    return true;
+}

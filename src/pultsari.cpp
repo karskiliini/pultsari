@@ -155,6 +155,7 @@ static void populatePersons(Level& level, const GameState& gs)
             level.createPerson(level.freePosition(), poliisi);
         for (int i = 0; i < 2; ++i)
             level.createPerson(level.freePosition(), sotilas);
+        level.createPerson(level.freePosition(), ilmatorjunta);
         return;
     }
 
@@ -238,6 +239,11 @@ static void populatePersons(Level& level, const GameState& gs)
             if (random(30 + (int)(kremlinProximity * 30)))
                 level.createPerson(level.freePosition(), sotilas);
         }
+    }
+
+    // IT-yksiköt (ilmatorjunta) - near Kremlin
+    if (kremlinProximity > 0.6f && random(40)) {
+        level.createPerson(level.freePosition(), ilmatorjunta);
     }
 
 }

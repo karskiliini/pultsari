@@ -240,4 +240,16 @@ public:
     uint32_t ammo = 4;
 };
 
+class ITYksikko : public Person {
+public:
+    ITYksikko(const Coord& pos);
+    virtual ~ITYksikko() = default;
+
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "T"; };
+    uint32_t fireCooldown = 0;
+};
+
 #endif
