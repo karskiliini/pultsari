@@ -22,7 +22,8 @@ enum BuildingType {
     ESeina,
     EKremlin,
     EHypermarket,
-    EClosedShop
+    EClosedShop,
+    ERefinery
 };
 
 class Level;
@@ -200,6 +201,17 @@ public:
 private:
     std::string name;
     std::string sign;
+};
+
+// An oil refinery: drones love it. Once hit it burns for a long time and
+// pours out toxic smoke.
+class Jalostamo : public Building {
+public:
+    Jalostamo();
+    virtual std::string getName() const { return "\xD0\x9D\xD0\x9F\xD0\x97"; }
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual std::string getWalkMsg() const;
+    uint32_t burning = 0;   // world ticks left to burn
 };
 
 #endif

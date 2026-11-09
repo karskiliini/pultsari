@@ -79,8 +79,21 @@ void EnvironmentEvents::droneSound()
     }
     droneNoiseCooldown = 8 + std::rand()%15;
 
-    if (random(30)) {
-        level->printer->showMessage("Kuulet droonin äänen taivaalta...", level, false);
+    // a harmless drone buzzes over the city
+    if (random(30)) level->launchDrone(nullptr);
+}
+
+void EnvironmentEvents::addFiresAround(const Coord& c)
+{
+    for (int i = 0; i < 3 + std::rand()%3; ++i) {
+        int fx = (int)c.x + (std::rand()%7 - 3);
+        int fy = (int)c.y + (std::rand()%5 - 2);
+        if (fx < 0 || fy < 0 || fx >= (int)common::SIZEX || fy >= (int)common::SIZEY)
+            continue;
+        Coord fc { (uint32_t)fx, (uint32_t)fy };
+        if (!hasFire(fc)) {
+            fires.push_back(Fire{ fc, 20 + (uint32_t)(std::rand()%15), 15 });
+        }
     }
 }
 
@@ -93,52 +106,15 @@ void EnvironmentEvents::droneStrike()
     droneCooldown = level->isWarLevel ? (8 + std::rand()%10) : (15 + std::rand()%25);
 
     if (!random(level->isWarLevel ? 40 : 20)) return;
+    if (level->buildings.empty()) return;
 
-    Coord strikeCoord;
-    if (!level->buildings.empty()) {
-        uint32_t idx = std::rand() % level->buildings.size();
-        Building* target = level->buildings[idx];
-        uint32_t cx = (target->wallLeft + target->wallRight) / 2;
-        uint32_t cy = (target->wallTop + target->wallBot) / 2;
-        strikeCoord = Coord{ cx, cy };
-        level->printer->showMessage("DRONE-ISKU! " + target->getName() + " saa osuman!!", level, false);
-    } else {
-        strikeCoord = Coord{ std::rand() % common::SIZEX, std::rand() % common::SIZEY };
-        level->printer->showMessage("DRONE-ISKU! Pommi putoaa!", level, false);
-    }
-
-    common::boomEvent(strikeCoord, 4);
-    Animation* anim = new Animation(strikeCoord, "===BOOM===", 10);
-    level->addAnimation(anim);
-
-    // damage persons near the strike
-    for (auto& p : level->persons) {
-        if (p->stats.health > 0 && p->coord.distance(strikeCoord) <= 4) {
-            uint32_t dmg = std::rand()%6 + 2;
-            p->damage(dmg);
-        }
-    }
-
-    // start fires around the strike
-    for (int i = 0; i < 3 + std::rand()%3; ++i) {
-        int fx = (int)strikeCoord.x + (std::rand()%7 - 3);
-        int fy = (int)strikeCoord.y + (std::rand()%5 - 2);
-        if (fx < 0 || fy < 0 || fx >= (int)common::SIZEX || fy >= (int)common::SIZEY)
-            continue;
-        Coord fc { (uint32_t)fx, (uint32_t)fy };
-        if (!hasFire(fc)) {
-            fires.push_back(Fire{ fc, 20 + (uint32_t)(std::rand()%15), 15 });
-        }
-    }
-
-    // NPCs panic from explosions
-    for (auto& p : level->persons) {
-        if (p->stats.health > 0 && p->coord.distance(strikeCoord) < 10) {
-            p->alerted = true;
-            p->lastKnownPos = strikeCoord;
-            p->alertCooldown = 8;
-        }
-    }
+    // refineries are drone magnets
+    std::vector<Building*> refineries;
+    for (auto b : level->buildings) if (b->type == ERefinery) refineries.push_back(b);
+    Building* target = (!refineries.empty() && random(60))
+        ? refineries[std::rand() % refineries.size()]
+        : level->buildings[std::rand() % level->buildings.size()];
+    level->launchDrone(target);
 }
 
 void EnvironmentEvents::aaFire()

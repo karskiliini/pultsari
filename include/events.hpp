@@ -23,6 +23,7 @@ public:
     void update();
 
     bool hasFire(const Coord& c) const;
+    void addFiresAround(const Coord& c);
     const std::vector<Fire>& getFires() const { return fires; }
 
 private:

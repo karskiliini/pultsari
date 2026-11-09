@@ -335,4 +335,10 @@ void Car::frame(uint32_t ms)
     }
     waiting = 0;
     coord = next;
+
+    // old Ladas leave a cloud behind them
+    if ((model == "Lada" || model == "UAZ") && common::random(30)) {
+        const auto body = cells();
+        level->addGas(body.back(), false);
+    }
 }

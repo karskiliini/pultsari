@@ -6,7 +6,7 @@
     let muted = false;
     const lastPlayed = {};
     // continuous sources are re-announced every NPC tick; play them sparingly
-    const minGapMs = { siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250 };
+    const minGapMs = { siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380 };
 
     function init() {
         if (!ctx) {
@@ -151,6 +151,28 @@
                 burst(t + Math.random() * 0.8, v * 0.25, { type: 'bandpass', freq: 2500, q: 1, decay: 0.03, dur: 0.03 });
             }
             burst(t, v * 0.25, { type: 'lowpass', freq: 300, decay: 0.8, dur: 0.9 });
+        },
+        // a moped-engine buzz, like a Shahed overhead
+        drone(t, v) {
+            const o = ctx.createOscillator();
+            o.type = 'sawtooth';
+            o.frequency.setValueAtTime(110 + Math.random() * 10, t);
+            const wob = ctx.createOscillator();
+            wob.frequency.value = 23;
+            const wobGain = ctx.createGain();
+            wobGain.gain.value = 6;
+            wob.connect(wobGain).connect(o.frequency);
+            const f = ctx.createBiquadFilter();
+            f.type = 'lowpass';
+            f.frequency.value = 900;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(level(0.18 * v), t + 0.08);
+            g.gain.setValueAtTime(level(0.18 * v), t + 0.36);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.45);
+            o.connect(f).connect(g).connect(master);
+            o.start(t); wob.start(t);
+            o.stop(t + 0.5); wob.stop(t + 0.5);
         },
         cough(t, v) {
             for (let i = 0; i < 2; i++) {

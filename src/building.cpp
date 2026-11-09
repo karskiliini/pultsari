@@ -829,3 +829,29 @@ std::string SuljettuLiike::getWalkMsg() const
 {
     return name + " on ollut kiinni vuodesta 2022. Ikkunat ovat p\xC3\xB6lyss\xC3\xA4.";
 }
+
+// OIL REFINERY
+
+Jalostamo::Jalostamo() : Building(BuildingType::ERefinery)
+{
+    wallLeft = 0;
+    wallRight = 40;
+    wallTop = 0;
+    wallBot = 12;
+    door = DirectionNS::up;
+    windows.push_back({10, wallTop});
+    windows.push_back({30, wallTop});
+}
+
+bool Jalostamo::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = burning ? "Portti on auki, mutta sis\xC3\xA4ll\xC3\xA4 kaikki palaa. Et mene."
+                  : "Portilla vartija: 'Strateginen kohde! Kuvaaminen kielletty! Drooneja ei ole!'";
+    return false;
+}
+
+std::string Jalostamo::getWalkMsg() const
+{
+    return burning ? "Sein\xC3\xA4 on tulikuuma. \xC3\x96ljy palaa sis\xC3\xA4ll\xC3\xA4."
+                   : "S\xC3\xA4ili\xC3\xB6iss\xC3\xA4 lukee: \xD0\x9D\xD0\xB5 \xD0\xBA\xD1\x83\xD1\x80\xD0\xB8\xD1\x82\xD1\x8C!";
+}

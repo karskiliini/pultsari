@@ -12,6 +12,7 @@
 #include "events.hpp"
 #include <algorithm>
 #include <cstdlib>
+#include <cmath>
 #include <iostream>
 
 using std::find;
@@ -303,6 +304,162 @@ void Level::roadsAt(const Coord& c, const Road*& h, const Road*& v) const
 void Level::vehicleFrame(uint32_t ms)
 {
     for (auto v : vehicles) v->frame(ms);
+
+    // drones fly on; a striking drone dives in when it reaches its target
+    for (size_t i = 0; i < drones.size();) {
+        Drone& d = drones[i];
+        d.x += d.vx * ms / 1000.0f;
+        d.y += d.vy * ms / 1000.0f;
+        if (d.target) {
+            const float tx = (d.target->wallLeft + d.target->wallRight) / 2.0f;
+            const float ty = (d.target->wallTop + d.target->wallBot) / 2.0f;
+            if (std::abs(d.x - tx) < 1.5f && std::abs(d.y - ty) < 1.5f) {
+                Building* target = d.target;
+                drones.erase(drones.begin() + i);
+                droneImpact(Coord{ (uint32_t)tx, (uint32_t)ty }, target);
+                continue;
+            }
+        }
+        if (d.x < -12 || d.y < -12 || d.x > common::SIZEX + 12 || d.y > common::SIZEY + 12) {
+            drones.erase(drones.begin() + i);
+            continue;
+        }
+        ++i;
+    }
+}
+
+void Level::launchDrone(Building* target)
+{
+    constexpr float SPEED = 13.0f;
+    Drone d;
+    if (target) {
+        // comes in from a map edge straight at the target
+        const float tx = (target->wallLeft + target->wallRight) / 2.0f;
+        const float ty = (target->wallTop + target->wallBot) / 2.0f;
+        d.x = common::random(50) ? -8.0f : common::SIZEX + 8.0f;
+        d.y = (float)(std::rand() % common::SIZEY);
+        const float len = std::max(1.0f, std::hypot(tx - d.x, ty - d.y));
+        d.vx = (tx - d.x) / len * SPEED;
+        d.vy = (ty - d.y) / len * SPEED;
+        d.target = target;
+    } else {
+        // a flyover, often close enough to the player to be seen
+        const PlayerNS::Player* p = getPlayer();
+        const float px = p ? p->coord.x : common::SIZEX / 2.0f;
+        const float py = p ? p->coord.y : common::SIZEY / 2.0f;
+        const float speed = SPEED * (0.8f + (std::rand() % 40) / 100.0f);
+        if (common::random(60)) {
+            const bool east = common::random(50);
+            d.x = east ? -8.0f : common::SIZEX + 8.0f;
+            d.y = py + (std::rand() % 25 - 12);
+            d.vx = east ? speed : -speed;
+            d.vy = 0;
+        } else {
+            const bool south = common::random(50);
+            d.x = px + (std::rand() % 41 - 20);
+            d.y = south ? -8.0f : common::SIZEY + 8.0f;
+            d.vx = 0;
+            d.vy = south ? speed * 0.6f : -speed * 0.6f; // cells are taller than wide
+        }
+    }
+    drones.push_back(d);
+}
+
+void Level::droneImpact(const Coord& c, Building* target)
+{
+    common::boomEvent(c, 4);
+    addAnimation(new Animation(Coord{ c.x > 5 ? c.x - 5 : 0, c.y }, "===BOOM===", 10));
+    audio.addSound(c, SoundType::Explosion,
+        "VALTAVA R\xC3\x84J\xC3\x84HDYS! Drooni iski!", "R\xC3\xA4j\xC3\xA4hdys!", "...kaukainen r\xC3\xA4j\xC3\xA4hdys...", 60);
+    for (auto p : persons) {
+        if (p->stats.health > 0 && p->coord.distance(c) <= 4) p->damage(std::rand() % 6 + 2);
+    }
+    if (events) events->addFiresAround(c);
+
+    Jalostamo* refinery = dynamic_cast<Jalostamo*>(target);
+    if (refinery) refinery->burning = 900;
+
+    const PlayerNS::Player* player = getPlayer();
+    if (player && canHear(player->coord, c, 60, true)) {
+        if (refinery) printer->showMessage("DRONE-ISKU! \xD0\x9D\xD0\x9F\xD0\x97 syttyi palamaan! Myrkyllist\xC3\xA4 savua!", this, false);
+        else if (target) printer->showMessage("DRONE-ISKU! " + target->getName() + " sai osuman!", this, false);
+        else printer->showMessage("DRONE-ISKU!", this, false);
+    }
+}
+
+void Level::addGas(const Coord& c, bool toxic)
+{
+    if (gas.size() >= 700) return;
+    gas.push_back({ (float)c.x, (float)c.y, toxic ? 60u : 12u, toxic });
+}
+
+int Level::gasAt(const Coord& c) const
+{
+    if (gasGrid.empty() || c.x >= common::SIZEX || c.y >= common::SIZEY) return 0;
+    return gasGrid[c.y * common::SIZEX + c.x];
+}
+
+void Level::skyTick()
+{
+    // now and then a drone just passes over
+    if (common::random(isWarLevel ? 4 : 1)) launchDrone(nullptr);
+    for (const auto& d : drones) {
+        audio.addSound(Coord{ (uint32_t)std::max(0.0f, d.x), (uint32_t)std::max(0.0f, d.y) }, SoundType::Drone,
+            "Drooni p\xC3\xB6risee aivan yl\xC3\xA4puolella!", "Droonin p\xC3\xB6rin\xC3\xA4\xC3\xA4", "...kaukaista p\xC3\xB6rin\xC3\xA4\xC3\xA4...", 35);
+    }
+
+    // burning refineries pour out toxic smoke
+    for (auto b : buildings) {
+        Jalostamo* r = dynamic_cast<Jalostamo*>(b);
+        if (!r || !r->burning) continue;
+        --r->burning;
+        for (int k = 0; k < 6; ++k) {
+            addGas(Coord{ r->wallLeft + std::rand() % (r->wallRight - r->wallLeft + 1),
+                          r->wallTop + std::rand() % (r->wallBot - r->wallTop + 1) }, true);
+        }
+        if (events && common::random(10)) events->addFiresAround(Coord{ (r->wallLeft + r->wallRight) / 2, r->wallTop });
+        if (common::random(20)) {
+            audio.addSound(Coord{ (r->wallLeft + r->wallRight) / 2, (r->wallTop + r->wallBot) / 2 }, SoundType::Fire,
+                "Jalostamo roihuaa! S\xC3\xA4ili\xC3\xB6t pamahtelevat!", "Valtavan palon jyrin\xC3\xA4\xC3\xA4", "...palon jyrin\xC3\xA4\xC3\xA4...", 50);
+        }
+    }
+
+    // gas drifts east on the wind and thins out
+    for (size_t i = 0; i < gas.size();) {
+        GasPuff& g = gas[i];
+        g.x += (std::rand() % 100 - 50) / 80.0f + 0.25f;
+        g.y += (std::rand() % 100 - 50) / 120.0f;
+        if (--g.ttl == 0 || g.x < 0 || g.y < 0 || g.x >= common::SIZEX || g.y >= common::SIZEY) {
+            gas[i] = gas.back();
+            gas.pop_back();
+            continue;
+        }
+        ++i;
+    }
+    gasGrid.assign(common::SIZEX * common::SIZEY, 0);
+    for (const auto& g : gas) {
+        uint8_t& cell = gasGrid[(uint32_t)g.y * common::SIZEX + (uint32_t)g.x];
+        cell = std::max<uint8_t>(cell, g.toxic ? 2 : 1);
+    }
+
+    // breathing it
+    for (auto p : persons) {
+        if (p->stats.health == 0) continue;
+        const int kind = gasAt(p->coord);
+        if (kind == 2 && common::random(35)) {
+            p->damage(1);
+            if (p->type == pelaaja) {
+                printer->showMessage("Myrkyllinen savu polttaa keuhkojasi! *K\xC3\x96H K\xC3\x96H*", this, false);
+                common::sound("cough", 0.8f);
+            }
+        } else if (kind == 1 && p->type == pelaaja && common::random(40)) {
+            // a sniff of hydrocarbons: a quick buzz, at a price
+            PlayerNS::Player* pl = static_cast<PlayerNS::Player*>(p);
+            pl->updatepromilles(1);
+            if (common::random(50)) pl->damage(1);
+            if (common::random(40)) printer->showMessage("Haistelet Ladan pakokaasua. P\xC3\xA4\xC3\xA4 kevenee. Hiilivetyj\xC3\xA4!", this, false);
+        }
+    }
 }
 
 bool Level::isLit(const Coord& c) const

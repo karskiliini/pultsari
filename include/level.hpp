@@ -33,6 +33,21 @@ struct Road {
     }
 };
 
+// Something flying over the city. Harmless flyovers just buzz; a drone with a
+// target dives into that building.
+struct Drone {
+    float x, y;
+    float vx, vy;       // tiles per second
+    Building* target = nullptr;
+};
+
+// A puff of gas drifting on the wind: Lada exhaust or toxic refinery smoke.
+struct GasPuff {
+    float x, y;
+    uint32_t ttl;       // world ticks
+    bool toxic;
+};
+
 class Level {
 public:
     Level() = default;
@@ -115,6 +130,17 @@ public:
     std::vector<Item*> items;
     std::vector<Vehicle*> vehicles;
     std::vector<Road> roads;
+    std::vector<Drone> drones;
+    std::vector<GasPuff> gas;
+    // a drone over the city: a flyover, or a strike on `target`
+    void launchDrone(Building* target);
+    // world tick: spawn flyovers, drift and burn gas, let gas affect people
+    void skyTick();
+    void addGas(const Coord& c, bool toxic);
+    // 0 none, 1 exhaust, 2 toxic
+    int gasAt(const Coord& c) const;
+    void droneImpact(const Coord& c, Building* target);
+    std::vector<uint8_t> gasGrid;   // per-cell gas kind, rebuilt every world tick
     // the horizontal and vertical road at a cell (either may be null)
     void roadsAt(const Coord& c, const Road*& h, const Road*& v) const;
     // cars move on their own clock, every frame

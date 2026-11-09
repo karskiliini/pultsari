@@ -192,6 +192,14 @@ static void populateBuildings(Level& level, const GameState& gs)
         }
     }
 
+    // oil refineries in the south: drone magnets
+    b = new Jalostamo();
+    b->setOffset(40, 160);
+    level.addBuilding(b);
+    b = new Jalostamo();
+    b->setOffset(350, 160);
+    level.addBuilding(b);
+
     // Kremlin - far northeast (the goal)
     b = new Kremlin();
     b->setOffset(250, 20);
@@ -692,8 +700,20 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 if (idx >= 0 && idx < (int)(sizeof(map) / sizeof(map[0]))) return map[idx];
                 return 0;
             };
+            // how many of a throwable the player carries (decrementInventory numbering)
+            auto throwableCount = [&](uint32_t num) -> uint32_t {
+                const auto& inv = player.inventory;
+                switch (num) {
+                    case 1: return inv.kalja;    case 2: return inv.lonkka;  case 3: return inv.lenkki;
+                    case 4: return inv.ketjut;   case 5: return inv.veitset; case 6: return inv.kivet;
+                    case 7: return inv.pamput;   case 8: return inv.bootsit; case 9: return inv.kalat;
+                    case 10: return inv.omppo;   case 11: return inv.bansku; case 13: return inv.vodka;
+                    case 14: return inv.granata; default: return 0;
+                }
+            };
+            // the item leaves the inventory only when it is actually thrown, so cancelling keeps it
             auto startThrowAim = [&](uint32_t throwNum) {
-                if (throwNum > 0 && player.decrementInventory(throwNum)) {
+                if (throwNum > 0 && throwableCount(throwNum) > 0) {
                     aimItemNum = throwNum;
                     aimAngle = -M_PI / 2.0f;
                     aimTick = 0;
@@ -897,7 +917,8 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         player.shoot(dirs[idx]);
                                         aimIsShooting = false;
                                     } else {
-                                        player.executeThrow(aimItemNum, dirs[idx]);
+                                        if (player.decrementInventory(aimItemNum))
+                                            player.executeThrow(aimItemNum, dirs[idx]);
                                     }
                                     mode = Mode::Normal;
                                     break;
@@ -924,6 +945,8 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         level.buildingTurn();
                         level.spreadNews();
                         level.updateVehicles();
+                    level.skyTick();
+                        level.skyTick();
                         if (level.events) level.events->update();
 
                         // ambient audio sources

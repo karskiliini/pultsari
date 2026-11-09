@@ -231,6 +231,47 @@ bool roadCell(const Level* l, const Coord& c, string& glyph, const char*& color)
     return true;
 }
 
+// Drone sprites: a small aircraft, nose pointing where it flies.
+const vector<vector<const char*>>& droneSprite(const Drone& d)
+{
+    static const vector<vector<const char*>> east = {
+        { " ", "\xE2\x96\x99", " ", " " },
+        { "\xE2\x96\x90", "\xE2\x96\x88", "\xE2\x96\x88", "\xE2\x96\xB6" },
+        { " ", "\xE2\x96\x9B", " ", " " } };
+    static const vector<vector<const char*>> west = {
+        { " ", " ", "\xE2\x96\x9F", " " },
+        { "\xE2\x97\x80", "\xE2\x96\x88", "\xE2\x96\x88", "\xE2\x96\x8C" },
+        { " ", " ", "\xE2\x96\x9C", " " } };
+    static const vector<vector<const char*>> north = {
+        { " ", "\xE2\x96\xB2", " " },
+        { "\xE2\x97\xA2", "\xE2\x96\x88", "\xE2\x97\xA3" },
+        { " ", "\xE2\x96\x80", " " } };
+    static const vector<vector<const char*>> south = {
+        { " ", "\xE2\x96\x84", " " },
+        { "\xE2\x97\xA5", "\xE2\x96\x88", "\xE2\x97\xA4" },
+        { " ", "\xE2\x96\xBC", " " } };
+    if (std::fabs(d.vx) >= std::fabs(d.vy)) return d.vx >= 0 ? east : west;
+    return d.vy >= 0 ? south : north;
+}
+
+// glyph of any drone covering (x, y), with `shadow` set for its shadow on the ground
+const char* droneCell(const Level* l, uint32_t x, uint32_t y, bool& shadow)
+{
+    shadow = false;
+    for (const auto& d : l->drones) {
+        const auto& sprite = droneSprite(d);
+        const int w = sprite[0].size();
+        const int left = (int)std::lround(d.x) - w / 2;
+        const int top = (int)std::lround(d.y) - 1;
+        const int sx = (int)x - left, sy = (int)y - top;
+        if (sy >= 0 && sy < 3 && sx >= 0 && sx < w && sprite[sy][sx][0] != ' ') return sprite[sy][sx];
+        // the shadow falls a little south-east of the drone
+        const int hx = sx - 2, hy = sy - 1;
+        if (hy >= 0 && hy < 3 && hx >= 0 && hx < w && sprite[hy][hx][0] != ' ') shadow = true;
+    }
+    return nullptr;
+}
+
 // A person's colour is their clothing or skin (xterm 256-colour palette).
 const char* personColor(const Person* p)
 {
@@ -369,6 +410,14 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         string c = " ";
         const char* color = "";
 
+        // drones are up in the sky, above everything, fog included
+        bool droneShadow = false;
+        if (const char* g = droneCell(l, x, worldY, droneShadow)) {
+            c = g;
+            color = "1;38;5;250";
+            found = true;
+        }
+
         for (auto it = rowAnims.rbegin(); it != rowAnims.rend(); ++it) {
             if (x >= it->x && x < it->x + it->chars.size()) {
                 c = it->chars[x - it->x];
@@ -459,16 +508,30 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             }
         }
 
+        const bool groundVisible = mask->visible(coord);
         string col = color;
         if (!found) {
             roadCell(l, coord, c, color);
             col = color;
+            // drifting gas: grey exhaust, yellowish toxic smoke
+            if (groundVisible) {
+                const int gasKind = l->gasAt(coord);
+                if (gasKind && c == " ") {
+                    c = gasKind == 2 ? "\xE2\x96\x92" : "\xE2\x96\x91";
+                    col = gasKind == 2 ? "38;5;143" : "38;5;245";
+                    if (string(color).find("48;") != string::npos) col += string(";") + color;
+                }
+            }
         } else if (col.find("48;") == string::npos && col != "2;90") {
             // people, items and cars on a street keep the asphalt underneath
             const Road* h = nullptr;
             const Road* v = nullptr;
             l->roadsAt(coord, h, v);
             if (h || v) col += col.empty() ? "48;5;236" : ";48;5;236";
+        }
+
+        if (droneShadow && groundVisible && col.find("48;") == string::npos) {
+            col += col.empty() ? "48;5;233" : ";48;5;233";
         }
 
         emit(c, col);
