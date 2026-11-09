@@ -438,10 +438,13 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return glyph; };
+    // run away from `danger` for a while, panic or not
+    void fleeFrom(const Coord& danger);
     std::string name;
     std::string job;
 private:
     void pickDestination();
+    uint32_t running = 0;
     std::string glyph;
     std::string jobLine;
     Coord destination;

@@ -9,6 +9,7 @@
 
 class Level;
 class Building;
+class Person;
 
 namespace PlayerNS {
     class Player;
@@ -114,6 +115,18 @@ public:
     uint32_t grindMs = 0;         // the gearbox still crunching
     DriveControls controls;       // filled by the driver every frame
 
+    // after being shot at: the driver floors it at the shooter, then gets away
+    enum class Ai { None, Ram, Flee, Stop };
+    Ai ai = Ai::None;
+    Person* aiTarget = nullptr;
+    Coord aiFrom { 0, 0 };
+    uint32_t aiMs = 0;
+    uint32_t aiStuckMs = 0;
+    bool shotAt = false;          // the driver has already reacted to gunfire
+    // a bullet hits the car: the driver dies, runs or tries to run the shooter over.
+    // Returns whether the bodywork stopped the bullet.
+    bool takeShot(Person* shooter, const Coord& at);
+
     // take the car over: the lane car becomes a free car at the same spot
     void makeFree();
     // one frame of physics for a free car, with or without anyone at the wheel
@@ -127,6 +140,9 @@ public:
     // the engine cranks; may or may not start
     bool crank(std::string& msg);
     float kmh() const { return std::fabs(velocity) * 6.0f; }
+    // standing still: nobody can jump into a moving car
+    bool standing() const;
+    uint32_t msSinceMoved = 0;    // lane cars: time since the last step along the lane
     // compass bearing of the nose in degrees, north 0, east 90
     int bearing() const { return (heading * (360 / HEADINGS) + 90) % 360; }
     static const char* gearName(int gear);
@@ -135,6 +151,10 @@ public:
 private:
     // free car body as quadrant-block cells, rebuilt whenever it moves
     void rasterize();
+    // what a panicking driver does with the pedals and the wheel this frame
+    DriveControls aiControls(uint32_t ms);
+    // the driver jumps out and runs from `danger`
+    void bailOut(const Coord& danger, bool seen);
     // the body at a given position and heading, cells and their 2x2 sub-cell masks
     void rasterizeAt(float x, float y, int headingIdx, std::vector<Coord>& out, std::vector<uint8_t>* masks, std::vector<bool>* glass) const;
     // whether the body would fit at a position (no walls, buildings, other vehicles)
@@ -158,7 +178,10 @@ struct BusGameResult {
 
 BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level);
 
-// E next to a car: get in, dragging out whoever is at the wheel if need be
+// walking into a car: get in, dragging out whoever is at the wheel if need be.
+// Only a car standing still can be taken.
+bool enterCar(PlayerNS::Player* player, Level* level, Car* car);
+// the same for any car right next to the player
 bool enterNearbyCar(PlayerNS::Player* player, Level* level);
 // E at the wheel: get out (at speed, you jump)
 bool leaveCar(PlayerNS::Player* player, Level* level);

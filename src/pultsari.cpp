@@ -1237,10 +1237,6 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         if (c != 0 && player.driving && driveKey(c)) break;
                         if (c != 0) {
                             switch(c) {
-                                case 'e': // get into the car next to you
-                                    enterNearbyCar(&player, &level);
-                                    queuedMove = InputNS::inputpending;
-                                    break;
                                 case 'w': case 'i': queuedMove = InputNS::up; break;
                                 case 's': case 'k': queuedMove = InputNS::down; break;
                                 case 'a': case 'j': queuedMove = InputNS::left; break;

@@ -263,6 +263,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case putin:
                 p = new Putin(coord);
                 break;
+            case kansalainen:
+                p = new Kansalainen(coord);
+                break;
             case kotiaiti:
                 p = new Kotiaiti(coord);
                 break;
@@ -678,18 +681,10 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
         if (Vehicle* v = getVehicleAt(c)) {
             if (v != lastCar) {
                 lastCar = v;
-                // through the windscreen the driver may be hit; otherwise the bodywork often stops it
-                Car* car = dynamic_cast<Car*>(v);
-                if (car && car->driverInside && !car->driverDead && !car->playerAtWheel && !car->armoured && common::random(30)) {
-                    car->driverDead = true;
-                    if (car->freeMode) { car->throttlePos = 0; }
-                    common::hitEvent(c, 4);
-                    audio.addSound(c, SoundType::Glass, "KLIRR! Luoti tuulilasin lÃ¤pi", "Lasi sÃ¤rkyy", "...lasin helinÃ¤Ã¤...", 20);
-                    if (shooter->type == pelaaja && printer)
-                        printer->showMessage("Osuit kuskiin! " + car->name() + " pysÃ¤htyy. Kuski lysÃ¤htÃ¤Ã¤ rattia vasten.", this, false);
-                    return nullptr;
+                // a car under fire: the driver dies, runs or comes at the shooter; the body often stops the bullet
+                if (Car* car = dynamic_cast<Car*>(v)) {
+                    if (car->takeShot(shooter, c)) return nullptr;
                 }
-                if (car && common::random(car->armoured ? 100 : 50)) return nullptr;
             }
         }
         Person* p = getPerson(c);

@@ -3441,6 +3441,16 @@ void Kansalainen::pickDestination()
     }
 }
 
+void Kansalainen::fleeFrom(const Coord& danger)
+{
+    const int dx = (int)coord.x - (int)danger.x, dy = (int)coord.y - (int)danger.y;
+    const float len = std::max(1.0f, std::sqrt((float)(dx * dx + dy * dy)));
+    const int tx = (int)coord.x + (int)(dx / len * 30.0f), ty = (int)coord.y + (int)(dy / len * 15.0f);
+    destination = Coord{ (uint32_t)std::max(1, std::min((int)common::SIZEX - 2, tx)),
+                         (uint32_t)std::max(1, std::min((int)common::SIZEY - 2, ty)) };
+    running = 40;
+}
+
 void Kansalainen::npcAct()
 {
     // gunfire and explosions send people running
@@ -3465,7 +3475,10 @@ void Kansalainen::npcAct()
     }
 
     Coord target = destination;
-    if (panic) {
+    if (running) {
+        --running;
+        panic = 0;
+    } else if (panic) {
         --panic;
         target = Coord{ coord.x + std::rand() % 9 - 4, coord.y + std::rand() % 9 - 4 };
     } else if (coord.distance(destination) <= 1 || random(2)) {

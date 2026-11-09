@@ -291,6 +291,7 @@ Car::Car(const Coord& pos, bool horiz, int dir, Kind kind)
 void Car::frame(uint32_t ms)
 {
     if (freeMode) { drive(ms); return; }
+    msSinceMoved += ms;
     // a car with nobody alive at the wheel goes nowhere
     if (!driverInside || driverDead) return;
     if (script == Script::Parked || gone) return;
@@ -382,6 +383,7 @@ void Car::frame(uint32_t ms)
     }
     waiting = 0;
     coord = next;
+    msSinceMoved = 0;
     checkNearMiss();
 
     // old Ladas leave a cloud right behind them

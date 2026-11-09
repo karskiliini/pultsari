@@ -218,7 +218,8 @@ bool Car::crank(string& msg)
 void Car::drive(uint32_t ms)
 {
     if (!level) return;
-    const DriveControls c = playerAtWheel ? controls : DriveControls{};
+    const bool aiDriving = !playerAtWheel && ai != Ai::None && driverInside && !driverDead;
+    const DriveControls c = playerAtWheel ? controls : aiDriving ? aiControls(ms) : DriveControls{};
     controls = DriveControls{};
     PlayerNS::Player* player = playerAtWheel ? level->getPlayer() : nullptr;
     Printer* printer = level->printer;
@@ -242,11 +243,11 @@ void Car::drive(uint32_t ms)
     }
     if (c.shift) changeGear(gear + c.shift);
 
-    if (c.throttle && !engineOn && player && crankMs == 0) {
+    if (c.throttle && !engineOn && (player || aiDriving) && crankMs == 0) {
         crankMs = 1200;
         string msg;
         crank(msg);
-        if (printer) printer->showMessage(msg, level, false);
+        if (player && printer) printer->showMessage(msg, level, false);
     }
 
     // --- engine, clutch and wheels, in small steps so the clutch stays stable ---
@@ -342,7 +343,9 @@ void Car::drive(uint32_t ms)
         for (const auto& cell : body) {
             if (hitVehicle(cell)) continue;
             Person* p = level->getPerson(cell);
-            if (!p || p->type == pelaaja || p->stats.health == 0) continue;
+            if (!p || p->stats.health == 0) continue;
+            const bool hitPlayer = p->type == pelaaja;
+            if (hitPlayer && (playerAtWheel || level->playerDead)) continue;
             const float impact = std::fabs(velocity);
             if (impact < 0.8f) { stop = true; break; }   // a nudge: they are in the way
             p->damage((uint32_t)(1 + impact / 3.0f));
@@ -352,6 +355,11 @@ void Car::drive(uint32_t ms)
             if (player) {
                 if (printer) printer->showMessage("TÖMPS! Ajat " + level->nameOf(p) + ":n yli!", level, false);
                 level->alertCops(player, 20);
+            }
+            // a ramming driver who got the shooter makes off
+            if (ai == Ai::Ram && p == aiTarget) { ai = Ai::Flee; aiMs = 0; aiStuckMs = 0; }
+            if (!player && hitPlayer && printer) {
+                printer->showMessage("TÖMPS! " + name() + " ajaa p\xC3\xA4\xC3\xA4llesi! Lenn\xC3\xA4t konepellin yli.", level, false);
             }
             // thrown off to the side
             const float side = (std::rand() % 2) ? PI / 2 : -PI / 2;
@@ -378,6 +386,123 @@ void Car::drive(uint32_t ms)
     }
 
     if (player) player->coord = driverCell();
+}
+
+// --- a driver under fire ---
+
+void Car::bailOut(const Coord& danger, bool seen)
+{
+    makeFree();
+    driverInside = false;
+    throttlePos = 0;
+    ai = Ai::None;
+    Coord out;
+    if (exitCell(out)) {
+        Person* driver = level->createPerson(out, kansalainen);
+        if (driver) {
+            driver->say(common::random(50) ? "Ne strelyaite! Ottakaa auto!" : "Pomogite!");
+            if (Kansalainen* k = dynamic_cast<Kansalainen*>(driver)) k->fleeFrom(danger);
+        }
+    }
+    if (seen && level->printer)
+        level->printer->showMessage("Kuski hypp\xC3\xA4\xC3\xA4 ulos ja juoksee karkuun! " + name() + " j\xC3\xA4\xC3\xA4 k\xC3\xA4ym\xC3\xA4\xC3\xA4n.", level, false);
+}
+
+bool Car::takeShot(Person* shooter, const Coord& at)
+{
+    if (armoured) return true;
+    if (!driverInside || driverDead || playerAtWheel) return common::random(50);
+    const bool byPlayer = shooter && shooter->type == pelaaja;
+    Printer* printer = level->printer;
+    auto killDriver = [&]() {
+        driverDead = true;
+        ai = Ai::None;
+        throttlePos = 0;
+        common::hitEvent(at, 4);
+        level->audio.addSound(at, SoundType::Glass, "KLIRR! Luoti tuulilasin l\xC3\xA4pi", "Lasi s\xC3\xA4rkyy", "...lasin helin\xC3\xA4\xC3\xA4...", 20);
+        if (byPlayer && printer)
+            printer->showMessage("Osuit kuskiin! " + name() + " pys\xC3\xA4htyy. Kuski lys\xC3\xA4ht\xC3\xA4\xC3\xA4 rattia vasten.", level, false);
+    };
+    if (shotAt) {
+        // already running or ramming: another bullet may still find the driver
+        if (common::random(15)) { killDriver(); return true; }
+        return common::random(50);
+    }
+    shotAt = true;
+    const int r = std::rand() % 100;
+    if (r < 13) {
+        killDriver();
+        return true;
+    }
+    if (police) return common::random(50);   // politsija does not run from a bullet
+    if (r < 88) {
+        // three in four just want out
+        bailOut(shooter ? shooter->coord : at, byPlayer);
+    } else if (shooter) {
+        // the rest floor it: straight at the shooter, then away
+        makeFree();
+        ai = Ai::Ram;
+        aiTarget = shooter;
+        aiFrom = shooter->coord;
+        aiMs = 0;
+        aiStuckMs = 0;
+        level->audio.addSound(driverCell(), SoundType::Engine, "VRUUUM! Moottori ulvoo", "Moottori ulvoo", "...renkaat kirskuvat...", 25);
+        if (byPlayer && printer) printer->showMessage("Kuski painaa kaasun pohjaan ja ohjaa auton suoraan sinua kohti!", level, false);
+    }
+    return common::random(50);
+}
+
+DriveControls Car::aiControls(uint32_t ms)
+{
+    DriveControls c;
+    aiMs += ms;
+    if (!engineOn) { c.throttle = 1; c.clutch = true; return c; }   // crank it
+
+    if (ai == Ai::Ram) {
+        if (level->isAlive(aiTarget)) aiFrom = aiTarget->coord;
+        else aiTarget = nullptr;
+    }
+    const float tx = aiFrom.x + 0.5f, ty = (aiFrom.y + 0.5f) * 2.0f;
+    const float dx = tx - px, dy = ty - py;
+    const float dist = std::sqrt(dx * dx + dy * dy);
+
+    if (ai == Ai::Ram) {
+        const bool passed = aiMs > 1500 && dist > 5.0f && dx * std::cos(headingF) + dy * std::sin(headingF) < 0;
+        if (!aiTarget || passed || dist < 2.0f || aiMs > 6000) { ai = Ai::Flee; aiMs = 0; aiStuckMs = 0; }
+    } else if (ai == Ai::Flee && aiMs > 9000) {
+        ai = Ai::Stop;
+    }
+
+    if (ai == Ai::Stop) {
+        c.brake = true;
+        c.clutch = true;
+        if (standing()) {
+            // far enough: the driver gets out and leaves the car where it stands
+            bailOut(aiFrom, false);
+        }
+        return c;
+    }
+
+    // at the shooter, or straight away from where the shots came from
+    const float want = ai == Ai::Ram ? std::atan2(dy, dx) : std::atan2(-dy, -dx);
+    const float diff = wrapAngle(want - headingF);
+    const float aim = std::max(-1.0f, std::min(1.0f, diff * 2.0f));
+    if (aim > steerPos + 0.05f) c.steer = 1;
+    else if (aim < steerPos - 0.05f) c.steer = -1;
+
+    // panic driving: first gear with the revs high, then up through the box
+    if (gear <= 0) { c.shift = 1; c.clutch = true; c.throttle = 3; return c; }
+    c.throttle = 3;
+    if (gear == 1 && std::fabs(velocity) < 1.0f && rpm < 3500.0f && aiMs < 400) c.clutch = true;
+    if (rpm > 5800.0f && gear < 3) { c.shift = 1; c.clutch = true; }
+
+    // stuck against something: give up and run
+    if (std::fabs(velocity) < 0.5f && aiMs > 1500) aiStuckMs += ms; else aiStuckMs = 0;
+    if (aiStuckMs > 1500) {
+        bailOut(aiFrom, false);
+        return DriveControls{};
+    }
+    return c;
 }
 
 // --- getting in and out ---
@@ -412,33 +537,35 @@ void sitDown(PlayerNS::Player* player, Car* car)
 
 } // namespace
 
+bool Car::standing() const
+{
+    if (freeMode) return std::fabs(velocity) < 0.5f;
+    if (!driverInside || driverDead || script == Script::Parked || gone) return true;
+    // a lane car moves a cell at a time: stopped is longer than two of its steps without one
+    return msSinceMoved > 2 * 10000 / std::max<uint32_t>(1, speed);
+}
+
 bool enterNearbyCar(PlayerNS::Player* player, Level* level)
 {
-    Printer* printer = level->printer;
     Car* car = carNextTo(level, player->coord);
     if (!car) {
-        printer->showMessage("Vieress\xC3\xA4 ei ole autoa.", level, false);
+        level->printer->showMessage("Vieress\xC3\xA4 ei ole autoa.", level, false);
+        return false;
+    }
+    return enterCar(player, level, car);
+}
+
+bool enterCar(PlayerNS::Player* player, Level* level, Car* car)
+{
+    Printer* printer = level->printer;
+    if (!car || car->playerAtWheel) return false;
+    if (!car->standing()) {
+        // nobody jumps into a moving car
+        printer->showMessage(car->name() + " ajaa ohi. Ehdit vain koskettaa kylke\xC3\xA4.", level, false);
         return false;
     }
     if (car->armoured) {
         printer->showMessage("Vovan limusiinin ovet ovat panssaroidut. Kolkutat. Kukaan ei avaa.", level, false);
-        return false;
-    }
-    const bool moving = car->freeMode ? std::fabs(car->velocity) > 1.0f
-                                      : (car->driverInside && !car->driverDead && car->script != Car::Script::Parked && car->speed > 0);
-    // a lane car only stands still when someone is in its way; a moving one gets away
-    if (moving && !car->freeMode) {
-        // it might be standing in a queue: then the driver is right there
-        bool blocked = false;
-        Coord ahead = car->coord;
-        if (car->horizontal) ahead.x += car->direction; else ahead.y += car->direction;
-        blocked = level->getPerson(ahead) || level->getVehicleAt(ahead);
-        if (!blocked) {
-            printer->showMessage(car->name() + " ajaa ohi. Ehdit vain koskettaa kylke\xC3\xA4.", level, false);
-            return false;
-        }
-    } else if (moving) {
-        printer->showMessage("Auto liikkuu! Et saa ovesta kiinni.", level, false);
         return false;
     }
 
@@ -456,8 +583,7 @@ bool enterNearbyCar(PlayerNS::Player* player, Level* level)
         }
         msg += car->engineOn ? "Moottori k\xC3\xA4y yh\xC3\xA4. Istut l\xC3\xA4mpim\xC3\xA4lle penkille." : "Istut rattiin.";
     } else if (car->driverInside) {
-        // a live driver: the key is in the ignition, so drag them out
-        if (car->freeMode && car->playerAtWheel) return false;
+        // a live driver of a stopped car: the key is in the ignition, so drag them out
         const uint32_t chance = 45 + std::min<uint32_t>(30, player->stats.health * 2);
         if (!common::random(chance)) {
             static const char* no[] = {

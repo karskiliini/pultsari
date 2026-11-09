@@ -1467,20 +1467,111 @@ TEST(driving_vision_follows_the_gaze)
     CHECK(w.mask.visible(Coord{ me.x - 1, me.y }));      // right around the car
 }
 
+TEST(driving_walk_into_a_stopped_car_to_take_it)
+{
+    World w(Coord{ 60, 49 });
+    Car* car = parkedCar(w);
+    CHECK(car->standing());
+    w.player.move(DirectionNS::down, &w.level);
+    CHECK(w.player.driving == car);
+}
+
+TEST(driving_cannot_jump_into_a_moving_car)
+{
+    World w(Coord{ 60, 49 });
+    Car* car = new Car(Coord{ 60, 50 }, true, 1);
+    w.level.addVehicle(car);
+    CHECK(!car->standing());
+    w.player.move(DirectionNS::down, &w.level);
+    CHECK(w.player.driving == nullptr);
+    CHECK(w.printer.saw("ajaa ohi"));
+    // the same car stuck behind something for a while is fair game
+    car->msSinceMoved = 2000;
+    CHECK(car->standing());
+}
+
+TEST(driving_shot_drivers_mostly_run_some_die_some_ram)
+{
+    World w(Coord{ 60, 40 });
+    int dead = 0, ran = 0, ram = 0;
+    const int N = 600;
+    for (int i = 0; i < N; ++i) {
+        Car* car = new Car(Coord{ 60, 50 }, true, 1);
+        w.level.addVehicle(car);
+        car->script = Car::Script::Parked;
+        car->takeShot(&w.player, Coord{ 60, 50 });
+        if (car->driverDead) ++dead;
+        else if (!car->driverInside) ++ran;
+        else if (car->ai == Car::Ai::Ram) ++ram;
+        w.level.vehicles.pop_back();
+        delete car;
+        // the drivers who ran: off the map again
+        for (auto p : w.level.persons) if (p->type == kansalainen) p->stats.health = 0;
+        w.level.cleanDead();
+    }
+    CHECK(ran > N * 0.68 && ran < N * 0.82);   // about 75 %
+    CHECK(dead > N * 0.07 && dead < N * 0.19);
+    CHECK(ram > N * 0.06 && ram < N * 0.18);
+    CHECK(dead + ran + ram == N);
+}
+
+TEST(driving_shot_driver_who_runs_leaves_the_car_running)
+{
+    World w(Coord{ 60, 40 });
+    Car* car = parkedCar(w);
+    car->driverInside = true;
+    std::srand(1);
+    for (int i = 0; i < 50 && car->driverInside; ++i) {
+        car->shotAt = false;
+        car->driverDead = false;
+        car->ai = Car::Ai::None;
+        car->takeShot(&w.player, car->coord);
+    }
+    CHECK(!car->driverInside);
+    CHECK(car->engineOn && car->standing());
+    CHECK(w.count(kansalainen) == 1);
+    CHECK(w.printer.saw("juoksee karkuun"));
+}
+
+TEST(driving_shot_driver_who_rams_comes_at_the_shooter)
+{
+    World w(Coord{ 90, 50 });
+    Car* car = parkedCar(w);
+    car->driverInside = true;
+    car->makeFree();
+    car->ai = Car::Ai::Ram;
+    car->aiTarget = &w.player;
+    car->aiFrom = w.player.coord;
+    car->shotAt = true;
+    w.player.stats.health = 30;
+    // the player shrugs off hits for a moment after the last one (an earlier test)
+    std::this_thread::sleep_for(std::chrono::milliseconds(750));
+    const float d0 = std::fabs(car->px - 90.5f);
+    float closest = d0;
+    for (int i = 0; i < 120; ++i) {
+        w.level.vehicleFrame(50);
+        closest = std::min(closest, std::fabs(car->px - 90.5f) + std::fabs(car->py / 2.0f - 50.5f));
+    }
+    CHECK(closest < 3.0f);
+    CHECK(w.player.stats.health < 30);
+    CHECK(w.printer.saw("p\xC3\xA4\xC3\xA4llesi"));
+    CHECK(car->ai != Car::Ai::Ram);   // and then away
+}
+
 TEST(driving_a_bullet_can_kill_the_driver)
 {
     World w(Coord{ 60, 46 });
-    w.player.inventory.pistooli = 1;
-    Car* car = new Car(Coord{ 60, 50 }, true, 1);
-    w.level.addVehicle(car);
-    car->script = Car::Script::Parked;
     bool killed = false;
-    for (int i = 0; i < 60 && !killed; ++i) {
+    for (int i = 0; i < 80 && !killed; ++i) {
+        Car* car = new Car(Coord{ 60, 50 }, true, 1);
+        w.level.addVehicle(car);
+        car->script = Car::Script::Parked;
         w.level.fireBullet(&w.player, (float)M_PI / 2, 10, 5, 100);
         killed = car->driverDead;
+        w.level.vehicles.pop_back();
+        delete car;
     }
     CHECK(killed);
-    CHECK(enterNearbyCar(&w.player, &w.level) == false);   // too far to reach the door
 }
 
 int main(int argc, char** argv)

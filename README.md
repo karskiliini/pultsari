@@ -37,13 +37,16 @@ Then open http://localhost:3000.
 | A / D (aiming) | Turn the aim |
 | Space (aiming) | Throw or shoot |
 | ESC | Cancel or close |
-| E | Get into the car next to you, or out of the one you drive |
 
 ### Driving
 
-A car with the keys in the ignition, a car whose driver is dead, or a police car left running
-can be taken: stand next to it and press E. A live driver of a car that has stopped is dragged
-out (they may not like it). Cars turn in 72 directions (5 degrees each).
+Walk into a car that stands still to take it: a car with the keys in the ignition, a car whose
+driver is dead, or a police car left running. A live driver of a stopped car is dragged out
+(they may not like it). Nobody jumps into a moving car.
+
+Shoot at a car and three drivers in four jump out and run, leaving it running; some are hit,
+and some floor it, try to run you over and then make off. Cars turn in 72 directions
+(5 degrees each).
 
 | Key | At the wheel |
 | --- | --- |

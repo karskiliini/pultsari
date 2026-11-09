@@ -811,8 +811,14 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             printer->showMessage(msg, level, false);
             blocked = true;
         } else if (Vehicle* car = level->getVehicleAt(check)) {
-            msg = car->name() + " on tiell\xC3\xA4. Kolautat p\xC3\xA4\xC3\xA4si sen kylkeen.";
-            printer->showMessage(msg, level, false);
+            Car* c = dynamic_cast<Car*>(car);
+            if (c && common::realtimeEnabled) {
+                // walking into a car is trying the door
+                enterCar(this, level, c);
+            } else {
+                msg = car->name() + " on tiell\xC3\xA4. Kolautat p\xC3\xA4\xC3\xA4si sen kylkeen.";
+                printer->showMessage(msg, level, false);
+            }
             blocked = true;
         }
         Person* p = blocked ? nullptr : level->checkPerson(check);
