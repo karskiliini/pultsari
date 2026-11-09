@@ -207,9 +207,57 @@
         sounds[name](ctx.currentTime + 0.01, Math.max(0.05, Math.min(1, vol)));
     }
 
+    // Original eighties action-show synth theme: driving bass arpeggios under a
+    // square-wave lead in A minor. Returns a function that fades it out.
+    function startTheme(seconds) {
+        if (!ctx || muted) return () => {};
+        const out = ctx.createGain();
+        out.gain.value = 0.22;
+        out.connect(master);
+        const t0 = ctx.currentTime + 0.05;
+        const step = 60 / 150 / 2; // eighth notes at 150 bpm
+        const note = (n) => 440 * Math.pow(2, (n - 69) / 12);
+        // A minor, F, C, G, two bars each
+        const chords = [[45, 52, 57], [41, 48, 53], [48, 55, 60], [43, 50, 55]];
+        const lead = [81, 79, 76, 79, 81, 84, 81, 79, 77, 76, 72, 74, 76, 79, 76, 74,
+                      72, 74, 76, 79, 84, 83, 81, 79, 79, 81, 83, 86, 83, 81, 79, 76];
+        const voice = (type, freq, t, dur, vol, cutoff) => {
+            const o = ctx.createOscillator();
+            o.type = type;
+            o.frequency.value = freq;
+            const f = ctx.createBiquadFilter();
+            f.type = 'lowpass';
+            f.frequency.value = cutoff;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(vol, t + 0.01);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + dur);
+            o.connect(f).connect(g).connect(out);
+            o.start(t);
+            o.stop(t + dur + 0.02);
+        };
+        const steps = Math.floor(seconds / step);
+        for (let i = 0; i < steps; i++) {
+            const t = t0 + i * step;
+            const chord = chords[Math.floor(i / 16) % 4];
+            voice('sawtooth', note(chord[i % 3] - 12), t, step * 0.9, 0.5, 700);
+            if (i % 2 === 0) voice('square', note(lead[(i / 2) % lead.length]), t, step * 1.8, 0.16, 2400);
+            if (i % 4 === 0) { burst(t, 0.6, { type: 'lowpass', freq: 160, decay: 0.12, dur: 0.13 }); }
+            if (i % 4 === 2) { burst(t, 0.25, { type: 'highpass', freq: 5000, decay: 0.05, dur: 0.06 }); }
+        }
+        return () => {
+            const now = ctx.currentTime;
+            out.gain.cancelScheduledValues(now);
+            out.gain.setValueAtTime(out.gain.value, now);
+            out.gain.linearRampToValueAtTime(0.0001, now + 0.6);
+            setTimeout(() => out.disconnect(), 800);
+        };
+    }
+
     window.SFX = {
         init,
         play,
+        startTheme,
         toggleMute() { muted = !muted; return muted; },
     };
 })();

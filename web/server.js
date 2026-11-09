@@ -15,6 +15,7 @@ const STATIC = {
     '/game.js': [path.join(__dirname, 'game.js'), 'text/javascript'],
     '/sfx.js': [path.join(__dirname, 'sfx.js'), 'text/javascript'],
     '/intro.js': [path.join(__dirname, 'intro.js'), 'text/javascript'],
+    '/montage.js': [path.join(__dirname, 'montage.js'), 'text/javascript'],
 };
 
 const MAX_GAMES = Number(process.env.MAX_GAMES || 20);
@@ -143,6 +144,17 @@ const server = http.createServer((req, res) => {
             }
         }, 20000);
         flush(s);
+        return;
+    }
+
+    // ASCII video clips for the intro: only plain JSON file names from web/video
+    const clip = url.pathname.match(/\/video\/([a-z0-9_-]+\.json)$/);
+    if (clip) {
+        fs.readFile(path.join(__dirname, 'video', clip[1]), (err, data) => {
+            if (err) { res.writeHead(404); res.end('[]'); return; }
+            res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
+            res.end(data);
+        });
         return;
     }
 

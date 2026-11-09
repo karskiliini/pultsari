@@ -205,6 +205,9 @@
         let stage = 0;
         let doneAt = 0;
         let finished = false;
+        let montageAt = 0;
+        let montageDone = false;
+        let stopTheme = () => {};
         const cues = [
             [2.6, () => window.SFX && SFX.play('cough', 1)],
             [3.1, () => { window.SFX && SFX.play('vomit', 1); splash(520); }],
@@ -247,7 +250,17 @@
             if (doneAt) {
                 text('♪ Балалайка ♪  tiling-tiling-tiling...',
                      W / 2 - fs * 6.2, floorY + fs * 1.4, '#888', fs * 0.4);
-                if (t - doneAt > 1.2 && Math.floor(t * 2) % 2 === 0) {
+            }
+
+            // then the opening credits roll, to the theme
+            if (doneAt && t - doneAt > 2.6 && window.Montage) {
+                if (!montageAt) {
+                    montageAt = t;
+                    stopTheme = window.SFX ? SFX.startTheme(Montage.duration() + 1) : () => {};
+                }
+                if (!montageDone && !Montage.draw(ctx, W, H, t - montageAt)) montageDone = true;
+                if (montageDone) Montage.titleCard(ctx, W, H, 1);
+                if (montageDone && Math.floor(t * 2) % 2 === 0) {
                     text('Paina mitä tahansa näppäintä  ·  Välilyönti aloittaa heti',
                          W / 2 - fs * 7.6, H - fs * 1.2, '#ddd', fs * 0.4);
                 }
@@ -258,6 +271,7 @@
         function finish() {
             if (finished) return;
             finished = true;
+            stopTheme();
             window.removeEventListener('keydown', onKey, true);
             canvas.remove();
             onDone();
@@ -266,11 +280,13 @@
         function onKey(e) {
             e.preventDefault();
             e.stopPropagation();
-            const t = (performance.now() - t0) / 1000;
-            if (e.key === ' ' || (doneAt && t - doneAt > 1.2)) finish();
+            // Space starts the game; any other key skips ahead, and once the credits are done, starts too
+            if (e.key === ' ' || montageDone) { finish(); return; }
+            if (montageAt) { montageDone = true; stopTheme(); }
+            else if (doneAt) { montageAt = -1; montageDone = true; }
         }
         window.addEventListener('keydown', onKey, true);
-        canvas.addEventListener('click', () => { if (doneAt) finish(); });
+        canvas.addEventListener('click', () => { if (montageDone) finish(); });
         requestAnimationFrame(frame);
     }
 
