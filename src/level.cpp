@@ -172,6 +172,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case juoppo:
                 p = new Juoppo(coord);
                 break;
+            case sotilas:
+                p = new Sotilas(coord);
+                break;
             default:
                 break;
         }

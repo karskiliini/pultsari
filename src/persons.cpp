@@ -1743,3 +1743,109 @@ Item* Veteraani::dropItem()
     }
     return new Raha(coord, std::rand()%50 + 20);
 }
+
+// ============ Sotilas (Soldier) ============
+
+Sotilas::Sotilas(const Coord& pos) : Person(sotilas, pos)
+{
+    stats.health = 15;
+    visionRange = 11;
+}
+
+bool Sotilas::move(Direction d, std::string& msg)
+{
+    Coord check {coord.x, coord.y};
+    switch(d)
+    {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+
+    if (!level->hit(check))
+    {
+        coord = check;
+    } else {
+        auto p = level->getPerson(check);
+        if (p && p->type != sotilas && p->type != poliisi && p->type != fsb) {
+            msg = "Sotilas tönäisee tieltään!";
+            p->damage(std::rand()%2 + 1);
+        }
+    }
+    common::checkBounds(coord);
+    return true;
+}
+
+void Sotilas::npcAct()
+{
+    if (firstMove) {
+        firstMove = false;
+        return;
+    }
+
+    string msg = "";
+    Player* p = level->getPlayer();
+    bool seesPlayer = canSeeTarget(p->coord);
+
+    if (seesPlayer && coord.distance(p->coord) <= visionRange) {
+        if (coord.distance(p->coord) <= 1) {
+            say("Rintamalle, svinya!");
+            p->damage(2);
+            dynamic_cast<Player*>(p)->inJail = true;
+        } else if (ammo > 0 && coord.distance(p->coord) <= 6 && random(30)) {
+            --ammo;
+            uint32_t dmg = std::rand()%3 + 3;
+            if (random(60)) {
+                p->damage(dmg);
+                msg = "Sotilas ampuu sinua!";
+            } else {
+                msg = "Sotilas ampuu mutta menee ohi!";
+            }
+            level->alertCops(this);
+        } else {
+            Direction d = getMoveDirection(p->coord);
+            move(d, msg);
+        }
+    } else {
+        if (random(50)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+        if (random(5)) {
+            static const char* lines[] = {
+                "Stoi!",
+                "Paperit!",
+                "Käänny takaisin!",
+                "Alue kielletty!",
+            };
+            say(lines[std::rand()%4]);
+        }
+    }
+
+    printer->showMessage(msg, level);
+}
+
+bool Sotilas::interact(std::string& msg, Person* source)
+{
+    if (source->type == pelaaja) {
+        msg = "Sotilas iskee takaisin kiväärin perällä!";
+        uint32_t dmg = std::rand()%4 + 4;
+        source->damage(dmg);
+        dynamic_cast<Player*>(source)->inJail = true;
+        level->alertCops(source);
+    }
+    return true;
+}
+
+bool Sotilas::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Sotilas väistää ja ampuu!";
+    damage(1);
+    if (source->type == pelaaja) {
+        source->damage(std::rand()%3 + 2);
+        dynamic_cast<Player*>(source)->inJail = true;
+    }
+    return true;
+}

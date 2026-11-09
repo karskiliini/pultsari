@@ -148,11 +148,13 @@ static void populatePersons(Level& level, const GameState& gs)
     }
 
     if (gs.phase == GamePhase::Kremlin) {
-        // Kremlin: FSB guards and cops
+        // Kremlin: FSB guards, cops and soldiers
         for (int i = 0; i < 3; ++i)
             level.createPerson(level.freePosition(), fsb);
         for (int i = 0; i < 2; ++i)
             level.createPerson(level.freePosition(), poliisi);
+        for (int i = 0; i < 2; ++i)
+            level.createPerson(level.freePosition(), sotilas);
         return;
     }
 
@@ -226,6 +228,15 @@ static void populatePersons(Level& level, const GameState& gs)
         for (int i = 0; i < fsbCount; ++i) {
             if (random(20 + (int)(kremlinProximity * 40)))
                 level.createPerson(level.freePosition(), fsb);
+        }
+    }
+
+    // Sotilaat - appear closer to Kremlin
+    if (kremlinProximity > 0.5f) {
+        int solCount = (int)((kremlinProximity - 0.5f) * 4);
+        for (int i = 0; i < solCount; ++i) {
+            if (random(30 + (int)(kremlinProximity * 30)))
+                level.createPerson(level.freePosition(), sotilas);
         }
     }
 

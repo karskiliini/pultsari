@@ -19,6 +19,7 @@ EnvironmentEvents::EnvironmentEvents(Level* level) : level(level)
         droneCooldown = 10 + std::rand()%20;
         aaCooldown = 5 + std::rand()%15;
         droneNoiseCooldown = 3 + std::rand()%8;
+        paradeCooldown = 15 + std::rand()%10;
     }
 }
 
@@ -53,6 +54,8 @@ void EnvironmentEvents::update()
             }
         }
     }
+
+    if (paradeCooldown > 0) --paradeCooldown;
 
     if (random(5)) {
         spreadFire();
@@ -352,6 +355,11 @@ void EnvironmentEvents::randomEvent()
             meatAssault();
         }
     }
+
+    // Moscow parade event
+    if (!level->isWarLevel && roll >= 60 && roll < 70 && paradeCooldown == 0) {
+        militaryParade();
+    }
 }
 
 void EnvironmentEvents::artilleryBarrage()
@@ -397,4 +405,31 @@ void EnvironmentEvents::meatAssault()
             level->createPerson(spawnCoord, skinhead);
         }
     }
+}
+
+void EnvironmentEvents::militaryParade()
+{
+    level->printer->showMessage("SOTILASPARAATI! Kolonna marssii kadulla!", level, false);
+
+    uint32_t paradeY = std::rand() % (common::SIZEY - 4) + 2;
+
+    for (uint32_t x = 0; x < common::SIZEX; x += 4) {
+        Animation* anim = new Animation(Coord{x, paradeY}, "=>", 8);
+        level->addAnimation(anim);
+    }
+
+    for (auto& p : level->persons) {
+        if (p->stats.health > 0 && p->coord.y >= paradeY - 1 && p->coord.y <= paradeY + 1) {
+            if (p->type == pelaaja) {
+                level->printer->showMessage("Sotilaspoliisi: 'Pois tielt\xC3\xA4 tai rintamalle!'", level, false);
+                p->damage(std::rand()%2 + 1);
+            } else if (p->type != poliisi && p->type != fsb) {
+                p->damage(std::rand()%2 + 1);
+                p->alerted = true;
+                p->alertCooldown = 5;
+            }
+        }
+    }
+
+    paradeCooldown = 40 + std::rand()%20;
 }
