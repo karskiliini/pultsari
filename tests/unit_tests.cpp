@@ -432,6 +432,18 @@ TEST(shop_name_hidden_when_no_wall_in_sight)
     CHECK(!contains(row, "TESTNAME"));
 }
 
+TEST(shop_name_hidden_while_inside)
+{
+    World w(Coord{ 104, 103 });   // inside, on the row below the name plate
+    w.add(new Kauppa("TESTNAME", Kauppa::Kind::Produkty), 100, 100);
+    w.mask.enable();
+    w.level.updateCamera();
+    w.mask.init();
+    string row;
+    for (const auto& cell : w.printer.rowCells(&w.level, 102 - (uint32_t)w.level.cameraY)) row += cell.first;
+    CHECK(!contains(row, "TESTNAME"));
+}
+
 // ---- supermarket: lure the guards away and slip in ----
 
 struct Market {

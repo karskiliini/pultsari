@@ -448,6 +448,9 @@
         ctx.font = `bold ${Math.round(fs * 0.6)}px ui-monospace, Menlo, monospace`;
         ctx.fillStyle = '#7fbf1f';
         ctx.fillText('Russki Mir · Русский Мир', W / 2, H * 0.4 + fs * 0.95);
+        ctx.font = `italic ${Math.round(fs * 0.32)}px ui-monospace, Menlo, monospace`;
+        ctx.fillStyle = '#9a9a9a';
+        ctx.fillText('"Venäjällä kaikki on paskaa, paitsi kusi."', W / 2, H * 0.4 + fs * 1.75);
         if (t < 0.15) {
             ctx.fillStyle = `rgba(255,255,255,${0.9 * (1 - t / 0.15)})`;
             ctx.fillRect(0, 0, W, H);

@@ -401,6 +401,14 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         }
     }
 
+    // the building the player is standing in: from inside you don't see its name plate
+    const Building* playerIn = nullptr;
+    if (player) {
+        for (auto b : l->buildings) {
+            if (b->walkable && b->hitBuilding(player->coord) && !b->hitWall(player->coord)) { playerIn = b; break; }
+        }
+    }
+
     Item* thrownItem = nullptr;
     if (l->thrownItem && l->thrownItem->coord.y == worldY) {
         thrownItem = l->thrownItem;
@@ -499,6 +507,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
                 if (!b->hitBuilding(coord)) continue;
                 if (b->isBreach(coord) && l->getVehicleAt(coord)) break; // the car in the hole shows
                 string g = b->typeToChar(coord);
+                if (b == playerIn && !b->hitWall(coord) && !b->isBreach(coord)) g = " ";
                 if (g != " " || !b->walkable) {
                     c = g;
                     color = buildingColor(b, c);
