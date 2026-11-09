@@ -38,24 +38,6 @@
             },
         },
         {
-            who: 'PÄÄOSISSA', name: 'LADA', line: 'Käynnistyy ensimmäisellä yrityksellä. Kolmannellatoista.',
-            color: '#d8d8d8',
-            art: [
-                '       _______',
-                '   ___/ |  |  \\___',
-                '  |  _   ----  _  |=',
-                "  '-(_)-------(_)-'",
-            ],
-            anim(ctx, t, x, y, cw, ch) {
-                // exhaust puffs drifting off behind the car
-                ctx.fillStyle = '#777';
-                for (let i = 0; i < 4; i++) {
-                    const k = (t * 1.3 + i * 0.25) % 1;
-                    ctx.fillText(k < 0.5 ? 'o' : 'O', x - cw * (2 + k * 8), y + ch * (2.2 - k * 1.5));
-                }
-            },
-        },
-        {
             who: 'PÄÄOSISSA', name: 'VANJA, 19', line: 'Värvätty.',
             color: '#9fb36a',
             dur: 6.4 + READ_S,
