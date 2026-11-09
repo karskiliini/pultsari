@@ -15,6 +15,7 @@ const STATIC = {
     '/game.js': [path.join(__dirname, 'game.js'), 'text/javascript'],
     '/sfx.js': [path.join(__dirname, 'sfx.js'), 'text/javascript'],
     '/intro.js': [path.join(__dirname, 'intro.js'), 'text/javascript'],
+    '/story.js': [path.join(__dirname, 'story.js'), 'text/javascript'],
     '/montage.js': [path.join(__dirname, 'montage.js'), 'text/javascript'],
     '/adart.js': [path.join(__dirname, 'adart.js'), 'text/javascript'],
     '/adart-data.js': [path.join(__dirname, 'adart-data.js'), 'text/javascript'],

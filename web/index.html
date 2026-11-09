@@ -123,6 +123,7 @@
     <script src="adart-data.js"></script>
     <script src="adart.js"></script>
     <script src="intro.js"></script>
+    <script src="story.js"></script>
     <script src="game.js"></script>
     <script>
         const $ = (id) => document.getElementById(id);
@@ -237,9 +238,10 @@
                 window.addEventListener('keydown', onGameKey);
                 startWebSocket();
             };
-            // Space skips the intro and starts the game straight away
+            // Space skips the intro and starts the game straight away; after the intro comes
+            // the backstory, which Space skips too
             if (e && e.key === ' ') launch();
-            else WebIntro.play($('screen'), launch);
+            else WebIntro.play($('screen'), () => (window.WebStory ? WebStory.play($('screen'), launch) : launch()));
         }
         window.addEventListener('keydown', start, true);
         startOverlay.addEventListener('click', start);
