@@ -70,7 +70,8 @@
         // the vomit first piles up on the screen's bottom border, then oozes over it and drips away
         const floorCell = Math.floor(H / CELL) - 1;
         const smear = new Uint8Array(FW * 3); // stains on the border rows
-        const leakSpots = [];
+        const drips = [];   // slime strands hanging from the border
+        const drops = [];   // drops that let go and fall
 
         // ---- fluid: particles with gravity, pressure, cohesion and viscosity ----
         const MAX = 1600;
@@ -79,18 +80,17 @@
         // 0 = watery, 1 = thick slime: every splash is half water, the rest stays thick
         const thick = new Float32Array(MAX);
         const rest = new Uint16Array(MAX);   // frames spent lying on the border
-        const leak = new Uint8Array(MAX);    // 1 = oozing over the edge
         let n = 0;
         const G = 0.03, R0 = 1.15, H_ = 2.3, K = 0.09, COH = 0.009, VISC = 0.13;
         const grid = new Map();
 
         function emit(x, y, ux, uy, th = 1) {
             if (n >= MAX) return;
-            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; rest[n] = 0; leak[n] = 0; n++;
+            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; rest[n] = 0; n++;
         }
         function remove(i) {
             n--;
-            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n]; rest[i] = rest[n]; leak[i] = leak[n];
+            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n]; rest[i] = rest[n];
         }
         const at = (mask, x, y) => {
             const cx = x | 0, cy = y | 0;
@@ -140,37 +140,16 @@
                 px[i] += vx[i]; py[i] += vy[i];
                 if (px[i] < 1) { px[i] = 1; vx[i] *= -0.3; }
                 if (px[i] > FW - 2) { px[i] = FW - 2; vx[i] *= -0.3; }
-                if (!leak[i] && py[i] >= floorCell) {
+                if (py[i] >= floorCell) {
                     // lands on the border and pools there
                     py[i] = floorCell; if (vy[i] > 0) vy[i] *= -0.05; vx[i] *= 0.85;
                     const sx = px[i] | 0;
                     if (rest[i] === 0 && Math.random() < 0.25) smear[(Math.random() < 0.5 ? FW : 0) + sx] = 1 + (thick[i] > 0.5);
                     if (rest[i] < 65000) rest[i]++;
-                    if (leakSpots.length < 7 && rest[i] === 1 && Math.random() < 0.015) leakSpots.push(px[i]);
-                    // the puddle creeps toward the nearest drip and slowly goes over the edge there
-                    let near = -1, best = 1e9;
-                    for (const sp of leakSpots) { const d = Math.abs(sp - px[i]); if (d < best) { best = d; near = sp; } }
-                    if (near >= 0) {
-                        vx[i] += Math.sign(near - px[i]) * 0.004;
-                        if (best < 2.5 && rest[i] > 40 + 160 * thick[i] && Math.random() < 0.04) {
-                            leak[i] = 1; py[i] = floorCell + 0.6; vy[i] = 0.02;
-                            smear[2 * FW + (px[i] | 0)] = 2;
-                            // slime pulls its neighbours over the edge with it: a strand, not a drop
-                            for (let j = 0; j < n; j++) {
-                                if (leak[j] || j === i || rest[j] < 15) continue;
-                                if (Math.abs(px[j] - px[i]) < 1.6 && Math.random() < 0.5) {
-                                    leak[j] = 1; py[j] = floorCell + 0.2; vy[j] = 0.01; px[j] = px[i] + (Math.random() - 0.5) * 0.8;
-                                }
-                            }
-                        }
-                    }
-                } else if (leak[i]) {
-                    // hanging slime: oozes slowly at first, then lets go and falls
-                    const below = py[i] - floorCell;
-                    const cap = 0.03 + 0.018 * below * (1.2 - thick[i]);
-                    if (vy[i] > cap) vy[i] = cap;
-                    vx[i] *= 0.6;
-                    if (py[i] >= FH - 1) { remove(i); continue; }
+                    // the puddle creeps toward the nearest hanging drip, which drains it
+                    let best = 1e9, near = 0;
+                    for (const d of drips) { const dd = Math.abs(d.x / CELL - px[i]); if (dd < best) { best = dd; near = d.x / CELL; } }
+                    if (best < 30) vx[i] += Math.sign(near - px[i]) * 0.006;
                 }
                 // drips that land in the Cyrillic letters set there and form the word
                 const cx = px[i] | 0, cy = py[i] | 0;
@@ -221,14 +200,6 @@
             thickness.fill(0);
             for (let i = 0; i < n; i++) {
                 const cx = px[i] | 0, cy = py[i] | 0;
-                if (leak[i]) {
-                    // a hanging string of slime back up to the border
-                    const len = Math.min(cy - floorCell, 3 + ((i * 7) % 4));
-                    for (let k = 1; k <= len; k++) {
-                        const y = cy - k;
-                        if (y >= 0 && y < FH) { density[y * FW + cx] += 1; thickness[y * FW + cx] += thick[i]; }
-                    }
-                }
                 for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
                     const x = cx + ox, y = cy + oy;
                     if (x < 0 || y < 0 || x >= FW || y >= FH) continue;
@@ -266,6 +237,128 @@
             fctx.putImageData(img, 0, 0);
             ctx.imageSmoothingEnabled = false;
             ctx.drawImage(fluidCanvas, 0, 0, FW * CELL, FH * CELL);
+        }
+
+
+        // ---- drips: the pool on the border sags into lips and hangs down in slime strands ----
+        const lipTop = H + 1;                  // just under the border line
+        const colCount = new Float32Array(FW);
+        const lip = new Float32Array(FW);
+        function updateDrips() {
+            colCount.fill(0);
+            for (let i = 0; i < n; i++) if (rest[i] > 0) colCount[px[i] | 0] += 1;
+
+            // new strands start where the puddle is deep
+            if (drips.length < 11 && Math.random() < 0.05) {
+                for (let tries = 0; tries < 12; tries++) {
+                    const i = (Math.random() * n) | 0;
+                    if (n === 0 || rest[i] < 30 || colCount[px[i] | 0] < 2) continue;
+                    const x = px[i] * CELL;
+                    if (drips.some((d) => Math.abs(d.x - x) < 16)) continue;
+                    drips.push({ x, len: 0, w: 3 + Math.random() * Math.random() * 9, vol: 3, starve: 0,
+                                 maxLen: 25 + Math.random() * Math.max(30, (HT - H) * 0.8),
+                                 speed: 0.1 + Math.random() * 0.16 });
+                    break;
+                }
+            }
+            for (let k = drips.length - 1; k >= 0; k--) {
+                const d = drips[k];
+                // drain the puddle slowly into the strand
+                let fed = false;
+                if (Math.random() < 0.09) {
+                    let best = 1e9, bi = -1;
+                    for (let i = 0; i < n; i++) {
+                        if (rest[i] < 10) continue;
+                        const dd = Math.abs(px[i] * CELL - d.x);
+                        if (dd < best) { best = dd; bi = i; }
+                    }
+                    if (bi >= 0 && best < 3 * CELL + d.w) { remove(bi); d.vol += 1; fed = true; }
+                }
+                d.starve = fed ? 0 : d.starve + 1;
+                d.len += d.speed * (0.35 + Math.min(1.6, d.vol / 14));
+                d.r = Math.min(d.w * 0.95, 1.4 + Math.sqrt(d.vol) * 0.7);
+                if ((d.vol > 18 + d.w * 4 && Math.random() < 0.015) || d.len > d.maxLen) {
+                    // the heavy drop lets go; the strand snaps back up and keeps oozing
+                    drops.push({ x: d.x, y: lipTop + d.len, r: d.r, vy: d.speed });
+                    d.vol *= 0.25;
+                    d.len *= 0.35 + Math.random() * 0.3;
+                    d.maxLen = 25 + Math.random() * Math.max(30, (HT - H) * 0.8);
+                }
+                if (d.starve > 90 && d.vol < 4) {
+                    // the puddle is gone here: the strand thins to a hair and breaks
+                    d.w *= 0.985;
+                    if (d.w < 0.7) { drops.push({ x: d.x, y: lipTop + d.len, r: Math.max(1, d.r * 0.7), vy: 0.3 }); drips.splice(k, 1); }
+                }
+            }
+            for (let k = drops.length - 1; k >= 0; k--) {
+                const p = drops[k];
+                p.vy += 0.16; p.y += p.vy;
+                if (p.y > HT + 20) drops.splice(k, 1);
+            }
+        }
+
+        const SLIME = '#4b7414', GLOSS = 'rgba(205,240,120,0.5)';
+        function drawDrips() {
+            // the lip: the puddle bulging over the edge, deeper where it is thicker and around each strand
+            for (let x = 0; x < FW; x++) {
+                let sum = 0;
+                for (let o = -4; o <= 4; o++) { const c = x + o; if (c >= 0 && c < FW) sum += colCount[c] * (1 - Math.abs(o) / 5); }
+                lip[x] = sum > 0.5 ? Math.min(22, Math.sqrt(sum) * 3.2) : 0;
+            }
+            for (const d of drips) {
+                const c = d.x / CELL;
+                for (let x = Math.max(0, (c - 10) | 0); x < Math.min(FW, c + 10); x++) {
+                    const f = Math.exp(-Math.pow((x - c) * CELL / (d.w * 1.7), 2));
+                    lip[x] = Math.max(lip[x], lip[x] * 0.4 + d.w * 2.4 * f);
+                }
+            }
+            ctx.fillStyle = SLIME;
+            ctx.beginPath();
+            let open = false;
+            for (let x = 0; x <= FW; x++) {
+                const h = x < FW ? lip[x] : 0;
+                if (h > 0.4 && !open) { ctx.moveTo(x * CELL, lipTop); open = true; }
+                if (open) ctx.lineTo(x * CELL + CELL / 2, lipTop + h);
+                if (h <= 0.4 && open) { ctx.lineTo(x * CELL, lipTop); ctx.closePath(); open = false; }
+            }
+            ctx.fill();
+
+            // the strands: wide where they leave the lip, thin in the middle, a round drop at the tip
+            for (const d of drips) {
+                const top = lipTop + (lip[Math.min(FW - 1, (d.x / CELL) | 0)] || 0) * 0.6;
+                const tip = lipTop + d.len;
+                if (tip <= top) continue;
+                const w0 = d.w * 1.4, w1 = Math.max(0.9, d.w * 0.55);
+                ctx.beginPath();
+                ctx.moveTo(d.x - w0 / 2, top);
+                ctx.quadraticCurveTo(d.x - w1 / 2, top + (tip - top) * 0.25, d.x - w1 / 2, tip - d.r * 0.6);
+                ctx.lineTo(d.x + w1 / 2, tip - d.r * 0.6);
+                ctx.quadraticCurveTo(d.x + w1 / 2, top + (tip - top) * 0.25, d.x + w0 / 2, top);
+                ctx.closePath();
+                ctx.fill();
+                ctx.beginPath();
+                ctx.ellipse(d.x, tip, d.r, d.r * 1.15, 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            for (const p of drops) {
+                ctx.beginPath();
+                ctx.ellipse(p.x, p.y, p.r * 0.85, p.r * (1.1 + Math.min(0.8, p.vy * 0.08)), 0, 0, Math.PI * 2);
+                ctx.fill();
+            }
+            // a wet highlight down the left side of each strand
+            ctx.strokeStyle = GLOSS;
+            ctx.lineWidth = 0.8;
+            for (const d of drips) {
+                const tip = lipTop + d.len;
+                if (d.len < 6) continue;
+                ctx.beginPath();
+                ctx.moveTo(d.x - d.w * 0.25, lipTop + 3);
+                ctx.lineTo(d.x - d.w * 0.12, tip - d.r * 0.8);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.arc(d.x - d.r * 0.35, tip - d.r * 0.35, d.r * 0.3, 0, Math.PI * 2);
+                ctx.stroke();
+            }
         }
 
         function text(str, x, y, color, size) {
@@ -312,6 +405,7 @@
                 window.SFX && SFX.play('balalaika', 1);
             }
             step(); step();
+            updateDrips();
 
             ctx.clearRect(0, 0, W, HT);
             ctx.fillStyle = '#000';
@@ -328,6 +422,7 @@
                 ctx.save();
                 ctx.beginPath(); ctx.rect(0, H - 2 * CELL, W, HT - H + 2 * CELL); ctx.clip();
                 drawFluid();
+                drawDrips();
                 ctx.restore();
                 requestAnimationFrame(frame);
                 return;
@@ -341,6 +436,7 @@
             if (t > 5.0) text('*ÖÖÖRRRKKK*', latinX + latinW * 0.45, baseY - fs * 1.15, '#f0c040', fs * 0.45);
 
             drawFluid();
+            drawDrips();
 
             if (doneAt) {
                 text('♪ Балалайка ♪  tiling-tiling-tiling...',
