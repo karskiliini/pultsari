@@ -7,6 +7,7 @@
 #include "printer.hpp"
 #include "scoreboard.hpp"
 #include "stats.hpp"
+#include "disease.hpp"
 #include <cstdint>
 #include <string>
 
@@ -24,6 +25,15 @@ public:
     virtual void updateMoney(int money);
     void updateTurn();
     void feedHunger(uint32_t amount);
+
+    // a used needle went in; maybe HIV, the player is not told
+    void stepOnNeedle();
+    void diseaseTick();
+    // 0 healthy or incubating, 1-4 HIV symptoms, 5 AIDS
+    uint32_t diseaseStage() const { return hiv.stage(stats.turn); }
+    uint32_t hearingPercent() const { return Disease::hearingPercent(diseaseStage()); }
+    bool diedOfAids() const { return stats.health == 0 && diseaseStage() >= Disease::AIDS_STAGE; }
+    Disease::Hiv hiv;
 
     void resetPosition();
 

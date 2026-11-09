@@ -154,12 +154,15 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
     cout << " \033[2;37mRUPLAT\033[0;1;93m " << moneyText(*stats) << " \xE2\x82\xBD"
          << "   \033[2;37mVOIMA\033[0;1;" << healthColor << "m " << stats->health
          << "   \033[2;37mPROMILLE\033[0;1;" << promilleColor << "m " << promilleAligned(stats->promilles) << " \xE2\x80\xB0"
-         << "   \033[2;37mVATSA\033[0;1;" << bellyColor << "m " << stats->hunger << "%"
+         << "   \033[2;37mVATSA\033[0;1;" << bellyColor << "m " << stats->hunger << "%";
+    const uint32_t sick = player ? player->diseaseStage() : 0;
+    if (sick) cout << "   \033[2;37mTERVEYS\033[0;1;91m " << Disease::hudLabel(sick);
+    cout
          << RESET << "\033[K" << endl;
 
     printLeftBorderSpaces();
     if (player) {
-        auto heard = l->audio.getHeardSounds(player->coord);
+        auto heard = l->audio.getHeardSounds(player->coord, player->hearingPercent());
         uint32_t used = 9;
         bool first = true;
         if (!heard.empty()) cout << " \033[2;36mKUULET:\033[0m";

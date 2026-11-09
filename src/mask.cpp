@@ -46,6 +46,9 @@ void Mask::init()
         if ((b->lit || b->walkable) && b->hitBuilding(c)) { litRoom = b; break; }
     }
 
+    // HIV narrows the world as it progresses
+    const uint32_t sight = Disease::visionDistance(VISION_DISTANCE, p->diseaseStage());
+
     uint32_t startX = (level->cameraX > 0) ? (uint32_t)level->cameraX : 0;
     uint32_t startY = (level->cameraY > 0) ? (uint32_t)level->cameraY : 0;
     uint32_t endX = startX + common::VIEWPORT_W;
@@ -61,7 +64,7 @@ void Mask::init()
 
             if (litRoom && litRoom->hitBuilding(dc)) {
                 line[x] = '.';
-            } else if (c.distance(dc) < (level->isLit(dc) ? VISION_DISTANCE * 2 : VISION_DISTANCE)) {
+            } else if (c.distance(dc) < (level->isLit(dc) ? sight * 2 : sight)) {
                 if (level->raycast(c, dc)) {
                     line[x] = '.';
                 } else {

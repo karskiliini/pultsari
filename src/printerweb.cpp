@@ -68,12 +68,12 @@ void PrinterWeb::print(Level* l)
     if (player) {
         const auto& s = player->stats;
         j += ",\"hud\":[" + to_string(s.money) + "," + to_string(s.health) + "," +
-             to_string(s.promilles) + "," + to_string(s.hunger) + "," + to_string(s.kopecks) + "]";
+             to_string(s.promilles) + "," + to_string(s.hunger) + "," + to_string(s.kopecks) + "," + to_string(player->diseaseStage()) + "]";
         j += ",\"pos\":[" + to_string(player->coord.x) + "," + to_string(player->coord.y) + "]";
 
         j += ",\"snd\":[";
         bool first = true;
-        for (const auto& h : l->audio.getHeardSounds(player->coord)) {
+        for (const auto& h : l->audio.getHeardSounds(player->coord, player->hearingPercent())) {
             if (h.text.empty()) continue;
             const bool loud = h.type == SoundType::Gunshot || h.type == SoundType::Explosion || h.type == SoundType::Siren;
             j += string(first ? "" : ",") + "[" + jsonString(h.text) + "," + (loud ? "1" : "0") + "]";

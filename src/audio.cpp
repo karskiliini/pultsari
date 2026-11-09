@@ -51,10 +51,10 @@ void AudioSystem::cue(const AudioEvent& e) const
     AudioSystem probe;
     probe.level = level;
     probe.events = single;
-    const auto heard = probe.getHeardSounds(p->coord);
+    const auto heard = probe.getHeardSounds(p->coord, p->hearingPercent());
     if (heard.empty()) return;
     const uint32_t range = std::max<uint32_t>(1, e.range);
-    const float vol = 1.0f - 0.8f * std::min(1.0f, (float)heard.front().distance / (float)range);
+    const float vol = (1.0f - 0.8f * std::min(1.0f, (float)heard.front().distance / (float)range)) * p->hearingPercent() / 100.0f;
     common::sound(name, vol);
 }
 
@@ -76,13 +76,13 @@ void AudioSystem::addSound(const Coord& pos, SoundType type,
     if (type == SoundType::Vomit) common::vomitEvent(pos, 0, 0);
 }
 
-std::vector<HeardSound> AudioSystem::getHeardSounds(const Coord& listenerPos) const
+std::vector<HeardSound> AudioSystem::getHeardSounds(const Coord& listenerPos, uint32_t hearing) const
 {
     std::vector<HeardSound> heard;
 
     for (const auto& e : events) {
         uint32_t dist = listenerPos.distance(e.position);
-        uint32_t effectiveRange = e.range * e.volume / 100;
+        uint32_t effectiveRange = e.range * e.volume / 100 * hearing / 100;
 
         // speech and quiet sounds stop at walls; loud ones are muffled to a third per wall
         const uint32_t walls = level ? level->wallsBetween(listenerPos, e.position) : 0;
@@ -118,9 +118,9 @@ std::vector<HeardSound> AudioSystem::getHeardSounds(const Coord& listenerPos) co
     return heard;
 }
 
-std::string AudioSystem::formatSoundLine(const Coord& listenerPos, uint32_t maxLen) const
+std::string AudioSystem::formatSoundLine(const Coord& listenerPos, uint32_t maxLen, uint32_t hearing) const
 {
-    auto heard = getHeardSounds(listenerPos);
+    auto heard = getHeardSounds(listenerPos, hearing);
     if (heard.empty()) return "";
 
     std::string line = "KUULET: ";

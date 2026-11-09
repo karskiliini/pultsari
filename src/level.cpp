@@ -1745,3 +1745,41 @@ Building* Level::raycastBuilding(const Coordinate<int>& from, const Coordinate<i
 {
     return nullptr;
 }
+
+// drop a used syringe somewhere free within `r` cells of `at`
+static bool dropNeedle(Level& level, const Coord& at, int r)
+{
+    for (int tries = 0; tries < 8; ++tries) {
+        const int x = (int)at.x + std::rand() % (2 * r + 1) - r;
+        const int y = (int)at.y + std::rand() % (2 * r + 1) - r;
+        if (x < 1 || y < 1 || x >= (int)common::SIZEX - 1 || y >= (int)common::SIZEY - 1) continue;
+        const Coord c { (uint32_t)x, (uint32_t)y };
+        const Road* h = nullptr;
+        const Road* v = nullptr;
+        level.roadsAt(c, h, v);
+        if (h || v || level.hit(c)) continue;
+        level.addItem(new Neula(c));
+        return true;
+    }
+    return false;
+}
+
+// used needles gather where the dealers and drunks hang out, by metro entrances and in the bushes
+void Level::scatterNeedles()
+{
+    Level& level = *this;
+    std::vector<Coord> spots;
+    for (auto p : level.persons) {
+        if (p->type == diileri) { spots.push_back(p->coord); spots.push_back(p->coord); }
+        else if (p->type == juoppo && common::random(25)) spots.push_back(p->coord);
+    }
+    for (auto b : level.buildings) {
+        if (b->type != EMetro) continue;
+        const Coord door { (b->wallLeft + b->wallRight) / 2, b->wallBot + 2 };
+        for (int k = 0; k < 1 + std::rand() % 2; ++k) spots.push_back(door);
+    }
+    for (auto i : level.items) {
+        if (i->type == EPensas && common::random(20)) spots.push_back(i->coord);
+    }
+    for (const auto& c : spots) dropNeedle(level, c, 3);
+}

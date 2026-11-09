@@ -5,6 +5,7 @@
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
+#include "disease.hpp"
 #include "item.hpp"
 #include "level.hpp"
 #include "mask.hpp"
@@ -1191,4 +1192,159 @@ TEST(car_two_lanes_away_stays_quiet)
     w.level.addVehicle(car);
     for (int i = 0; i < 30; ++i) car->frame(1000);
     CHECK(!carShouted(w, car));
+}
+
+// ---- needles and HIV ----
+
+TEST(hiv_needle_infects_half_the_rolls)
+{
+    int infected = 0;
+    for (uint32_t roll = 0; roll < 100; ++roll) {
+        Disease::Hiv h;
+        if (h.needleStick(10, roll)) ++infected;
+        CHECK(h.sticks == 1);
+    }
+    CHECK(infected == 50);
+
+    // a second stick does not reinfect or move the clock
+    Disease::Hiv h;
+    CHECK(h.needleStick(10, 0));
+    CHECK(!h.needleStick(500, 0));
+    CHECK(h.infectedTurn == 10 && h.sticks == 2);
+
+    // the real dice land near one in two
+    World w;
+    int sick = 0;
+    for (int i = 0; i < 2000; ++i) {
+        w.player.hiv = Disease::Hiv();
+        w.player.stepOnNeedle();
+        if (w.player.hiv.infected) ++sick;
+    }
+    CHECK(sick > 900 && sick < 1100);
+}
+
+TEST(hiv_incubates_before_symptoms)
+{
+    Disease::Hiv h;
+    CHECK(h.stage(5000) == 0); // healthy stays healthy
+    h.needleStick(100, 0);
+    CHECK(h.stage(100) == 0);
+    CHECK(h.stage(100 + Disease::INCUBATION_TURNS - 1) == 0);
+    CHECK(h.stage(100 + Disease::INCUBATION_TURNS) == 1);
+    CHECK(h.stage(100 + Disease::INCUBATION_TURNS + Disease::STAGE_TURNS) == 2);
+    CHECK(h.stage(h.stageStart(Disease::AIDS_STAGE)) == Disease::AIDS_STAGE);
+    CHECK(h.stage(h.stageStart(Disease::AIDS_STAGE) + 100000) == Disease::AIDS_STAGE);
+    CHECK(h.wasted(h.stageStart(Disease::AIDS_STAGE) - 1) == 0);
+    CHECK(h.wasted(h.stageStart(Disease::AIDS_STAGE) + Disease::WASTING_TURNS * 2) == 2);
+}
+
+TEST(hiv_symptoms_worsen_stage_by_stage)
+{
+    CHECK(Disease::maxHealth(0) == 0); // no limit when healthy
+    CHECK(Disease::visionDistance(12, 0) == 12);
+    CHECK(Disease::hearingPercent(0) == 100);
+    for (uint32_t s = 1; s <= Disease::AIDS_STAGE; ++s) {
+        if (s > 1) CHECK(Disease::maxHealth(s) < Disease::maxHealth(s - 1));
+        CHECK(Disease::maxHealth(s) < PlayerNS::INITIAL_HP);
+        CHECK(Disease::visionDistance(12, s) < Disease::visionDistance(12, s - 1));
+        CHECK(Disease::hearingPercent(s) < Disease::hearingPercent(s - 1));
+    }
+    CHECK(string(Disease::hudLabel(0)).empty());
+    CHECK(string(Disease::hudLabel(2)) == "HIV+");
+    CHECK(string(Disease::hudLabel(5)) == "AIDS");
+}
+
+TEST(hiv_stepping_on_a_needle_stings_but_tells_nothing)
+{
+    World w;
+    w.level.addItem(new Neula(Coord{ 51, 50 }));
+    const uint32_t hp = w.player.stats.health;
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.hiv.sticks == 1);
+    CHECK(w.player.stats.health == hp - 1);
+    bool left = false;
+    for (auto i : w.level.items) if (i->type == ENeula) left = true;
+    CHECK(!left); // pulled out and thrown away
+    CHECK(!w.printer.saw("HIV"));
+}
+
+TEST(hiv_bush_can_hide_a_needle)
+{
+    World w;
+    Pensas bush(Coord{ 51, 50 });
+    bush.needle = true;
+    CHECK(contains(bush.getMsg(), "ruisku"));
+    bush.interact(&w.player);
+    CHECK(w.player.hiv.sticks == 1);
+    CHECK(!bush.needle);
+    CHECK(!contains(bush.getMsg(), "ruisku"));
+}
+
+TEST(hiv_progresses_in_the_player_and_kills)
+{
+    World w;
+    w.player.hiv.needleStick(0, 0);
+    w.player.stats.health = 10;
+    while (w.player.stats.turn < Disease::FLU_TURNS) w.player.updateTurn();
+    CHECK(w.printer.saw("kuumeinen"));
+    CHECK(w.player.diseaseStage() == 0);
+    CHECK(w.player.stats.health == 10);
+
+    while (w.player.stats.turn < Disease::INCUBATION_TURNS) w.player.updateTurn();
+    CHECK(w.player.diseaseStage() == 1);
+    CHECK(w.printer.saw("HIV"));
+    CHECK(w.player.stats.health == Disease::maxHealth(1));
+    CHECK(w.player.hearingPercent() < 100);
+
+    // healing cannot lift VOIMA over what the body still holds up
+    w.player.stats.health = 10;
+    w.player.updateTurn();
+    CHECK(w.player.stats.health == Disease::maxHealth(1));
+
+    while (w.player.diseaseStage() < Disease::AIDS_STAGE) w.player.updateTurn();
+    CHECK(w.printer.saw("AIDS"));
+    CHECK(w.player.stats.health == Disease::maxHealth(Disease::AIDS_STAGE));
+    CHECK(!w.player.diedOfAids());
+
+    for (uint32_t i = 0; i < Disease::WASTING_TURNS * 4 && w.player.stats.health > 0; ++i) w.player.updateTurn();
+    CHECK(w.player.stats.health == 0);
+    CHECK(w.player.diedOfAids());
+}
+
+TEST(hiv_narrows_sight_and_hearing)
+{
+    World w;
+    w.mask.enable();
+    w.level.updateCamera();
+    w.mask.init();
+    const Coord far { 60, 50 }; // 10 cells away in the open
+    CHECK(w.mask.visible(far));
+    w.level.audio.addSound(Coord{ 64, 50 }, SoundType::Engine, "lähellä", "BRUUM", "kaukana", 20);
+    CHECK(!w.level.audio.getHeardSounds(w.player.coord, w.player.hearingPercent()).empty());
+
+    w.player.hiv.needleStick(0, 0);
+    w.player.stats.turn = w.player.hiv.stageStart(4);
+    CHECK(w.player.diseaseStage() == 4);
+    w.mask.init();
+    CHECK(!w.mask.visible(far));
+    CHECK(w.mask.visible(Coord{ 53, 50 }));
+    CHECK(w.level.audio.getHeardSounds(w.player.coord, w.player.hearingPercent()).empty());
+}
+
+
+TEST(hiv_needles_lie_where_the_dealers_stand)
+{
+    World w(Coord{ 20, 20 });
+    auto* dealer = w.spawn(new Diileri(Coord{ 80, 60 }));
+    w.add(new Metro("TEST"), 150, 100);
+    w.level.scatterNeedles();
+    int nearDealer = 0, nearMetro = 0;
+    for (auto i : w.level.items) {
+        if (i->type != ENeula) continue;
+        if (i->coord.distance(dealer->coord) <= 3) ++nearDealer;
+        if (i->coord.x >= 145 && i->coord.x <= 170 && i->coord.y >= 100 && i->coord.y <= 115) ++nearMetro;
+        CHECK(i->coord.distance(w.player.coord) > 5); // nothing to do with the player
+    }
+    CHECK(nearDealer >= 1);
+    CHECK(nearMetro >= 1);
 }

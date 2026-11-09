@@ -55,8 +55,9 @@ public:
                   const std::string& far,
                   uint32_t range = 20);
 
-    std::vector<HeardSound> getHeardSounds(const Coord& listenerPos) const;
-    std::string formatSoundLine(const Coord& listenerPos, uint32_t maxLen = 78) const;
+    // hearing: percent of normal range the listener still hears (HIV wears it down)
+    std::vector<HeardSound> getHeardSounds(const Coord& listenerPos, uint32_t hearing = 100) const;
+    std::string formatSoundLine(const Coord& listenerPos, uint32_t maxLen = 78, uint32_t hearing = 100) const;
 
     void setLevel(const Level* l) { level = l; }
 

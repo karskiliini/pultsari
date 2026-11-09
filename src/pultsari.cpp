@@ -97,6 +97,7 @@ static void populateItems(Level& level, const GameState& gs)
             }
         }
     }
+    level.scatterNeedles();
     if (random(20))
         level.addItem(EPropusk);
     {
@@ -805,6 +806,9 @@ static InputNS::InputType applyDrunkEffects(InputNS::InputType input, PlayerNS::
 // After death the world carries on as if nothing happened. The body stays where
 // it fell; in the browser the camera slowly zooms out until the whole city is
 // a speck, and then the intro plays again. Any key starts a new life at once.
+// the death certificate says something else: officially there is no epidemic
+static const char* AIDS_DEATH = "SURUVIESTI: AIDS vei sinut. Kuolintodistukseen kirjattiin keuhkokuume, koska virallisesti Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 ei ole HIV-epidemiaa.";
+
 static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, Printer* printer, const std::string& cause)
 {
     constexpr uint32_t FRAME_MS = 50;
@@ -1480,7 +1484,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
                     break;
                 } else if (player.stats.health < 1) {
-                    mourn(level, mask, player, printer, "SURUVIESTI: Olet heitt\xC3\xA4nyt henkesi.");
+                    mourn(level, mask, player, printer, player.diedOfAids() ? AIDS_DEATH : "SURUVIESTI: Olet heitt\xC3\xA4nyt henkesi.");
                     quit = restart = true;
                     break;
                 } else if (player.stats.promilles < 1) {
@@ -1599,7 +1603,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     break;
                 } else if (player.stats.health < 1) {
                     quit = true;
-                    printer->setMessage("Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
+                    printer->setMessage(player.diedOfAids() ? AIDS_DEATH : "Terveytesi pettää... kemahdat tantereeseen pitkäksesi .........");
                     printer->print(&level);
                     break;
                 } else if (player.stats.promilles < 1) {

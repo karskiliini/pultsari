@@ -130,6 +130,8 @@ public:
 
     void addItem(ItemType item);
     void addItem(Item* item);
+    // used syringes by dealers, drunks, metro entrances and bushes
+    void scatterNeedles();
     void addThrownItem(Item* item);
     void addAnimation(Animation* animation, bool play = true);
     void removeItem(Item* item);

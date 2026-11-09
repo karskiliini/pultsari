@@ -37,7 +37,8 @@ enum ItemType {
     EPutinPoyta,
     EKartta,
     ERoska,
-    ERynkky
+    ERynkky,
+    ENeula
 };
 
 class Level;
@@ -238,6 +239,8 @@ public:
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);
+    // someone shot up in the park and left the syringe in the bush
+    bool needle = false;
 };
 
 class Roskis : public Item {
@@ -342,6 +345,17 @@ public:
     virtual std::string typeToChar() const { return "\xC2\xAC"; }
     virtual std::string getMsg() const { return "Rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri! Kalashnikov, tietysti. Ja t\xC3\xA4ysi lipas."; }
     virtual bool interact(PlayerNS::Player* player);
+};
+
+// A used syringe on the ground: stepping on it may give you HIV, and you will not know.
+class Neula : public Item {
+public:
+    Neula(const Coord& c);
+    virtual std::string typeToChar() const { return "\xC4\xB1"; } // dotless i, a thin needle
+    virtual std::string getMsg() const { return msg; }
+    virtual bool interact(PlayerNS::Player* player);
+private:
+    const char* msg;
 };
 
 #endif

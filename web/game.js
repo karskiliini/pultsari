@@ -260,7 +260,7 @@
         ui.msg.textContent = m.msg ? '» ' + m.msg : '';
         ui.level.textContent = m.lvl || '';
         if (m.hud) {
-            const [money, hp, prom, belly, kop] = m.hud;
+            const [money, hp, prom, belly, kop, sick] = m.hud;
             ui.money.textContent = (kop ? money + ',' + String(kop).padStart(2, '0') : money) + ' ₽';
             ui.hp.textContent = hp;
             ui.hp.className = hp < 5 ? 'bad' : '';
@@ -268,6 +268,11 @@
             ui.prom.className = prom < 10 ? 'good' : prom < 30 ? 'warn' : 'bad';
             ui.belly.textContent = belly + '%';
             ui.belly.className = belly <= 20 ? 'bad' : belly <= 50 ? 'warn' : '';
+            // HIV stage once symptoms show (1-4), AIDS at 5; nothing while the player does not know
+            if (ui.sickBox) {
+                ui.sickBox.hidden = !sick;
+                if (sick) ui.sick.textContent = sick >= 5 ? 'AIDS' : 'HIV+ ' + '●'.repeat(sick) + '○'.repeat(4 - sick);
+            }
         }
         ui.sounds.innerHTML = '';
         for (const [text, loud] of (m.snd || []).slice(0, 4)) {
@@ -298,8 +303,11 @@
             mood.s += (target.s - mood.s) * Math.min(1, dt * 1.5);
             const swim = prom > 30 ? Math.sin(now / 900) * Math.min(25, (prom - 30) * 1.2) : 0;
             // the map is printed paper: no hangover gloom on it
+            // late HIV: the eyes blur and the colours wash out
+            const sick = frame.hud[5] || 0;
+            const haze = sick >= 3 ? ` blur(${((sick - 2) * 0.25).toFixed(2)}px) contrast(${(1 - (sick - 2) * 0.08).toFixed(2)})` : '';
             canvas.style.filter = mapOpen ? 'none'
-                : `brightness(${mood.b.toFixed(3)}) saturate(${mood.s.toFixed(3)}) hue-rotate(${swim.toFixed(1)}deg)`;
+                : `brightness(${mood.b.toFixed(3)}) saturate(${mood.s.toFixed(3)}) hue-rotate(${swim.toFixed(1)}deg)${haze}`;
         }
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);

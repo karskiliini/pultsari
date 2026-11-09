@@ -105,6 +105,7 @@
                 <span><span class="lbl">VOIMA</span> <b id="hp">–</b></span>
                 <span><span class="lbl">PROMILLE</span> <b id="prom">–</b></span>
                 <span><span class="lbl">VATSA</span> <b id="belly">–</b></span>
+                <span id="sickBox" hidden><span class="lbl">TERVEYS</span> <b id="sick" class="bad">–</b></span>
             </div>
             <div id="sounds"></div>
         </div>
@@ -132,7 +133,7 @@
 
         Game.setup({
             canvas: $('map'), msg: $('msg'), level: $('level'), money: $('money'), hp: $('hp'),
-            prom: $('prom'), belly: $('belly'), sounds: $('sounds'), inv: $('inv'), menu: $('menu'), text: $('text'),
+            prom: $('prom'), belly: $('belly'), sick: $('sick'), sickBox: $('sickBox'), sounds: $('sounds'), inv: $('inv'), menu: $('menu'), text: $('text'),
             death: $('death'), deathCause: $('deathCause'), deathScore: $('deathScore'),
             // the camera has zoomed all the way out: play the intro, then start the next drunk
             onRestart: () => {

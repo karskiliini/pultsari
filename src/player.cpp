@@ -84,9 +84,52 @@ void Player::feedHunger(uint32_t amount)
     if (stats.hunger > 100) stats.hunger = 100;
 }
 
+void Player::stepOnNeedle()
+{
+    // the dice are rolled but the result stays in the blood, not on the screen
+    hiv.needleStick(stats.turn, (uint32_t)(std::rand() % 100));
+}
+
+// HIV runs on whether the game is real-time or not: one tick per turn
+void Player::diseaseTick()
+{
+    if (!hiv.infected || stats.health == 0) return;
+    const uint32_t turn = stats.turn;
+
+    if (!hiv.fluShown && turn >= hiv.infectedTurn + Disease::FLU_TURNS) {
+        hiv.fluShown = true;
+        printer->showMessage("Kurkkua kirvelee ja olo on kuumeinen. Krapulaa varmaan. Tai flunssaa.", level, false);
+    }
+
+    const uint32_t stage = diseaseStage();
+    if (stage == 0) return;
+    if (stage > hiv.announcedStage) {
+        hiv.announcedStage = stage;
+        printer->showMessage(Disease::stageMessage(stage), level, false);
+    }
+
+    // the body no longer holds its strength; with AIDS it drains away
+    uint32_t cap = Disease::maxHealth(stage);
+    const uint32_t lost = hiv.wasted(turn);
+    cap = lost >= cap ? 0 : cap - lost;
+    if (stats.health > cap) {
+        const bool wasting = stage >= Disease::AIDS_STAGE && turn > hiv.stageStart(stage);
+        stats.health = cap;
+        if (wasting) printer->showMessage(cap == 0 ? "Keho luovuttaa." : "Voimat valuvat pois. Jokainen askel on työtä.", level, false);
+    }
+
+    // a cough the neighbours hear; from the third stage food will not stay down
+    if (stage >= 2 && level && std::rand() % 150 == 0) {
+        level->audio.addSound(coord, SoundType::Voice, "*KÖH KÖH KÖH*", "*köh köh*", "", 10);
+        printer->showMessage("Yskit verta. Nenäliinaa ei ole, joten hihaan.", level, false);
+    }
+    if (stage >= 3 && common::realtimeEnabled && turn % 40 == 20 && stats.hunger > 0) --stats.hunger;
+}
+
 void Player::updateTurn()
 {
     ++stats.turn;
+    diseaseTick();
 
     if (common::realtimeEnabled) {
         // turns tick 2.5x per second in real-time: lose 0.1 promille every 50 s

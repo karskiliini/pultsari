@@ -107,9 +107,10 @@ void PrinterNcurses::printStats(Level* l, Stats* stats)
     wprintw((WINDOW*)statswindow,("  PROMILLE: " + promilleAligned(stats->promilles)).c_str());
     wprintw((WINDOW*)statswindow,("  NÄLKÄ: " + moneyAligned(stats->hunger)).c_str());
     wprintw((WINDOW*)statswindow,("  LEVEL: "    + std::to_string(l->stage) + " ").c_str());
+    if (player && player->diseaseStage()) wprintw((WINDOW*)statswindow, (std::string("  ") + Disease::hudLabel(player->diseaseStage())).c_str());
 
     if (player) {
-        std::string audioLine = l->audio.formatSoundLine(player->coord);
+        std::string audioLine = l->audio.formatSoundLine(player->coord, 78, player->hearingPercent());
         if (!audioLine.empty()) {
             mvwprintw((WINDOW*)statswindow, 2, 1, audioLine.c_str());
         }

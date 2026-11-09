@@ -1,4 +1,5 @@
 #include "item.hpp"
+#include "common.hpp"
 #include <algorithm>
 #include "persons.hpp"
 #include "level.hpp"
@@ -328,13 +329,35 @@ bool BusStop::interact(PlayerNS::Player* player) {
 }
 
 // pensas
-Pensas::Pensas(const Coord& c) : Item(c, EPensas) { blocksLOS = true; }
+Pensas::Pensas(const Coord& c) : Item(c, EPensas) { blocksLOS = true; needle = common::random(7); }
 std::string Pensas::typeToChar() const { return "#"; }
 std::string Pensas::getMsg() const {
+    if (needle) return "Pensas. Piiloudut sinne ja jokin piikki pist\xC3\xA4\xC3\xA4 k\xC3\xA4teen. Ei piikki: ruisku. Puiston vakiokalustoa.";
     return "Pensas. Voit piiloutua tänne.";
 }
 bool Pensas::interact(PlayerNS::Player* player) {
+    if (needle) {
+        needle = false;
+        player->stepOnNeedle();
+    }
     return false;
+}
+
+// neula
+Neula::Neula(const Coord& c) : Item(c, ENeula)
+{
+    static const char* msgs[] = {
+        "Au! Astuit k\xC3\xA4ytettyyn neulaan. Se meni kengänpohjan l\xC3\xA4pi.",
+        "Jokin pist\xC3\xA4\xC3\xA4 jalkapohjaan. Ruisku. K\xC3\xA4ytetty, tietysti.",
+        "Kompastut, ja k\xC3\xA4si osuu maassa lojuvaan ruiskuun. Neula uppoaa peukaloon.",
+    };
+    msg = msgs[std::rand() % 3];
+}
+bool Neula::interact(PlayerNS::Player* player)
+{
+    player->damage(1);
+    player->stepOnNeedle();
+    return true;
 }
 
 // roskis
@@ -507,7 +530,7 @@ bool Roska::interact(PlayerNS::Player* player)
     else if (outcome < 37) ++inv.vodka;
     else if (outcome < 50) player->updateMoney(std::rand() % 8 + 1);
     else if (outcome < 58) player->damage(1);
-    else if (outcome < 62) player->damage(2);
+    else if (outcome < 62) { player->damage(2); player->stepOnNeedle(); }
     else if (outcome < 64) ++inv.ammukset;
     else if (outcome < 65) ++inv.pistooli;
     else if (outcome < 80) {
