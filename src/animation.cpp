@@ -6,7 +6,7 @@ using std::string;
 using std::cout;
 using std::endl;
 
-Animation::Animation(const Coord& pos, string txt, uint32_t frames) : coord(pos), text(txt), ttl(frames)
+Animation::Animation(const Coord& pos, string txt, uint32_t frames) : coord(pos), text(txt), ttl(frames), frames(frames), source(pos)
 {
 }
 

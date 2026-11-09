@@ -312,10 +312,12 @@ uint32_t Level::wallsBetween(const Coord& a, const Coord& b) const
     return walls;
 }
 
-bool Level::canHear(const Coord& listener, const Coord& source, uint32_t range) const
+bool Level::canHear(const Coord& listener, const Coord& source, uint32_t range, bool loud) const
 {
     if (listener.distance(source) > range) return false;
-    for (uint32_t w = wallsBetween(listener, source); w > 0 && range > 0; --w) range /= 3;
+    const uint32_t walls = wallsBetween(listener, source);
+    if (walls > 0 && !loud) return false;
+    for (uint32_t w = walls; w > 0 && range > 0; --w) range /= 3;
     return listener.distance(source) <= range;
 }
 
@@ -339,7 +341,7 @@ void Level::alertCops(Person* source, uint32_t range)
     Person* firstWitness = nullptr;
     for (auto p : persons) {
         if (p == source || p->stats.health == 0 || !isSecurity(p)) continue;
-        if (!p->canSeeTarget(source->coord) && !canHear(p->coord, source->coord, range)) continue;
+        if (!p->canSeeTarget(source->coord) && !canHear(p->coord, source->coord, range, range > 15)) continue;
         p->chaseTarget = source;
         p->alerted = true;
         p->lastKnownPos = source->coord;
@@ -355,11 +357,11 @@ void Level::callForHelp(Person* caller, Person* target, bool hostile)
     if (radio) {
         caller->say("Kaikki yksik\xC3\xB6t, apua!");
         audio.addSound(caller->coord, SoundType::WalkieTalkie,
-            "Vartija huutaa radioon: 'Kaikki yksik\xC3\xB6t!'", "Radiokutsu", "...radion r\xC3\xA4tin\xC3\xA4\xC3\xA4...", 15);
+            "Vartija huutaa radioon", "Radiokutsu", "...radion r\xC3\xA4tin\xC3\xA4\xC3\xA4...", 15);
     } else if (hostile) {
         caller->say("Pomogite! T\xC3\xA4nne!");
         audio.addSound(caller->coord, SoundType::Voice,
-            "Politsija huutaa apua: 'Pomogite!'", "Avunhuuto", "...joku huutaa apua...", 18);
+            "Politsija huutaa apua", "Avunhuuto", "...joku huutaa apua...", 18);
     }
 
     for (auto p : persons) {
@@ -378,8 +380,10 @@ void Level::callForHelp(Person* caller, Person* target, bool hostile)
         p->lastKnownPos = target->coord;
         p->alertCooldown = 15;
         if (radioed && !hears) {
+            // the call comes out of this person's radio
+            if (common::random(50)) p->say("*r\xC3\xA4tin\xC3\xA4* Apua tarvitaan, kaikki yksik\xC3\xB6t!");
             audio.addSound(p->coord, SoundType::WalkieTalkie,
-                "Radio r\xC3\xA4tisee: 'Apua tarvitaan!'", "Radion r\xC3\xA4tin\xC3\xA4\xC3\xA4", "...r\xC3\xA4tin\xC3\xA4\xC3\xA4...", 8);
+                "Radiopuhelin r\xC3\xA4tisee", "Radion r\xC3\xA4tin\xC3\xA4\xC3\xA4", "...r\xC3\xA4tin\xC3\xA4\xC3\xA4...", 8);
         }
     }
 }
@@ -402,7 +406,7 @@ void Level::spreadNews()
                            p->type == shoigu || p->type == gerasimov || p->type == medvedev;
         p->say(loyal ? "Prezident ubit!" : "PUTIN ON KUOLLUT!");
         audio.addSound(p->coord, SoundType::Voice,
-            "Joku huutaa: 'Putin on kuollut!'", "Huutoa Putinista", "...joku huutaa jotain Putinista...", 14);
+            "Joku huutaa jotain Putinista", "Huutoa Putinista", "...joku huutaa jotain Putinista...", 14);
 
         for (auto q : persons) {
             if (q != p && q->type != pelaaja && !q->knowsPutinDead && canHear(q->coord, p->coord, 12))
@@ -745,7 +749,15 @@ bool Level::blocksLOS(const Coord& c) const
 // return true if visibility ok
 bool Level::raycast(Coord from, const Coord& to) const
 {
-    bool originBuilding = hitBuilding(to);
+    // solid buildings always show their walls and plates; a walkable interior
+    // (the Kremlin) is seen only through windows, the door or from inside
+    bool originBuilding = false;
+    for (const auto& b : buildings) {
+        if (b->hitBuilding(to)) {
+            originBuilding = b->type != EKremlin || b->hitWall(to);
+            break;
+        }
+    }
 
     uint32_t block = 0;
     uint32_t dx = std::max(from.x, to.x) - std::min(from.x, to.x);

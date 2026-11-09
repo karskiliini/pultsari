@@ -580,15 +580,15 @@ bool Player::shoot(DirectionNS::Direction dir)
         target->damage(5);
         if (target->stats.health <= 0) {
             msg = "PAM! Osuma! Kohde kaatuu maahan.";
-            level->alertCops(this);
+            level->alertCops(this, 30);
         } else {
             msg = "PAM! Osuma!";
-            level->alertCops(this);
+            level->alertCops(this, 30);
         }
         printer->showMessage(msg, level, false);
     } else {
         printer->showMessage("PAM! Huti.", level, false);
-        level->alertCops(this);
+        level->alertCops(this, 30);
     }
 
     return true;

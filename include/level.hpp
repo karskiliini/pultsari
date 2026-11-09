@@ -44,8 +44,8 @@ public:
     bool isLit(const Coord& c) const;
     // wall crossings on the straight line between two points; Kremlin walls count double
     uint32_t wallsBetween(const Coord& a, const Coord& b) const;
-    // every wall in between cuts the hearing range to a third
-    bool canHear(const Coord& listener, const Coord& source, uint32_t range) const;
+    // speech does not carry through walls; loud noises do, a third as far per wall
+    bool canHear(const Coord& listener, const Coord& source, uint32_t range, bool loud = false) const;
     // radios carry further and through walls better, but not through everything
     bool radioReaches(const Coord& from, const Coord& to) const;
     // security forces who see or hear `source` (within `range`) start chasing it

@@ -267,12 +267,19 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
         line += glyph;
     };
 
-    struct RowAnim { uint32_t x; vector<string> chars; bool bubble; };
+    struct RowAnim { uint32_t x; vector<string> chars; const char* color; };
     vector<RowAnim> rowAnims;
     if (common::animsEnabled) {
         for (const auto a : l->animations) {
             if (a->coord.y != worldY) continue;
-            RowAnim r { a->coord.x, {}, a->isBubble };
+            if (!mask->visible(a->source)) continue;
+            // speech bubbles fade from white to dark grey as they expire
+            const char* color = "1;91";
+            if (a->isBubble) {
+                const uint32_t left = a->frames ? a->ttl * 100 / a->frames : 0;
+                color = left > 60 ? "1;97" : left > 35 ? "37" : left > 15 ? "90" : "2;90";
+            }
+            RowAnim r { a->coord.x, {}, color };
             for (size_t i = 0; i < a->text.size();) {
                 const unsigned char b = a->text[i];
                 size_t n = b >= 0xF0 ? 4 : b >= 0xE0 ? 3 : b >= 0xC0 ? 2 : 1;
@@ -312,7 +319,7 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
         for (auto it = rowAnims.rbegin(); it != rowAnims.rend(); ++it) {
             if (x >= it->x && x < it->x + it->chars.size()) {
                 c = it->chars[x - it->x];
-                color = it->bubble ? "2;37" : "1;91";
+                color = it->color;
                 found = true;
                 break;
             }

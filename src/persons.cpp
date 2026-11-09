@@ -126,10 +126,17 @@ void Person::say(const std::string& raw)
     uint32_t bx = (coord.x > half) ? coord.x - half : 0;
     uint32_t by = (coord.y > 1) ? coord.y - 1 : 0;
     Coord bubblePos { bx, by };
-    Animation* anim = new Animation(bubblePos, text, 12);
+
+    // the bubble stays put and fades: ~2.5 s in real time, a few moves turn-based
+    Animation* anim = new Animation(bubblePos, text, common::realtimeEnabled ? 50 : 4);
     anim->isBubble = true;
-    anim->coordMove = Coordinate<int>(0, -1);
-    level->addAnimation(anim);
+    anim->owner = this;
+    anim->source = coord;
+    for (auto it = level->animations.begin(); it != level->animations.end();) {
+        if ((*it)->owner == this) { delete *it; it = level->animations.erase(it); }
+        else ++it;
+    }
+    level->addAnimation(anim, false);
 }
 
 Direction Person::getMoveDirection(const Coord& target) const
@@ -2288,8 +2295,16 @@ void Vartija::radioGuardAct()
     }
 
     if (random(6)) {
+        if (random(30)) {
+            static const char* chatter[] = {
+                "*r\xC3\xA4tin\xC3\xA4* Kreml, kaikki rauhallista.",
+                "*r\xC3\xA4tin\xC3\xA4* Medvedev taas k\xC3\xA4yt\xC3\xA4v\xC3\xA4ll\xC3\xA4.",
+                "*r\xC3\xA4tin\xC3\xA4* Vastaanotettu. Loppu.",
+            };
+            say(chatter[std::rand() % 3]);
+        }
         level->audio.addSound(coord, SoundType::WalkieTalkie,
-            "Vartijan radio: 'Kreml, kaikki rauhallista.'", "Radion rahinaa", "...rahinaa...", 12);
+            "Vartijan radiopuhelin r\xC3\xA4tisee", "Radion rahinaa", "...rahinaa...", 12);
     }
 }
 

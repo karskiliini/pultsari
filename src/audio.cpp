@@ -30,31 +30,6 @@ void AudioSystem::addSound(const Coord& pos, SoundType type,
     events.push_back(e);
 }
 
-bool AudioSystem::blockedByWall(const Coord& from, const Coord& to, const Level* lvl) const
-{
-    if (!lvl) return false;
-
-    // simple check: if both inside same building, sound passes freely
-    // if a wall is between them, sound is muffled (reduce range)
-    // for now, just check if there's a building wall directly between
-    int dx = (int)to.x - (int)from.x;
-    int dy = (int)to.y - (int)from.y;
-    int steps = std::max(std::abs(dx), std::abs(dy));
-    if (steps == 0) return false;
-
-    uint32_t walls = 0;
-    for (int i = 1; i < steps; ++i) {
-        int cx = (int)from.x + dx * i / steps;
-        int cy = (int)from.y + dy * i / steps;
-        Coord c { (uint32_t)cx, (uint32_t)cy };
-        if (lvl->hitBuilding(c) && !lvl->hitWindow(c)) {
-            ++walls;
-            if (walls >= 2) return true;
-        }
-    }
-    return false;
-}
-
 std::vector<HeardSound> AudioSystem::getHeardSounds(const Coord& listenerPos) const
 {
     std::vector<HeardSound> heard;
@@ -63,10 +38,13 @@ std::vector<HeardSound> AudioSystem::getHeardSounds(const Coord& listenerPos) co
         uint32_t dist = listenerPos.distance(e.position);
         uint32_t effectiveRange = e.range * e.volume / 100;
 
-        // walls muffle sound
-        if (level && blockedByWall(listenerPos, e.position, level)) {
-            effectiveRange = effectiveRange / 3;
-        }
+        // speech and quiet sounds stop at walls; loud ones are muffled to a third per wall
+        const uint32_t walls = level ? level->wallsBetween(listenerPos, e.position) : 0;
+        const bool quiet = e.type == SoundType::Voice || e.type == SoundType::Radio ||
+                           e.type == SoundType::WalkieTalkie || e.type == SoundType::Footsteps ||
+                           e.type == SoundType::Vomit;
+        if (walls > 0 && quiet) continue;
+        for (uint32_t w = 0; w < walls; ++w) effectiveRange /= 3;
 
         if (dist > effectiveRange) continue;
 

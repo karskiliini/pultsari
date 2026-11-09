@@ -58,7 +58,6 @@ public:
     std::vector<HeardSound> getHeardSounds(const Coord& listenerPos) const;
     std::string formatSoundLine(const Coord& listenerPos, uint32_t maxLen = 78) const;
 
-    bool blockedByWall(const Coord& from, const Coord& to, const Level* level) const;
     void setLevel(const Level* l) { level = l; }
 
 private:

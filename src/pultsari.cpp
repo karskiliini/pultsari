@@ -927,6 +927,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     mask.init();
                     level.cleanDead();
                     level.cleanDiscardedItems();
+                    level.stepAnimations();
 
                     printer->print(&level);
 
