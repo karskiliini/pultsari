@@ -387,6 +387,179 @@ void Level::droneImpact(const Coord& c, Building* target)
     }
 }
 
+void Level::robberyTick()
+{
+    Robbery& r = robbery;
+    const PlayerNS::Player* player = getPlayer();
+    auto heard = [&](const Coord& c, uint32_t range) { return player && !playerDead && canHear(player->coord, c, range, true); };
+
+    // robbers who made it back to the car get in
+    for (size_t i = 0; i < persons.size();) {
+        Pankkirosvo* rob = dynamic_cast<Pankkirosvo*>(persons[i]);
+        if (rob && rob->boarded) {
+            ++r.boarded;
+            delete rob;
+            persons.erase(persons.begin() + i);
+            continue;
+        }
+        ++i;
+    }
+    std::vector<Pankkirosvo*> robbers;
+    for (auto p : persons) {
+        if (auto rob = dynamic_cast<Pankkirosvo*>(p)) if (rob->stats.health > 0) robbers.push_back(rob);
+    }
+
+    switch (r.stage) {
+    case Robbery::Stage::Idle: {
+        if (r.cooldown > 0) { --r.cooldown; return; }
+        r.cooldown = 600 + std::rand() % 600;   // 4-8 minutes between robberies
+        for (auto b : buildings) if (b->type == EBank) r.bank = b;
+        if (!r.bank) return;
+        const uint32_t windowX = r.bank->wallLeft + 4;
+        const uint32_t lane = r.bank->wallBot + 3;  // top lane of Tverskaja (westbound)
+        Car* car = new Car(Coord{ std::min<uint32_t>(common::SIZEX - 1, windowX + 70), lane }, true, -1, Car::Kind::Getaway);
+        for (const auto& c : car->cells()) if (getVehicleAt(c)) { delete car; return; }
+        car->script = Car::Script::ToBank;
+        car->bank = r.bank;
+        car->laneY = lane;
+        addVehicle(car);
+        r.car = car;
+        r.police = nullptr;
+        r.policeParked = false;
+        r.boarded = 0;
+        r.stage = Robbery::Stage::Arriving;
+        break;
+    }
+    case Robbery::Stage::Arriving:
+        if (r.car->script != Car::Script::Parked) break;
+        // three robbers storm into the bank through the smashed window
+        for (int k = 0; k < 3; ++k) {
+            const Coord at { r.car->coord.x + (k == 0 ? (uint32_t)0 : k == 1 ? 1u : (uint32_t)-1), r.bank->wallBot - 2 };
+            if (hitWall(at) || hitPerson(at)) continue;
+            const Coord goal { r.bank->wallLeft + 2 + std::rand() % (r.bank->wallRight - r.bank->wallLeft - 3),
+                               r.bank->wallTop + 1 + std::rand() % (r.bank->wallBot - r.bank->wallTop - 2) };
+            Pankkirosvo* rob = new Pankkirosvo(at, goal);
+            rob->pathFinding = pathFinding;
+            rob->printer = printer;
+            if (!addPerson(rob)) delete rob;
+            else robbers.push_back(rob);
+        }
+        audio.addSound(Coord{ (r.bank->wallLeft + r.bank->wallRight) / 2, r.bank->wallTop }, SoundType::Siren,
+            "Sberbankin h\xC3\xA4lytyskello soi!", "H\xC3\xA4lytyskello", "...h\xC3\xA4lytyskello soi jossain...", 45);
+        if (heard(r.car->coord, 45)) printer->showMessage("PANKKIRY\xC3\x96ST\xC3\x96! Auto ajoi Sberbankin ikkunasta sis\xC3\xA4\xC3\xA4n!", this, false);
+        if (!robbers.empty()) alertCops(robbers.front(), 45);
+        r.timer = 60;
+        r.stage = Robbery::Stage::Robbing;
+        break;
+
+    case Robbery::Stage::Robbing:
+        if (r.timer > 0) --r.timer;
+        if (r.timer % 8 == 0) {
+            audio.addSound(Coord{ (r.bank->wallLeft + r.bank->wallRight) / 2, r.bank->wallTop }, SoundType::Siren,
+                "Sberbankin h\xC3\xA4lytyskello soi!", "H\xC3\xA4lytyskello", "...h\xC3\xA4lytyskello soi jossain...", 45);
+        }
+        // the police turn up after a while
+        if (r.timer == 45 && !r.police) {
+            Car* police = new Car(Coord{ std::min<uint32_t>(common::SIZEX - 1, r.car->coord.x + 60), r.car->laneY }, true, -1, Car::Kind::Police);
+            bool free = true;
+            for (const auto& c : police->cells()) free = free && !getVehicleAt(c);
+            if (free) { addVehicle(police); r.police = police; } else delete police;
+        }
+        // the patrol car pulls up by the bank and two officers jump out
+        if (r.police && !r.policeParked && r.police->coord.x <= r.car->coord.x + 12) {
+            r.police->script = Car::Script::Parked;
+            r.policeParked = true;
+            for (int k = 0; k < 2; ++k) {
+                Person* cop = createPerson(Coord{ r.police->coord.x + k * 2, r.car->laneY - 1 }, poliisi);
+                if (cop && !robbers.empty()) {
+                    cop->chaseTarget = robbers.front();
+                    cop->alerted = true;
+                    cop->lastKnownPos = robbers.front()->coord;
+                    cop->alertCooldown = 30;
+                    cop->say(k ? "Politsija! Antautukaa!" : "Pysy suojassa!");
+                }
+            }
+        }
+        if (r.timer == 0 || robbers.empty()) {
+            for (auto rob : robbers) {
+                rob->phase = Pankkirosvo::Phase::Return;
+                rob->goal = Coord{ r.car->coord.x, r.car->coord.y - 1 };
+            }
+            r.stage = Robbery::Stage::Returning;
+        }
+        break;
+
+    case Robbery::Stage::Returning:
+        if (!robbers.empty()) break;
+        if (r.boarded == 0) {
+            // every robber is dead: the car stays where it is, glovebox and all
+            r.stage = Robbery::Stage::Idle;
+            r.car = nullptr;
+            break;
+        }
+        // back out of the bank and away
+        r.car->script = Car::Script::Reverse;
+        r.car->direction = 1;
+        r.car->coord.y += r.car->length - 1;
+        r.car->speed = 40;
+        if (heard(r.car->coord, 40)) printer->showMessage("Ry\xC3\xB6st\xC3\xA4j\xC3\xA4t pakenevat!", this, false);
+        r.stage = Robbery::Stage::Fleeing;
+        break;
+
+    case Robbery::Stage::Fleeing:
+        // the police give chase, not caring whom they run over
+        if (r.police && !r.police->gone && r.police->script != Car::Script::Chase &&
+            r.car->script == Car::Script::Flee) {
+            r.police->script = Car::Script::Chase;
+            r.police->chasing = r.car;
+            r.police->reckless = true;
+            r.police->speed = 100;
+            r.police->direction = -1;
+            if (heard(r.police->coord, 40)) printer->showMessage("Poliisiauto l\xC3\xA4htee takaa-ajoon!", this, false);
+        }
+        if (r.car->gone || r.car->script == Car::Script::Parked) {
+            r.stage = Robbery::Stage::Idle;
+            r.car = nullptr;
+            r.police = nullptr;
+        }
+        break;
+    }
+
+    // police cars that drove off the map are gone for good
+    for (size_t i = 0; i < vehicles.size();) {
+        Car* car = dynamic_cast<Car*>(vehicles[i]);
+        if (car && car->gone && car != r.car && car != r.police) {
+            delete car;
+            vehicles.erase(vehicles.begin() + i);
+            continue;
+        }
+        ++i;
+    }
+}
+
+Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent)
+{
+    const float dx = std::cos(angle), dy = std::sin(angle);
+    float x = shooter->coord.x + 0.5f, y = shooter->coord.y + 0.5f;
+    Coord last = shooter->coord;
+    for (uint32_t step = 0; step < range * 2; ++step) {
+        x += dx * 0.5f;
+        y += dy * 0.5f;
+        if (x < 0 || y < 0 || x >= common::SIZEX || y >= common::SIZEY) return nullptr;
+        const Coord c { (uint32_t)x, (uint32_t)y };
+        if (c == last) continue;
+        last = c;
+        if (hitWall(c)) return nullptr;
+        Person* p = getPerson(c);
+        if (p && p != shooter && p->stats.health > 0 && common::random(hitPercent)) {
+            common::setHitDirection(dx > 0.4f ? 1 : dx < -0.4f ? -1 : 0, dy > 0.4f ? 1 : dy < -0.4f ? -1 : 0);
+            p->damage(damage);
+            return p;
+        }
+    }
+    return nullptr;
+}
+
 void Level::addGas(const Coord& c, bool toxic)
 {
     if (gas.size() >= 700) return;
@@ -605,6 +778,7 @@ void Level::cleanDead()
                     putinDead = true;
                     witnessPutinDeath(p->coord);
                 }
+                if (p->type == pankkirosvo && common::random(70)) items.push_back(new Rynkky(p->coord));
                 delete p;
                 p = nullptr;
 
@@ -857,6 +1031,7 @@ static uint32_t baseSpeed(PersonType t)
         case lapsi:        return 34;
         case kansalainen:  return 22;
         case rotta:        return 30;
+        case pankkirosvo:  return 26;
         default:           return 20;
     }
 }
@@ -929,6 +1104,7 @@ std::string Level::nameOf(const Person* p) const
         case lapsi:        return "Lapsi";
         case kansalainen:  return dynamic_cast<const Kansalainen*>(p)->name;
         case rotta:        return "Rotta";
+        case pankkirosvo:  return "Pankkiry\xC3\xB6st\xC3\xA4j\xC3\xA4";
         default:           return "Joku";
     }
 }
@@ -1103,7 +1279,7 @@ bool Level::raycast(Coord from, const Coord& to) const
     bool originBuilding = false;
     for (const auto& b : buildings) {
         if (b->hitBuilding(to)) {
-            originBuilding = b->type != EKremlin || b->hitWall(to);
+            originBuilding = !b->walkable || b->hitWall(to) || b->isBreach(to);
             break;
         }
     }

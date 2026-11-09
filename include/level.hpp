@@ -48,6 +48,21 @@ struct GasPuff {
     bool toxic;
 };
 
+class Car;
+
+// A bank robbery in progress: the getaway car, the police and how far along it is.
+struct Robbery {
+    enum class Stage { Idle, Arriving, Robbing, Returning, Fleeing };
+    Stage stage = Stage::Idle;
+    Car* car = nullptr;
+    Car* police = nullptr;
+    Building* bank = nullptr;
+    uint32_t timer = 0;
+    uint32_t cooldown = 300;  // world ticks until the next robbery (about two minutes)
+    uint32_t boarded = 0;
+    bool policeParked = false;
+};
+
 class Level {
 public:
     Level() = default;
@@ -140,6 +155,12 @@ public:
     // 0 none, 1 exhaust, 2 toxic
     int gasAt(const Coord& c) const;
     void droneImpact(const Coord& c, Building* target);
+    Robbery robbery;
+    // world tick: start, run and finish bank robberies
+    void robberyTick();
+    // A bullet from `shooter` along `angle` (radians): walls stop it; each person in
+    // the way is hit with `hitPercent` chance, else it flies on. Returns who was hit.
+    Person* fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent);
     std::vector<uint8_t> gasGrid;   // per-cell gas kind, rebuilt every world tick
     // the horizontal and vertical road at a cell (either may be null)
     void roadsAt(const Coord& c, const Road*& h, const Road*& v) const;

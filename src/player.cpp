@@ -669,8 +669,8 @@ bool Player::move(DirectionNS::Direction d, Level* level)
 
     string msg;
     Building* b = checkDoor(level, check);
-    if (b && b->type == EKremlin) {
-        // the Kremlin is walked into through its door; the way out is always open
+    if (b && b->walkable) {
+        // walkable buildings are entered through the door; the way out is always open
         const bool leaving = b->hitBuilding(coord);
         if (leaving || b->getEnterMsg(this, msg)) {
             if (!leaving) {
@@ -714,7 +714,21 @@ bool Player::move(DirectionNS::Direction d, Level* level)
     }
 
     if (!blocked) {
-        if (Vehicle* car = level->getVehicleAt(check)) {
+        Car* getaway = dynamic_cast<Car*>(level->getVehicleAt(check));
+        if (getaway && getaway->loot) {
+            // the robbers left the glovebox unlocked
+            getaway->loot = false;
+            msg = "Penkot ry\xC3\xB6st\xC3\xA4jien autoa: ";
+            const uint32_t rounds = 8 + std::rand() % 10;
+            inventory.ammukset += rounds;
+            msg += std::to_string(rounds) + " patruunaa";
+            if (inventory.pistooli == 0 || common::random(40)) { ++inventory.pistooli; msg += ", pistooli"; }
+            if (common::random(40)) { ++inventory.granata; msg += ", kranaatti"; }
+            if (common::random(25)) { ++inventory.rynkky; inventory.ammukset += 30; msg += ", RYNKKY"; }
+            msg += "!";
+            printer->showMessage(msg, level, false);
+            blocked = true;
+        } else if (Vehicle* car = level->getVehicleAt(check)) {
             msg = car->name() + " on tiell\xC3\xA4. Kolautat p\xC3\xA4\xC3\xA4si sen kylkeen.";
             printer->showMessage(msg, level, false);
             blocked = true;

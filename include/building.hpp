@@ -23,7 +23,8 @@ enum BuildingType {
     EKremlin,
     EHypermarket,
     EClosedShop,
-    ERefinery
+    ERefinery,
+    EBank
 };
 
 class Level;
@@ -61,6 +62,11 @@ public:
     bool hasDoor = true;
     // a lit interior can be seen whole from inside and from further away outside
     bool lit = false;
+    // people can walk around inside (through the door), like the Kremlin or a bank
+    bool walkable = false;
+    // wall cells smashed open (e.g. by a car), now passable rubble
+    std::vector<Coord> breaches;
+    bool isBreach(const Coord& c) const;
     uint32_t wallRight;
     uint32_t wallTop;
     uint32_t wallLeft;
@@ -212,6 +218,17 @@ public:
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual std::string getWalkMsg() const;
     uint32_t burning = 0;   // world ticks left to burn
+};
+
+// Sberbank on Tverskaja: open to walk in, and to rob.
+class Pankki : public Building {
+public:
+    Pankki();
+    virtual std::string getName() const { return "\xD0\xA1\xD0\x91\xD0\x95\xD0\xA0\xD0\x91\xD0\x90\xD0\x9D\xD0\x9A"; }
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual std::string getWalkMsg() const;
+    Coord robberyWindow() const { return Coord{ wallLeft + 4, wallBot }; }
 };
 
 #endif

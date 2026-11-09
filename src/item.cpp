@@ -434,6 +434,14 @@ bool PutinPoyta::interact(PlayerNS::Player* player) {
     return false;
 }
 
+// assault rifle
+bool Rynkky::interact(PlayerNS::Player* player)
+{
+    ++player->inventory.rynkky;
+    player->inventory.ammukset += 30;
+    return true;
+}
+
 // war map
 Kartta::Kartta(const Coord& c, const char* glyph) : Item(c, EKartta), glyph(glyph) { }
 std::string Kartta::getMsg() const {

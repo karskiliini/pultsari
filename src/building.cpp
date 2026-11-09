@@ -27,6 +27,7 @@ std::string Building::typeToChar(const Coord& c) const
     uint32_t x = c.x;
     uint32_t y = c.y;
 
+    if (isBreach(c)) return "\xE2\x96\x9E"; // smashed wall, glass and rubble
     if (hasDoor && hitDoor(c)) return "░";
     if (hitWindow(c)) return "▒";
     if (hitWall(c)) return "█";
@@ -83,7 +84,14 @@ bool Building::hitRightWall(const Coord& c) const {
     return ((c.x == wallRight) && (c.y >= wallTop) && (c.y <= wallBot));
 }
 
+bool Building::isBreach(const Coord& c) const
+{
+    for (const auto& b : breaches) if (b == c) return true;
+    return false;
+}
+
 bool Building::hitWall(const Coord& c) const {
+    if (isBreach(c)) return false;
     if (hitTopWall(c)   ||
         hitRightWall(c) ||
         hitBotWall(c)   ||
@@ -594,6 +602,7 @@ std::string Seina::getWalkMsg() const { return "Betonimuuri. Joku on maalannut s
 // KREMLIN
 Kremlin::Kremlin() : Building(BuildingType::EKremlin) {
     lit = true; // crystal chandeliers in every hall
+    walkable = true;
     wallRight = 45;
     wallTop = 0;
     wallLeft = 0;
@@ -854,4 +863,37 @@ std::string Jalostamo::getWalkMsg() const
 {
     return burning ? "Sein\xC3\xA4 on tulikuuma. \xC3\x96ljy palaa sis\xC3\xA4ll\xC3\xA4."
                    : "S\xC3\xA4ili\xC3\xB6iss\xC3\xA4 lukee: \xD0\x9D\xD0\xB5 \xD0\xBA\xD1\x83\xD1\x80\xD0\xB8\xD1\x82\xD1\x8C!";
+}
+
+// BANK
+
+Pankki::Pankki() : Building(BuildingType::EBank)
+{
+    walkable = true;
+    wallLeft = 0;
+    wallRight = 18;
+    wallTop = 0;
+    wallBot = 7;
+    door = DirectionNS::down;
+    windows.push_back({4, wallBot});
+    windows.push_back({14, wallBot});
+    windows.push_back({wallLeft, 3});
+    windows.push_back({wallRight, 3});
+}
+
+bool Pankki::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Sberbankin ovi aukeaa. Vartija nukkuu tuolillaan.";
+    return true;
+}
+
+bool Pankki::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Jonossa seisoo el\xC3\xA4kel\xC3\xA4isi\xC3\xA4. Kassalla lukee: 'Dollareita ei ole.'";
+    return true;
+}
+
+std::string Pankki::getWalkMsg() const
+{
+    return "Sberbankin sein\xC3\xA4. Ikkunassa mainos: '12 % korko, takuulla!'";
 }

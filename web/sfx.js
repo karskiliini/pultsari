@@ -174,6 +174,12 @@
             o.start(t); wob.start(t);
             o.stop(t + 0.5); wob.stop(t + 0.5);
         },
+        glass(t, v) {
+            for (let i = 0; i < 9; i++) {
+                burst(t + Math.random() * 0.35, v * 0.5, { type: 'bandpass', freq: 3000 + Math.random() * 4000, q: 6, decay: 0.08, dur: 0.1 });
+            }
+            thump(t, v, 90, 0.25);
+        },
         cough(t, v) {
             for (let i = 0; i < 2; i++) {
                 burst(t + i * 0.22, v * 0.8, { type: 'bandpass', freq: 700, q: 1.2, decay: 0.14, dur: 0.16 });

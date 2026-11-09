@@ -10,6 +10,7 @@
 #include <string>
 #include <iostream>
 #include <chrono>
+#include <cmath>
 
 using std::string;
 using PlayerNS::Player;
@@ -42,6 +43,11 @@ void Person::damage(uint32_t damage)  {
         const auto now = clock::now();
         if (now - lastHit < std::chrono::milliseconds(700)) return;
         lastHit = now;
+    }
+    if (armor && type != pelaaja && random(60)) {
+        damage = damage > 2 ? damage / 3 : 0;
+        say("*TUNK*");
+        report("Luotiliivi pys\xC3\xA4ytti luodin!");
     }
     common::hitEvent(coord, damage);
     if (damage >= stats.health) {
@@ -3256,5 +3262,78 @@ bool Rotta::interactThrow(Item* item, Person* source, std::string& msg)
 {
     damage(2);
     msg = "Osuit rottaan.";
+    return true;
+}
+
+// ============ Bank robbers ============
+
+Pankkirosvo::Pankkirosvo(const Coord& pos, const Coord& goal) : Person(pankkirosvo, pos), goal(goal)
+{
+    stats.health = 10;
+    visionRange = 9;
+    armor = random(50);
+}
+
+void Pankkirosvo::stepTowards(const Coord& target)
+{
+    Coord next = coord;
+    switch (getMoveDirection(target)) {
+        case DirectionNS::up:    if (next.y > 0) --next.y; break;
+        case DirectionNS::down:  ++next.y; break;
+        case DirectionNS::left:  if (next.x > 0) --next.x; break;
+        case DirectionNS::right: ++next.x; break;
+        default: return;
+    }
+    if (!level->hitWall(next) && !level->hitPerson(next) && !level->getVehicleAt(next)) coord = next;
+}
+
+// drunk and hiccuping: the burst goes everywhere
+void Pankkirosvo::sprayFire()
+{
+    Person* target = nullptr;
+    uint32_t best = 10;
+    for (auto p : level->persons) {
+        if (p == this || p->type == pankkirosvo || p->stats.health == 0) continue;
+        const uint32_t d = coord.distance(p->coord);
+        if (d < best && canSeeTarget(p->coord)) { best = d; target = p; }
+    }
+    if (!target || !random(45)) return;
+    const float aim = std::atan2((float)target->coord.y - coord.y, (float)target->coord.x - coord.x);
+    for (int shot = 0; shot < 3; ++shot) {
+        const float spread = ((std::rand() % 100) - 50) / 100.0f; // about +-0.5 rad
+        level->fireBullet(this, aim + spread, 12, std::rand() % 3 + 3, 40);
+    }
+    if (random(40)) say(random(50) ? "*hik* KAIKKI MAAHAN!" : "Rahat pussiin! *hik*");
+    level->audio.addSound(coord, SoundType::Gunshot,
+        "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Ry\xC3\xB6st\xC3\xA4j\xC3\xA4 ampuu sarjaa!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
+    level->alertCops(this, 35);
+}
+
+void Pankkirosvo::npcAct()
+{
+    if (boarded) return;
+    sprayFire();
+    if (coord.distance(goal) > 0) stepTowards(goal);
+    if (phase == Phase::Raid && coord.distance(goal) <= 1 && random(15)) {
+        // wander about the hall shouting at the clerks
+        goal = Coord{ goal.x + std::rand() % 5 - 2, goal.y + std::rand() % 3 - 1 };
+        if (level->hitWall(goal)) goal = coord;
+        if (random(40)) say(random(50) ? "Kassa auki! NYT!" : "Kuka liikkuu, se kuolee! *hik*");
+    }
+    if (phase == Phase::Return && coord.distance(goal) <= 1) boarded = true;
+}
+
+bool Pankkirosvo::interact(std::string& msg, Person* source)
+{
+    damage(std::rand() % 2 + 1);
+    msg = "Lyöt ryöstäjää! Hän iskee kiväärin perällä takaisin.";
+    source->damage(2);
+    return true;
+}
+
+bool Pankkirosvo::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    damage(2);
+    msg = "Osuit ryöstäjään!";
     return true;
 }

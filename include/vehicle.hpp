@@ -7,6 +7,7 @@
 #include <vector>
 
 class Level;
+class Building;
 
 namespace PlayerNS {
     class Player;
@@ -57,7 +58,9 @@ public:
 // A car driving its lane end to end; honks at people in the way, or hits them.
 class Car : public Vehicle {
 public:
-    enum class Kind { Random, Limousine, Police };
+    enum class Kind { Random, Limousine, Police, Getaway };
+    // scripted driving for a bank robbery and the police chase
+    enum class Script { None, ToBank, Smash, Parked, Reverse, Flee, Chase };
     Car(const Coord& pos, bool horizontal, int direction, Kind kind = Kind::Random);
     virtual void frame(uint32_t ms);
     virtual std::string name() const { return model; }
@@ -65,6 +68,13 @@ public:
     virtual const char* colorAt(uint32_t index) const;
     std::string model;
     uint32_t speed;   // tiles per second x10
+    Script script = Script::None;
+    Building* bank = nullptr;     // the bank to smash into
+    uint32_t laneY = 0;           // the lane to return to
+    Car* chasing = nullptr;       // the police after the getaway car
+    bool reckless = false;        // runs people over instead of honking
+    bool gone = false;            // drove off the map
+    bool loot = false;            // the getaway car's glovebox, until searched
 private:
     bool limousine = false;
     uint32_t energy = 0;

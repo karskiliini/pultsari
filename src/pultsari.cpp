@@ -174,6 +174,11 @@ static void populateBuildings(Level& level, const GameState& gs)
     b->setOffset(180, 50);
     level.addBuilding(b);
 
+    // Sberbank on the north side of Tverskaja
+    b = new Pankki();
+    b->setOffset(100, 102);
+    level.addBuilding(b);
+
     // Western shops along Tverskaja, all closed since 2022
     {
         struct Shop { const char* name; const char* sign; uint32_t x; };
@@ -647,6 +652,7 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
             level.spreadNews();
             level.updateVehicles();
             level.skyTick();
+            level.robberyTick();
             if (level.events) level.events->update();
         }
         level.cleanDead();
@@ -770,12 +776,14 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             Mode mode = Mode::Normal;
             int invSelection = 0;
             bool throwMenu = false; // the inventory was opened with F, to throw something
-            constexpr int INV_ITEMS = 15;
+            constexpr int INV_ITEMS = 16;
 
             // aim state
             float aimAngle = 0.0f;
             // the pistol: holstered, in hand (lowered, laser on the ground) or aimed
             bool gunDrawn = false;
+            bool rifleRaised = false;   // the weapon in hand is the assault rifle
+            uint32_t msSinceShot = 1000;
             float facing = 0.0f; // direction of the last step, for raising the gun
             uint32_t aimItemNum = 0;
             uint32_t aimTick = 0;
@@ -902,9 +910,25 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     case 12: // kranaatti can only be thrown
                         startThrowAim(14);
                         break;
+                    case 15: // rynkky: raise the assault rifle; hold Space for full auto
+                        if (inv.rynkky > 0 && inv.ammukset > 0) {
+                            gunDrawn = true;
+                            rifleRaised = true;
+                            aimIsShooting = true;
+                            aimAngle = facing;
+                            aimTick = 0;
+                            mode = Mode::Aim;
+                            printer->showMessage("Rynkky olalle. Pid\xC3\xA4 v\xC3\xA4lily\xC3\xB6nti\xC3\xA4 pohjassa: sarjatulta!", &level, false);
+                        } else if (inv.rynkky == 0) {
+                            printer->showMessage("Ei rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri\xC3\xA4.", &level, false);
+                        } else {
+                            printer->showMessage("Ei ammuksia.", &level, false);
+                        }
+                        break;
                     case 13: // pistooli: raise it towards the last step and aim
                         if (inv.pistooli > 0 && inv.ammukset > 0) {
                             gunDrawn = true;
+                            rifleRaised = false;
                             aimIsShooting = true;
                             aimAngle = facing;
                             aimTick = 0;
@@ -965,8 +989,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         printer->showMessage("Laitat aseen vy\xC3\xB6lle.", &level, false);
                                     }
                                     break;
-                                case ' ': // Space raises the pistol to aim; Space again fires
-                                    if (player.inventory.pistooli > 0) useInventoryItem(13);
+                                case ' ': // Space raises the best gun to aim; Space again fires
+                                    if (player.inventory.rynkky > 0) useInventoryItem(15);
+                                    else if (player.inventory.pistooli > 0) useInventoryItem(13);
                                     else printer->showMessage("Sinulla ei ole asetta.", &level, false);
                                     break;
                                 default: break;
@@ -1040,6 +1065,23 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     aimAngle += 0.15f;
                                     break;
                                 case ' ': // fire/throw/shoot
+                                    if (aimIsShooting && rifleRaised) {
+                                        // held Space repeats: full auto, about eight rounds a second, wildly
+                                        if (msSinceShot < 120) break;
+                                        msSinceShot = 0;
+                                        if (player.inventory.ammukset == 0) {
+                                            printer->showMessage("*KLIK* Lipas tyhj\xC3\xA4!", &level, false);
+                                            break;
+                                        }
+                                        --player.inventory.ammukset;
+                                        const float spread = ((std::rand() % 100) - 50) / 110.0f * (1.0f + player.stats.promilles / 30.0f);
+                                        Person* hit = level.fireBullet(&player, aimAngle + spread, 18, std::rand() % 3 + 3, 85);
+                                        level.audio.addSound(player.coord, SoundType::Gunshot,
+                                            "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri laulaa!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
+                                        level.alertCops(&player, 35);
+                                        if (hit) printer->showMessage("Osuma: " + level.nameOf(hit) + "!", &level, false);
+                                        break; // the rifle stays up
+                                    }
                                     if (aimIsShooting) {
                                         player.shoot(aimDirection());
                                         aimIsShooting = false;
@@ -1089,6 +1131,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         }
                     }
 
+                    msSinceShot += FRAME_MS;
                     if (mode == Mode::Aim && aimIsShooting) {
                         aimHeldMs += FRAME_MS;
                         // about ten seconds to the top sober, much quicker drunk
@@ -1116,8 +1159,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         level.buildingTurn();
                         level.spreadNews();
                         level.updateVehicles();
-                    level.skyTick();
                         level.skyTick();
+                        level.robberyTick();
                         if (level.events) level.events->update();
 
                         // ambient audio sources
@@ -1276,6 +1319,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     level.buildingTurn();
                     level.npcTurn();
                     level.updateVehicles();
+                    level.skyTick();
+                    level.robberyTick();
                     if (level.events) level.events->update();
 
                     // ambient audio sources

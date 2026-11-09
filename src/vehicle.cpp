@@ -5,6 +5,7 @@
 #include "common.hpp"
 #include "input.hpp"
 #include "persons.hpp"
+#include "building.hpp"
 #include <cmath>
 #include <iostream>
 
@@ -273,6 +274,8 @@ Car::Car(const Coord& pos, bool horiz, int dir, Kind kind)
     };
     Model m = models[std::rand() % 10];
     if (kind == Kind::Police) m = { "Politsijan auto", "1;94", 55, 4 };
+    if (kind == Kind::Getaway) m = { "Ry\xC3\xB6st\xC3\xA4jien Lada", "1;38;5;130", 60, 3 };
+    loot = kind == Kind::Getaway;
     if (kind == Kind::Limousine) m = { "Putinin limusiini", "38;5;16", 55, 10 };
     limousine = kind == Kind::Limousine;
     model = m.name;
@@ -296,9 +299,37 @@ const char* Car::colorAt(uint32_t i) const
 
 void Car::frame(uint32_t ms)
 {
+    if (script == Script::Parked || gone) return;
     energy += speed * ms;
     if (energy < 10000) return;
     energy -= 10000;
+
+    // the getaway car turns off the lane and drives up through the bank window
+    if (script == Script::ToBank && bank && coord.x == bank->wallLeft + 4) { // Pankki::robberyWindow()
+        horizontal = false;
+        direction = -1;
+        length = 2;
+        script = Script::Smash;
+    }
+    if (script == Script::Smash && bank && coord.y + 1 == bank->wallBot) {
+        script = Script::Parked;
+        return;
+    }
+    // backing out of the bank to the lane, then away at full speed
+    if (script == Script::Reverse && coord.y >= laneY) {
+        coord.y = laneY;
+        horizontal = true;
+        direction = -1;
+        length = 3;
+        script = Script::Flee;
+        reckless = true;
+        speed = 90;
+    }
+    // fleeing and chasing cars leave the map instead of driving round again
+    if ((script == Script::Flee || script == Script::Chase) && horizontal && coord.x == 0) {
+        gone = true;
+        return;
+    }
 
     Coord next = coord;
     const uint32_t limit = horizontal ? common::SIZEX : common::SIZEY;
@@ -306,7 +337,25 @@ void Car::frame(uint32_t ms)
     if (direction > 0) axis = axis + 1 >= limit ? 0 : axis + 1;
     else axis = axis == 0 ? limit - 1 : axis - 1;
 
-    if (level->getVehicleAt(next)) return;
+    if (Vehicle* blocker = level->getVehicleAt(next)) {
+        // the police ram the getaway car to a stop
+        if (script == Script::Chase && blocker == chasing) {
+            chasing->script = Script::Parked;
+            script = Script::Parked;
+            level->audio.addSound(coord, SoundType::Fight, "RYS\xC3\x84YS! Poliisi rammaa pakoauton!", "Kolarin ryskett\xC3\xA4", "...kolarin rysk\xC3\xA4ys...", 40);
+            common::boomEvent(next, 1);
+        }
+        return;
+    }
+
+    if (script == Script::Smash && bank && bank->hitWall(next)) {
+        // through the window: glass everywhere
+        bank->breaches.push_back(next);
+        Coord side { next.x + 1, next.y };
+        if (bank->hitWall(side)) bank->breaches.push_back(side);
+        level->audio.addSound(next, SoundType::Glass, "KILINÄ! Auto ajaa pankin ikkunasta sisään!", "Lasin s\xC3\xA4rkymist\xC3\xA4", "...lasin helin\xC3\xA4\xC3\xA4...", 40);
+        common::boomEvent(next, 1);
+    }
 
     Person* p = level->getPerson(next);
     if (p && p->type == pelaaja && level->playerDead) {
@@ -315,7 +364,7 @@ void Car::frame(uint32_t ms)
     }
     if (p) {
         // mostly the driver leans on the horn; sometimes they don't brake at all
-        if (waiting < 6 && common::random(80)) {
+        if (!reckless && waiting < 6 && common::random(80)) {
             ++waiting;
             if (waiting == 1) {
                 level->audio.addSound(coord, SoundType::Engine,
@@ -335,7 +384,7 @@ void Car::frame(uint32_t ms)
         Coord side = p->coord;
         if (horizontal) side.y += (side.y % 2) ? 1 : -1; else side.x += (side.x % 2) ? 1 : -1;
         if (!level->hit(side)) p->coord = side;
-        return;
+        if (!reckless) return;
     }
     waiting = 0;
     coord = next;

@@ -27,7 +27,8 @@ enum PersonType {
     kotiaiti,
     lapsi,
     kansalainen,
-    rotta
+    rotta,
+    pankkirosvo
 };
 
 #endif

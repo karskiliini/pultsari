@@ -53,6 +53,7 @@ public:
     // pickpocketing: money taken from the player, and how many more actions to run away
     uint32_t stolenMoney = 0;
     uint32_t fleeActions = 0;
+    bool armor = false; // a bulletproof vest takes the sting out of most hits
     // individual clothing colour (xterm-256 SGR), overrides the per-type colour
     const char* clothing = nullptr;
     bool blind = false;
@@ -404,6 +405,24 @@ public:
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "r"; };
     Coord home;
+};
+
+// A bank robber in a balaclava with an assault rifle, drunk and hiccuping:
+// sprays everyone inside the bank, rarely hits anything.
+class Pankkirosvo : public Person {
+public:
+    enum class Phase { Raid, Return };
+    Pankkirosvo(const Coord& pos, const Coord& goal);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "R"; };
+    Phase phase = Phase::Raid;
+    Coord goal;             // where to go: a spot in the bank, then the car
+    bool boarded = false;   // back in the getaway car
+private:
+    void stepTowards(const Coord& target);
+    void sprayFire();
 };
 
 #endif

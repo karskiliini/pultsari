@@ -36,7 +36,8 @@ enum ItemType {
     EViinaKellari,
     EPutinPoyta,
     EKartta,
-    ERoska
+    ERoska,
+    ERynkky
 };
 
 class Level;
@@ -327,6 +328,15 @@ private:
     const char* glyph;
     std::string msg;
     int outcome;
+};
+
+// An assault rifle, with a full magazine.
+class Rynkky : public Item {
+public:
+    Rynkky(const Coord& c) : Item(c, ERynkky) { }
+    virtual std::string typeToChar() const { return "\xC2\xAC"; }
+    virtual std::string getMsg() const { return "Rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri! Kalashnikov, tietysti. Ja t\xC3\xA4ysi lipas."; }
+    virtual bool interact(PlayerNS::Player* player);
 };
 
 #endif

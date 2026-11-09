@@ -305,6 +305,7 @@ const char* personColor(const Person* p)
         case kotiaiti:     return "38;5;175";           // pink velour tracksuit
         case lapsi:        return "1;38;5;214";         // bright orange puffer jacket
         case rotta:        return "38;5;246";           // grey fur
+        case pankkirosvo:  return p->armor ? "1;38;5;94" : "1;38;5;160"; // red balaclava; brown vest
         default:           return "37";
     }
 }
@@ -330,6 +331,7 @@ const char* itemColor(ItemType t)
 const char* buildingColor(const Building* b, const string& glyph)
 {
     if (glyph == "\xE2\x96\x88") return b->type == EKremlin ? "31" : "90";
+    if (glyph == "\xE2\x96\x9E") return "37";
     if (glyph == "\xE2\x96\x91") return "33";
     if (glyph == "\xE2\x96\x92") return "2;36";
     if (glyph == "~") return "1;91";
@@ -448,8 +450,9 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         if (!found) {
             for (auto b : l->buildings) {
                 if (!b->hitBuilding(coord)) continue;
+                if (b->isBreach(coord) && l->getVehicleAt(coord)) break; // the car in the hole shows
                 string g = b->typeToChar(coord);
-                if (g != " " || b->type != EKremlin) {
+                if (g != " " || !b->walkable) {
                     c = g;
                     color = buildingColor(b, c);
                     found = true;
@@ -595,6 +598,7 @@ std::vector<OverlayItem> overlayItems(const Inventory* inventory)
         {"KRANAATTI", inventory->granata,  false, true,  "         "},
         {"PISTOOLI",  inventory->pistooli, true,  false, "[E] ammu "},
         {"AMMUKSET",  inventory->ammukset, false, false, "         "},
+        {"RYNKKY",    inventory->rynkky,   true,  false, "[E] t\xC3\xA4ht\xC3\xA4\xC3\xA4"},
     };
 }
 

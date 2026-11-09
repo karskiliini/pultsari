@@ -33,6 +33,7 @@ static const char* effectFor(const AudioEvent& e)
         case SoundType::Vomit:        return "vomit";
         case SoundType::Fire:         return "fire";
         case SoundType::Drone:        return "drone";
+        case SoundType::Glass:        return "glass";
         default:                      return nullptr;
     }
 }
