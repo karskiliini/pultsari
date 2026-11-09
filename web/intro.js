@@ -75,7 +75,7 @@
         const drops = [];   // drops that let go and fall
 
         // ---- fluid: particles with gravity, pressure, cohesion and viscosity ----
-        const MAX = 1600;
+        const MAX = 2800;
         const px = new Float32Array(MAX), py = new Float32Array(MAX);
         const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
         // 0 = watery, 1 = thick slime: every splash is half water, the rest stays thick
@@ -134,9 +134,10 @@
                     vx[i] *= 0.93 - 0.23 * t; vy[i] *= 0.95 - 0.2 * t;
                     fly[i] = 0;
                 } else if (at(title.mask, px[i], py[i]) || at(title.mask, px[i], py[i] + 1)) {
-                    // the title gets smeared on the way: it slows the jet, a little of it stays behind
-                    vx[i] *= 0.985 - 0.02 * t; vy[i] *= 0.9;
-                    if (Math.random() < 0.004 * t) { vx[i] *= 0.2; fly[i] = 0; }
+                    // flying slime catches on the title here and there along its length; caught slime
+                    // clings and oozes down slowly, water mostly flies on
+                    if (fly[i] && !(t > 0.5 && Math.random() < 0.06)) { vx[i] *= 0.99; vy[i] *= 0.95; }
+                    else { fly[i] = 0; vx[i] *= 0.55 - 0.3 * t; vy[i] *= 0.6 - 0.35 * t; }
                 }
                 // the jet flies freely until it hits something; after that slime drags on everything
                 if (fly[i]) {
@@ -170,6 +171,22 @@
                     dripSound();
                 }
             }
+        }
+
+        // the poured word fills like liquid: from each cell a drip filled, downward fast, sideways slower
+        function spreadFill(t) {
+            const late = t > 13 ? 3 : 1; // toward the end it hurries a little
+            const fresh = [];
+            for (const h of holes) {
+                if (filled[h]) continue;
+                const up = h - FW, down = h + FW;
+                let p = 0;
+                if (up >= 0 && filled[up]) p += 0.05;
+                if (filled[h - 1] || filled[h + 1]) p += 0.012;
+                if (down < FW * FH && filled[down]) p += 0.003;
+                if (p && Math.random() < p * late) fresh.push(h);
+            }
+            for (const h of fresh) { filled[h] = 1; filledCount++; }
         }
 
         // feed drips from the bottom of the Latin letters above unfilled Cyrillic cells
@@ -426,16 +443,23 @@
             [2.6, () => window.SFX && SFX.play('cough', 1)],
             [3.1, () => { window.SFX && SFX.play('vomit', 1); jet = 540; }],
             [5.0, () => { window.SFX && SFX.play('vomit2', 1); splash(360); }],
+            // the third heave is the longest: a long, wavering jet
+            [7.0, () => { window.SFX && SFX.play('vomit', 1); jet = 1000; jetRate = 9; jetLong = true; }],
+            [7.9, () => window.SFX && SFX.play('vomit2', 0.8)],
         ];
 
         // the first heave: a jet from the left that sweeps across the letters to the right
-        let jet = 0;
+        let jet = 0, jetRate = 30, jetLong = false, jetT = 0;
         function jetFrame() {
             if (jet <= 0) return;
+            jetT++;
             const srcX = startX / CELL - 14, srcY = (baseY - fs * 0.5) / CELL;
-            for (let k = 0; k < 30 && jet > 0; k++, jet--) {
+            // the long heave sways up and down and weakens toward the end
+            const sway = jetLong ? Math.sin(jetT / 9) * 0.35 : 0;
+            const power = jetLong ? 0.75 + 0.35 * Math.min(1, jet / 500) : 1;
+            for (let k = 0; k < jetRate && jet > 0; k++, jet--) {
                 emit(srcX + Math.random() * 8, srcY + (Math.random() - 0.5) * 7,
-                     2.2 + Math.random() * 0.8, -0.75 + Math.random() * 0.35, jet % 2 ? 0 : 1);
+                     (2.2 + Math.random() * 0.8) * power, -0.75 + sway + Math.random() * 0.35, jet % 2 ? 0 : 1);
                 fly[n - 1] = 120;
             }
         }
@@ -455,8 +479,8 @@
             while (stage < cues.length && t >= cues[stage][0]) cues[stage++][1]();
 
             const fill = filledCount / Math.max(1, cyr.count);
-            if (t > 3.6 && fill < 0.97 && t < 12) feed(4);
-            if (!doneAt && t > 3.6 && (fill >= 0.97 || t >= 12)) {
+            if (t > 3.6 && fill < 0.97) spreadFill(t);
+            if (!doneAt && t > 3.6 && ((fill >= 0.97 && t > 9.5) || t >= 17)) {
                 for (const h of holes) if (!filled[h]) { filled[h] = 1; filledCount++; }
                 doneAt = t;
                 window.SFX && SFX.play('balalaika', 1);
@@ -492,6 +516,7 @@
             if (t > 2.6) text('*RÖKH*', startX - fs * 0.2, baseY + fs * 0.9, '#e0b030', fs * 0.42);
             if (t > 3.1) text('*BLAAARGH*', startX - fs * 0.6, baseY + fs * 1.6, '#f0c040', fs * 0.5);
             if (t > 5.0) text('*ÖÖÖRRRKKK*', latinX + latinW * 0.45, baseY - fs * 1.15, '#f0c040', fs * 0.45);
+            if (t > 7.0) text('*BLÖÖÖÖÖRRGHHH-HHH*', startX - fs * 0.4, baseY - fs * 1.4, '#ffd24a', fs * 0.55);
 
             drawFluid();
             drawDrips();
