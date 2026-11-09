@@ -356,6 +356,19 @@ static void populatePersons(Level& level, const GameState& gs)
             spawn(new Kenraali(Coord{ mapLeft + 3, mapTop + 3 }, shoigu, area));
             spawn(new Kenraali(Coord{ mapLeft + 7, mapTop + 3 }, gerasimov, area));
             spawn(new Medvedev(Coord{ b->wallRight - 8, b->wallBot - 5 }, area));
+
+            // Kremlin guards carry radios: two outside the door, two inside, one by Putin
+            const Coord door = b->getDoor();
+            const Coord guardPosts[] = {
+                { door.x - 2, door.y + 1 }, { door.x + 2, door.y + 1 },
+                { door.x - 2, door.y - 1 }, { door.x + 2, door.y - 1 },
+                { left - 2, top + 3 },
+            };
+            for (const auto& post : guardPosts) {
+                Vartija* guard = new Vartija(post);
+                guard->hasRadio = true;
+                spawn(guard);
+            }
             break;
         }
     }

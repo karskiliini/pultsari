@@ -39,7 +39,21 @@ public:
     PlayerNS::Player* getPlayer() const;
     bool PersonExists(PersonType type) const;
     void removePerson(Person* person);
-    void alertCops(Person* source);
+    // --- perception: NPCs act only on what they see, hear or get over the radio ---
+    bool isAlive(const Person* p) const;
+    // wall crossings on the straight line between two points; Kremlin walls count double
+    uint32_t wallsBetween(const Coord& a, const Coord& b) const;
+    // every wall in between cuts the hearing range to a third
+    bool canHear(const Coord& listener, const Coord& source, uint32_t range) const;
+    // radios carry further and through walls better, but not through everything
+    bool radioReaches(const Coord& from, const Coord& to) const;
+    // security forces who see or hear `source` (within `range`) start chasing it
+    void alertCops(Person* source, uint32_t range = 12);
+    // `caller` shouts (or radios) for help with `target`; hostile makes responders attack it
+    void callForHelp(Person* caller, Person* target, bool hostile);
+    // people who know Putin is dead shout it; whoever hears them learns it too
+    void spreadNews();
+    void witnessPutinDeath(const Coord& where);
     void cleanDead();
     void cleanDiscardedItems();
 
@@ -89,7 +103,6 @@ public:
     void stepAnimations();
     void explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person* source);
 
-    Person* attack = nullptr;
     Printer* printer = nullptr;
     EnvironmentEvents* events = nullptr;
 

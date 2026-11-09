@@ -47,6 +47,11 @@ public:
     bool pathFinding = false;
 
     uint32_t visionRange = 0;
+    bool hasRadio = false;
+    // what this NPC knows from its own eyes, ears or radio
+    Person* chaseTarget = nullptr;
+    bool knowsPutinDead = false;
+    Person* currentTarget();
     bool alerted = false;
     Coord lastKnownPos = { 0, 0 };
     uint32_t alertCooldown = 0;
@@ -264,6 +269,10 @@ public:
     virtual std::string typeToChar() const { return "W"; };
     Coord homePos;
     bool fleeing = false;
+private:
+    // Kremlin guards carry radios (hasRadio) and react to what they see, hear or are told
+    void radioGuardAct();
+    void stepTo(const Coord& target);
 };
 
 class Putin : public Person {

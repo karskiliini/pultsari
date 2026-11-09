@@ -34,7 +34,6 @@ void Person::powerup(uint32_t damage)  {
 
 void Person::damage(uint32_t damage)  {
     if (damage >= stats.health) {
-        if (this == level->attack) level->attack = nullptr;
         stats.health = 0;
     } else {
         stats.health -= damage;
@@ -49,6 +48,12 @@ void Person::damage(uint32_t damage)  {
     a->coordMove = Coordinate<int>(0, -1);
     level->addAnimation(a);
 #endif
+}
+
+Person* Person::currentTarget()
+{
+    if (!level->isAlive(chaseTarget)) chaseTarget = nullptr;
+    return chaseTarget;
 }
 
 bool Person::canSeeTarget(const Coord& target) const
@@ -278,6 +283,7 @@ Item* Mummo::dropItem()
 Cop::Cop(const Coord& pos) : Person(poliisi, pos)
 {
     visionRange = 10;
+    hasRadio = true;
 }
 
 bool Cop::move(Direction d, std::string& msg)
@@ -320,7 +326,7 @@ void Cop::npcAct()
     Player* p = level->getPlayer();
     bool seesPlayer = canSeeTarget(p->coord);
 
-    if (level->celebrating) {
+    if (knowsPutinDead) {
         if (random(20)) {
             static const char* party[] = {
                 "*hic* VAPAUS!",
@@ -343,10 +349,26 @@ void Cop::npcAct()
         return;
     }
 
-    if (!level->attack)
+    Person* target = currentTarget();
+    if (!target && alerted) {
+        // heard a colleague ordering someone about: go and back them up
+        if (coord.distance(lastKnownPos) <= 2) {
+            static const char* backup[] = {
+                "Ongelmia, kollega?",
+                "Dokumenty!",
+                "Mit\xC3\xA4 t\xC3\xA4\xC3\xA4ll\xC3\xA4 tapahtuu?",
+            };
+            say(backup[std::rand() % 3]);
+            alerted = false;
+        } else {
+            move(getMoveDirection(lastKnownPos), msg);
+        }
+    } else if (!target)
     {
         if (seesPlayer && coord.distance(p->coord) == 1)
         {
+            // colleagues within earshot hear the orders and come to help
+            if (random(30)) level->callForHelp(this, p, false);
             {
                 int roll = std::rand() % 100;
                 if (roll < 30) {
@@ -411,10 +433,10 @@ void Cop::npcAct()
             }
         }
     } else {
-        Person* target = level->attack;
         bool seesTarget = (target == p) ? seesPlayer : canSeeTarget(target->coord);
 
         if (seesTarget) {
+            if (!alerted) level->callForHelp(this, target, true);
             alerted = true;
             lastKnownPos = target->coord;
             alertCooldown = 15;
@@ -425,11 +447,9 @@ void Cop::npcAct()
 
             if (seesTarget && coord.distance(target->coord) == 1)
             {
-                if (target == p) {
+                if (random(35)) {
                     say("Pamppu maistuu!");
-                    p->damage(rand()%2+1);
-                } else {
-                    msg = "";
+                    target->damage(rand()%2+1);
                 }
             } else {
                 Direction d = getMoveDirection(chasePos);
@@ -458,6 +478,21 @@ void Cop::npcAct()
     printer->showMessage(msg, level);
 }
 
+// a cop who is attacked chases the attacker and shouts for help; if knocked
+// out, whoever saw or heard the fight reacts instead
+static void copAttacked(Person* cop, Person* source)
+{
+    if (cop->stats.health > 0) {
+        cop->chaseTarget = source;
+        cop->alerted = true;
+        cop->lastKnownPos = source->coord;
+        cop->alertCooldown = 20;
+        cop->level->callForHelp(cop, source, true);
+    } else {
+        cop->level->alertCops(source);
+    }
+}
+
 bool Cop::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja)
@@ -470,7 +505,7 @@ bool Cop::interact(std::string& msg, Person* source)
             damage(stats.health);
             ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
         }
-        level->alertCops(source);
+        copAttacked(this, source);
     } else if (source->type == varas) {
         msg = "Politsija pidätti varkaan!";
         source->damage(stats.health);
@@ -488,7 +523,7 @@ bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
         ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
     }
 
-    level->alertCops(source);
+    copAttacked(this, source);
 
     auto i = dropItem();
     level->addItem(i);
@@ -498,8 +533,8 @@ bool Cop::interactThrow(Item* item, Person* source, std::string& msg)
 bool Cop::interactpuke(Person* source)
 {
     printer->showMessage("Politsija tukehtui oksennukseen. Muut politsijat eivät taida tykätä sinusta.", level);
-    level->alertCops(source);
     damage(stats.health);
+    copAttacked(this, source);
     return true;
 }
 
@@ -1496,8 +1531,11 @@ void Veteraani::npcAct()
     if (!aggressive) {
         bool trigger = false;
         // loud noises nearby (thrown items, fights) can trigger
-        if (level->attack && coord.distance(level->attack->coord) < 6) {
-            trigger = random(60);
+        for (const auto& s : level->audio.getHeardSounds(coord)) {
+            if (s.type == SoundType::Gunshot || s.type == SoundType::Explosion || s.type == SoundType::Fight) {
+                trigger = random(60);
+                break;
+            }
         }
         // small random chance
         if (!trigger) trigger = random(3);
@@ -1659,7 +1697,7 @@ void Juoppo::npcAct()
 {
     string msg = "";
 
-    if (level->celebrating) {
+    if (knowsPutinDead) {
         if (random(15)) {
             static const char* party[] = {
                 "PUTIN KUOLI! *RÖYH*",
@@ -1797,7 +1835,9 @@ void FSBAgent::npcAct()
     string msg = "";
     Player* p = level->getPlayer();
 
-    if (level->putinDead && !level->celebrating) {
+    // rages only if it knows Putin is dead and who did it
+    Person* killer = knowsPutinDead ? currentTarget() : nullptr;
+    if (killer) {
         if (random(10)) {
             static const char* rage[] = {
                 "УБИТЬ ЕГО!",
@@ -1809,13 +1849,11 @@ void FSBAgent::npcAct()
             };
             say(rage[std::rand()%6]);
         }
-        if (p && coord.distance(p->coord) <= visionRange * 2) {
-            Direction d = getMoveDirection(p->coord);
-            move(d, msg);
-            if (coord.distance(p->coord) <= 1) {
-                p->damage(5);
-                say("За Путина!");
-            }
+        if (canSeeTarget(killer->coord)) lastKnownPos = killer->coord;
+        move(getMoveDirection(lastKnownPos), msg);
+        if (coord.distance(killer->coord) <= 1) {
+            killer->damage(5);
+            say("За Путина!");
         }
         level->audio.addSound(coord, SoundType::Voice,
             "FSB-agentti raivostuu!", "Raivoisaa huutoa", "...raivokasta huutoa...", 30);
@@ -1823,7 +1861,7 @@ void FSBAgent::npcAct()
         return;
     }
 
-    if (level->celebrating) {
+    if (knowsPutinDead) {
         if (random(15)) {
             static const char* panic[] = {
                 "Что происходит?!",
@@ -1973,7 +2011,9 @@ void Sotilas::npcAct()
     string msg = "";
     Player* p = level->getPlayer();
 
-    if (level->putinDead && !level->celebrating) {
+    // rages only if it knows Putin is dead and who did it
+    Person* killer = knowsPutinDead ? currentTarget() : nullptr;
+    if (killer) {
         if (random(10)) {
             static const char* rage[] = {
                 "Тревога!",
@@ -1984,19 +2024,18 @@ void Sotilas::npcAct()
             };
             say(rage[std::rand()%5]);
         }
-        if (p && coord.distance(p->coord) <= visionRange * 2) {
-            if (ammo > 0 && coord.distance(p->coord) <= 8) {
-                --ammo;
-                if (random(50)) {
-                    p->damage(std::rand()%4 + 3);
-                    say("Огонь!");
-                }
-                level->audio.addSound(coord, SoundType::Gunshot,
-                    "PAKPAKPAKPAK! Konekivääri jyskyttää!", "Konekiväärin tulitusta!", "...jyskytystä kaukaa...", 40);
-            } else {
-                Direction d = getMoveDirection(p->coord);
-                move(d, msg);
+        const bool sees = canSeeTarget(killer->coord);
+        if (sees) lastKnownPos = killer->coord;
+        if (sees && ammo > 0 && coord.distance(killer->coord) <= 8) {
+            --ammo;
+            if (random(50)) {
+                killer->damage(std::rand()%4 + 3);
+                say("Огонь!");
             }
+            level->audio.addSound(coord, SoundType::Gunshot,
+                "PAKPAKPAKPAK! Konekivääri jyskyttää!", "Konekiväärin tulitusta!", "...jyskytystä kaukaa...", 40);
+        } else {
+            move(getMoveDirection(lastKnownPos), msg);
         }
         level->audio.addSound(coord, SoundType::Voice,
             "Sotilaat huutavat komentoja", "Komentohuutoja", "...komentoja kaukaa...", 25);
@@ -2004,7 +2043,7 @@ void Sotilas::npcAct()
         return;
     }
 
-    if (level->celebrating) {
+    if (knowsPutinDead) {
         if (random(20)) {
             static const char* panic[] = {
                 "Komentoketju katkennut!",
@@ -2167,10 +2206,75 @@ Vartija::Vartija(const Coord& pos) : Person(vartija, pos)
 {
     stats.health = 20;
     homePos = pos;
+    visionRange = 8;
+}
+
+void Vartija::stepTo(const Coord& target)
+{
+    Coord next = coord;
+    switch (getMoveDirection(target)) {
+        case DirectionNS::up:    if (next.y > 0) --next.y; break;
+        case DirectionNS::down:  ++next.y; break;
+        case DirectionNS::left:  if (next.x > 0) --next.x; break;
+        case DirectionNS::right: ++next.x; break;
+        default: return;
+    }
+    if (!level->hitWall(next) && !level->hitPerson(next)) coord = next;
+}
+
+void Vartija::radioGuardAct()
+{
+    Person* target = currentTarget();
+    if (target && canSeeTarget(target->coord)) {
+        if (!alerted) level->callForHelp(this, target, true);
+        alerted = true;
+        lastKnownPos = target->coord;
+        alertCooldown = 15;
+    }
+
+    if (target && alerted) {
+        if (coord.distance(target->coord) <= 1) {
+            // NPC turns run four times a second in real time: strike only now and then
+            if (random(30)) {
+                static const char* hits[] = { "Stoi! Lattiaan!", "Ruki vverh!", "Kremlin vartio! Maahan!" };
+                say(hits[std::rand() % 3]);
+                target->damage(std::rand() % 2 + 1);
+            }
+        } else {
+            stepTo(lastKnownPos);
+        }
+        if (!canSeeTarget(target->coord) && coord.distance(lastKnownPos) <= 1) {
+            if (alertCooldown > 0) --alertCooldown;
+            else alerted = false;
+        }
+        level->audio.addSound(coord, SoundType::Voice,
+            "Kremlin vartija huutaa: STOI!", "Vartijan huutoa", "...huutoa...", 20);
+        return;
+    }
+
+    if (alerted) {
+        // called over the radio without a target: go and look
+        stepTo(lastKnownPos);
+        if (coord.distance(lastKnownPos) <= 1) alerted = false;
+    } else if (coord.distance(homePos) > 2) {
+        stepTo(homePos);
+    } else if (random(20)) {
+        stepTo(Coord{ homePos.x + std::rand() % 3 - 1, homePos.y + std::rand() % 3 - 1 });
+    }
+
+    if (random(6)) {
+        level->audio.addSound(coord, SoundType::WalkieTalkie,
+            "Vartijan radio: 'Kreml, kaikki rauhallista.'", "Radion rahinaa", "...rahinaa...", 12);
+    }
 }
 
 void Vartija::npcAct()
 {
+    if (hasRadio) {
+        radioGuardAct();
+        return;
+    }
+
     Player* p = level->getPlayer();
     if (!p) return;
 
@@ -2284,6 +2388,12 @@ bool Vartija::interact(std::string& msg, Person* source)
 {
     msg = "Vartija: 'Älä koske muhun!'";
     source->damage(3);
+    if (hasRadio) {
+        chaseTarget = source;
+        alerted = true;
+        lastKnownPos = source->coord;
+        level->callForHelp(this, source, true);
+    }
     return true;
 }
 
@@ -2514,7 +2624,7 @@ Medvedev::Medvedev(const Coord& pos, const KremlinArea& area) : Person(medvedev,
 
 void Medvedev::npcAct()
 {
-    if (level->putinDead) {
+    if (knowsPutinDead) {
         if (random(8)) {
             static const char* lines[] = {
                 "Nyt MIN\xC3\x84 olen presidentti! Hic!",
@@ -2580,7 +2690,7 @@ bool Kenraali::stepTowards(const Coord& target)
 
 void Kenraali::npcAct()
 {
-    if (level->putinDead) {
+    if (knowsPutinDead) {
         if (random(10)) {
             static const char* panic[] = {
                 "Kenelle me nyt valehtelemme?!",
