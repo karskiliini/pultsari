@@ -65,6 +65,7 @@ void Intro::show()
     at(TITLE_Y + 2, CENTER_X);
     cout << "\033[33m*R\xC3\x96KH*\033[0m";
     cout.flush();
+    common::sound("cough");
     common::sleep(600);
 
     // vomit hits the subtitle
@@ -76,6 +77,7 @@ void Intro::show()
     at(TITLE_Y + 4, CENTER_X - 2);
     cout << "\033[33;1m*BLAAARGH*\033[0m";
     cout.flush();
+    common::sound("vomit");
     common::sleep(600);
 
     // drip trails run down from the letters
@@ -93,6 +95,7 @@ void Intro::show()
     at(TITLE_Y + 3, SUB_X + 13);
     cout << "\033[33;1m*\xC3\x96\xC3\x96\xC3\x96RRRKKK*\033[0m";
     cout.flush();
+    common::sound("vomit2");
     common::sleep(500);
 
     // the drips pool into "Русский Мир", one letter at a time
@@ -112,6 +115,7 @@ void Intro::show()
         at(CYR_Y, SUB_X + i);
         cout << "\033[1;31m" << cyrillic[i] << "\033[0m";
         cout.flush();
+        common::sound("drip", 0.5f);
         common::sleep(50);
     }
     common::sleep(300);
@@ -128,6 +132,7 @@ void Intro::show()
             "  tiling-tiling-tiling...  "
             "\xE2\x99\xAA \xD0\xBA\xD0\xB0\xD0\xBB\xD0\xB8\xD0\xBD\xD0\xBA\xD0\xB0 \xE2\x99\xAA\033[0m";
     cout.flush();
+    common::sound("balalaika");
     common::sleep(1500);
 
     snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 24, CENTER_X);

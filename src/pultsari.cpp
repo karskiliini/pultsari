@@ -598,6 +598,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         if (inv.kalja > 0) {
                             --inv.kalja;
                             printer->showMessage("Glub glub glub ..... Burb !!!", &level, false);
+                            common::sound("glug");
                             player.updatepromilles(2);
                             feedHunger(2);
                         } else printer->showMessage("Ei kaljaa.", &level, false);
@@ -606,6 +607,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         if (inv.lonkka > 0) {
                             --inv.lonkka;
                             printer->showMessage("Jaguar! Kofeiinia ja viinaa. Syd\xC3\xA4n hakkaa.", &level, false);
+                            common::sound("glug");
                             player.updatepromilles(4);
                             feedHunger(1);
                         } else printer->showMessage("Ei Jaguaria.", &level, false);
@@ -625,6 +627,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 level.addItem(new Oksennus(player.coord));
                             } else {
                                 printer->showMessage("Na zdorovje! Vodka polttaa kurkkua.", &level, false);
+                            common::sound("glug");
                                 player.updatepromilles(6);
                                 feedHunger(1);
                             }

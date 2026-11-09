@@ -14,6 +14,7 @@ const STATIC = {
     '/': [path.join(__dirname, 'index.html'), 'text/html; charset=utf-8'],
     '/xterm.js': [path.join(ROOT, 'node_modules/@xterm/xterm/lib/xterm.js'), 'text/javascript'],
     '/xterm.css': [path.join(ROOT, 'node_modules/@xterm/xterm/css/xterm.css'), 'text/css'],
+    '/sfx.js': [path.join(__dirname, 'sfx.js'), 'text/javascript'],
 };
 
 // node-pty's macOS prebuild ships spawn-helper without the execute bit when npm
@@ -49,7 +50,7 @@ function spawnGame(ip) {
             cols: 100,
             rows: 35,
             cwd: ROOT,
-            env: { ...process.env, TERM: 'xterm-256color', LANG: 'C.UTF-8' },
+            env: { ...process.env, TERM: 'xterm-256color', LANG: 'C.UTF-8', PULTSARI_WEB: '1' },
         });
     } catch (e) {
         console.error('Pelin käynnistys epäonnistui:', e.message);

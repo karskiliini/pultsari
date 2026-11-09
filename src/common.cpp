@@ -2,6 +2,8 @@
 #include <thread>
 #include <chrono>
 #include <iostream>
+#include <cstdio>
+#include <cstdlib>
 
 using std::cout;
 using std::endl;
@@ -28,6 +30,15 @@ bool checkBounds(Coord& coord) {
 void sleep(uint32_t ms)
 {
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+}
+
+void sound(const char* name, float volume)
+{
+    static const bool web = std::getenv("PULTSARI_WEB") != nullptr;
+    if (!web) return;
+    char buf[64];
+    snprintf(buf, sizeof(buf), "\033]777;snd;%s;%.2f\007", name, volume);
+    cout << buf << std::flush;
 }
 
 }

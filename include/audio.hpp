@@ -61,6 +61,7 @@ public:
     void setLevel(const Level* l) { level = l; }
 
 private:
+    void cue(const AudioEvent& e) const;
     std::vector<AudioEvent> events;
     const Level* level = nullptr;
 };

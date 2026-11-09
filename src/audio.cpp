@@ -1,6 +1,8 @@
 
 #include "audio.hpp"
 #include "level.hpp"
+#include "player.hpp"
+#include "common.hpp"
 #include <algorithm>
 #include <cmath>
 
@@ -12,6 +14,43 @@ void AudioSystem::clear()
 void AudioSystem::addSound(const AudioEvent& event)
 {
     events.push_back(event);
+    cue(event);
+}
+
+// sound effect for an event, picked by type and, for guns, by the weapon's text
+static const char* effectFor(const AudioEvent& e)
+{
+    switch (e.type) {
+        case SoundType::Gunshot:
+            if (e.textClose.rfind("PAM", 0) == 0) return "pistol";
+            if (e.textClose.rfind("PAKPAK", 0) == 0) return "mg";
+            if (e.textClose.rfind("BUUM", 0) == 0) return "aa";
+            return "rifle";
+        case SoundType::Explosion:    return "explosion";
+        case SoundType::Siren:        return "siren";
+        case SoundType::WalkieTalkie:
+        case SoundType::Radio:        return "radio";
+        case SoundType::Vomit:        return "vomit";
+        case SoundType::Fire:         return "fire";
+        default:                      return nullptr;
+    }
+}
+
+void AudioSystem::cue(const AudioEvent& e) const
+{
+    const char* name = effectFor(e);
+    if (!name || !level) return;
+    const PlayerNS::Player* p = level->getPlayer();
+    if (!p) return;
+    const std::vector<AudioEvent> single { e };
+    AudioSystem probe;
+    probe.level = level;
+    probe.events = single;
+    const auto heard = probe.getHeardSounds(p->coord);
+    if (heard.empty()) return;
+    const uint32_t range = std::max<uint32_t>(1, e.range);
+    const float vol = 1.0f - 0.8f * std::min(1.0f, (float)heard.front().distance / (float)range);
+    common::sound(name, vol);
 }
 
 void AudioSystem::addSound(const Coord& pos, SoundType type,
@@ -28,6 +67,7 @@ void AudioSystem::addSound(const Coord& pos, SoundType type,
     e.textFar = far;
     e.range = range;
     events.push_back(e);
+    cue(e);
 }
 
 std::vector<HeardSound> AudioSystem::getHeardSounds(const Coord& listenerPos) const

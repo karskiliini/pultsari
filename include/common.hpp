@@ -26,6 +26,9 @@ extern bool realtimeEnabled;
 bool random(uint32_t pct);
 bool checkBounds(Coord& coord);
 void sleep(uint32_t ms);
+// Ask the browser client to play a synthesized sound effect (volume 0..1).
+// Sent as an OSC escape the web terminal intercepts; only when PULTSARI_WEB is set.
+void sound(const char* name, float volume = 1.0f);
 
 } // namespace common
 
