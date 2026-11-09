@@ -41,6 +41,7 @@ public:
     void removePerson(Person* person);
     // --- perception: NPCs act only on what they see, hear or get over the radio ---
     bool isAlive(const Person* p) const;
+    bool isLit(const Coord& c) const;
     // wall crossings on the straight line between two points; Kremlin walls count double
     uint32_t wallsBetween(const Coord& a, const Coord& b) const;
     // every wall in between cuts the hearing range to a third

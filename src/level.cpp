@@ -284,6 +284,14 @@ bool Level::isAlive(const Person* p) const
     return false;
 }
 
+bool Level::isLit(const Coord& c) const
+{
+    for (auto b : buildings) {
+        if (b->lit && b->hitBuilding(c)) return true;
+    }
+    return false;
+}
+
 uint32_t Level::wallsBetween(const Coord& a, const Coord& b) const
 {
     const int dx = (int)b.x - (int)a.x;
@@ -641,6 +649,10 @@ bool Level::addBuilding(Building* building)
 
 bool Level::addPerson(Person* person)
 {
+    // eyesight differs from person to person
+    if (person->type != pelaaja && person->visionRange > 0)
+        person->visionRange = std::max<uint32_t>(1, person->visionRange * (70 + std::rand() % 61) / 100);
+
     for (const auto &p : persons)
     {
         if ((p->coord.x == person->coord.x) && (p->coord.y == person->coord.y))

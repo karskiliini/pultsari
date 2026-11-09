@@ -3,6 +3,7 @@
 #include "common.hpp"
 #include "player.hpp"
 #include "coord.hpp"
+#include "building.hpp"
 #include <exception>
 #include <stdexcept>
 
@@ -39,6 +40,12 @@ void Mask::init()
 
     const Coord& c = p->coord;
 
+    // standing in a lit room shows the whole room
+    const Building* litRoom = nullptr;
+    for (auto b : level->buildings) {
+        if (b->lit && b->hitBuilding(c)) { litRoom = b; break; }
+    }
+
     uint32_t startX = (level->cameraX > 0) ? (uint32_t)level->cameraX : 0;
     uint32_t startY = (level->cameraY > 0) ? (uint32_t)level->cameraY : 0;
     uint32_t endX = startX + common::VIEWPORT_W;
@@ -52,7 +59,9 @@ void Mask::init()
             Coord dc { x, y };
             auto& line = mask[y];
 
-            if (c.distance(dc) < VISION_DISTANCE) {
+            if (litRoom && litRoom->hitBuilding(dc)) {
+                line[x] = '.';
+            } else if (c.distance(dc) < (level->isLit(dc) ? VISION_DISTANCE * 2 : VISION_DISTANCE)) {
                 if (level->raycast(c, dc)) {
                     line[x] = '.';
                 } else {

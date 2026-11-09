@@ -402,6 +402,11 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
 void Printer::print(Level* level)
 {
     cursorHome();
+    if (common::realtimeEnabled) {
+        // draw the message first and erase only what follows it, so it never flickers
+        printMessage();
+        printChar("\033[K");
+    }
     printChar("\n");
 
     printBorder(level, true);
@@ -425,7 +430,7 @@ void Printer::print(Level* level)
     printBorder(level, false);
     printStats(level, &player->stats);
 
-    showMessage(msg, level, false);
+    if (!common::realtimeEnabled) showMessage(msg, level, false);
 
     printerRefresh();
 }

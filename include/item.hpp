@@ -293,13 +293,15 @@ public:
 
 class PutinPoyta : public Item {
 public:
-    PutinPoyta(const Coord& c, const char* glyph);
+    // putinsDesk: Putin's own table with his dolls; otherwise the generals' map table
+    PutinPoyta(const Coord& c, const char* glyph, bool putinsDesk = true);
     virtual ~PutinPoyta() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);
 private:
     const char* glyph;
+    bool putinsDesk;
 };
 
 // the generals' war map, spread on a table

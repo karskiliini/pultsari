@@ -593,6 +593,7 @@ std::string Seina::getWalkMsg() const { return "Betonimuuri. Joku on maalannut s
 
 // KREMLIN
 Kremlin::Kremlin() : Building(BuildingType::EKremlin) {
+    lit = true; // crystal chandeliers in every hall
     wallRight = 45;
     wallTop = 0;
     wallLeft = 0;

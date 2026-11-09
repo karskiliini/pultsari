@@ -58,9 +58,21 @@ Person* Person::currentTarget()
 
 bool Person::canSeeTarget(const Coord& target) const
 {
+    if (blind) return false;
     if (visionRange == 0) return true;
-    if (coord.distance(target) > visionRange) return false;
+    // lit places are seen from twice as far
+    const uint32_t range = level->isLit(target) ? visionRange * 2 : visionRange;
+    if (coord.distance(target) > range) return false;
     return level->raycast(coord, target);
+}
+
+void Person::report(const std::string& msg)
+{
+    if (msg.empty()) return;
+    const Person* p = level->getPlayer();
+    if (!p) return;
+    const bool seen = coord.distance(p->coord) <= 12 && level->raycast(p->coord, coord);
+    if (seen || level->canHear(p->coord, coord, 15)) report(msg);
 }
 
 Direction Person::randomDirection() const
@@ -269,7 +281,7 @@ bool Mummo::interactThrow(Item* item, Person* source, std::string& msg)
 
 bool Mummo::interactpuke(Person* source)
 {
-    printer->showMessage("Vasja kaatui mummon päälle. Mummo kuoli. Русский мир.", level);
+    report("Vasja kaatui mummon päälle. Mummo kuoli. Русский мир.");
     damage(stats.health);
     return true;
 }
@@ -345,7 +357,7 @@ void Cop::npcAct()
         }
         if (random(15)) level->audio.addSound(coord, SoundType::Voice,
             "Humalainen politsija laulaa", "Laulua jostain", "...laulua...", 18);
-        printer->showMessage(msg, level);
+        report(msg);
         return;
     }
 
@@ -475,7 +487,7 @@ void Cop::npcAct()
         level->audio.addSound(coord, SoundType::WalkieTalkie,
             "Radiopuhelin rahinaa", "Radion rahinaa", "...rahinaa...", 15);
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 // a cop who is attacked chases the attacker and shouts for help; if knocked
@@ -663,7 +675,7 @@ void Varas::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Varas::interact(std::string& msg, Person* source)
@@ -824,7 +836,7 @@ void Vanki::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Vanki::interact(std::string& msg, Person* source)
@@ -974,7 +986,7 @@ void Skinhead::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Skinhead::interact(std::string& msg, Person* source)
@@ -1093,7 +1105,7 @@ void Yka::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Yka::interact(std::string& msg, Person* source)
@@ -1209,7 +1221,7 @@ void Jengi::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Jengi::interact(std::string& msg, Person* source)
@@ -1331,7 +1343,7 @@ void Ryostaja::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Ryostaja::interact(std::string& msg, Person* source)
@@ -1442,7 +1454,7 @@ void Diileri::npcAct()
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Diileri::interact(std::string& msg, Person* source)
@@ -1476,6 +1488,8 @@ Veteraani::Veteraani(const Coord& pos) : Person(veteraani, pos)
 {
     stats.health = 12;
     visionRange = 10;
+    // some came back from the front blind and go by ear
+    blind = random(25);
 }
 
 std::string Veteraani::typeToChar() const
@@ -1525,7 +1539,8 @@ void Veteraani::npcAct()
 
     string msg = "";
     Player* p = level->getPlayer();
-    bool seesPlayer = canSeeTarget(p->coord);
+    // a blind veteran only notices you by your footsteps, close by
+    bool seesPlayer = blind ? level->canHear(coord, p->coord, 3) : canSeeTarget(p->coord);
 
     // PTSD trigger: random chance to become aggressive each turn
     if (!aggressive) {
@@ -1546,11 +1561,11 @@ void Veteraani::npcAct()
             say("AAARRGH!! TANKIT!! DROONIT!!");
             msg = "Veteraani saa PTSD-kohtauksen ja raivostuu!!";
 
-            // nearby NPCs flee
+            // NPCs who hear the scream flee
             for (auto& person : level->persons) {
                 if (person != this && person->type != pelaaja &&
                     person->stats.health > 0 &&
-                    coord.distance(person->coord) < 8) {
+                    level->canHear(person->coord, coord, 8)) {
                     person->alerted = true;
                     person->lastKnownPos = coord;
                     person->alertCooldown = 10;
@@ -1564,7 +1579,7 @@ void Veteraani::npcAct()
         else {
             aggressive = false;
             msg = "Veteraani rauhoittuu...";
-            printer->showMessage(msg, level);
+            report(msg);
             return;
         }
 
@@ -1588,7 +1603,8 @@ void Veteraani::npcAct()
         // shoot at nearest visible target
         else if (ammo > 0 && seesPlayer && coord.distance(p->coord) <= 8) {
             --ammo;
-            if (random(60)) {
+            if (blind) say("Kuulen sinut! Kuulen askeleesi!");
+            if (random(blind ? 25 : 60)) {
                 msg = "Veteraani ampuu sinua!";
                 p->damage(std::rand()%4 + 2);
             } else {
@@ -1602,20 +1618,27 @@ void Veteraani::npcAct()
             Direction d = getMoveDirection(p->coord);
             move(d, msg);
         } else {
-            // wander aggressively
+            // wander aggressively; a blind one fires blindly at noises
+            if (blind && ammo > 0 && random(8)) {
+                --ammo;
+                say("Kuka siell\xC3\xA4?! KUKA SIELL\xC3\xA4?!");
+                level->audio.addSound(coord, SoundType::Gunshot,
+                    "R\xC3\x84K\xC3\x84K\xC3\x84! Joku ampuu sokkona!", "Sarjatulta!", "...sarjatulta kaukaa...", 30);
+            }
             if (random(50)) {
                 Direction d = randomDirection();
                 move(d, msg);
             }
         }
     } else {
+        if (blind && random(3)) say("Olen sokea, mutta kuulen kaiken.");
         // peaceful mode: wander slowly
         if (random(15)) {
             Direction d = randomDirection();
             move(d, msg);
         }
     }
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Veteraani::interact(std::string& msg, Person* source)
@@ -1716,7 +1739,7 @@ void Juoppo::npcAct()
         }
         if (random(10)) level->audio.addSound(coord, SoundType::Voice,
             "Juhliva juoppo huutaa", "Juhlintaa", "...juhlintaa kaukaa...", 20);
-        printer->showMessage(msg, level);
+        report(msg);
         return;
     }
 
@@ -1857,7 +1880,7 @@ void FSBAgent::npcAct()
         }
         level->audio.addSound(coord, SoundType::Voice,
             "FSB-agentti raivostuu!", "Raivoisaa huutoa", "...raivokasta huutoa...", 30);
-        printer->showMessage(msg, level);
+        report(msg);
         return;
     }
 
@@ -1877,7 +1900,7 @@ void FSBAgent::npcAct()
         }
         if (random(10)) level->audio.addSound(coord, SoundType::Voice,
             "FSB-agentti panikoi", "Paniikin \xC3\xA4\xC3\xA4ni\xC3\xA4", "...paniikin \xC3\xA4\xC3\xA4ni\xC3\xA4...", 15);
-        printer->showMessage(msg, level);
+        report(msg);
         return;
     }
 
@@ -1893,7 +1916,7 @@ void FSBAgent::npcAct()
                 defenTarget = person->coord;
                 msg = "FSB-agentit tarttuvat ohikulkijaan. Häntä ei enää nähdä.";
                 person->damage(50);
-                printer->showMessage("DEFENESTRAATIO! Joku lensi ikkunasta!", level);
+                report("DEFENESTRAATIO! Joku lensi ikkunasta!");
 
                 Animation* anim = new Animation(person->coord, "AAAH!", 8);
                 anim->coordMove = Coordinate<int>(0, 1);
@@ -1939,7 +1962,7 @@ void FSBAgent::npcAct()
             "FSB:n radiopuhelin p\xC3\xA4risee", "Radiopuhelimen p\xC3\xA4rin\xC3\xA4\xC3\xA4", "...p\xC3\xA4rin\xC3\xA4\xC3\xA4...", 18);
     }
 
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool FSBAgent::interact(std::string& msg, Person* source)
@@ -2039,7 +2062,7 @@ void Sotilas::npcAct()
         }
         level->audio.addSound(coord, SoundType::Voice,
             "Sotilaat huutavat komentoja", "Komentohuutoja", "...komentoja kaukaa...", 25);
-        printer->showMessage(msg, level);
+        report(msg);
         return;
     }
 
@@ -2057,7 +2080,7 @@ void Sotilas::npcAct()
             Direction d = randomDirection();
             move(d, msg);
         }
-        printer->showMessage(msg, level);
+        report(msg);
         return;
     }
 
@@ -2104,7 +2127,7 @@ void Sotilas::npcAct()
             "Sotilassaappaiden marssia", "Marssin askeleita", "...askeleita...", 15);
     }
 
-    printer->showMessage(msg, level);
+    report(msg);
 }
 
 bool Sotilas::interact(std::string& msg, Person* source)
@@ -2408,6 +2431,7 @@ bool Vartija::interactThrow(Item* item, Person* source, std::string& msg)
 Putin::Putin(const Coord& pos) : Person(putin, pos)
 {
     stats.health = 15;
+    visionRange = 10;
 }
 
 void Putin::npcAct()
@@ -2477,6 +2501,46 @@ void Putin::npcAct()
         }
         level->audio.addSound(coord, SoundType::Voice,
             "Raivokas huuto Kremlist\xC3\xA4!", "Raivokasta huutoa", "...huutoa Kremlist\xC3\xA4...", 30);
+        return;
+    }
+
+    // alone, Putin plays with his dolls and does their voices, like Dark Helmet in Spaceballs
+    bool someoneNear = false;
+    for (auto q : level->persons) {
+        if (q->type == pelaaja && q->stats.health > 0 &&
+            (coord.distance(q->coord) <= 8 || canSeeTarget(q->coord))) {
+            someoneNear = true;
+            break;
+        }
+    }
+    if (!someoneNear) {
+        playingWithDolls = true;
+        if (common::random(12)) {
+            static const char* dollTalk[] = {
+                "*Zelenskyin \xC3\xA4\xC3\xA4nell\xC3\xA4* Oi Vladimir, olet niin vahva!",
+                "*von der Leyenin \xC3\xA4\xC3\xA4nell\xC3\xA4* Poistan kaikki sanktiot, Vova!",
+                "*omalla \xC3\xA4\xC3\xA4nell\xC3\xA4* Ja nyt te suutelette. Suudelkaa!",
+                "*Macronin \xC3\xA4\xC3\xA4nell\xC3\xA4* Soitetaan taas! Vain kuusi tuntia!",
+                "*Stubbin \xC3\xA4\xC3\xA4nell\xC3\xA4* Anteeksi ett\xC3\xA4 liityimme NATOon...",
+                "*Zelenskyin \xC3\xA4\xC3\xA4nell\xC3\xA4* Antaudun! Ota Krim ja kaikki!",
+                "*omalla \xC3\xA4\xC3\xA4nell\xC3\xA4* Ja niin Kiova kaatui kolmessa p\xC3\xA4iv\xC3\xA4ss\xC3\xA4. Loppu.",
+                "*Rutten \xC3\xA4\xC3\xA4nell\xC3\xA4* NATO purkautuu! Kiitos Vladimir!",
+            };
+            say(dollTalk[std::rand() % 8]);
+            level->audio.addSound(coord, SoundType::Voice,
+                "Joku puhuu itsekseen eri \xC3\xA4\xC3\xA4nill\xC3\xA4", "Kummallista mutinaa", "...mutinaa...", 10);
+        }
+        return;
+    }
+    if (playingWithDolls) {
+        // caught in the act
+        playingWithDolls = false;
+        static const char* caught[] = {
+            "Ei mit\xC3\xA4\xC3\xA4n! T\xC3\xA4m\xC3\xA4 on... strategiapalaveri!",
+            "N\xC3\xA4m\xC3\xA4 ovat... sotilaallisia malleja!",
+            "Kuka p\xC3\xA4\xC3\xA4sti sinut sis\xC3\xA4\xC3\xA4n?!",
+        };
+        say(caught[std::rand() % 3]);
         return;
     }
 
@@ -2620,6 +2684,7 @@ static void stepInside(Person* p, const KremlinArea& area, Direction d)
 Medvedev::Medvedev(const Coord& pos, const KremlinArea& area) : Person(medvedev, pos), area(area)
 {
     stats.health = 6;
+    visionRange = 5;
 }
 
 void Medvedev::npcAct()
@@ -2679,6 +2744,7 @@ Kenraali::Kenraali(const Coord& pos, PersonType type, const KremlinArea& area)
     : Person(type, pos), area(area), home(pos)
 {
     stats.health = 8;
+    visionRange = 8;
 }
 
 bool Kenraali::stepTowards(const Coord& target)

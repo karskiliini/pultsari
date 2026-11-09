@@ -47,7 +47,10 @@ public:
     bool pathFinding = false;
 
     uint32_t visionRange = 0;
+    bool blind = false;
     bool hasRadio = false;
+    // show an NPC's message only if the player can see or hear this person
+    void report(const std::string& msg);
     // what this NPC knows from its own eyes, ears or radio
     Person* chaseTarget = nullptr;
     bool knowsPutinDead = false;
@@ -284,6 +287,7 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "P"; };
+    bool playingWithDolls = false;
 };
 
 // Rectangle inside the Kremlin that the inner circle never leaves.

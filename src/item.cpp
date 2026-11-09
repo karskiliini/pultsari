@@ -408,10 +408,25 @@ bool ViinaKellari::interact(PlayerNS::Player* player) {
 }
 
 // PUTININ PITKÄ PÖYTÄ
-PutinPoyta::PutinPoyta(const Coord& c, const char* glyph) : Item(c, EPutinPoyta), glyph(glyph) { }
+PutinPoyta::PutinPoyta(const Coord& c, const char* glyph, bool putinsDesk)
+    : Item(c, EPutinPoyta), glyph(glyph), putinsDesk(putinsDesk) { }
 std::string PutinPoyta::typeToChar() const { return glyph; }
 std::string PutinPoyta::getMsg() const {
-    return "Putinin kuuluisa ylipitkä konferenssipöytä. Se on naurettavan pitkä.";
+    if (!putinsDesk)
+        return "Karttapöytä. Siinä on kahvitahroja, vodkarenkaita ja liian monta nuolta.";
+
+    // Putin plays with dolls on his desk, like Dark Helmet in Spaceballs
+    static const char* dolls[] = {
+        "Pöydällä on leikkinukkeja: Zelenskyi ja von der Leyen. Putin on ilmeisesti leikkinyt niillä.",
+        "Zelenskyi- ja von der Leyen -nuket suutelevat. Joku on piirtänyt niille sydämen tussilla.",
+        "Pöydän toisessa päässä istuu pieni Macron-nukke. Hyvin, hyvin kaukana.",
+        "Rutte-nukella on kädessä lappu 'Artikla 5'. Putin on yrittänyt repiä sen irti.",
+        "Stubb-nukke on puettu saunatakkiin. Vieressä lappu: 'NATO?! MIKSI?!'",
+        "Pienoistankki on ajettu Zelenskyi-nuken yli. Zelenskyi-nukke seisoo silti.",
+        "Pöydällä on Putin-nukke hevosen selässä ilman paitaa. Se on kuluneempi kuin muut.",
+        "Pöytä on naurettavan pitkä. Toisessa päässä on nukeille katettu teekutsut.",
+    };
+    return dolls[std::rand() % (sizeof(dolls) / sizeof(dolls[0]))];
 }
 bool PutinPoyta::interact(PlayerNS::Player* player) {
     return false;

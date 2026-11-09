@@ -349,7 +349,7 @@ static void populatePersons(Level& level, const GameState& gs)
                     if (y == mapTop + 1 && !edgeCol)
                         level.addItem(new Kartta(mc, mapRow[x - mapLeft - 1]));
                     else
-                        level.addItem(new PutinPoyta(mc, edgeCol && y == mapTop + 1 ? "\xE2\x95\x8E" : "\xE2\x95\x8C"));
+                        level.addItem(new PutinPoyta(mc, edgeCol && y == mapTop + 1 ? "\xE2\x95\x8E" : "\xE2\x95\x8C", false));
                 }
             }
 

@@ -57,6 +57,8 @@ public:
     BuildingType type;
     DirectionNS::Direction door = DirectionNS::Direction::up;
     bool hasDoor = true;
+    // a lit interior can be seen whole from inside and from further away outside
+    bool lit = false;
     uint32_t wallRight;
     uint32_t wallTop;
     uint32_t wallLeft;
