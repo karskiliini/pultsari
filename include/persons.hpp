@@ -37,6 +37,7 @@ public:
 
     bool canSeeTarget(const Coord& target) const;
     DirectionNS::Direction randomDirection() const;
+    void say(const std::string& text);
 
     Level* level;
     Printer* printer;
@@ -55,8 +56,10 @@ class Mummo : public Person {
 public:
     Mummo(const Coord& pos);
     virtual ~Mummo() = default;
-    virtual void npcAct() {};
+    virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
+    bool move(DirectionNS::Direction d, std::string& msg);
+    bool reactedToUniform = false;
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual bool interactpuke(Person* source);
     Item* dropItem();
@@ -186,11 +189,41 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const;
+    Item* dropItem();
     bool firstMove = true;
     bool aggressive = false;
     uint32_t rageCooldown = 0;
     uint32_t grenades = 2;
     uint32_t ammo = 6;
+};
+
+class Juoppo : public Person {
+public:
+    Juoppo(const Coord& pos);
+    virtual ~Juoppo() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "J"; };
+    uint32_t stumbleCount = 0;
+};
+
+class FSBAgent : public Person {
+public:
+    FSBAgent(const Coord& pos);
+    virtual ~FSBAgent() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "F"; };
+    bool firstMove = true;
+    bool hasTarget = false;
+    Coord defenTarget = { 0, 0 };
+    uint32_t defenCooldown = 0;
 };
 
 #endif

@@ -558,3 +558,50 @@ std::string Seina::getName() const
 }
 
 std::string Seina::getWalkMsg() const { return "Isket paasi aseman seinaan. Mielenkiintoista."; }
+
+
+// KREMLIN
+Kremlin::Kremlin() : Building(BuildingType::EKremlin) {
+    wallRight = 72;
+    wallTop = 0;
+    wallLeft = 58;
+    wallBot = 6;
+
+    door = DirectionNS::down;
+    windows.push_back({wallLeft, 3});
+    windows.push_back({wallRight, 3});
+}
+
+std::string Kremlin::getName() const
+{
+    return "KREML";
+}
+
+bool Kremlin::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    if (!player->hasKremlinPass) {
+        msg = "Vartija: STOI! Propusk! Tarvitset kulkuluvan!";
+        return false;
+    }
+    msg = "Vartija nyökkää ja päästää sinut sisään Kremliin.";
+    return true;
+}
+
+bool Kremlin::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Näet käytävän joka johtaa alaspäin... Viinakellariin!";
+    return true;
+}
+
+void Kremlin::interact(PlayerNS::Player* player, std::string& msg)
+{
+    auto enter = Input::getInputPutka();
+    if (enter) {
+        player->wonGame = true;
+        msg = "";
+    } else {
+        msg = "Pyörähdät ympäri ja kävelet pois.";
+    }
+}
+
+std::string Kremlin::getWalkMsg() const { return "Kremlin muurit ovat läpäisemättömät."; }

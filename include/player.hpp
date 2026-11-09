@@ -51,6 +51,7 @@ public:
     bool shoot(DirectionNS::Direction dir);
 
     bool sentToWar = false;
+    bool returnedFromWar = false;
     uint32_t warLevelsCompleted = 0;
     bool hasKremlinPass = false;
     bool wonGame = false;

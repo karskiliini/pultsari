@@ -32,12 +32,20 @@ private:
     void spreadFire();
     void fireDamage();
     void droneSound();
+    void gasAttack();
+    void defenestration();
+    void novichok();
+    void randomEvent();
 
     Level* level;
     std::vector<Fire> fires;
     uint32_t droneCooldown = 0;
     uint32_t aaCooldown = 0;
     uint32_t droneNoiseCooldown = 0;
+    uint32_t eventCooldown = 0;
+    bool gasActive = false;
+    uint32_t gasTimer = 0;
+    Coord gasCenter = { 0, 0 };
 };
 
 #endif

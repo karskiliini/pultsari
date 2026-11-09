@@ -251,4 +251,42 @@ public:
     void setLevel(Level* l) { level = l; }
     Level* level;
 };
+
+class Propusk : public Item {
+public:
+    Propusk(const Coord& c);
+    virtual ~Propusk() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+class Granata : public Item {
+public:
+    Granata(const Coord& c);
+    virtual ~Granata() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+class Vodka : public Item {
+public:
+    Vodka(const Coord& c);
+    virtual ~Vodka() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+class ViinaKellari : public Item {
+public:
+    ViinaKellari(const Coord& c, Level* level);
+    virtual ~ViinaKellari() = default;
+    virtual std::string typeToChar() const;
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+    Level* level;
+};
+
 #endif

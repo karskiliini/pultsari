@@ -11,9 +11,15 @@ using common::random;
 
 EnvironmentEvents::EnvironmentEvents(Level* level) : level(level)
 {
-    droneCooldown = 10 + std::rand()%20;
-    aaCooldown = 5 + std::rand()%15;
-    droneNoiseCooldown = 3 + std::rand()%8;
+    if (level->isWarLevel) {
+        droneCooldown = 5 + std::rand()%8;
+        aaCooldown = 3 + std::rand()%6;
+        droneNoiseCooldown = 1 + std::rand()%3;
+    } else {
+        droneCooldown = 10 + std::rand()%20;
+        aaCooldown = 5 + std::rand()%15;
+        droneNoiseCooldown = 3 + std::rand()%8;
+    }
 }
 
 void EnvironmentEvents::update()
@@ -23,6 +29,30 @@ void EnvironmentEvents::update()
     aaFire();
     updateFires();
     fireDamage();
+    randomEvent();
+
+    if (gasActive) {
+        gasTimer++;
+        if (gasTimer > 30) {
+            gasActive = false;
+        } else {
+            // gas spreads from center, damages everyone in radius
+            uint32_t radius = gasTimer / 3 + 2;
+            for (auto& p : level->persons) {
+                if (p->stats.health > 0 && p->coord.distance(gasCenter) <= radius) {
+                    p->damage(1);
+                    if (p->type == pelaaja && gasTimer % 3 == 0) {
+                        level->printer->showMessage("Kaasu polttaa keuhkojasi! Pakene!", level, false);
+                    }
+                    // NPCs panic
+                    if (p->type != pelaaja) {
+                        p->alerted = true;
+                        p->alertCooldown = 5;
+                    }
+                }
+            }
+        }
+    }
 
     if (random(5)) {
         spreadFire();
@@ -56,20 +86,22 @@ void EnvironmentEvents::droneStrike()
         --droneCooldown;
         return;
     }
-    droneCooldown = 15 + std::rand()%25;
+    droneCooldown = level->isWarLevel ? (8 + std::rand()%10) : (15 + std::rand()%25);
 
-    if (!random(20)) return;
+    if (!random(level->isWarLevel ? 40 : 20)) return;
 
-    // pick a random building to hit
-    if (level->buildings.empty()) return;
-    uint32_t idx = std::rand() % level->buildings.size();
-    Building* target = level->buildings[idx];
-
-    uint32_t cx = (target->wallLeft + target->wallRight) / 2;
-    uint32_t cy = (target->wallTop + target->wallBot) / 2;
-    Coord strikeCoord { cx, cy };
-
-    level->printer->showMessage("DRONE-ISKU! " + target->getName() + " saa osuman!!", level, false);
+    Coord strikeCoord;
+    if (!level->buildings.empty()) {
+        uint32_t idx = std::rand() % level->buildings.size();
+        Building* target = level->buildings[idx];
+        uint32_t cx = (target->wallLeft + target->wallRight) / 2;
+        uint32_t cy = (target->wallTop + target->wallBot) / 2;
+        strikeCoord = Coord{ cx, cy };
+        level->printer->showMessage("DRONE-ISKU! " + target->getName() + " saa osuman!!", level, false);
+    } else {
+        strikeCoord = Coord{ std::rand() % common::SIZEX, std::rand() % common::SIZEY };
+        level->printer->showMessage("DRONE-ISKU! Pommi putoaa!", level, false);
+    }
 
     Animation* anim = new Animation(strikeCoord, "===BOOM===", 10);
     level->addAnimation(anim);
@@ -82,10 +114,10 @@ void EnvironmentEvents::droneStrike()
         }
     }
 
-    // start fires around the building
+    // start fires around the strike
     for (int i = 0; i < 3 + std::rand()%3; ++i) {
-        int fx = (int)cx + (std::rand()%7 - 3);
-        int fy = (int)cy + (std::rand()%5 - 2);
+        int fx = (int)strikeCoord.x + (std::rand()%7 - 3);
+        int fy = (int)strikeCoord.y + (std::rand()%5 - 2);
         if (fx < 0 || fy < 0 || fx >= (int)common::SIZEX || fy >= (int)common::SIZEY)
             continue;
         Coord fc { (uint32_t)fx, (uint32_t)fy };
@@ -110,7 +142,7 @@ void EnvironmentEvents::aaFire()
         --aaCooldown;
         return;
     }
-    aaCooldown = 8 + std::rand()%12;
+    aaCooldown = level->isWarLevel ? (4 + std::rand()%6) : (8 + std::rand()%12);
 
     if (!random(25)) return;
 
@@ -207,4 +239,103 @@ void EnvironmentEvents::fireDamage()
             }
         }
     }
+}
+
+void EnvironmentEvents::gasAttack()
+{
+    if (gasActive) return;
+
+    // pick a building as gas target
+    if (level->buildings.empty()) return;
+    uint32_t idx = std::rand() % level->buildings.size();
+    Building* target = level->buildings[idx];
+
+    gasActive = true;
+    gasTimer = 0;
+    uint32_t cx = (target->wallLeft + target->wallRight) / 2;
+    uint32_t cy = (target->wallTop + target->wallBot) / 2;
+    gasCenter = Coord{ cx, cy };
+
+    level->printer->showMessage("PANTTIVANKITILANNE! Erikoisjoukot kaasuttavat " +
+        target->getName() + "! PAKENE!!", level, false);
+
+    Animation* anim = new Animation(gasCenter, "~~KAASU~~", 15);
+    level->addAnimation(anim);
+}
+
+void EnvironmentEvents::defenestration()
+{
+    // FSB throws someone out of a window - ambient event
+    static const char* msgs[] = {
+        "Kuulet huudon ylhäältä... joku tippui ikkunasta.",
+        "Näet liikkeen kerrostalon katolla... joku putoaa!",
+        "Sirpaleet räsähtävät! Joku lensi ikkunasta.",
+        "'Se oli itsemurha', kuulet poliisin sanovan...",
+    };
+
+    uint32_t idx = std::rand() % 4;
+    level->printer->showMessage(msgs[idx], level, false);
+
+    // random debris/body lands near a building
+    if (!level->buildings.empty()) {
+        uint32_t bi = std::rand() % level->buildings.size();
+        Building* b = level->buildings[bi];
+        Coord impact { b->wallRight + 1, b->wallBot };
+        if (impact.x < common::SIZEX && impact.y < common::SIZEY) {
+            Animation* anim = new Animation(impact, "*THUD*", 8);
+            level->addAnimation(anim);
+
+            // damage anyone at impact
+            for (auto& p : level->persons) {
+                if (p->stats.health > 0 && p->coord.distance(impact) <= 1) {
+                    p->damage(std::rand()%3 + 1);
+                }
+            }
+        }
+    }
+}
+
+void EnvironmentEvents::novichok()
+{
+    // random novichok poisoning attempt on the street
+    uint32_t px = std::rand() % common::SIZEX;
+    uint32_t py = std::rand() % common::SIZEY;
+    Coord poisonCoord { px, py };
+
+    level->printer->showMessage("Kadulla haistuu outo kemikaali... Novitshok!", level, false);
+
+    // damage everyone in small radius
+    for (auto& p : level->persons) {
+        if (p->stats.health > 0 && p->coord.distance(poisonCoord) <= 2) {
+            p->damage(std::rand()%4 + 2);
+            if (p->type == pelaaja) {
+                level->printer->showMessage("Tunnet polttavaa kipua! Myrkkyä!", level, false);
+            }
+        }
+    }
+
+    Animation* anim = new Animation(poisonCoord, "~~~", 10);
+    level->addAnimation(anim);
+}
+
+void EnvironmentEvents::randomEvent()
+{
+    if (eventCooldown > 0) {
+        --eventCooldown;
+        return;
+    }
+
+    if (!random(2)) return;
+
+    eventCooldown = 20 + std::rand()%30;
+
+    int roll = std::rand() % 100;
+    if (roll < 5) {
+        gasAttack();
+    } else if (roll < 15) {
+        defenestration();
+    } else if (roll < 20) {
+        novichok();
+    }
+    // otherwise nothing happens this cycle
 }

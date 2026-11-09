@@ -214,7 +214,12 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
                 if ((anim->coord.x <= x) && (anim->coord.x + len > x))
                 {
                     uint32_t index = x - anim->coord.x;
-                    c = anim->text[index];
+                    if (anim->isBubble) {
+                        // speech bubble: dim text for 75% opacity effect
+                        c = std::string("\033[2;37m") + anim->text[index] + "\033[0m";
+                    } else {
+                        c = anim->text[index];
+                    }
                     found = true;
                 }
             }

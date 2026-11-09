@@ -21,7 +21,7 @@ Intro::~Intro()
 
 void Intro::show()
 {
-    const string title = "P" "\xD0\x9F" "LTSARI";
+    const string title = "P" "\xD0\x9F" "LTSA" "\xD0\xAF" "I";
     const string subtitle = "- Moskovan kadut -";
     const string anykey = "Paina nappia jatkaaksesi";
 

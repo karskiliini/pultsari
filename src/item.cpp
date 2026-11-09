@@ -376,3 +376,51 @@ bool NextLevel::interact(PlayerNS::Player* player)
     bool ok = checkBonas(level);
     return ok;
 }
+
+// propusk (Kremlin pass)
+Propusk::Propusk(const Coord& c) : Item(c, EPropusk) { }
+std::string Propusk::typeToChar() const { return "P"; }
+std::string Propusk::getMsg() const {
+    return "Kremlin kulkulupa! Pääset nyt Kremliin!";
+}
+bool Propusk::interact(PlayerNS::Player* player) {
+    ++player->inventory.propusk;
+    player->hasKremlinPass = true;
+    return true;
+}
+
+// granata (grenade)
+Granata::Granata(const Coord& c) : Item(c, EGranata) { }
+std::string Granata::typeToChar() const { return "G"; }
+std::string Granata::getMsg() const {
+    return "Kranaatti! Vaarallinen löytö.";
+}
+bool Granata::interact(PlayerNS::Player* player) {
+    ++player->inventory.granata;
+    return true;
+}
+
+// vodka
+Vodka::Vodka(const Coord& c) : Item(c, EVodka) { }
+std::string Vodka::typeToChar() const { return "V"; }
+std::string Vodka::getMsg() const {
+    return "Vodka! Venäjän vesijohtovettä.";
+}
+bool Vodka::interact(PlayerNS::Player* player) {
+    ++player->inventory.vodka;
+    return true;
+}
+
+// viina kellari (wine cellar door - victory item)
+ViinaKellari::ViinaKellari(const Coord& c, Level* level) : Item(c, EViinaKellari), level(level) { }
+std::string ViinaKellari::typeToChar() const { return "W"; }
+std::string ViinaKellari::getMsg() const {
+    return "Putinin viinakellariin johtava ovi!";
+}
+bool ViinaKellari::interact(PlayerNS::Player* player) {
+    if (player->hasKremlinPass) {
+        player->wonGame = true;
+        return true;
+    }
+    return false;
+}

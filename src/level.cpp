@@ -9,6 +9,7 @@
 #include "common.hpp"
 #include "animation.hpp"
 #include "vehicle.hpp"
+#include "events.hpp"
 #include <algorithm>
 #include <iostream>
 
@@ -50,6 +51,11 @@ Level::~Level() {
         delete v;
     }
     vehicles.clear();
+
+    if (events) {
+        delete events;
+        events = nullptr;
+    }
 }
 
 void Level::buildingTurn()
@@ -159,6 +165,12 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
                 break;
             case veteraani:
                 p = new Veteraani(coord);
+                break;
+            case fsb:
+                p = new FSBAgent(coord);
+                break;
+            case juoppo:
+                p = new Juoppo(coord);
                 break;
             default:
                 break;
@@ -412,6 +424,15 @@ void Level::addItem(ItemType item)
             break;
         case EPistooli:
             i = new Pistooli(c);
+            break;
+        case EPropusk:
+            i = new Propusk(c);
+            break;
+        case EGranata:
+            i = new Granata(c);
+            break;
+        case EVodka:
+            i = new Vodka(c);
             break;
     }
     if (i) {

@@ -16,6 +16,7 @@ public:
     std::string text;
     uint32_t ttl;
     uint32_t delay = 66;
+    bool isBubble = false;
 };
 
 #endif

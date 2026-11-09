@@ -28,8 +28,23 @@ namespace common {
 }
 
 
-static void populateItems(Level& level)
+static void populateItems(Level& level, const GameState& gs)
 {
+    if (gs.phase == GamePhase::War) {
+        level.addBonas();
+        if (random(30)) level.addItem(EVodka);
+        if (random(20)) level.addItem(EGranata);
+        if (random(25)) level.addItem(EPistooli);
+        if (random(40)) level.addItem(EKivi);
+        if (random(60)) level.addItem(ELenkki);
+        if (random(30)) level.addItem(EVeitsi);
+        if (random(50)) level.addItem(ERaha);
+        if (random(15)) level.addItem(EPaska);
+        for (int i = 0; i < std::rand() % 2 + 1; ++i)
+            level.addItem(EPensas);
+        return;
+    }
+
     level.addBonas();
     if (random(50))  level.addItem(EKalja);
     if (random(25)) level.addItem(ELenkki);
@@ -47,14 +62,37 @@ static void populateItems(Level& level)
     if (random(19))  level.addItem(EPaska);
     if (level.stage > 4 && random(15))
         level.addItem(EPistooli);
+    if (random(20)) level.addItem(EVodka);
     for (int i = 0; i < std::rand() % 4 + 2; ++i)
         level.addItem(EPensas);
     for (int i = 0; i < std::rand() % 2 + 1; ++i)
         level.addItem(ERoskis);
+    if (level.stage >= 3 && random(20))
+        level.addItem(EPropusk);
+    if (gs.phase == GamePhase::Kremlin) {
+        ViinaKellari* vk = new ViinaKellari(Coord{65, 3}, &level);
+        level.addItem(vk);
+    }
 }
 
-static void populateBuildings(Level& level)
+static void populateBuildings(Level& level, const GameState& gs)
 {
+    if (gs.phase == GamePhase::War) {
+        Building* b = new Seina();
+        level.addBuilding(b);
+        if (random(50)) {
+            b = new Seina();
+            level.addBuilding(b);
+        }
+        return;
+    }
+
+    if (gs.phase == GamePhase::Kremlin) {
+        Building* b = new Kremlin();
+        level.addBuilding(b);
+        return;
+    }
+
     Building* b = nullptr;
 
     if (level.stage > 4) {
@@ -95,88 +133,109 @@ static void populateBuildings(Level& level)
     b = nullptr;
 }
 
-static void populatePersons(Level& level)
+static void populatePersons(Level& level, const GameState& gs)
 {
-    // at least one granny / level
+    if (gs.phase == GamePhase::War) {
+        // war levels: skinheads as enemy soldiers, vankis as POWs
+        for (int i = 0; i < 3 + (int)gs.warStage * 2; ++i) {
+            level.createPerson(level.freePosition(), skinhead);
+        }
+        if (random(40)) level.createPerson(level.freePosition(), vanki);
+        for (int i = 0; i < (int)gs.warStage; ++i) {
+            if (random(50)) level.createPerson(level.freePosition(), veteraani);
+        }
+        return;
+    }
+
+    if (gs.phase == GamePhase::Kremlin) {
+        // Kremlin: FSB guards and cops
+        for (int i = 0; i < 3; ++i)
+            level.createPerson(level.freePosition(), fsb);
+        for (int i = 0; i < 2; ++i)
+            level.createPerson(level.freePosition(), poliisi);
+        return;
+    }
+
+    // Moscow phases - density scales with Kremlin proximity
+    float kremlinProximity = (float)gs.moscowStage / 8.0f;
+
+    // JUOPOT - lots of drunks, fewer near Kremlin
     {
-        bool once = true;
-        if (once) {
-            once = random(10);
+        int drunkCount = (int)(5 * (1.0f - kremlinProximity * 0.7f)) + std::rand()%3;
+        for (int i = 0; i < drunkCount; ++i) {
+            level.createPerson(level.freePosition(), juoppo);
+        }
+    }
 
-            Coord freePos { 0, 0 };
-            while ((freePos.x < 14) || (freePos.y < 5)) {
-                freePos = level.freePosition();
-            }
-
+    // mummelit
+    {
+        int mummoCount = 1 + std::rand()%3;
+        for (int i = 0; i < mummoCount; ++i) {
             level.createPerson(level.freePosition(), mummo);
         }
     }
 
-    // at least one cop / level
-    for (int i = 0; i < std::rand() % 9 + 1; ++i)
+    // MILIISIT - more near Kremlin
     {
-        bool create = true;
-        if (create) {
-            create = random(60);
-            level.createPerson(level.freePosition(), poliisi);
+        int copCount = (int)(2 + kremlinProximity * 6) + std::rand()%3;
+        for (int i = 0; i < copCount; ++i) {
+            if (random(60 + (int)(kremlinProximity * 30))) {
+                level.createPerson(level.freePosition(), poliisi);
+            }
         }
     }
 
     // varas
-    {
-        if ((level.stage > 2) && random(60)) {
-            Coord freePos { 0, 0 };
-            while ((freePos.x < 14) || (freePos.y < 6)) {
-                freePos = level.freePosition();
-            }
-
-            level.createPerson(freePos, varas);
-        }
+    if ((level.stage > 2) && random(60)) {
+        level.createPerson(level.freePosition(), varas);
     }
 
     // ykä
-    {
-        if (random(50)) {
-            Coord pos { common::PLAYER_START_X + 2, common::PLAYER_START_Y };
-            if (!level.hit(pos))
-            {
-                level.createPerson(pos, yka);
-            }
-        }
+    if (random(50)) {
+        Coord pos { common::PLAYER_START_X + 2, common::PLAYER_START_Y };
+        if (!level.hit(pos))
+            level.createPerson(pos, yka);
     }
 
-    // jengi - appears from stage 3, more common later
+    // jengi
     if (level.stage > 2) {
         int count = std::rand() % (level.stage / 2 + 1);
         for (int i = 0; i < count && i < 3; ++i) {
-            if (random(40)) {
+            if (random(40))
                 level.createPerson(level.freePosition(), jengi);
-            }
         }
     }
 
-    // ryöstäjä - rare, appears from stage 4
-    if (level.stage > 3 && random(30)) {
+    // ryöstäjä
+    if (level.stage > 3 && random(30))
         level.createPerson(level.freePosition(), ryostaja);
-    }
 
-    // diileri - appears from stage 2
-    if (level.stage > 1 && random(40)) {
+    // diileri
+    if (level.stage > 1 && random(40))
         level.createPerson(level.freePosition(), diileri);
-    }
 
-    // veteraani (SMO veteran) - appears from stage 3
-    if (level.stage > 2 && random(35)) {
+    // SMO veteraanit
+    if (level.stage > 2 && random(35))
         level.createPerson(level.freePosition(), veteraani);
-    }
-    if (level.stage > 5 && random(25)) {
+    if (level.stage > 5 && random(25))
         level.createPerson(level.freePosition(), veteraani);
+
+    // FSB - more near Kremlin
+    {
+        int fsbCount = (int)(kremlinProximity * 3);
+        for (int i = 0; i < fsbCount; ++i) {
+            if (random(20 + (int)(kremlinProximity * 40)))
+                level.createPerson(level.freePosition(), fsb);
+        }
     }
 
 }
 
 static void populateVehicles(Level& level)
 {
+    if (level.isWarLevel) return;
+    if (level.stage > 19) return;
+
     if (level.stage > 3) {
         constexpr uint32_t BUS_ROUTE_Y = 19;
         constexpr uint32_t BUS_STOP_X = 40;
@@ -290,6 +349,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
     while (!quit && gameState.phase != GamePhase::Victory) {
         player.resetPosition();
         stage = gameState.getEffectiveStage();
+        player.returnedFromWar = gameState.hasBeenToWar;
         Level level(stage);
         level.pathFinding = pathFinding;
 
@@ -309,30 +369,21 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             level.addItem(next);
         }
 
+        if (gameState.phase == GamePhase::War) {
+            level.isWarLevel = true;
+        }
+        if (gameState.hasKremlinPass) {
+            player.hasKremlinPass = true;
+        }
+
         level.addPerson(&player);
-        populateBuildings(level);
-        populatePersons(level);
-        populateItems(level);
+        populateBuildings(level, gameState);
+        populatePersons(level, gameState);
+        populateItems(level, gameState);
         populateVehicles(level);
 
-        EnvironmentEvents envEvents(&level);
-        if (level.stage > 2) {
-            level.events = &envEvents;
-        }
-
-        EnvironmentEvents* envEvents = nullptr;
-        if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
-            envEvents = new EnvironmentEvents(&level);
-        }
-
-        // Veteraanit - appear from stage 2, more in later stages
-        if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
-            int vetCount = 1 + std::rand() % (gameState.moscowStage / 2 + 1);
-            for (int i = 0; i < vetCount && i < 4; ++i) {
-                if (random(35 + gameState.moscowStage * 5)) {
-                    level.createPerson(level.freePosition(), veteraani);
-                }
-            }
+        if (gameState.phase == GamePhase::War || level.stage > 2) {
+            level.events = new EnvironmentEvents(&level);
         }
 
         if (welcome) {
@@ -604,10 +655,25 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     break;
                 }
 
+                if (player.wonGame) {
+                    gameState.phase = GamePhase::Victory;
+                    nextLevel = true;
+                    break;
+                }
+
                 if (player.inJail) {
-                    printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
-                    printer->print(&level);
-                    quit = true;
+                    player.inJail = false;
+                    if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
+                        printer->setMessage("Poliisit vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
+                        printer->print(&level);
+                        common::sleep(2000);
+                        gameState.sendToWar();
+                        nextLevel = true;
+                    } else {
+                        printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä... Game over!");
+                        printer->print(&level);
+                        quit = true;
+                    }
                     break;
                 } else if (player.stats.health < 1) {
                     quit = true;
@@ -628,11 +694,16 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                 if (checkExit(level))
                 {
-                    printer->showMessage("Seuraavaan kenttaan...", &level, false);
-                    printer->removeMessage();
-                    InputNS::Input::waitKey();
-                    stage++;
-                    nextLevel = true;
+                    gameState.kremlinPassParts = player.inventory.propusk;
+                    gameState.advanceLevel();
+                    if (gameState.phase == GamePhase::Victory) {
+                        nextLevel = true;
+                    } else {
+                        printer->showMessage("Seuraava: " + gameState.getLevelName(), &level, false);
+                        printer->removeMessage();
+                        InputNS::Input::waitKey();
+                        nextLevel = true;
+                    }
                 }
 
                 common::sleep(FRAME_MS);
@@ -671,10 +742,25 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     break;
                 }
 
+                if (player.wonGame) {
+                    gameState.phase = GamePhase::Victory;
+                    nextLevel = true;
+                    break;
+                }
+
                 if (player.inJail) {
-                    printer->setMessage("Putkassa istuskellessasi huomaat parin tunnin päästä miten\nPääsi alkaa selvetä, ja tunnet miten kankkunen tulee. Game over !!!!!");
-                    printer->print(&level);
-                    quit = true;
+                    player.inJail = false;
+                    if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
+                        printer->setMessage("Poliisit vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
+                        printer->print(&level);
+                        InputNS::Input::waitKey();
+                        gameState.sendToWar();
+                        nextLevel = true;
+                    } else {
+                        printer->setMessage("Putkassa... Game over!");
+                        printer->print(&level);
+                        quit = true;
+                    }
                     break;
                 } else if (player.stats.health < 1) {
                     quit = true;
@@ -696,17 +782,51 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 printer->print(&level);
                 if (checkExit(level))
                 {
-                    printer->showMessage("Seuraavaan kenttaan...", &level, false);
-                    printer->removeMessage();
-
-                    InputNS::Input::waitKey();
-
-                    // next level
-                    stage++;
-                    nextLevel = true;
+                    gameState.kremlinPassParts = player.inventory.propusk;
+                    gameState.advanceLevel();
+                    if (gameState.phase == GamePhase::Victory) {
+                        nextLevel = true;
+                    } else {
+                        printer->showMessage("Seuraava: " + gameState.getLevelName(), &level, false);
+                        printer->removeMessage();
+                        InputNS::Input::waitKey();
+                        nextLevel = true;
+                    }
                 }
             }
         }
+    }
+
+    if (gameState.phase == GamePhase::Victory) {
+        printer->clear();
+        printer->printChar("P\xD0\x9F""LTSARI pääsi Putinin viinakellariin!\n\n");
+        printer->printChar("Teljet oven takanasi...\n");
+        printer->printChar("Viinirivistöt loistavat edessäsi kuin paratiisi.\n\n");
+        common::sleep(2000);
+
+        const char* bottles[] = {
+            "Glub glub... Château Pétrus 1945... *GULP*",
+            "Romanée-Conti... *GLUG GLUG GLUG*",
+            "Massandra Collection... *BURP*",
+            "Dom Pérignon... *hic*... suoraan pullosta...",
+            "Vodka Beluga... *GULP*... kotiinpaluu!",
+            "Screaming Eagle... *glub*... ei huono...",
+        };
+        for (int i = 0; i < 6; ++i) {
+            printer->printChar(bottles[i]);
+            printer->printChar("\n");
+            common::sleep(1500);
+        }
+        printer->printChar("\n");
+        common::sleep(1000);
+        printer->printChar("Normaalit ihmiset etsiv\xC3\xA4t nirvanaa...\n");
+        common::sleep(1500);
+        printer->printChar("Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 pyrit\xC3\xA4\xC3\xA4n DELIRIUM TREMENSIIN.\n");
+        printer->printChar("  (\xD0\x91\xD0\x95\xD0\x9B\xD0\x90\xD0\xAF \xD0\x93\xD0\x9E\xD0\xA0\xD0\xAF\xD0\xA7\xD0\x9A\xD0\x90)\n\n");
+        common::sleep(2000);
+        printer->printChar("Ja sin\xC3\xA4 saavutit sen. Putinin viinakellarissa.\n");
+        printer->printChar("Loputtomasti vodkaa ja aikaa. Ven\xC3\xA4l\xC3\xA4inen unelma.\n\n");
+        common::sleep(2000);
     }
 
     if (!skipWaitKey) InputNS::Input::waitKey();

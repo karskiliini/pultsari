@@ -15,7 +15,9 @@ enum PersonType {
     jengi,
     ryostaja,
     diileri,
-    veteraani
+    veteraani,
+    fsb,
+    juoppo
 };
 
 #endif
