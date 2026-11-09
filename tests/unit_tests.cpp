@@ -1,6 +1,7 @@
 // Unit tests for game logic: shops, break-ins, drones, exhaust, vision.
 // Build and run with `make test`.
 #include "aagun.hpp"
+#include "patrol.hpp"
 #include "animation.hpp"
 #include "building.hpp"
 #include "input.hpp"
@@ -2923,4 +2924,71 @@ TEST(fsb_drives_off_when_player_wins_the_fight)
     CHECK(w.count(fsb) == 0);            // the quitter got back in the car too
     CHECK(!w.player.conscripted);
     CHECK(!w.player.inJail);
+}
+
+// ---- militsija on the streets ----
+
+// a street with a row of shops along it, a narrow alley between each pair
+static void buildStreet(World& w)
+{
+    w.level.roads.push_back(Road{ true, 100, "TESTSKAJA" });
+    w.level.roads.push_back(Road{ false, 200, "TESTOVKA" });
+    for (uint32_t x = 20; x < 180; x += 17) w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), x, 92);
+}
+
+TEST(cop_spots_are_on_pavements_and_in_alleys)
+{
+    World w(Coord{ 20, 20 });
+    buildStreet(w);
+    for (int i = 0; i < 20; ++i) {
+        const Coord c = Patrol::pavementSpot(w.level);
+        CHECK(!(c.x == 0 && c.y == 0));
+        const Road* h = nullptr; const Road* v = nullptr;
+        w.level.roadsAt(c, h, v);
+        CHECK(!h && !v);                                       // not out in the traffic
+        CHECK(c.y == 99 || c.y == 103 || c.x == 199 || c.x == 203);   // right beside the kerb
+        CHECK(!w.level.hit(c));
+    }
+    for (int i = 0; i < 20; ++i) {
+        const Coord a = Patrol::alleySpot(w.level);
+        CHECK(Patrol::inAlley(w.level, a));
+        CHECK(!w.level.hit(a));
+        CHECK(a.y >= 90 && a.y <= 98);                         // between the shops
+    }
+    CHECK(!Patrol::inAlley(w.level, Coord{ 300, 30 }));        // open ground is no alley
+}
+
+TEST(streets_are_full_of_cops)
+{
+    World w(Coord{ 20, 20 });
+    buildStreet(w);
+    Patrol::populateCops(w.level, 1);
+    const size_t cops = w.count(poliisi);
+    CHECK(cops >= Patrol::wantedCops(1));
+    CHECK(Patrol::wantedCops(1) >= 12);                        // far more than the old two to five
+    CHECK(Patrol::wantedCops(8) > Patrol::wantedCops(1));      // and more towards the Kremlin
+    size_t street = 0;
+    for (auto p : w.level.persons)
+        if (p->type == poliisi && (Patrol::onPavement(w.level, p->coord) || Patrol::inAlley(w.level, p->coord))) ++street;
+    CHECK(street * 10 >= cops * 9);                             // nearly all on the streets and in the alleys
+}
+
+TEST(new_patrols_walk_in_out_of_sight)
+{
+    World w(Coord{ 100, 104 });
+    buildStreet(w);
+    for (int i = 0; i < 2000 && w.count(poliisi) < Patrol::wantedCops(1); ++i) Patrol::patrolTick(w.level);
+    CHECK(w.count(poliisi) == Patrol::wantedCops(1));           // topped up, then no more
+    for (int i = 0; i < 200; ++i) Patrol::patrolTick(w.level);
+    CHECK(w.count(poliisi) == Patrol::wantedCops(1));
+    for (auto p : w.level.persons) {
+        if (p->type != poliisi) continue;
+        const int dx = std::abs((int)p->coord.x - 100), dy = std::abs((int)p->coord.y - 104);
+        CHECK(dx >= 44 || dy >= 18);                            // none popped up on screen
+    }
+    w.level.isWarLevel = true;                                  // no militsija at the front
+    for (auto p : w.level.persons) if (p->type == poliisi) p->stats.health = 0;
+    w.level.cleanDead();
+    for (int i = 0; i < 500; ++i) Patrol::patrolTick(w.level);
+    CHECK(w.count(poliisi) == 0);
 }

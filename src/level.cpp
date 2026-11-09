@@ -10,6 +10,7 @@
 #include "animation.hpp"
 #include "vehicle.hpp"
 #include "aagun.hpp"
+#include "patrol.hpp"
 #include "events.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -729,6 +730,8 @@ void Level::skyTick()
 {
     // soldiers and air defence open up on any drone close by
     antiDroneFire(*this);
+    // the militsija keeps its streets manned
+    Patrol::patrolTick(*this);
 
     // now and then a drone just passes over
     if (common::random(isWarLevel ? 4 : 1)) launchDrone(nullptr);

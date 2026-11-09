@@ -6,6 +6,7 @@
 #include "building.hpp"
 #include "level.hpp"
 #include "aagun.hpp"
+#include "patrol.hpp"
 #include "player.hpp"
 #include "printer.hpp"
 #include "coord.hpp"
@@ -452,15 +453,8 @@ static void populatePersons(Level& level, const GameState& gs)
         }
     }
 
-    // MILIISIT - more near Kremlin
-    {
-        int copCount = (int)(2 + kremlinProximity * 6) + std::rand()%3;
-        for (int i = 0; i < copCount; ++i) {
-            if (random(60 + (int)(kremlinProximity * 30))) {
-                level.createPerson(level.freePosition(), poliisi);
-            }
-        }
-    }
+    // MILIISIT - on every pavement and in the alleys, more towards the Kremlin
+    Patrol::populateCops(level, gs.moscowStage);
 
     // varas
     if (random(60)) {
