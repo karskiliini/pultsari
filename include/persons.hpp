@@ -50,6 +50,9 @@ public:
     // initiative: actions per second x10; energy builds up each frame until it is enough to act
     uint32_t speed = 20;
     uint32_t energy = 0;
+    // pickpocketing: money taken from the player, and how many more actions to run away
+    uint32_t stolenMoney = 0;
+    uint32_t fleeActions = 0;
     bool blind = false;
     bool hasRadio = false;
     // show an NPC's message only if the player can see or hear this person
@@ -210,6 +213,7 @@ public:
     uint32_t ammo = 6;
     // a state-funded personal assistant, permanently blind drunk
     Avustaja* assistant = nullptr;
+    bool oneLegged = false;
 private:
     void lookAfterAssistant(std::string& msg);
 };
@@ -347,6 +351,28 @@ private:
     Coord home;
     State state = State::AtMap;
     uint32_t timer = 0;
+};
+
+// A housewife so drunk she understands nothing, and her foul-mouthed child.
+class Kotiaiti : public Person {
+public:
+    Kotiaiti(const Coord& pos);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "K"; };
+};
+
+class Lapsi : public Person {
+public:
+    Lapsi(const Coord& pos);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "c"; };
+    Kotiaiti* mother = nullptr;
+private:
+    void stepTowards(const Coord& target, bool away);
 };
 
 #endif

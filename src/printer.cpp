@@ -220,6 +220,8 @@ const char* personColor(const Person* p)
         case vanki:        return "38;5;101";           // worn prison black-olive
         case diileri:      return "38;5;135";           // shiny purple tracksuit
         case avustaja:     return "38;5;216";           // flushed drunk face
+        case kotiaiti:     return "38;5;175";           // pink velour tracksuit
+        case lapsi:        return "1;38;5;214";         // bright orange puffer jacket
         default:           return "37";
     }
 }

@@ -1506,8 +1506,9 @@ Veteraani::Veteraani(const Coord& pos) : Person(veteraani, pos)
 {
     stats.health = 12;
     visionRange = 10;
-    // some came back from the front blind and go by ear
+    // some came back from the front blind and go by ear, some on one leg
     blind = random(25);
+    oneLegged = random(30);
 }
 
 std::string Veteraani::typeToChar() const
@@ -2965,5 +2966,135 @@ bool Avustaja::interactThrow(Item* item, Person* source, std::string& msg)
     msg = "Osuit avustajaan. H\xC3\xA4n ei huomaa mit\xC3\xA4\xC3\xA4n.";
     damage(1);
     collapsed = true;
+    return true;
+}
+
+// ============ Housewife and child ============
+
+Kotiaiti::Kotiaiti(const Coord& pos) : Person(kotiaiti, pos)
+{
+    stats.health = 5;
+    visionRange = 3;
+}
+
+void Kotiaiti::npcAct()
+{
+    if (random(12)) {
+        static const char* slur[] = {
+            "Vanjuska... miss\xC3\xA4 s\xC3\xA4... *hik*",
+            "Viinaa... ja lastenlis\xC3\xA4t...",
+            "*hoipertelee*",
+            "Mmmhh... kuka sammutti auringon...",
+        };
+        say(slur[std::rand() % 4]);
+        level->audio.addSound(coord, SoundType::Voice, "Joku sammaltaa", "Sammallusta", "...sammallusta...", 8);
+    }
+    if (random(50)) {
+        Coord next = coord;
+        switch (randomDirection()) {
+            case DirectionNS::up:    if (next.y > 0) --next.y; break;
+            case DirectionNS::down:  ++next.y; break;
+            case DirectionNS::left:  if (next.x > 0) --next.x; break;
+            case DirectionNS::right: ++next.x; break;
+            default: break;
+        }
+        if (!level->hit(next)) coord = next;
+    }
+}
+
+bool Kotiaiti::interact(std::string& msg, Person* source)
+{
+    msg = "Koti\xC3\xA4iti tuijottaa sinua sameasti: 'Mmhh... s\xC3\xA4\xC3\xA4... mit\xC3\xA4... *hik*'. H\xC3\xA4n ei ymm\xC3\xA4rr\xC3\xA4 puhettasi.";
+    return true;
+}
+
+bool Kotiaiti::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Osuit koti\xC3\xA4itiin. H\xC3\xA4n ei huomaa.";
+    say("Ai... mik\xC3\xA4...?");
+    damage(1);
+    return true;
+}
+
+Lapsi::Lapsi(const Coord& pos) : Person(lapsi, pos)
+{
+    stats.health = 3;
+    visionRange = 9;
+}
+
+void Lapsi::stepTowards(const Coord& target, bool away)
+{
+    Direction d = getMoveDirection(target);
+    if (away) {
+        switch (d) {
+            case DirectionNS::up:    d = DirectionNS::down; break;
+            case DirectionNS::down:  d = DirectionNS::up; break;
+            case DirectionNS::left:  d = DirectionNS::right; break;
+            case DirectionNS::right: d = DirectionNS::left; break;
+            default: break;
+        }
+    }
+    Coord next = coord;
+    switch (d) {
+        case DirectionNS::up:    if (next.y > 0) --next.y; break;
+        case DirectionNS::down:  ++next.y; break;
+        case DirectionNS::left:  if (next.x > 0) --next.x; break;
+        case DirectionNS::right: ++next.x; break;
+        default: return;
+    }
+    if (!level->hit(next)) coord = next;
+}
+
+void Lapsi::npcAct()
+{
+    Player* p = level->getPlayer();
+    // never strays far from mum
+    if (level->isAlive(mother) && coord.distance(mother->coord) > 10) {
+        stepTowards(mother->coord, false);
+        return;
+    }
+    if (!p || !canSeeTarget(p->coord)) {
+        if (random(30)) stepTowards(Coord{ coord.x + std::rand() % 3 - 1, coord.y + std::rand() % 3 - 1 }, false);
+        return;
+    }
+
+    const uint32_t dist = coord.distance(p->coord);
+    if (random(25)) {
+        static const char* taunts[] = {
+            "Hei pultsari! Haiset kuselta!",
+            "Set\xC3\xA4 on k\xC3\xA4nniss\xC3\xA4! Set\xC3\xA4 on k\xC3\xA4nniss\xC3\xA4!",
+            "\xC3\x84iti, toi set\xC3\xA4 kuolaa!",
+            "Rintamalle siit\xC3\xA4, juoppo!",
+            "Mun isi on FSB:ss\xC3\xA4!",
+            "Haha, sulla on oksennusta keng\xC3\xA4ss\xC3\xA4!",
+            "Mene t\xC3\xB6ihin, nyyhkis!",
+        };
+        say(taunts[std::rand() % 7]);
+        level->audio.addSound(coord, SoundType::Voice, "Lapsi huutaa ilkeyksi\xC3\xA4", "Lapsen kiljuntaa", "...kiljuntaa...", 12);
+    }
+    if (dist <= 2 && random(12)) {
+        say("*TVUH!*");
+        report("Lapsi sylk\xC3\xA4isee r\xC3\xA4k\xC3\xA4klimpin p\xC3\xA4\xC3\xA4llesi!");
+    }
+    // pesters from just out of reach
+    if (dist > 3) stepTowards(p->coord, false);
+    else if (dist < 2) stepTowards(p->coord, true);
+}
+
+bool Lapsi::interact(std::string& msg, Person* source)
+{
+    msg = "Lapsi potkaisee sinua s\xC3\xA4\xC3\xA4reen ja nauraa.";
+    say("Ei saa koskea! \xC3\x84ITIII!");
+    source->damage(1);
+    level->alertCops(source);
+    return true;
+}
+
+bool Lapsi::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Osuit lapseen. Ohikulkijat paheksuvat.";
+    say("\xC3\x84ITIIII!");
+    damage(1);
+    level->alertCops(source);
     return true;
 }

@@ -713,6 +713,17 @@ bool Player::move(DirectionNS::Direction d, Level* level)
 
     if (!blocked) {
         Person* p = level->checkPerson(check);
+        if (p && p->stolenMoney > 0) {
+            // caught the pickpocket
+            msg = "Sait kiinni! Otat rahasi takaisin: " + std::to_string(p->stolenMoney) + " ruplaa.";
+            stats.money += p->stolenMoney;
+            p->stolenMoney = 0;
+            p->fleeActions = 0;
+            p->say("Ei ollut minun! Ei ollut minun!");
+            printer->showMessage(msg, level);
+            blocked = true;
+            p = nullptr;
+        }
         if (p)
         {
             blocked = p->interact(msg, this);

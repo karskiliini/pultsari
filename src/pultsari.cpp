@@ -261,6 +261,19 @@ static void populatePersons(Level& level, const GameState& gs)
     if (random(30))
         level.createPerson(level.freePosition(), diileri);
 
+    // drunk housewives with their foul-mouthed kids
+    for (int i = 0; i < 2 + std::rand() % 2; ++i) {
+        Kotiaiti* mum = dynamic_cast<Kotiaiti*>(level.createPerson(level.freePosition(), kotiaiti));
+        if (!mum) continue;
+        Coord c { mum->coord.x + 1, mum->coord.y };
+        if (level.hit(c)) continue;
+        Lapsi* kid = new Lapsi(c);
+        kid->pathFinding = level.pathFinding;
+        kid->printer = level.printer;
+        kid->mother = mum;
+        if (!level.addPerson(kid)) delete kid;
+    }
+
     // SMO veteraanit
     if (random(35))
         spawnVeteran(level);

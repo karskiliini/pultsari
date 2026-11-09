@@ -23,7 +23,9 @@ enum PersonType {
     medvedev,
     shoigu,
     gerasimov,
-    avustaja
+    avustaja,
+    kotiaiti,
+    lapsi
 };
 
 #endif

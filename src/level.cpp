@@ -237,6 +237,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case putin:
                 p = new Putin(coord);
                 break;
+            case kotiaiti:
+                p = new Kotiaiti(coord);
+                break;
             default:
                 break;
         }
@@ -678,8 +681,120 @@ static uint32_t baseSpeed(PersonType t)
         case medvedev:     return 14;
         case mummo:        return 12;
         case avustaja:     return 10; // blind drunk
+        case kotiaiti:     return 11;
+        case lapsi:        return 34;
         default:           return 20;
     }
+}
+
+// how tempted each kind of person is to pick the player's pocket (percent, never 0)
+static uint32_t theftMotivation(PersonType t)
+{
+    switch (t) {
+        case varas:        return 60;
+        case lapsi:        return 40;
+        case ryostaja:     return 40;
+        case jengi:        return 35;
+        case vanki:        return 30;
+        case diileri:      return 25;
+        case skinhead:     return 20;
+        case juoppo:       return 15;
+        case yka:          return 15;
+        case poliisi:      return 10;
+        case sotilas:      return 8;
+        case avustaja:     return 8;
+        case veteraani:    return 6;
+        case fsb:          return 5;
+        case vartija:      return 5;
+        case mummo:        return 4;
+        case kotiaiti:     return 3;
+        case medvedev:     return 3;
+        case shoigu:
+        case gerasimov:    return 2;
+        default:           return 1;
+    }
+}
+
+// the weak run off with the money; the strong just stare you down
+static bool isWeak(const Person* p)
+{
+    if (p->stats.health <= 6) return true;
+    switch (p->type) {
+        case mummo: case juoppo: case avustaja: case lapsi: case kotiaiti: case yka: return true;
+        default: break;
+    }
+    const Veteraani* v = dynamic_cast<const Veteraani*>(p);
+    return v && v->oneLegged;
+}
+
+std::string Level::nameOf(const Person* p) const
+{
+    switch (p->type) {
+        case juoppo:       return dynamic_cast<const Juoppo*>(p)->name;
+        case mummo:        return "Mummo";
+        case poliisi:      return "Politsija";
+        case varas:        return "Varas";
+        case vanki:        return "Pakovanki";
+        case skinhead:     return "Skinhead";
+        case yka:          return "Vasja";
+        case jengi:        return "Gopnik";
+        case ryostaja:     return "Ry\xC3\xB6st\xC3\xA4j\xC3\xA4";
+        case diileri:      return "Diileri";
+        case veteraani:    return dynamic_cast<const Veteraani*>(p)->oneLegged ? "Jalkapuoli veteraani" : "Veteraani";
+        case fsb:          return "FSB-agentti";
+        case sotilas:      return "Sotilas";
+        case ilmatorjunta: return "Ilmatorjuntamies";
+        case vartija:      return "Vartija";
+        case putin:        return "Putin";
+        case medvedev:     return "Medvedev";
+        case shoigu:       return "\xC5\xA0oigu";
+        case gerasimov:    return "Gerasimov";
+        case avustaja:     return "Avustaja";
+        case kotiaiti:     return "Koti\xC3\xA4iti";
+        case lapsi:        return "Lapsi";
+        default:           return "Joku";
+    }
+}
+
+// one action's chance to pick the player's pocket when right next to them
+static bool tryPickpocket(Level* level, Person* p)
+{
+    PlayerNS::Player* player = level->getPlayer();
+    if (!player || player->stats.money == 0 || p->coord.distance(player->coord) > 1) return false;
+    if ((uint32_t)(std::rand() % 800) >= theftMotivation(p->type)) return false;
+
+    const uint32_t amount = std::max<uint32_t>(1, player->stats.money * (5 + std::rand() % 26) / 100);
+    player->stats.money -= amount;
+    p->stolenMoney += amount;
+    level->printer->showMessage(level->nameOf(p) + " varasti sinulta " + std::to_string(amount) + " ruplaa!", level, false);
+
+    if (isWeak(p)) {
+        p->fleeActions = 20;
+        const Veteraani* v = dynamic_cast<const Veteraani*>(p);
+        p->say(p->type == lapsi ? "H\xC3\xA4h\xC3\xA4\xC3\xA4! Kiitti rahoista, pultsari!"
+               : (v && v->oneLegged) ? "*k\xC3\xB6p\xC3\xB6tt\xC3\xA4\xC3\xA4 karkuun*" : "*kipitt\xC3\xA4\xC3\xA4 karkuun*");
+    } else {
+        p->say("Mit\xC3\xA4 tuijotat? Haluatko lis\xC3\xA4\xC3\xA4?");
+    }
+    return true;
+}
+
+// a weak thief steps away from the player
+static void fleeStep(Level* level, Person* p)
+{
+    const PlayerNS::Player* player = level->getPlayer();
+    if (!player) return;
+    Coord best = p->coord;
+    uint32_t bestDist = p->coord.distance(player->coord);
+    const int d[4][2] = { {0, -1}, {1, 0}, {0, 1}, {-1, 0} };
+    for (const auto& o : d) {
+        Coord c { (uint32_t)((int)p->coord.x + o[0]), (uint32_t)((int)p->coord.y + o[1]) };
+        if (c.x >= common::SIZEX || c.y >= common::SIZEY) continue;
+        if (level->hitWall(c) || level->hitPerson(c)) continue;
+        const uint32_t dist = c.distance(player->coord);
+        if (dist > bestDist) { best = c; bestDist = dist; }
+    }
+    p->coord = best;
 }
 
 void Level::npcFrame(uint32_t ms)
@@ -691,7 +806,12 @@ void Level::npcFrame(uint32_t ms)
         p->energy += p->speed * ms;
         if (p->energy >= 10000) {
             p->energy = std::min<uint32_t>(p->energy - 10000, 10000);
-            p->npcAct();
+            if (p->fleeActions > 0) {
+                --p->fleeActions;
+                fleeStep(this, p);
+            } else if (!tryPickpocket(this, p)) {
+                p->npcAct();
+            }
         }
     }
 }
@@ -701,6 +821,8 @@ bool Level::addPerson(Person* person)
     if (person->type != pelaaja) {
         // everyone has their own pace
         person->speed = baseSpeed(person->type) * (80 + std::rand() % 41) / 100;
+        const Veteraani* v = dynamic_cast<const Veteraani*>(person);
+        if (v && v->oneLegged) person->speed /= 2;
         person->energy = std::rand() % 10000;
     }
     // eyesight differs from person to person
