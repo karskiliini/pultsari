@@ -39,6 +39,8 @@ public:
     uint32_t routeY;
     int direction = -1;
     bool atStop = false;
+    // blown up: a burnt-out shell that no longer moves
+    bool wrecked = false;
     uint32_t stopTimer = 0;
     Level* level = nullptr;
 };

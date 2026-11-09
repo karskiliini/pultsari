@@ -178,6 +178,7 @@ void PrinterWeb::printAimLine(Level* level, uint32_t px, uint32_t py, float angl
 {
     // the browser draws a laser from the player along the angle, as far as the cells reach
     string j = "{\"t\":\"aim\",\"risk\":" + to_string(aimRisk) + ",\"low\":" + (aimLength < 20 ? "1" : "0") +
+               (gunAmmo >= 0 ? ",\"gun\":" + to_string(gunAmmo) : string()) +
                ",\"a\":" + to_string(angle) + ",\"p\":[" + to_string((int)px - level->cameraX) + "," +
                to_string((int)py - level->cameraY) + "],\"cells\":[";
     bool first = true;

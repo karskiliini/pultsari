@@ -52,6 +52,7 @@
     const particles = [];
     const stains = [];
     const flashes = [];
+    const shells = [];   // anti-aircraft tracers: {x0, y0, x1, y1, t}
     const MAX_STAINS = 4000;
     let lastTime = performance.now();
     let mood = { b: 1, s: 1 };
@@ -248,6 +249,10 @@
             case 'hit': blood(m); break;
             case 'vomit': vomit(m); break;
             case 'boom': boom(m); break;
+            case 'shell':
+                shells.push({ x0: m.x0, y0: m.y0, x1: m.x1, y1: m.y1, t: 0 });
+                flashes.push({ wx: m.x0 + 0.5, wy: m.y0 + 0.5, r: CW * 1.6, t: 0 }); // muzzle flash
+                break;
             case 'clear': ui.text.textContent = ''; ui.text.hidden = false; break;
             case 'text': ui.text.hidden = false; ui.text.textContent += m.s; break;
             case 'score':
@@ -433,6 +438,24 @@
             ctx.fillRect(sx - r * 2, sy - r * 2, r * 4, r * 4);
         }
 
+        // anti-aircraft tracers: a hot streak racing from the barrels to the burst
+        for (let i = shells.length - 1; i >= 0; i--) {
+            const s = shells[i];
+            s.t += dt;
+            if (s.t > 0.3) { shells.splice(i, 1); continue; }
+            const [ax, ay] = toScreen(s.x0, s.y0), [bx, by] = toScreen(s.x1, s.y1);
+            const head = Math.min(1, s.t / 0.1), tail = Math.max(0, head - 0.45);
+            const fade = s.t < 0.1 ? 1 : 1 - (s.t - 0.1) / 0.2;
+            const lx = (k) => ax + (bx - ax) * k, ly = (k) => ay + (by - ay) * k;
+            ctx.lineCap = 'round';
+            ctx.strokeStyle = `rgba(255,170,40,${0.35 * fade})`;
+            ctx.lineWidth = 5 * scale;
+            ctx.beginPath(); ctx.moveTo(lx(tail), ly(tail)); ctx.lineTo(lx(head), ly(head)); ctx.stroke();
+            ctx.strokeStyle = `rgba(255,245,190,${fade})`;
+            ctx.lineWidth = 1.5 * scale;
+            ctx.beginPath(); ctx.moveTo(lx(tail), ly(tail)); ctx.lineTo(lx(head), ly(head)); ctx.stroke();
+        }
+
         // aiming line, and the accidental-discharge meter while a pistol is cocked
         if (aim && now - aimAt < 250) {
             // a laser from the player's hand along the aim, as far as the line of fire reaches
@@ -451,6 +474,27 @@
                 ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
                 ctx.fillStyle = `rgba(255,90,90,${alpha})`;
                 ctx.beginPath(); ctx.arc(x1, y1, 2.5, 0, Math.PI * 2); ctx.fill();
+            }
+            if (aim.gun !== undefined) {
+                // the anti-aircraft gunner's shells left
+                const w = 260, h = 12, x0 = (COLS * CW - w) / 2, y0 = 10, MAX = 100;
+                ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                ctx.fillRect(x0 - 8, y0 - 6, w + 16, h + 26);
+                ctx.strokeStyle = '#888';
+                ctx.strokeRect(x0, y0 + 14, w, h);
+                const r = Math.max(0, Math.min(1, aim.gun / MAX));
+                ctx.fillStyle = aim.gun > 30 ? '#8fbf3a' : aim.gun > 0 ? '#f2d34a' : '#ff4d4d';
+                for (let k = 0; k < MAX; k++) {
+                    if (k / MAX >= r) break;
+                    ctx.fillRect(x0 + 1 + k * (w - 2) / MAX, y0 + 15, Math.max(1, (w - 2) / MAX - 1), h - 2);
+                }
+                ctx.fillStyle = '#eee';
+                ctx.font = 'bold 12px ui-monospace, Menlo, monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText('IT-TYKKI · ЗУ-23-2', x0, y0 + 5);
+                ctx.textAlign = 'right';
+                ctx.fillText(aim.gun ? `AMMUKSET ${aim.gun}/${MAX}` : 'AMMUKSET LOPPU', x0 + w, y0 + 5);
+                ctx.textAlign = 'center';
             }
             if (aim.risk >= 0) {
                 const w = 220, h = 12, x0 = (COLS * CW - w) / 2, y0 = 10;

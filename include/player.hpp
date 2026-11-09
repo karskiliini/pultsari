@@ -14,6 +14,7 @@
 
 class Level;
 class Car;
+class AAGun;
 
 namespace PlayerNS {
 
@@ -91,6 +92,8 @@ public:
     bool hasKremlinPass = false;
     bool wonGame = false;
     bool killedPutin = false;
+    // the anti-aircraft gun the player sits behind, if any
+    AAGun* manning = nullptr;
 };
 
 }

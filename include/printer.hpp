@@ -87,7 +87,9 @@ public:
     // map view size in cells; grows when the camera zooms out after death
     uint32_t viewW = 80;
     uint32_t viewH = 28;
-    int aimLength = 20;     // a lowered pistol's laser only reaches a few steps
+    int aimLength = 20;
+    // shells left in the anti-aircraft gun the player mans, or negative when not on a gun
+    int gunAmmo = -1;     // a lowered pistol's laser only reaches a few steps
 
     // the browser draws speech bubbles itself, translucent, over the map
     bool bubblesAsOverlay = false;

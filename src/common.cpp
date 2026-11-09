@@ -107,6 +107,14 @@ void vomitEvent(const Coord& at, int dx, int dy)
     webSend(buf);
 }
 
+void shellEvent(const Coord& from, const Coord& to)
+{
+    if (!webMode()) return;
+    char buf[128];
+    snprintf(buf, sizeof(buf), "{\"t\":\"shell\",\"x0\":%u,\"y0\":%u,\"x1\":%u,\"y1\":%u}", from.x, from.y, to.x, to.y);
+    webSend(buf);
+}
+
 void boomEvent(const Coord& at, uint32_t radius)
 {
     if (!webMode()) return;

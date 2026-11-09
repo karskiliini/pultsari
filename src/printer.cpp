@@ -10,6 +10,7 @@
 #include "pathmask.hpp"
 #include "level.hpp"
 #include "vehicle.hpp"
+#include "aagun.hpp"
 #include "events.hpp"
 #include <vector>
 #include <iostream>
@@ -554,8 +555,10 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             for (const auto& v : l->vehicles) {
                 const int part = v->cellIndex(coord);
                 if (part >= 0) {
-                    c = v->glyphAt(part);
-                    color = v->colorAt(part);
+                    // a blown-up car is a burnt-out shell; the gun draws its own wreck
+                    const bool shell = v->wrecked && !dynamic_cast<const AAGun*>(v);
+                    c = shell ? "\xE2\x96\x93" : v->glyphAt(part);
+                    color = shell ? "38;5;240" : v->colorAt(part);
                     found = true;
                     break;
                 }
@@ -763,6 +766,16 @@ void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
         char buf[96];
         snprintf(buf, sizeof(buf), "\033[2;20H\033[1;%dm LAUKAISUHERKKYYS [%s] %3d%% \033[0m",
                  aimRisk < 0.4f ? 92 : aimRisk < 0.75f ? 93 : 91, bar.c_str(), (int)(aimRisk * 100.0f + 0.5f));
+        cout << buf;
+    }
+    if (gunAmmo >= 0) {
+        // the gunner's shells left, on the title bar
+        const int filled = (gunAmmo * 20 + (int)AAGun::AMMO - 1) / (int)AAGun::AMMO;
+        std::string bar(filled, '#');
+        bar += std::string(20 - filled, '.');
+        char buf[128];
+        snprintf(buf, sizeof(buf), "\033[2;20H\033[1;%dm IT-TYKKI  AMMUKSET %3d/%u [%s] \033[0m",
+                 gunAmmo > 30 ? 92 : gunAmmo > 0 ? 93 : 91, gunAmmo, AAGun::AMMO, bar.c_str());
         cout << buf;
     }
     cout.flush();

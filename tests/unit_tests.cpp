@@ -1,5 +1,6 @@
 // Unit tests for game logic: shops, break-ins, drones, exhaust, vision.
 // Build and run with `make test`.
+#include "aagun.hpp"
 #include "animation.hpp"
 #include "building.hpp"
 #include "input.hpp"
@@ -1857,4 +1858,197 @@ TEST(hiv_needles_lie_where_the_dealers_stand)
     }
     CHECK(nearDealer >= 1);
     CHECK(nearMetro >= 1);
+}
+
+// ---- anti-aircraft guns ----
+
+// a gun at (x, y) with `crew` men below it
+static AAGun* placeTestGun(World& w, uint32_t x, uint32_t y, int crew)
+{
+    auto* gun = new AAGun(Coord{ x, y });
+    w.level.addVehicle(gun);
+    for (int k = 0; k < crew; ++k) w.spawn(new ITMies(Coord{ x + 2u * k, y + 1 }, gun));
+    return gun;
+}
+
+TEST(aa_gun_fires_a_hundred_shells_then_clicks)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* gun = placeTestGun(w, 200, 150, 0);
+    CHECK(gun->ammo == 100);
+    string msg;
+    CHECK(gun->approach(&w.player, msg));
+    gun->angle = 0.0f;
+    int fired = 0;
+    for (int i = 0; i < 100; ++i) if (gun->fire(msg)) ++fired;
+    CHECK(fired == 100);
+    CHECK(gun->ammo == 0);
+    CHECK(!gun->fire(msg));             // empty: nothing more comes out
+    CHECK(contains(msg, "loppuivat"));
+    CHECK(gun->ammo == 0);
+}
+
+TEST(aa_gun_crew_takes_a_bottle_of_vodka_each)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 1);
+    w.player.inventory.vodka = 0;
+    string msg;
+    CHECK(!gun->approach(&w.player, msg));  // no bottle: shoved away
+    CHECK(w.player.manning == nullptr);
+    w.player.inventory.vodka = 2;
+    CHECK(gun->approach(&w.player, msg));
+    CHECK(w.player.inventory.vodka == 1);
+    CHECK(w.player.manning == gun);
+    CHECK(gun->gunner == &w.player);
+    CHECK(gun->crew().size() == 1 && gun->awakeCrew().empty());   // drank it and passed out
+    gun->leave();
+    CHECK(w.player.manning == nullptr && gun->gunner == nullptr);
+}
+
+TEST(aa_gun_two_crew_need_two_bottles)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 2);
+    w.player.inventory.vodka = 1;
+    string msg;
+    CHECK(!gun->approach(&w.player, msg));
+    CHECK(w.player.inventory.vodka == 1);   // the bottle is not wasted
+}
+
+TEST(aa_gun_sleeping_crew_lets_the_drunk_take_it)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 1);
+    gun->crew().front()->doze(50);
+    w.player.inventory.vodka = 3;
+    string msg;
+    CHECK(gun->approach(&w.player, msg));
+    CHECK(w.player.inventory.vodka == 3);   // no bribe needed
+    CHECK(contains(msg, "kuorsaa"));
+}
+
+TEST(aa_gun_can_be_captured_once_the_crew_is_dead)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 1);
+    gun->crew().front()->stats.health = 0;
+    w.player.inventory.vodka = 0;
+    string msg;
+    CHECK(gun->approach(&w.player, msg));
+    CHECK(contains(msg, "Kaappaat"));
+}
+
+TEST(aa_gun_wrecked_gun_cannot_be_used)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 0);
+    gun->wrecked = true;
+    string msg;
+    CHECK(!gun->approach(&w.player, msg));
+    CHECK(!gun->fire(msg));
+    CHECK(gun->ammo == 100);
+}
+
+TEST(aa_shell_flies_over_close_people_and_hits_the_car)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 0);
+    w.spawn(new Juoppo(Coord{ 203, 150 }));       // two cells out: under the arming distance
+    auto* car = new Car(Coord{ 215, 150 }, true, -1);
+    w.level.addVehicle(car);
+    const ShellHit hit = traceShell(w.level, gun->centre(), 0.0f, gun);
+    CHECK(car->hitVehicle(hit.at));
+    CHECK(hit.what == car->name());
+}
+
+TEST(aa_shell_stops_at_a_wall_and_downs_drones)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 0);
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 220, 147);
+    ShellHit hit = traceShell(w.level, gun->centre(), 0.0f, gun);
+    CHECK(hit.at.x == 220 && k->hitWall(hit.at));
+    Drone d { 210.0f, 150.0f, 0.0f, 0.0f };
+    w.level.drones.push_back(d);
+    hit = traceShell(w.level, gun->centre(), 0.0f, gun);
+    CHECK(hit.drone);
+    aaExplosion(w.level, hit.at, nullptr);
+    CHECK(w.level.drones.empty());
+}
+
+TEST(aa_explosion_is_devastating)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 150, 100);
+    auto* car = new Car(Coord{ 157, 106 }, true, -1);   // two rows below the burst
+    w.level.addVehicle(car);
+    auto* near = w.spawn(new Juoppo(Coord{ 158, 105 }));
+    auto* edge = w.spawn(new Juoppo(Coord{ 161, 104 }));
+    near->stats.health = 20;
+    edge->stats.health = 20;
+    const string what = aaExplosion(w.level, Coord{ 158, 104 }, &w.player);  // on the shop's bottom wall
+    CHECK(near->stats.health <= 8);                 // one cell away: torn up
+    CHECK(edge->stats.health < 20);                 // three cells: still hurt
+    CHECK(car->wrecked);                            // the car blew up
+    CHECK(contains(what, car->name()));
+    bool breach = false;
+    for (const auto& b : k->breaches) breach = breach || (b.y == k->wallBot && b.x >= 156 && b.x <= 160);
+    CHECK(breach);                                  // the wall is blown open
+    CHECK(w.level.events->getFires().size() >= 3);  // and it all burns
+    bool smoke = false;
+    for (const auto& g : w.level.gas) smoke = smoke || g.smoke;
+    CHECK(smoke);
+    // a wrecked car goes nowhere
+    const Coord was = car->coord;
+    for (int i = 0; i < 20; ++i) car->frame(1000);
+    CHECK(car->coord == was);
+}
+
+TEST(aa_explosion_cannot_breach_the_kremlin)
+{
+    World w(Coord{ 20, 20 });
+    auto* kr = w.add(new Kremlin(), 250, 20);
+    const string what = aaExplosion(w.level, Coord{ 260, 41 }, nullptr);
+    CHECK(kr->breaches.empty());
+    CHECK(contains(what, "Kremlin"));
+}
+
+TEST(aa_guns_guard_the_kremlin)
+{
+    World w(Coord{ 20, 20 });
+    w.add(new Kremlin(), 250, 20);
+    populateAAGuns(w.level, 1);
+    int guns = 0, crewed = 0;
+    for (auto v : w.level.vehicles) {
+        auto* g = dynamic_cast<AAGun*>(v);
+        if (!g) continue;
+        ++guns;
+        if (!g->crew().empty()) ++crewed;
+        const Coord c = g->centre();
+        CHECK(c.x > 230 && c.x < 315 && c.y > 10 && c.y < 60);   // close to the walls
+        CHECK(!w.level.hitBuilding(c));
+    }
+    CHECK(guns >= 3);
+    CHECK(crewed == guns);
+}
+
+TEST(aa_crew_shoots_at_drones_and_dozes_off)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* gun = placeTestGun(w, 200, 150, 1);
+    ITMies* m = gun->crew().front();
+    for (int i = 0; i < 400 && w.level.drones.size() < 50; ++i) {
+        if (w.level.drones.empty()) w.level.drones.push_back(Drone{ 210.0f, 145.0f, 0.0f, 0.0f });
+        m->fireCooldown = 0;
+        m->sleepActs = 0;
+        m->npcAct();
+        if (w.level.drones.empty()) break;
+    }
+    CHECK(w.level.drones.empty());      // sooner or later the drone comes down
+    m->passedOut = true;
+    CHECK(m->asleep() && m->typeToChar() == "z");
 }

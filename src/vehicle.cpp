@@ -82,6 +82,7 @@ const char* Bus::colorAt(uint32_t i) const
 
 void Bus::update()
 {
+    if (wrecked) return;
     if (atStop) {
         if (stopTimer > 0) {
             --stopTimer;
@@ -290,6 +291,7 @@ Car::Car(const Coord& pos, bool horiz, int dir, Kind kind)
 
 void Car::frame(uint32_t ms)
 {
+    if (wrecked) return;   // a burnt-out shell goes nowhere, whoever is at the wheel
     if (freeMode) { drive(ms); return; }
     msSinceMoved += ms;
     // a car with nobody alive at the wheel goes nowhere

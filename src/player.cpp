@@ -7,6 +7,7 @@
 #include "building.hpp"
 #include "animation.hpp"
 #include "vehicle.hpp"
+#include "aagun.hpp"
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -812,6 +813,11 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             if (common::random(40)) { ++inventory.granata; msg += ", kranaatti"; }
             if (common::random(25)) { ++inventory.rynkky; inventory.ammukset += 30; msg += ", RYNKKY"; }
             msg += "!";
+            printer->showMessage(msg, level, false);
+            blocked = true;
+        } else if (AAGun* gun = dynamic_cast<AAGun*>(level->getVehicleAt(check))) {
+            // bribe, sneak past a sleeping crew or take it over: see AAGun::approach
+            gun->approach(this, msg);
             printer->showMessage(msg, level, false);
             blocked = true;
         } else if (Vehicle* car = level->getVehicleAt(check)) {

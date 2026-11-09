@@ -5,6 +5,7 @@
 #include "input.hpp"
 #include "building.hpp"
 #include "level.hpp"
+#include "aagun.hpp"
 #include "player.hpp"
 #include "printer.hpp"
 #include "coord.hpp"
@@ -1016,6 +1017,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         populateItems(level, gameState);
         populateVehicles(level);
         if (startByCar && !gameState.hasBeenToWar) parkCarByPlayer(level, player.coord);
+        populateAAGuns(level, gameState.moscowStage);
+        player.manning = nullptr;   // the last level's gun is gone with it
 
         // fires burn everywhere; random disasters only from the third level and at the front
         level.events = new EnvironmentEvents(&level, gameState.phase != GamePhase::War && level.stage <= 2);
@@ -1266,6 +1269,12 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                     for (const char c : keys) {
                     if (c == 'z') throw RestartGame();
+                    // behind an anti-aircraft gun every key works the gun
+                    if (player.manning) {
+                        if (c != 0) gunnerKey(c, player, level, *printer, msSinceShot);
+                        mode = Mode::Normal;
+                        continue;
+                    }
 
                     switch (mode) {
                     case Mode::Normal: {
@@ -1555,7 +1564,15 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     // last frame before the next tick, so the player's own shots are never lost
                     if (npcTick == NPC_INTERVAL - 1) level.audio.clear();
 
-                    if (mode == Mode::Inventory) {
+                    if (player.manning) {
+                        // the gun's sight reaches far, and the shells left show on top
+                        const Coord g = player.manning->centre();
+                        printer->aimRisk = -1.0f;
+                        printer->aimLength = AAGun::RANGE;
+                        printer->gunAmmo = (int)player.manning->ammo;
+                        printer->printAimLine(&level, g.x, g.y, player.manning->angle);
+                        printer->gunAmmo = -1;
+                    } else if (mode == Mode::Inventory) {
                         printer->printInventoryOverlay(&player.inventory, invSelection, throwMenu);
                     } else if (mode == Mode::Aim) {
                         printer->aimRisk = aimIsShooting ? aimRisk : -1.0f;
