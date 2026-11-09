@@ -9,6 +9,7 @@
 #include "common.hpp"
 #include "animation.hpp"
 #include "vehicle.hpp"
+#include "aagun.hpp"
 #include "events.hpp"
 #include <algorithm>
 #include <cstdlib>
@@ -466,6 +467,8 @@ void Level::launchDrone(Building* target)
 
 void Level::droneImpact(const Coord& c, Building* target)
 {
+    const bool petrol = target && (target->type == EGasStation || target->type == EGasPump);
+    if (petrol) petrolStationBlast(*this, target);
     common::boomEvent(c, 4);
     addAnimation(new Animation(Coord{ c.x > 5 ? c.x - 5 : 0, c.y }, "===BOOM===", 10));
     audio.addSound(c, SoundType::Explosion,
@@ -496,6 +499,7 @@ void Level::droneImpact(const Coord& c, Building* target)
     const PlayerNS::Player* player = getPlayer();
     if (player && !playerDead && canHear(player->coord, c, 60, true)) {
         if (refinery) printer->showMessage("DRONE-ISKU! \xD0\x9D\xD0\x9F\xD0\x97 syttyi palamaan! Myrkyllist\xC3\xA4 savua!", this, false);
+        else if (petrol) printer->showMessage("DRONE-ISKU BENSA-ASEMAAN! Tulipallo nielee pumput ja jonottavat autot!", this, false);
         else if (target) printer->showMessage("DRONE-ISKU! " + target->getName() + " sai osuman!", this, false);
         else printer->showMessage("DRONE-ISKU!", this, false);
     }
@@ -723,6 +727,9 @@ int Level::gasAt(const Coord& c) const
 
 void Level::skyTick()
 {
+    // soldiers and air defence open up on any drone close by
+    antiDroneFire(*this);
+
     // now and then a drone just passes over
     if (common::random(isWarLevel ? 4 : 1)) launchDrone(nullptr);
 

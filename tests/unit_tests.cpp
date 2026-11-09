@@ -2052,3 +2052,125 @@ TEST(aa_crew_shoots_at_drones_and_dozes_off)
     m->passedOut = true;
     CHECK(m->asleep() && m->typeToChar() == "z");
 }
+
+// ---- everyone shoots at drones ----
+
+TEST(soldier_shoots_down_a_drone_in_range)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.spawn(new Sotilas(Coord{ 100, 100 }));
+    w.level.drones.push_back(Drone{ 106.0f, 97.0f, 0.0f, 0.0f });
+    for (int i = 0; i < 300 && !w.level.drones.empty(); ++i) antiDroneFire(w.level);
+    CHECK(w.level.drones.empty());          // sooner or later it comes down
+    CHECK(!w.level.events->getFires().empty());   // in flames
+}
+
+TEST(soldier_leaves_a_far_drone_alone)
+{
+    World w(Coord{ 20, 20 });
+    auto* s = w.spawn(new Sotilas(Coord{ 100, 100 }));
+    w.level.drones.push_back(Drone{ 140.0f, 100.0f, 0.0f, 0.0f });
+    for (int i = 0; i < 100; ++i) antiDroneFire(w.level);
+    CHECK(w.level.drones.size() == 1);
+    CHECK(!w.said(s, "Drooni"));
+}
+
+TEST(stray_rounds_hit_bystanders_and_the_player)
+{
+    World w(Coord{ 20, 20 });
+    w.spawn(new Sotilas(Coord{ 100, 100 }));
+    auto* bystander = w.spawn(new Juoppo(Coord{ 104, 100 }));
+    bystander->stats.health = 200;
+    for (int i = 0; i < 300; ++i) {
+        if (w.level.drones.empty()) w.level.drones.push_back(Drone{ 112.0f, 100.0f, 0.0f, 0.0f });
+        antiDroneFire(w.level);
+    }
+    CHECK(bystander->stats.health < 200);   // in the line of fire
+    // the player in the way gets it too
+    bystander->stats.health = 0;
+    w.level.cleanDead();
+    w.player.coord = Coord{ 104, 100 };
+    w.player.stats.health = 200;
+    common::realtimeEnabled = false;   // no breather after an earlier test's hit on the player
+    for (int i = 0; i < 300 && w.player.stats.health == 200; ++i) {
+        if (w.level.drones.empty()) w.level.drones.push_back(Drone{ 112.0f, 100.0f, 0.0f, 0.0f });
+        antiDroneFire(w.level);
+    }
+    CHECK(w.player.stats.health < 200);
+    CHECK(w.printer.saw("Harhaluoti"));
+}
+
+TEST(aa_gun_crew_aims_at_the_drone_and_its_shells_burst)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* gun = placeTestGun(w, 200, 150, 1);
+    ITMies* m = gun->crew().front();
+    w.level.drones.push_back(Drone{ 230.0f, 130.0f, 0.0f, 0.0f });   // 35 cells out: in gun range, not rifle range
+    m->fireCooldown = 0;
+    m->npcAct();
+    const Coord c = gun->centre();
+    CHECK(std::fabs(gun->angle - std::atan2(130.0f - c.y, 230.0f - c.x)) < 0.01f);
+    CHECK(!w.level.events->getFires().empty());   // a shell went off somewhere
+    CHECK(gun->ammo == AAGun::AMMO);               // the crew's own crates, not the player's 100
+    // it keeps at it until the drone is down
+    for (int i = 0; i < 200 && !w.level.drones.empty(); ++i) { m->sleepActs = 0; m->npcAct(); }
+    CHECK(w.level.drones.empty());
+}
+
+TEST(aa_gun_ignores_drones_while_the_drunk_has_it)
+{
+    World w(Coord{ 20, 20 });
+    auto* gun = placeTestGun(w, 200, 150, 0);
+    string msg;
+    gun->approach(&w.player, msg);
+    w.level.drones.push_back(Drone{ 210.0f, 145.0f, 0.0f, 0.0f });
+    for (int i = 0; i < 50; ++i) antiDroneFire(w.level);
+    CHECK(w.level.drones.size() == 1);   // nobody else is shooting: the drunk has to
+}
+
+// ---- drones on petrol stations ----
+
+TEST(drones_go_for_petrol_stations)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, false);
+    w.add(new Bensa(), 100, 100);
+    for (int i = 0; i < 3000; ++i) w.level.events->update();
+    // count what the strikes were aimed at
+    bool station = false;
+    for (const auto& d : w.level.drones) station = station || (d.target && d.target->type == EGasStation);
+    for (int i = 0; i < 3000 && !station; ++i) {
+        w.level.events->update();
+        for (const auto& d : w.level.drones) station = station || (d.target && d.target->type == EGasStation);
+    }
+    CHECK(station);
+}
+
+TEST(drone_on_a_petrol_station_blows_up_the_queue)
+{
+    World w(Coord{ 106, 118 });   // across the street: close enough to hear it
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* st = w.add(new Bensa(), 100, 100);
+    w.add(new Pumppu(), 103, 107);
+    w.add(new Pumppu(), 109, 107);
+    std::vector<Car*> queue;
+    for (int k = 0; k < 6; ++k) {
+        auto* car = new Car(Coord{ 98u + 5u * k, 112 }, true, -1);
+        w.level.addVehicle(car);
+        queue.push_back(car);
+    }
+    auto* far = new Car(Coord{ 300, 180 }, true, -1);
+    w.level.addVehicle(far);
+    auto* customer = w.spawn(new Juoppo(Coord{ 106, 106 }));
+    customer->stats.health = 20;
+    w.level.droneImpact(Coord{ 106, 102 }, st);
+    int wrecked = 0;
+    for (auto c : queue) if (c->wrecked) ++wrecked;
+    CHECK(wrecked >= 4);                 // the queue at the pumps went up
+    CHECK(!far->wrecked);                // not the whole city
+    CHECK(customer->stats.health == 0);  // nobody at the pumps lives through it
+    CHECK(w.level.events->getFires().size() >= 25);   // far more fire than an ordinary strike
+    CHECK(w.printer.saw("BENSA-ASEMA"));
+}

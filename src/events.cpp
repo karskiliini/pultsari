@@ -130,9 +130,13 @@ void EnvironmentEvents::droneStrike()
     // refineries are drone magnets
     std::vector<Building*> refineries;
     for (auto b : level->buildings) if (b->type == ERefinery) refineries.push_back(b);
+    // and so are petrol stations: one hit and the queue goes up with them
+    std::vector<Building*> stations;
+    for (auto b : level->buildings) if (b->type == EGasStation) stations.push_back(b);
     std::vector<Building*> shops;
     for (auto b : level->buildings) if (b->type == EShop || b->type == EClosedShop || b->type == EAlko) shops.push_back(b);
-    Building* target = (!refineries.empty() && random(50)) ? refineries[std::rand() % refineries.size()]
+    Building* target = (!refineries.empty() && random(40)) ? refineries[std::rand() % refineries.size()]
+                     : (!stations.empty() && random(50))   ? stations[std::rand() % stations.size()]
                      : (!shops.empty() && random(50))     ? shops[std::rand() % shops.size()]
                      : level->buildings[std::rand() % level->buildings.size()];
     level->launchDrone(target);

@@ -104,6 +104,17 @@ void AAGun::leave()
     gunner = nullptr;
 }
 
+ShellHit AAGun::shoot(float a, Person* source, string& boom)
+{
+    const Coord from = centre();
+    level->audio.addSound(from, SoundType::Gunshot,
+        "BUUM-BUUM! IT-tykki jyr\xC3\xA4ht\xC3\xA4\xC3\xA4!", "Ilmatorjuntatulta!", "...tykin jyrin\xC3\xA4\xC3\xA4 kaukaa...", 60);
+    const ShellHit hit = traceShell(*level, from, a, this);
+    common::shellEvent(from, hit.at);
+    boom = aaExplosion(*level, hit.at, source);
+    return hit;
+}
+
 bool AAGun::fire(string& msg)
 {
     if (wrecked) { msg = "Tykki on romuna."; return false; }
@@ -112,18 +123,28 @@ bool AAGun::fire(string& msg)
         return false;
     }
     --ammo;
-    const Coord from = centre();
-    level->audio.addSound(from, SoundType::Gunshot,
-        "BUUM-BUUM! IT-tykki jyr\xC3\xA4ht\xC3\xA4\xC3\xA4!", "Ilmatorjuntatulta!", "...tykin jyrin\xC3\xA4\xC3\xA4 kaukaa...", 60);
-    const ShellHit hit = traceShell(*level, from, angle, this);
-    common::shellEvent(from, hit.at);
-    const string boom = aaExplosion(*level, hit.at, gunner);
+    string boom;
+    const ShellHit hit = shoot(angle, gunner, boom);
     msg = "BUUM! ";
     if (hit.drone) msg += "Osuma drooniin! ";
     else if (!hit.what.empty()) msg += "Osuma: " + hit.what + "! ";
     else msg += "Ammus r\xC3\xA4j\xC3\xA4ht\xC3\xA4\xC3\xA4 ilmassa. ";
     if (!boom.empty()) msg += boom + " ";
     msg += "[" + std::to_string(ammo) + "/" + std::to_string(AMMO) + "]";
+    return true;
+}
+
+bool AAGun::aimAtDrone()
+{
+    const Coord c = centre();
+    const Drone* best = nullptr;
+    float bestDist = (float)RANGE;
+    for (const auto& d : level->drones) {
+        const float r = std::hypot(d.x - c.x, d.y - c.y);
+        if (r < bestDist && r >= ARMING) { best = &d; bestDist = r; }
+    }
+    if (!best) return false;
+    angle = std::atan2(best->y - c.y, best->x - c.x);
     return true;
 }
 
@@ -164,28 +185,16 @@ void ITMies::npcAct()
         say("*hik* ...vain pienet nokkaunet...");
         return;
     }
-    // a drone within reach: the crew opens up on it
-    if (fireCooldown == 0) {
-        const Coord c = gun->centre();
-        for (size_t i = 0; i < level->drones.size(); ++i) {
-            const Drone& d = level->drones[i];
-            if (std::hypot(d.x - c.x, d.y - c.y) > 25.0f) continue;
-            fireCooldown = 6 + std::rand() % 6;
-            say("Kohde havaittu! OGON!");
-            level->audio.addSound(c, SoundType::Gunshot,
-                "BUUM BUUM! Ilmatorjunta ampuu droonia!", "Ilmatorjuntatulta!", "...jyrin\xC3\xA4\xC3\xA4 kaukaa...", 50);
-            gun->angle = std::atan2(d.y - c.y, d.x - c.x);
-            if (common::random(35)) {
-                const Coord at { (uint32_t)std::max(0.0f, d.x), (uint32_t)std::max(0.0f, d.y) };
-                level->drones.erase(level->drones.begin() + i);
-                common::shellEvent(c, at);
-                level->audio.addSound(at, SoundType::Explosion,
-                    "PAM! Drooni putoaa liekeiss\xC3\xA4!", "R\xC3\xA4j\xC3\xA4hdys taivaalla!", "...r\xC3\xA4j\xC3\xA4hdys kaukaa...", 50);
-                common::boomEvent(at, 2);
-                if (level->events) level->events->addFiresAround(at);
-            }
-            return;
-        }
+    // a drone within reach: the crew always goes for it, and a shell that misses bursts
+    // wherever it comes down, just like the drunk's
+    if (gun->aimAtDrone()) {
+        if (fireCooldown > 0) { --fireCooldown; return; }
+        fireCooldown = 3 + std::rand() % 3;
+        if (common::random(30)) say("Kohde havaittu! OGON!");
+        const float spread = ((std::rand() % 21) - 10) / 100.0f;   // +-0.1 rad
+        string boom;
+        gun->shoot(gun->angle + spread, nullptr, boom);
+        return;
     }
     ITYksikko::npcAct();
 }
@@ -428,4 +437,128 @@ void gunnerKey(char c, Player& player, Level& level, Printer& printer, uint32_t&
             break;
         default: break;
     }
+}
+
+// ============ everyone shoots at drones ============
+
+void downDrone(Level& level, size_t index)
+{
+    if (index >= level.drones.size()) return;
+    const Drone d = level.drones[index];
+    level.drones.erase(level.drones.begin() + index);
+    const Coord at { (uint32_t)std::max(0.0f, std::min(d.x, common::SIZEX - 1.0f)),
+                     (uint32_t)std::max(0.0f, std::min(d.y, common::SIZEY - 1.0f)) };
+    common::boomEvent(at, 2);
+    level.addAnimation(new Animation(Coord{ at.x > 4 ? at.x - 4 : 0, at.y }, "**PAM**", 6));
+    level.audio.addSound(at, SoundType::Explosion,
+        "PAM! Drooni putoaa liekeiss\xC3\xA4!", "R\xC3\xA4j\xC3\xA4hdys taivaalla!", "...r\xC3\xA4j\xC3\xA4hdys kaukaa...", 50);
+    // what it carried comes down with it
+    for (auto p : level.persons) {
+        if (p->stats.health > 0 && std::hypot((float)p->coord.x - at.x, (float)p->coord.y - at.y) <= 2.0f)
+            p->damage(2 + std::rand() % 4);
+    }
+    if (level.events) level.events->addFiresAround(at);
+    level.addSmoke(at);
+}
+
+void antiDroneFire(Level& level)
+{
+    constexpr float RIFLE_RANGE = 18.0f;
+    const PlayerNS::Player* player = level.getPlayer();
+    for (size_t pi = 0; pi < level.persons.size() && !level.drones.empty(); ++pi) {
+        Person* p = level.persons[pi];
+        if (p->stats.health == 0) continue;
+        if (p->type != sotilas && p->type != ilmatorjunta) continue;
+        if (const ITMies* m = dynamic_cast<const ITMies*>(p)) {
+            if (m->asleep() || (m->gun && !m->gun->wrecked)) continue;   // the gun does the shooting
+        }
+        // the nearest drone in rifle range
+        size_t target = level.drones.size();
+        float best = RIFLE_RANGE;
+        for (size_t i = 0; i < level.drones.size(); ++i) {
+            const float r = std::hypot(level.drones[i].x - p->coord.x, level.drones[i].y - p->coord.y);
+            if (r < best) { best = r; target = i; }
+        }
+        if (target == level.drones.size() || !common::random(70)) continue;
+
+        const Drone& d = level.drones[target];
+        if (common::random(15)) p->say(common::random(50) ? "Drooni! Ampukaa se alas!" : "Bespilotnik! OGON!");
+        level.audio.addSound(p->coord, SoundType::Gunshot,
+            "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Sotilaat ampuvat droonia!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
+        if (common::random(15)) {
+            downDrone(level, target);
+            continue;
+        }
+        // a miss: the round flies on and comes down on whoever is in the way
+        const float angle = std::atan2(d.y - p->coord.y, d.x - p->coord.x) + ((std::rand() % 41) - 20) / 100.0f;
+        Person* hit = level.fireBullet(p, angle, 25, 2 + std::rand() % 3, 30);
+        if (hit && hit == player) {
+            level.printer->showMessage("Harhaluoti! Sotilaat ampuivat droonia ja osuivat sinuun!", &level, false);
+        } else if (hit && player) {
+            hit->report("Harhaluoti osui ohikulkijaan!");
+        }
+    }
+}
+
+// ============ a drone on a petrol station ============
+
+std::string petrolStationBlast(Level& level, Building* hit)
+{
+    // the whole forecourt: the kiosk and its pumps
+    Building* station = hit;
+    if (hit->type == EGasPump) {
+        for (auto b : level.buildings) {
+            if (b->type != EGasStation) continue;
+            if (hit->wallLeft + 2 >= b->wallLeft && hit->wallLeft <= b->wallRight + 2 &&
+                hit->wallTop >= b->wallBot && hit->wallTop <= b->wallBot + 4) station = b;
+        }
+    }
+    const Coord mid { (station->wallLeft + station->wallRight) / 2, (station->wallTop + station->wallBot) / 2 };
+    std::vector<Coord> bursts { mid };
+    for (auto b : level.buildings) {
+        if (b->type != EGasPump) continue;
+        const Coord pump { b->wallLeft, b->wallTop };
+        if (std::hypot((float)pump.x - mid.x, (float)pump.y - mid.y) <= 10.0f) bursts.push_back(pump);
+    }
+    common::boomEvent(mid, 7);
+    level.addAnimation(new Animation(Coord{ mid.x > 8 ? mid.x - 8 : 0, mid.y }, "#####KABOOM#####", 14));
+    level.audio.addSound(mid, SoundType::Explosion,
+        "KA-BOOOOM! Bensa-asema r\xC3\xA4j\xC3\xA4ht\xC3\xA4\xC3\xA4 tulipalloksi!", "Valtava r\xC3\xA4j\xC3\xA4hdys!", "...valtava jyrin\xC3\xA4 kaukaa...", 90);
+    for (const auto& c : bursts) aaExplosion(level, c, nullptr);
+    if (level.events) level.events->setAblaze(station->wallLeft, station->wallTop, station->wallRight, station->wallBot + 5);
+
+    // the fireball reaches the cars queueing at the pumps, and the fire runs down the queue
+    std::vector<Vehicle*> burning;
+    for (auto v : level.vehicles) {
+        if (v->wrecked) { burning.push_back(v); continue; }
+        if (std::hypot((float)v->coord.x - mid.x, (float)v->coord.y - mid.y) <= 14.0f) {
+            v->wrecked = true;
+            burning.push_back(v);
+        }
+    }
+    for (size_t i = 0; i < burning.size(); ++i) {
+        const Coord at = burning[i]->coord;
+        if (std::hypot((float)at.x - mid.x, (float)at.y - mid.y) > 60.0f) continue;
+        for (const auto& c : burning[i]->cells()) {
+            if (level.events && common::random(60)) level.events->addFiresAround(c);
+            if (common::random(30)) level.addSmoke(c);
+        }
+        for (auto v : level.vehicles) {
+            if (v->wrecked || !common::random(70)) continue;
+            if (std::hypot((float)v->coord.x - at.x, (float)v->coord.y - at.y) <= 5.0f) {
+                v->wrecked = true;
+                if (AAGun* g = dynamic_cast<AAGun*>(v)) g->leave();
+                common::boomEvent(v->coord, 2);
+                burning.push_back(v);
+            }
+        }
+    }
+    // people caught in the fireball
+    for (auto p : level.persons) {
+        if (p->stats.health == 0) continue;
+        const float r = std::hypot((float)p->coord.x - mid.x, (float)p->coord.y - mid.y);
+        if (r <= 7.0f) p->damage(r < 4.0f ? 15 + std::rand() % 10 : 5 + std::rand() % 6);
+    }
+    for (int i = 0; i < 12; ++i) level.addSmoke(Coord{ mid.x + std::rand() % 9 - 4, mid.y + std::rand() % 5 });
+    return station->getName();
 }
