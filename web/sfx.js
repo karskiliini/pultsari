@@ -6,7 +6,7 @@
     let muted = false;
     const lastPlayed = {};
     // continuous sources are re-announced every NPC tick; play them sparingly
-    const minGapMs = { siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380 };
+    const minGapMs = { splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380 };
 
     function init() {
         if (!ctx) {
@@ -187,6 +187,20 @@
         },
         vomit(t, v) { gurgle(t, v, 1.0, 500); },
         vomit2(t, v) { gurgle(t, v, 1.3, 380); },
+        // a wet slap: a low, short burst of mush with a few lumps after it
+        splat(t, v) {
+            burst(t, v * 0.9, { type: 'lowpass', freq: 420 + Math.random() * 200, q: 1.5, decay: 0.12, dur: 0.14 });
+            burst(t, v * 0.5, { type: 'bandpass', freq: 900 + Math.random() * 500, q: 2.5, decay: 0.05, dur: 0.06 });
+            for (let i = 0; i < 3; i++) {
+                burst(t + 0.03 + Math.random() * 0.12, v * 0.35, { type: 'bandpass', freq: 500 + Math.random() * 900, q: 4, decay: 0.035, dur: 0.04 });
+            }
+        },
+        // a splatter: small wet ticks
+        splatter(t, v) {
+            for (let i = 0; i < 4; i++) {
+                burst(t + Math.random() * 0.08, v * 0.4, { type: 'bandpass', freq: 1400 + Math.random() * 1600, q: 5, decay: 0.025, dur: 0.03 });
+            }
+        },
         drip(t, v) { tone(t, v, { f0: 1400, f1: 350, dur: 0.09, peak: 0.35 }); },
         glug(t, v) { for (let i = 0; i < 4; i++) tone(t + i * 0.13, v, { f0: 180, f1: 420, dur: 0.1, peak: 0.4 }); },
         // a tremolo-picked folk motif

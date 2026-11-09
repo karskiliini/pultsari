@@ -75,7 +75,8 @@
         const drops = [];   // drops that let go and fall
 
         // ---- fluid: particles with gravity, pressure, cohesion and viscosity ----
-        const MAX = 2800;
+        const MAX = 5000;
+        let impacts = 0;   // splats this frame, for the sound
         const px = new Float32Array(MAX), py = new Float32Array(MAX);
         const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
         // 0 = watery, 1 = thick slime: every splash is half water, the rest stays thick
@@ -133,13 +134,14 @@
                 // the vomit sticks to the letters and oozes off their bottoms: slime slowly, water quickly
                 if (at(latin.mask, px[i], py[i]) || at(latin.mask, px[i], py[i] + 1)) {
                     vx[i] *= 0.93 - 0.23 * t; vy[i] *= 0.95 - 0.2 * t;
+                    if (fly[i]) impacts++;
                     fly[i] = 0;
                 } else if (at(title.mask, px[i], py[i]) || at(title.mask, px[i], py[i] + 1)) {
                     // flying slime catches on the title here and there along its length; caught slime
                     // clings and oozes down slowly, water mostly flies on
                     if (fly[i]) {
                         // impact: slime mostly catches, water splashes back off the letter
-                        if (Math.random() < (t > 0.5 ? 0.35 : 0.1)) { fly[i] = 0; vx[i] *= 0.3; vy[i] *= 0.2; }
+                        if (Math.random() < (t > 0.5 ? 0.35 : 0.1)) { fly[i] = 0; vx[i] *= 0.3; vy[i] *= 0.2; impacts++; }
                         else if (Math.random() < 0.3) { vy[i] *= -0.35; vx[i] *= 0.7; }
                     } else { vx[i] *= 0.55 - 0.3 * t; vy[i] *= 0.6 - 0.35 * t; }
                 }
@@ -157,6 +159,7 @@
                 if (px[i] < 1) { px[i] = 1; vx[i] *= -0.3; }
                 if (px[i] > FW - 2) { px[i] = FW - 2; vx[i] *= -0.3; }
                 if (py[i] >= floorCell) {
+                    if (rest[i] === 0) impacts++;
                     // lands on the border and pools there
                     py[i] = floorCell; if (vy[i] > 0) vy[i] *= -0.05; vx[i] *= 0.975;
                     const sx = px[i] | 0;
@@ -476,40 +479,55 @@
         let stopTheme = () => {};
         const cues = [
             [2.6, () => window.SFX && SFX.play('cough', 1)],
-            [3.1, () => { window.SFX && SFX.play('vomit', 1); startJet(640, 20, false); }],
-            [5.0, () => { window.SFX && SFX.play('vomit2', 1); startJet(420, 20, false); }],
+            [3.1, () => { window.SFX && SFX.play('vomit', 1); startJet(3, 42, false, 0.0, 0.45); }],
+            [5.0, () => { window.SFX && SFX.play('vomit2', 1); startJet(2, 40, false, 0.45, 0.8); }],
             // the third heave is the longest: a long, wavering jet
-            [7.0, () => { window.SFX && SFX.play('vomit', 1); startJet(1200, 13, true); }],
+            [7.0, () => { window.SFX && SFX.play('vomit', 1); startJet(4, 44, true, 0.1, 1.0); }],
             [7.9, () => window.SFX && SFX.play('vomit2', 0.8)],
         ];
 
-        // the first heave: a jet from the left that sweeps across the letters to the right
-        // projectile vomit from one mouth just above the top edge: a tight tube that leaves the
-        // mouth fast and arcs down; the drunk turns his head, so it sweeps across the title
-        const mouthX = (startX - fs * 1.5) / CELL, mouthY = -6;
-        let jet = 0, jetTotal = 1, jetRate = 14, jetLong = false, jetT = 0;
-        function startJet(count, rate, long) { jet = jetTotal = count; jetRate = rate; jetLong = long; jetT = 0; }
+        // Vomit from one mouth just above the top edge. Not a hose: it comes out at low pressure in a
+        // thick, lumpy gush that mostly falls, in several retches per heave. The drunk turns his head
+        // as he goes, so where it lands moves across the title.
+        const mouthX = (startX + titleW * 0.2) / CELL, mouthY = -8;
+        let pulses = [], jetT = 0, heaveLong = false, heaveSweep = [0, 1];
+        function startJet(retches, perFrame, long, sweepFrom, sweepTo) {
+            pulses = []; jetT = 0; heaveLong = long; heaveSweep = [sweepFrom, sweepTo];
+            let at = 0;
+            for (let r = 0; r < retches; r++) {
+                const dur = (long && r === retches - 1 ? 34 : 14) + Math.random() * 12;  // the last one drags on
+                pulses.push({ at, dur, rate: perFrame * (0.7 + Math.random() * 0.6) });
+                at += dur + 6 + Math.random() * 9;                                       // a gasp between
+            }
+        }
         function jetFrame() {
-            if (jet <= 0) return;
+            if (!pulses.length) return;
             jetT++;
-            const progress = 1 - jet / jetTotal;
-            // where the stream lands this moment: left to right over the title (the long heave wavers)
-            const sweep = jetLong ? progress + 0.08 * Math.sin(jetT / 6) : progress;
-            const hitX = (startX + (titleW + latinW) * Math.max(0, Math.min(1, sweep))) / CELL;
-            const hitY = (baseY - fs * 0.45) / CELL;
-            const air = 26 + 10 * sweep;                         // further is a longer flight
-            const power = jetLong ? 0.92 + 0.08 * Math.min(1, jet / 400) : 1;
-            const ux = (hitX - mouthX) / air;
+            const end = pulses[pulses.length - 1];
+            if (jetT > end.at + end.dur) { pulses = []; return; }
+            const pulse = pulses.find((p) => jetT >= p.at && jetT < p.at + p.dur);
+            if (!pulse) return; // between retches
+            const k = (jetT - pulse.at) / pulse.dur;
+            const progress = jetT / (end.at + end.dur);
+            // each retch surges and dies away, with lumps in it
+            const surge = Math.sin(Math.PI * Math.min(1, k * 1.3)) * (0.55 + Math.random() * 0.9);
+            const count = Math.round(pulse.rate * surge);
+            const sweep = heaveSweep[0] + (heaveSweep[1] - heaveSweep[0]) * progress;
+            const hitX = (startX + (titleW + latinW) * sweep) / CELL;
+            const hitY = (baseY - fs * 0.4) / CELL;
+            // low pressure: a long, falling flight; weaker at the start and end of each retch
+            const air = 58 + 14 * (1 - surge);
+            const ux = (hitX - mouthX) / air * (0.85 + 0.3 * surge);
             const uy = (hitY - mouthY) / air - 0.5 * G * air;
-            for (let k = 0; k < jetRate && jet > 0; k++, jet--) {
-                // all of it leaves the same mouth, only a slight spread
-                const spread = 1 + (Math.random() - 0.5) * 0.06;
-                const vxk = ux * spread * power, vyk = uy * spread + (Math.random() - 0.5) * 0.05;
-                // spread each frame's batch along the two steps it travels per frame: one unbroken tube
+            // a thick stream, about as wide as a mouth, and never even
+            const width = 9 + 7 * Math.random() + 6 * surge;
+            for (let c = 0; c < count; c++) {
                 const lead = Math.random() * 2;
-                emit(mouthX + vxk * lead + (Math.random() - 0.5) * 2.6, mouthY + vyk * lead + (Math.random() - 0.5) * 2.6,
-                     vxk, vyk + G * lead, jet % 2 ? 0 : 1);
-                fly[n - 1] = 160;
+                const vxk = ux * (1 + (Math.random() - 0.5) * 0.16);
+                const vyk = uy + (Math.random() - 0.5) * 0.12;
+                emit(mouthX + (Math.random() - 0.5) * width + vxk * lead, mouthY + (Math.random() - 0.5) * width * 0.6 + vyk * lead,
+                     vxk, vyk + G * lead, Math.random() < 0.5 ? 0 : 1);
+                fly[n - 1] = 200;
             }
         }
 
@@ -536,6 +554,12 @@
                 window.SFX && SFX.play('balalaika', 1);
             }
             jetFrame();
+            // wet splats and slaps when it hits the letters or the floor
+            if (impacts > 0 && window.SFX) {
+                if (impacts > 6) SFX.play('splat', Math.min(1, 0.3 + impacts / 40));
+                else SFX.play('splatter', 0.25 + impacts * 0.08);
+            }
+            impacts = 0;
             step(); step();
             updateDrips();
 
