@@ -820,6 +820,10 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             gun->approach(this, msg);
             printer->showMessage(msg, level, false);
             blocked = true;
+        } else if (level->getVehicleAt(check) && level->getVehicleAt(check)->wrecked) {
+            msg = level->getVehicleAt(check)->name() + " on palanut romu. Pelti on viel\xC3\xA4 kuuma.";
+            printer->showMessage(msg, level, false);
+            blocked = true;
         } else if (Vehicle* car = level->getVehicleAt(check)) {
             Car* c = dynamic_cast<Car*>(car);
             if (c && common::realtimeEnabled) {
