@@ -12,6 +12,7 @@
 #include "player.hpp"
 #include "printerweb.hpp"
 #include "translate.hpp"
+#include "vehicle.hpp"
 #include <dirent.h>
 #include <fstream>
 #include <sstream>
@@ -1154,4 +1155,40 @@ int main(int argc, char** argv)
     }
     std::cout << ran << " tests, " << checks << " checks, " << failures << " failures" << std::endl;
     return failures ? 1 : 0;
+}
+
+// ---- traffic ----
+
+static bool carShouted(const World& w, const Car* car)
+{
+    for (auto a : w.level.animations) if (a->isBubble && a->owner == car) return true;
+    return false;
+}
+
+TEST(car_passing_close_honks_and_shouts)
+{
+    World w(Coord{ 50, 50 });
+    auto* car = new Car(Coord{ 58, 49 }, true, -1);
+    w.level.addVehicle(car);
+    int shouts = 0;
+    for (int i = 0; i < 30; ++i) {
+        car->frame(1000);
+        // count each new bubble, then clear it so a repeat would show
+        for (auto it = w.level.animations.begin(); it != w.level.animations.end();) {
+            if ((*it)->isBubble && (*it)->owner == car) { ++shouts; delete *it; it = w.level.animations.erase(it); }
+            else ++it;
+        }
+    }
+    CHECK(shouts == 1); // once per pass, not every step
+    CHECK(car->coord.x < 45); // it did drive past
+    CHECK(contains(w.level.audio.formatSoundLine(w.player.coord, 400), "T\xC3\x96\xC3\x96"));
+}
+
+TEST(car_two_lanes_away_stays_quiet)
+{
+    World w(Coord{ 50, 50 });
+    auto* car = new Car(Coord{ 58, 48 }, true, -1);
+    w.level.addVehicle(car);
+    for (int i = 0; i < 30; ++i) car->frame(1000);
+    CHECK(!carShouted(w, car));
 }
