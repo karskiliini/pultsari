@@ -183,6 +183,15 @@ void Mummo::npcAct()
         Direction d = randomDirection();
         move(d, msg);
     }
+
+    if (random(5)) {
+        static const char* mummo_lines[] = {
+            "Ai nykyajan nuoriso...",
+            "Herra jumala...",
+            "Kaikki oli paremmin ennen.",
+        };
+        say(mummo_lines[std::rand()%3]);
+    }
 }
 
 bool Mummo::interact(std::string& msg, Person* source)
@@ -534,6 +543,7 @@ void Varas::npcAct()
 
         if (seesPlayer && coord.distance(player->coord) == 1)
         {
+            say("Hipelöin sua!!");
             msg = "Varas hipelöi sinua !!!";
 
             auto r = std::rand();
@@ -852,6 +862,7 @@ void Skinhead::npcAct()
 
         if (seesPlayer && coord.distance(p->coord) == 1)
         {
+            say("TAPAN SINUT!!");
             msg = "Skinhead murjoo sinua apinan raivolla!!";
             uint32_t damage = std::rand()%4 + 1;
             p->damage(damage);
@@ -1189,6 +1200,7 @@ void Ryostaja::npcAct()
 
         if (seesPlayer && coord.distance(p->coord) == 1) {
             if (armed) {
+                say("RAHAT TAI HENKI!");
                 msg = "Ryöstäjä osoittaa sinua aseella: RAHAT TAI HENKI!";
                 if (p->stats.money > 0) {
                     uint32_t take = std::min(p->stats.money, (uint32_t)(rand()%30 + 10));
@@ -1302,19 +1314,23 @@ void Diileri::npcAct()
             if (p->stats.money >= 10 && random(50)) {
                 p->updateMoney(-10);
                 if (random(30)) {
+                    say("Kokeile t\xC3\xA4t\xC3\xA4... heh heh");
                     msg = "Diileri: Kokeile tätä... Pääsi pyörii!";
                     p->updatepromilles(8);
                     p->damage(1);
                 } else {
+                    say("T\xC3\xA4ss\xC3\xA4 on hyv\xC3\xA4\xC3\xA4 kamaa!");
                     msg = "Diileri: Tässä on hyvää kamaa! Olet energinen!";
                     p->powerup(3);
                     p->stats.hunger += 20;
                     if (p->stats.hunger > 100) p->stats.hunger = 100;
                 }
             } else {
+                say("Hei, haluatko ostaa jotain?");
                 msg = "Diileri: Hei, haluatko ostaa jotain?";
             }
         } else {
+            say("Hei, haluatko ostaa jotain?");
             msg = "Diileri: Hei, haluatko ostaa jotain?";
         }
     } else if (seesPlayer && coord.distance(p->coord) <= 3) {
@@ -1713,6 +1729,15 @@ void FSBAgent::npcAct()
         if (random(20)) {
             Direction d = randomDirection();
             move(d, msg);
+        }
+        if (random(5)) {
+            static const char* fsb_lines[] = {
+                "Pid\xC3\xA4 nen\xC3\xA4si omissa asioissasi.",
+                "FSB valvoo.",
+                "Kaikki on hallinnassa.",
+                "Kansalainen, paperit.",
+            };
+            say(fsb_lines[std::rand()%4]);
         }
     }
 
