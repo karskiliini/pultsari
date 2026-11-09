@@ -38,6 +38,7 @@ private:
     void randomEvent();
     void artilleryBarrage();
     void meatAssault();
+    void militaryParade();
 
     Level* level;
     std::vector<Fire> fires;
@@ -45,6 +46,7 @@ private:
     uint32_t aaCooldown = 0;
     uint32_t droneNoiseCooldown = 0;
     uint32_t eventCooldown = 0;
+    uint32_t paradeCooldown = 0;
     bool gasActive = false;
     uint32_t gasTimer = 0;
     Coord gasCenter = { 0, 0 };

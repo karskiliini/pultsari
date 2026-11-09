@@ -226,4 +226,18 @@ public:
     uint32_t defenCooldown = 0;
 };
 
+class Sotilas : public Person {
+public:
+    Sotilas(const Coord& pos);
+    virtual ~Sotilas() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "S"; };
+    bool firstMove = true;
+    uint32_t ammo = 4;
+};
+
 #endif

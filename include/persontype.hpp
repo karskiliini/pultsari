@@ -17,7 +17,8 @@ enum PersonType {
     diileri,
     veteraani,
     fsb,
-    juoppo
+    juoppo,
+    sotilas
 };
 
 #endif

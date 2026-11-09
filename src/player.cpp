@@ -507,6 +507,12 @@ bool Player::throwItem()
 
 bool Player::executeThrow(uint32_t itemNum, DirectionNS::Direction dir)
 {
+    if (level->isWarLevel && std::rand() % 100 < 15) {
+        printer->showMessage("Heitto ep\xC3\xA4""onnistuu! Liukkaat k\xC3\xA4""det!", level, false);
+        damage(1);
+        return true;
+    }
+
     Coordinate<int> c { static_cast<int>(coord.x), static_cast<int>(coord.y) };
     auto d = dirToCoord(dir);
 
@@ -526,6 +532,18 @@ bool Player::shoot(DirectionNS::Direction dir)
         return false;
     }
     --inventory.ammukset;
+
+    if (level->isWarLevel) {
+        int roll = std::rand() % 100;
+        if (roll < 20) {
+            printer->showMessage("*KLIK* Ase jumittaa! Ruosteinen romu!", level, false);
+            return true;
+        } else if (roll < 30) {
+            printer->showMessage("PANG! Ase r\xC3\xA4j\xC3\xA4ht\xC3\xA4\xC3\xA4 k\xC3\xA4""dess\xC3\xA4""si!", level, false);
+            damage(std::rand()%3 + 2);
+            return true;
+        }
+    }
 
     Coordinate<int> from { static_cast<int>(coord.x), static_cast<int>(coord.y) };
     auto d = dirToCoord(dir);
