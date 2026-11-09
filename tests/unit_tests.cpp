@@ -120,6 +120,53 @@ TEST(shop_kiosk_sells_vodka)
     CHECK(w.player.inventory.vodka == had + 1);
 }
 
+TEST(gun_shop_sells_a_pistol_with_rounds)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Oruzhie), 10, 10);
+    w.player.stats.money = 50;
+    const uint32_t guns = w.player.inventory.pistooli, rounds = w.player.inventory.ammukset;
+    feedKeys("2");
+    string msg;
+    k->interact(&w.player, msg);
+    CHECK(w.player.stats.money == 15);
+    CHECK(w.player.inventory.pistooli == guns + 1);
+    CHECK(w.player.inventory.ammukset == rounds + 6);
+}
+
+TEST(gun_shop_sells_a_kalashnikov_as_the_fifth_item)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Oruzhie), 10, 10);
+    w.player.stats.money = 100;
+    const uint32_t ak = w.player.inventory.rynkky, rounds = w.player.inventory.ammukset;
+    feedKeys("5");
+    string msg;
+    k->interact(&w.player, msg);
+    CHECK(w.player.stats.money == 10);
+    CHECK(w.player.inventory.rynkky == ak + 1);
+    CHECK(w.player.inventory.ammukset == rounds + 30);
+}
+
+TEST(gun_shop_refuses_the_broke_and_food_shops_have_no_fifth_item)
+{
+    World w;
+    auto* gun = w.add(new Kauppa("TEST", Kauppa::Kind::Oruzhie), 10, 10);
+    w.player.stats.money = 20;
+    const uint32_t ak = w.player.inventory.rynkky;
+    feedKeys("5");
+    string msg;
+    gun->interact(&w.player, msg);
+    CHECK(w.player.stats.money == 20);
+    CHECK(w.player.inventory.rynkky == ak);
+
+    auto* food = w.add(new Kauppa("FOOD", Kauppa::Kind::Produkty), 40, 10);
+    w.player.stats.money = 200;
+    feedKeys("5");
+    food->interact(&w.player, msg);
+    CHECK(w.player.stats.money == 200);
+}
+
 TEST(shop_refuses_the_broke)
 {
     World w;

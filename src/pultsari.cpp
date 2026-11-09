@@ -220,6 +220,8 @@ static void populateBuildings(Level& level, const GameState& gs)
             { "\xD0\x9F\xD0\xA0\xD0\x9E\xD0\x94\xD0\xA3\xD0\x9A\xD0\xA2\xD0\xAB", Kauppa::Kind::Produkty, 45 },
             { "\xD0\x9A\xD0\x98\xD0\x9E\xD0\xA1\xD0\x9A", Kauppa::Kind::Kioski, 160 },
             { "\xD0\x9C\xD0\x90\xD0\x93\xD0\x90\xD0\x97\xD0\x98\xD0\x9D", Kauppa::Kind::Produkty, 270 },
+            // ОРУЖИЕ: the gun shop, between the first Produkty and Sberbank
+            { "\xD0\x9E\xD0\xA0\xD0\xA3\xD0\x96\xD0\x98\xD0\x95", Kauppa::Kind::Oruzhie, 74 },
         };
         const PersonType crooks[] = { varas, jengi, diileri, skinhead, ryostaja };
         for (const auto& s : shops) {

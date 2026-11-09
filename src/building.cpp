@@ -912,6 +912,9 @@ bool Kauppa::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
     if (kind == Kind::Produkty)
         msg = "MYYJ\xC3\x84: 1) Makkara 6\xE2\x82\xBD  2) Vobla 4\xE2\x82\xBD  3) Antonovka 2\xE2\x82\xBD  4) Baltika 10\xE2\x82\xBD  muu) ulos";
+    else if (kind == Kind::Oruzhie)
+        msg = "MYYJ\xC3\x84: 1) Veitsi 8\xE2\x82\xBD  2) Makarov + 6 panosta 35\xE2\x82\xBD  3) 12 panosta 10\xE2\x82\xBD  "
+              "4) Granaatti 25\xE2\x82\xBD  5) Kalashnikov + 30 panosta 90\xE2\x82\xBD  muu) ulos";
     else
         msg = "MYYJ\xC3\x84: 1) Baltika 10\xE2\x82\xBD  2) Banaani 5\xE2\x82\xBD  3) Jaguar 15\xE2\x82\xBD  4) Vodka 25\xE2\x82\xBD  muu) ulos";
     return true;
@@ -922,7 +925,9 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
     const char c = InputNS::Input::getMenuKey();
     static const int foodPrice[] = { 6, 4, 2, 10 };
     static const int kioskPrice[] = { 10, 5, 15, 25 };
-    if (c < '1' || c > '4') {
+    static const int gunPrice[] = { 8, 35, 10, 25, 90 };
+    const char last = kind == Kind::Oruzhie ? '5' : '4';
+    if (c < '1' || c > last) {
         static const char* bye[] = {
             "Myyj\xC3\xA4: 'Ei ostoksia? Ulos sitten. T\xC3\xA4m\xC3\xA4 ei ole museo.'",
             "Myyj\xC3\xA4: 'Ja \xC3\xA4l\xC3\xA4 tule takaisin.'",
@@ -933,7 +938,7 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
         return;
     }
     const int k = c - '1';
-    const int price = kind == Kind::Produkty ? foodPrice[k] : kioskPrice[k];
+    const int price = kind == Kind::Produkty ? foodPrice[k] : kind == Kind::Oruzhie ? gunPrice[k] : kioskPrice[k];
     if ((int)player->stats.money < price) {
         static const char* broke[] = {
             "Myyj\xC3\xA4: 'Ei rahaa? Ulos, bom\xC5\xBE""!'",
@@ -952,6 +957,14 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
         case 1: ++inv.kalat;  msg = "Vobla on kuivempi kuin myyj\xC3\xA4n huumorintaju."; break;
         case 2: ++inv.omppo;  msg = "Antonovka. Kotimainen. Ainoa asia, jota ei ole pakotteissa."; break;
         default: ++inv.kalja; msg = "Myyj\xC3\xA4 l\xC3\xA4im\xC3\xA4ytt\xC3\xA4\xC3\xA4 Baltikan tiskille. 'Seuraava!'"; break;
+        }
+    } else if (kind == Kind::Oruzhie) {
+        switch (k) {
+        case 0: ++inv.veitset; msg = "Myyj\xC3\xA4: 'Veitsi. Kiinalainen, mutta ter\xC3\xA4v\xC3\xA4.'"; break;
+        case 1: ++inv.pistooli; inv.ammukset += 6; msg = "Myyj\xC3\xA4 ty\xC3\xB6nt\xC3\xA4\xC3\xA4 Makarovin tiskin yli. 'Ei kuittia. Ei kysymyksi\xC3\xA4.'"; break;
+        case 2: inv.ammukset += 12; msg = "Kaksitoista panosta paperipussissa. Osa on ruosteessa."; break;
+        case 3: ++inv.granata; msg = "Myyj\xC3\xA4: 'Granaatti. Sokka on paikallaan. Toistaiseksi.'"; break;
+        default: ++inv.rynkky; inv.ammukset += 30; msg = "Kalashnikov tiskin alta. Myyj\xC3\xA4: 'Rintamalta. \xC3\x84l\xC3\xA4 kysy milt\xC3\xA4 rintamalta.'"; break;
         }
     } else {
         switch (k) {

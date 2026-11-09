@@ -68,6 +68,8 @@
         const cyr = textMask(cyrText, cyrX, cyrY);
         const filled = new Uint8Array(FW * FH);
         let filledCount = 0;
+        // "Russki Mir" is invisible: only the vomit running over it shows its letters, and they stay stained
+        const revealed = new Uint8Array(FW * FH);
         // the vomit first piles up on the screen's bottom border, then oozes over it and drips away
         const floorCell = Math.floor(H / CELL) - 1;
         const smear = new Uint8Array(FW * 3); // stains on the border rows
@@ -243,6 +245,7 @@
                     thickness[y * FW + x] += w * thick[i];
                 }
             }
+            for (let i = 0; i < FW * FH; i++) if (density[i] > 0.3 && latin.mask[i]) revealed[i] = 1;
             const d = img.data;
             for (let i = 0; i < FW * FH; i++) {
                 const o = i * 4;
@@ -275,6 +278,10 @@
                     d[o + 1] = Math.min(255, Math.round(g * shade + gloss));
                     d[o + 2] = Math.min(255, Math.round(b * shade + gloss * 0.6));
                     d[o + 3] = Math.round(255 * (0.55 + 0.45 * s));
+                } else if (revealed[i]) {
+                    // a letter the vomit has run over: stained bile green
+                    const shimmer = ((i % FW) * 7 + ((i / FW) | 0) * 13) % 5 * 4;
+                    d[o] = 175 + shimmer; d[o + 1] = 205 + shimmer; d[o + 2] = 96; d[o + 3] = 255;
                 } else {
                     d[o + 3] = 0;
                 }
@@ -289,7 +296,51 @@
         const lipTop = H + 1;                  // just under the border line
         const colCount = new Float32Array(FW);
         const lip = new Float32Array(FW);
+        // as long as any vomit is left on the border, a stream at least a pixel thick keeps
+        // running off it: it pours for a moment, lets go and falls; then a second or two of quiet
+        const trickles = [];
+        let nextTrickleAt = 0;
+        function updateTrickles() {
+            const now = performance.now();
+            if (!trickles.length && now >= nextTrickleAt) {
+                const from = [];
+                for (let i = 0; i < n; i++) if (rest[i] > 0) from.push(px[i] * CELL);
+                if (!from.length) for (let x = 0; x < FW; x++) if (smear[x] || smear[FW + x] || smear[2 * FW + x]) from.push(x * CELL + CELL / 2);
+                if (from.length) {
+                    trickles.push({ x: from[(Math.random() * from.length) | 0], top: lipTop, bottom: lipTop, vb: 0.4, vt: 0,
+                                    pour: 20 + Math.random() * 60, w: 1 + Math.random() * 1.3 });
+                } else nextTrickleAt = now + 500;  // nothing on the border yet
+            }
+            for (let k = trickles.length - 1; k >= 0; k--) {
+                const tr = trickles[k];
+                tr.vb += 0.18; tr.bottom += tr.vb;
+                if (tr.pour > 0) {
+                    tr.pour--;
+                    // the stream drains the puddle it runs from, a little at a time
+                    if (tr.pour % 12 === 0) {
+                        for (let i = 0; i < n; i++) if (rest[i] > 10 && Math.abs(px[i] * CELL - tr.x) < 3 * CELL) { remove(i); break; }
+                    }
+                } else { tr.vt += 0.18; tr.top += tr.vt; }
+                if (tr.top > HT + 4) { trickles.splice(k, 1); nextTrickleAt = performance.now() + 1000 + Math.random() * 1000; }
+            }
+        }
+        function drawTrickles() {
+            for (const tr of trickles) {
+                const y0 = Math.max(tr.top, lipTop), y1 = Math.min(tr.bottom, HT + 2);
+                if (y1 <= y0) continue;
+                const x0 = Math.round(tr.x - tr.w / 2);
+                ctx.fillStyle = '#5a8618';
+                ctx.fillRect(x0, y0, Math.max(1, tr.w), y1 - y0);
+                ctx.fillStyle = 'rgba(205,240,120,0.55)';
+                ctx.fillRect(x0, y0, Math.max(0.5, tr.w * 0.35), y1 - y0);
+                ctx.beginPath();
+                ctx.arc(tr.x, y1, Math.max(0.9, tr.w * 0.8), 0, Math.PI * 2);
+                ctx.fillStyle = '#6f9e22';
+                ctx.fill();
+            }
+        }
         function updateDrips() {
+            updateTrickles();
             colCount.fill(0);
             for (let i = 0; i < n; i++) if (rest[i] > 0) colCount[px[i] | 0] += 1;
 
@@ -375,6 +426,7 @@
 
         const SLIME = '#4b7414', GLOSS = 'rgba(205,240,120,0.5)';
         function drawDrips() {
+            drawTrickles();
             // the lip: the puddle bulging over the edge, deeper where it is thicker and around each strand
             for (let x = 0; x < FW; x++) {
                 let sum = 0;
@@ -586,7 +638,6 @@
 
             const typed = Math.min(titleText.length, Math.floor(t / 0.11));
             text(titleText.slice(0, typed), startX, baseY, '#fff');
-            if (t > 1.6) text(latinText, latinX, baseY, t > 3.1 ? '#b9d36a' : '#fff');
             if (t > 2.6) text('*RÖKH*', startX - fs * 0.2, baseY + fs * 0.9, '#e0b030', fs * 0.42);
             if (t > 3.1) text('*BLAAARGH*', startX - fs * 0.6, baseY + fs * 1.6, '#f0c040', fs * 0.5);
             if (t > 5.0) text('*ÖÖÖRRRKKK*', latinX + latinW * 0.45, baseY - fs * 1.15, '#f0c040', fs * 0.45);

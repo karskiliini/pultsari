@@ -1,10 +1,42 @@
 // An action-show opening-credits parody: quick ASCII-art cuts of everyday
 // Russia, each with a "starring" caption, cut to a synth theme.
 (function () {
-    const SCENE_S = 2.4;
+    // every scene gets 1.5 s on top of its action for reading the caption
+    const READ_S = 1.5;
+    const SCENE_S = 2.4 + READ_S;
 
+    const ease = (k) => (k <= 0 ? 0 : k >= 1 ? 1 : k * k * (3 - 2 * k));
+    // a camera over a stage measured in character cells (zoom 1 = the normal scene size);
+    // call it first in render(), while the montage's own font is still set
+    function lens(ctx, W, H, fs, zoom, camX, camY) {
+        const cw = ctx.measureText('M').width * zoom, ch = fs * 1.2 * zoom;
+        const sx = (wx) => W / 2 + (wx - camX) * cw;
+        const sy = (wy) => H * 0.42 + (wy - camY) * ch;
+        const font = (scale = 1) => { ctx.font = `${Math.round(fs * zoom * scale)}px ui-monospace, "Cascadia Code", Menlo, monospace`; };
+        const text = (str, wx, wy, color) => { ctx.fillStyle = color; ctx.fillText(str, sx(wx), sy(wy)); };
+        font();
+        return { cw, ch, sx, sy, font, text };
+    }
+
+    // the game's whole cast gets a short card; the bigger roles get their own camera work
+    const CARD_S = 1.8 + READ_S;
     // each scene: ASCII art, its colour, an animated layer and the caption
     const scenes = [
+        {
+            who: 'PÄÄOSASSA', name: 'PULTSARI (SINÄ)', line: 'Kerää tyhjiä pulloja. Matkalla Vovan viinikellariin.',
+            color: '#c8c8a0',
+            dur: CARD_S,
+            art: [
+                '     ___',
+                '    (x_x)',
+                '    /|#|\\_[]',
+                '     / \\',
+            ],
+            anim(ctx, t, x, y, cw, ch) {
+                ctx.fillStyle = '#f2d34a';
+                if (Math.floor(t * 3) % 2 === 0) ctx.fillText('*hic*', x + cw * 11, y + ch * (0.6 - (t % 0.66)));
+            },
+        },
         {
             who: 'PÄÄOSISSA', name: 'LADA', line: 'Käynnistyy ensimmäisellä yrityksellä. Kolmannellatoista.',
             color: '#d8d8d8',
@@ -24,28 +56,141 @@
             },
         },
         {
-            who: 'PÄÄOSISSA', name: 'VASJA, 19', line: 'Värvätty eilen. Kivääri vuodelta 1953.',
+            who: 'PÄÄOSISSA', name: 'VASJA, 19', line: 'Värvätty.',
             color: '#9fb36a',
-            art: [
-                '      ___',
-                '     (o_o)   "Allekirjoita tähän."',
-                '     /|=|\\--=====',
-                '      / \\',
-            ],
+            dur: 6.4 + READ_S,
+            // close on Vasja's face, then pull back to the recruiting office: he writes his name
+            // on the form and, before the pen is back on the desk, two men grab him under the
+            // arms, drag him out and throw him in the back of the truck
+            render(ctx, W, H, t, fs) {
+                const out = ease((t - 0.9) / 0.6);
+                const cam = lens(ctx, W, H, fs, 3.6 - 2.6 * out, 26.5 + 4.5 * out, -1 + 0.6 * out);
+                const { text } = cam;
+                const skin = '#e6e0d0', green = '#9fb36a', officer = '#7e8c6a', suit = '#6a7080';
+
+                // the recruiting officer behind his desk, the form on it
+                text(' _▄_ ', 1, -2, officer);
+                text('(ò_ó)', 1, -1, skin);
+                text('/|█|\\', 1, 0, officer);
+                text('______________', 6, 0, '#8f7c50');
+                text('|            |', 6, 1, '#8f7c50');
+                text('|            |', 6, 2, '#8f7c50');
+                text('[NIMI:_____]', 7, -0.35, '#eee');
+                if (t > 1.5 && t < 2.7) text('"Nimi tähän."', -1, -3.4, '#ddd');
+
+                // he writes his name, one letter at a time
+                const written = Math.max(0, Math.min(5, (t - 1.85) / 0.18));
+                if (t > 1.85) text('VASJA'.slice(0, Math.ceil(written)), 13, -0.35, '#7fa8ff');
+
+                // the grab, the drag to the truck and the throw
+                const rush = ease((t - 2.9) / 0.4);
+                const drag = 13 * ease((t - 3.45) / 1.0);
+                const vx = 24 + drag;
+                const thrown = (t - 4.45) / 0.4;
+                const truckX = 44 + 40 * Math.pow(Math.max(0, (t - 5.3) / 1.1), 2);
+
+                const vasja = (x, y, angle, legs) => {
+                    ctx.save();
+                    ctx.translate(cam.sx(x + 2.5), cam.sy(y));
+                    ctx.rotate(angle);
+                    const rows = [[' ___ ', '#6b5a3a'], ['(o_o)', skin], ['/|=|\\', green], [' |_| ', green], [legs, green]];
+                    rows.forEach(([s, c], i) => { ctx.fillStyle = c; ctx.fillText(s, -2.5 * cam.cw, (i - 2) * cam.ch); });
+                    // the pen never makes it back to the desk
+                    if (t >= 2.9) { ctx.fillStyle = '#7fa8ff'; ctx.fillText('✎', -3.4 * cam.cw, 0); }
+                    ctx.restore();
+                };
+                if (thrown < 0) {
+                    vasja(vx, 0, 0, t > 3.45 ? ' / / ' : ' / \\ ');
+                    if (t > 1.85 && t < 2.9) {
+                        // his arm across the desk to the pen on the form
+                        const penX = 13 + written;
+                        ctx.strokeStyle = green;
+                        ctx.lineWidth = Math.max(2, cam.cw * 0.12);
+                        ctx.beginPath();
+                        ctx.moveTo(cam.sx(24.3), cam.sy(-0.1));
+                        ctx.lineTo(cam.sx(penX), cam.sy(-0.45));
+                        ctx.stroke();
+                        text('✎', penX - 0.1, -0.95, '#7fa8ff');
+                    }
+                    if (t > 3.45) text('~~', vx - 1.5, 2.4, '#666');
+                } else if (thrown < 1) {
+                    // up and over, into the back of the truck
+                    vasja(37 + 10 * thrown, -0.5 - 3.4 * 4 * thrown * (1 - thrown), thrown * 7, ' / / ');
+                }
+                if (t > 3.3 && t < 3.75) text('*NAPS!*', vx - 1, -3.3, '#f2d34a');
+
+                // two men waiting by the truck; they run in, take him under the arms, then jump in after him
+                const goon = (x, moving) => {
+                    text('(▀_▀)', x, -1, skin);
+                    text('/|█|\\', x, 0, suit);
+                    text(' |_| ', x, 1, suit);
+                    text(moving && Math.floor(t * 10) % 2 ? ' |\\  ' : ' / \\ ', x, 2, suit);
+                };
+                const hop = ease((t - 4.9) / 0.35);
+                [[31, 19.5], [38, 29]].forEach(([from, to], i) => {
+                    if (t > 5.25 + i * 0.05) return;
+                    let x = from + (to - from) * rush + drag;
+                    if (t > 4.9) x += (45 + i * 2 - x) * hop;
+                    goon(x, (t > 2.9 && t < 3.3) || (t > 3.45 && t < 4.45) || t > 4.9);
+                });
+                if (t > 4.85 && t < 5.4) text('*TÖMPS*', truckX + 3, -3.2, '#f2d34a');
+
+                // the truck: its cargo box hides whatever goes in the back
+                ctx.fillStyle = '#000';
+                ctx.fillRect(cam.sx(truckX), cam.sy(-2), cam.sx(truckX + 16) - cam.sx(truckX), cam.sy(1.5) - cam.sy(-2));
+                text(' ______________', truckX, -2, '#5b6b3a');
+                text('|              |___', truckX, -1, '#5b6b3a');
+                text('|  ВОЕНКОМАТ   |  []\\', truckX, 0, '#5b6b3a');
+                text('|______________|_____|', truckX, 1, '#5b6b3a');
+                text('  (O)     (O)     (O)', truckX, 2, '#999');
+                if (t > 5.2) {
+                    for (let i = 0; i < 4; i++) {
+                        const k = (t * 2 + i * 0.25) % 1;
+                        text(k < 0.5 ? 'o' : 'O', truckX - 1 - k * 6, 1.6 - k * 0.8, '#777');
+                    }
+                }
+            },
         },
         {
             who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Pelasti perunat droonilta. Taas.',
             color: '#d07a9a',
-            art: [
-                '      __',
-                '    ,/  \\.',
-                '   (  o o )',
-                '    \\_~~_/     [ПЕРУНА]',
-                '   /|####|\\',
-            ],
-            anim(ctx, t, x, y, cw, ch) {
-                ctx.fillStyle = '#bbb';
-                ctx.fillText('--=[■]=--', x + cw * (30 - t * 6), y - ch * 0.4);
+            dur: 7.2 + READ_S,
+            // she stares into the camera; pull back: a man brings her a sack of potatoes for her
+            // service, she watches him go, then turns back to stare into the camera again
+            render(ctx, W, H, t, fs) {
+                const wide = ease((t - 0.9) / 0.6) * (1 - ease((t - 5.7) / 0.6));
+                const cam = lens(ctx, W, H, fs, 3.4 - 2.4 * wide, 4 + 13 * wide, 0.3 * wide);
+                const { text } = cam;
+                const pink = '#d07a9a', skin = '#e6e0d0', coat = '#7e8c6a';
+
+                // the man: walks in from the right, puts the sack down, says his piece, walks off
+                const manX = t < 5.3 ? 58 - 43 * Math.min(1, Math.max(0, (t - 1.6) / 1.3)) : 15 + 45 * ((t - 5.3) / 0.9);
+                const walking = (t > 1.6 && t < 2.9) || t > 5.3;
+                const watching = t > 1.9 && t < 5.7;
+
+                text(' ,/  \\. ', 0, -1, pink);
+                text(watching ? '(   o o)' : '(  o o )', 0, 0, skin);
+                text(' \\_~~_/ ', 0, 1, pink);
+                text('/|####|\\', 0, 2, pink);
+                text(' /____\\ ', 0, 3, pink);
+
+                if (manX < 60) {
+                    text(' _▄_ ', manX, -1, coat);
+                    text('(-_-)', manX, 0, skin);
+                    text('/|█|\\', manX, 1, coat);
+                    text(' |_| ', manX, 2, coat);
+                    text(walking && Math.floor(t * 8) % 2 ? ' |\\  ' : ' / \\ ', manX, 3, coat);
+                }
+                // the sack: carried in, then set down at her feet
+                const drop = Math.min(1, Math.max(0, (t - 2.9) / 0.15));
+                if (t < 2.9) text('[3 KG]', manX + 5, 1.5, '#c9a96a');
+                else text('[3 KG]', 8.8, 1.5 + 1.5 * drop, '#c9a96a');
+
+                if (t > 3.1 && t < 5.3) {
+                    cam.font(0.8);
+                    text('"Tässä on 3 kg perunoita."', -1, -3.4, '#ddd');
+                    if (t > 3.9) text('"Kiitos palveluksestanne Äiti-Venäjälle."', -1, -2.4, '#ddd');
+                }
             },
         },
         {
@@ -64,14 +209,189 @@
             },
         },
         {
-            who: 'VIERAILEVA TÄHTI', name: 'POLITSIJA', line: 'Ottaa vastaan vain käteistä.',
+            who: 'SEKÄ', name: 'JUOPPO', line: '"Aitoa, brat!" Juo mitä tahansa.',
+            color: '#c9b37a',
+            dur: CARD_S,
+            art: [
+                '    (^o^)   "Aitoa, brat!"',
+                '    \\|=|/',
+                '     / \\    [ВОДКА]',
+            ],
+        },
+        {
+            who: 'VIERAILEVA TÄHTI', name: 'MILIISI', line: 'Ottaa vastaan vain käteistä.',
             color: '#6d8bff',
             art: [
-                '    [ПОЛИЦИЯ]',
+                '    [МИЛИЦИЯ]',
                 '     (-_-)   _____',
                 '     /|█|\\  |₽ ₽ ₽|',
                 '      / \\',
             ],
+        },
+        {
+            who: 'SEKÄ', name: 'GOPNIK', line: 'Kyykkii ja uhkailee. Verkkareissa.',
+            color: '#d8d8d8',
+            dur: CARD_S,
+            art: [
+                '     (¬_¬)   семечки',
+                '   _/|≡|\\_',
+                '    _/ \\_',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'VARAS', line: '"Hipelöin sua!!" Ja lompakkoasi.',
+            color: '#b08cd0',
+            dur: CARD_S,
+            art: [
+                '     (ò_ô)',
+                '    -/|▓|\\-->[₽]',
+                '      / \\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'RYÖSTÄJÄ', line: '"RAHAT TAI HENKI!" Mieluiten molemmat.',
+            color: '#d06a4a',
+            dur: CARD_S,
+            art: [
+                '     [▀▀▀]',
+                '     (•_•)',
+                '     /|█|\\=¬',
+                '      / \\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'DIILERI', line: '"Tässä on hyvää kamaa!" Ei ole.',
+            color: '#7fd0a0',
+            dur: CARD_S,
+            art: [
+                '     (¬_¬)   "Haluatko ostaa jotain?"',
+                '     /|▒|\\[]',
+                '      / \\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'SKINHEAD', line: '"TAPAN SINUT!!" Sanoo sen kaikille.',
+            color: '#c06060',
+            dur: CARD_S,
+            art: [
+                '     (Ò_Ó)',
+                '     /|█|\\',
+                '     ▐▌ ▐▌',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'PAKOVANKI', line: 'Karkasi SIZOsta. Kiekuralenkki tekee vahvaksi.',
+            color: '#c8c8c8',
+            dur: CARD_S,
+            art: [
+                '     (o_O)',
+                '    /|≡≡|\\',
+                '     / \\__O',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'YEVGENI', line: 'Kysyy miliisiltä, saisiko puhaltaa.',
+            color: '#a0c0e0',
+            dur: CARD_S,
+            art: [
+                '     (o_o)   "Saanko puhaltaa?"',
+                '     /|=|\\',
+                '      / \\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'KOTIÄITI', line: '"Vanjuska... missä sä..." *hik*',
+            color: '#e0a0c0',
+            dur: CARD_S,
+            art: [
+                '     ,~~~,',
+                '     (=_=)',
+                '     /|▼|\\  [ВОДКА]',
+                '      / \\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'LAPSI', line: '"Ei saa koskea! ÄITIII!"',
+            color: '#f0d080',
+            dur: CARD_S,
+            art: [
+                '     (o.o)',
+                '     /|_|\\',
+                '      / \\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'DIMA, TAKSIKUSKI', line: 'Navigaattori näyttää Kiovaa. Taas.',
+            color: '#f2d34a',
+            dur: CARD_S,
+            art: [
+                '     [TAXI]',
+                '     (-_-)  ~[≡]~',
+                '     /|=|\\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'ROTTA', line: 'Puraisee nilkkaan.',
+            color: '#a89080',
+            dur: CARD_S,
+            art: [
+                '   ~~(__^·>',
+            ],
+            anim(ctx, t, x, y, cw, ch) {
+                ctx.fillStyle = '#ddd';
+                if (Math.floor(t * 4) % 2 === 0) ctx.fillText('*viik viik*', x + cw * 3, y - ch * 1.2);
+            },
+        },
+        {
+            who: 'SEKÄ', name: 'PANKKIRYÖSTÄJÄ', line: '"KAIKKI MAAHAN! *hik*"',
+            color: '#c0a060',
+            dur: CARD_S,
+            art: [
+                '     [▓▓▓]',
+                '     (O_O)',
+                '     /|█|\\==¬',
+                '      / \\     [₽₽₽]',
+            ],
+            anim(ctx, t, x, y, cw, ch) {
+                ctx.fillStyle = '#ffb040';
+                if (Math.floor(t * 8) % 2 === 0) ctx.fillText('RÄKÄKÄKÄ!', x + cw * 13, y + ch * 2);
+            },
+        },
+        {
+            who: 'SEKÄ', name: 'VETERAANI', line: '"TANKIT!! DROONIT!!" Sokea, mutta kuulee askeleesi.',
+            color: '#b0a080',
+            dur: CARD_S,
+            art: [
+                '     (-_-)',
+                '     /|*|\\',
+                '      |  |',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'SOTILAS', line: '"Rintamalle, svinya!" Tarvitsee miehiä. Sinut.',
+            color: '#7e8c6a',
+            dur: CARD_S,
+            art: [
+                '     [▄▄]',
+                '     (ò_ó)',
+                '     /|▓|\\=====',
+                '      / \\',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'ILMATORJUNTAMIES', line: '"Kohde havaittu!" Sirpaleita sataa taivaalta.',
+            color: '#8a9a6a',
+            dur: CARD_S,
+            art: [
+                '          //',
+                '      ___//',
+                '     [===]',
+                '     (ò_ó)',
+            ],
+            anim(ctx, t, x, y, cw, ch) {
+                ctx.fillStyle = '#ffd24a';
+                for (let i = 0; i < 3; i++) if (Math.floor(t * 5 + i) % 3 === 0) ctx.fillText('*', x + cw * (12 + i * 3), y - ch * (1 + i * 0.7));
+            },
         },
         {
             who: 'SEKÄ', name: 'НПЗ', line: 'Palaa taas. Savu on "länsimaista propagandaa".',
@@ -91,9 +411,20 @@
             },
         },
         {
+            who: 'SEKÄ', name: 'FSB-AGENTTI', line: '"FSB valvoo." Kaikki on hallinnassa.',
+            color: '#9a9aa8',
+            dur: CARD_S,
+            art: [
+                '     ▄███▄',
+                '     (▀_▀)',
+                '     /|█|\\',
+                '      / \\',
+            ],
+        },
+        {
             who: 'SEKÄ', name: 'JOHTAJA, 61', line: 'Kaatui ikkunasta. Ihan itse.',
             color: '#cfcfcf',
-            dur: 4.2,
+            dur: 4.2 + READ_S,
             art: [
                 '  _______________',
                 ' |  ▒▒  ▒▒  ▒▒  |',
@@ -215,9 +546,44 @@
             },
         },
         {
+            who: 'SEKÄ', name: 'VARTIJA', line: '"Stoi! Lattiaan!" Kremlin vartio.',
+            color: '#c0c0e0',
+            dur: CARD_S,
+            art: [
+                '     [ ▲ ]',
+                '     (ò_ó)',
+                '     /|█|\\',
+                '      | |',
+            ],
+        },
+        {
+            who: 'SEKÄ', name: 'AVUSTAJA', line: 'Henkilökohtainen avustaja. Henkilökohtaisesti kännissä.',
+            color: '#a0b0d0',
+            dur: CARD_S,
+            art: [
+                '     (-_-)',
+                '     /|=|\\_[■]',
+                '      / \\',
+            ],
+            anim(ctx, t, x, y, cw, ch) {
+                ctx.fillStyle = '#ddd';
+                ctx.fillText('z'.repeat(1 + (Math.floor(t * 3) % 3)), x + cw * 6, y - ch * (0.6 + (t % 0.33)));
+            },
+        },
+        {
+            who: 'VIERAILEVA TÄHTI', name: 'MEDVEDEV', line: 'Kirjoittaa Telegramiin. ISOILLA KIRJAIMILLA.',
+            color: '#e0e0e0',
+            dur: CARD_S,
+            art: [
+                '     (ò_ó)   "Ydinase Lontooseen!"',
+                '     /|█|\\  [TELEGRAM]',
+                '      / \\',
+            ],
+        },
+        {
             who: 'ERITYISESSÄ ROOLISSA', name: 'VOVA', line: 'Pitää kenraalinsa turvav\u00e4lin p\u00e4\u00e4ss\u00e4.',
             color: '#f2d34a',
-            dur: 7.0,
+            dur: 7.0 + READ_S,
             // camera work: close on Vova, a quick pull back, then a long pan left along the table
             // to the two generals at the far end
             render(ctx, W, H, t, fs) {

@@ -225,9 +225,10 @@ private:
 };
 
 // A Russian shop that is open: a few things for sale, a rude seller and an angry queue.
+// Oruzhie is the gun shop: knives, pistols, rounds, grenades and a Kalashnikov over the counter.
 class Kauppa : public Building {
 public:
-    enum class Kind { Produkty, Kioski };
+    enum class Kind { Produkty, Kioski, Oruzhie };
     Kauppa(const std::string& name, Kind kind);
     virtual std::string getName() const { return name; }
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
