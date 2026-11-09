@@ -11,9 +11,6 @@ using std::string;
 using std::cout;
 using std::endl;
 
-string name1 = "(C) By Jari  Maaranen";
-string name2 = "       Tero  Maaranen";
-string name3 = "       Kimmo Korhonen";
 
 Intro::~Intro()
 {
@@ -132,21 +129,6 @@ void Intro::show()
             "\xE2\x99\xAA \xD0\xBA\xD0\xB0\xD0\xBB\xD0\xB8\xD0\xBD\xD0\xBA\xD0\xB0 \xE2\x99\xAA\033[0m";
     cout.flush();
     common::sleep(1500);
-
-    // credits
-    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 16, 5);
-    cout << posBuf;
-    cout << name1;
-    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 17, 5);
-    cout << posBuf;
-    cout << name2;
-    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 18, 5);
-    cout << posBuf;
-    cout << name3;
-
-    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 20, 5);
-    cout << posBuf;
-    cout << "Moskova 2025";
 
     snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 24, CENTER_X);
     cout << posBuf;
