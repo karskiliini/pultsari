@@ -72,8 +72,11 @@ public:
     Person* raycast(const Coordinate<int>& from, const Coordinate<int>& vector) const;
     Building* raycastBuilding(const Coordinate<int>& from, const Coordinate<int>& vector) const;
 
-    uint32_t sizex = common::SIZEX;
-    uint32_t sizey = common::SIZEY;
+    uint32_t sizex = common::WORLD_W;
+    uint32_t sizey = common::WORLD_H;
+    int32_t cameraX = 0;
+    int32_t cameraY = 0;
+    void updateCamera();
 
     std::vector<Building*> buildings;
     std::vector<Person*> persons;

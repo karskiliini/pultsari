@@ -11,10 +11,14 @@
 
 namespace common {
 
-constexpr uint32_t SIZEX = 80;
-constexpr uint32_t SIZEY = 28;
-constexpr uint32_t PLAYER_START_X = 10;
-constexpr uint32_t PLAYER_START_Y = SIZEY/2;
+constexpr uint32_t VIEWPORT_W = 80;
+constexpr uint32_t VIEWPORT_H = 28;
+constexpr uint32_t WORLD_W = 400;
+constexpr uint32_t WORLD_H = 200;
+constexpr uint32_t SIZEX = WORLD_W;
+constexpr uint32_t SIZEY = WORLD_H;
+constexpr uint32_t PLAYER_START_X = 50;
+constexpr uint32_t PLAYER_START_Y = WORLD_H / 2;
 
 extern bool animsEnabled;
 extern bool realtimeEnabled;

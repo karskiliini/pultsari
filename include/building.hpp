@@ -20,7 +20,8 @@ enum BuildingType {
     EPoliisiAsema,
     EAsema,
     ESeina,
-    EKremlin
+    EKremlin,
+    EHypermarket
 };
 
 class Level;
@@ -51,6 +52,7 @@ public:
 
     Coord getDoor() const;
     Coord getSpawn() const;
+    void setOffset(int32_t dx, int32_t dy);
 
     BuildingType type;
     DirectionNS::Direction door = DirectionNS::Direction::up;
@@ -165,6 +167,24 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+};
+
+class Hypermarket : public Building {
+public:
+    Hypermarket();
+    virtual ~Hypermarket() = default;
+    void npcAct();
+    virtual std::string getName() const;
+    virtual std::string typeToChar(const Coord& c) const;
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+    void startFire();
+    bool onFire = false;
+    uint32_t fireTurn = 0;
+    std::vector<Coord> fireSpots;
+    std::vector<Coord> smokeSpots;
 };
 
 #endif

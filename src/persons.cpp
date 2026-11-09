@@ -1941,3 +1941,126 @@ bool ITYksikko::interactThrow(Item* item, Person* source, std::string& msg)
     damage(1);
     return true;
 }
+
+// VARTIJA (hypermarket guard)
+
+Vartija::Vartija(const Coord& pos) : Person(vartija, pos)
+{
+    stats.health = 20;
+    homePos = pos;
+}
+
+void Vartija::npcAct()
+{
+    Player* p = level->getPlayer();
+    if (!p) return;
+
+    if (fleeing) {
+        // flee opposite direction from homePos
+        DirectionNS::Direction opposite;
+        if (coord.x < homePos.x) opposite = DirectionNS::left;
+        else if (coord.x > homePos.x) opposite = DirectionNS::right;
+        else if (coord.y < homePos.y) opposite = DirectionNS::up;
+        else opposite = DirectionNS::down;
+
+        Coord next = coord;
+        switch(opposite) {
+            case DirectionNS::up: if (next.y > 0) --next.y; break;
+            case DirectionNS::down: ++next.y; break;
+            case DirectionNS::left: if (next.x > 0) --next.x; break;
+            case DirectionNS::right: ++next.x; break;
+            default: break;
+        }
+        if (!level->hit(next) && coord.distance(homePos) < 15) {
+            coord = next;
+        }
+        return;
+    }
+
+    uint32_t dist = coord.distance(p->coord);
+
+    if (dist <= 6 && canSeeTarget(p->coord)) {
+        if (dist <= 1) {
+            static const char* kicks[] = {
+                "Vartija potkaisee sinua ulos!",
+                "POIS! EI SAA TULLA SISÄÄN!",
+                "Vartija: 'Häivy, pummi!'",
+                "Vartija lyö sinua takaraivoon!",
+            };
+            say(kicks[std::rand()%4]);
+            p->damage(3);
+
+            // push player away from building
+            DirectionNS::Direction pushDir;
+            if (p->coord.x < coord.x) pushDir = DirectionNS::left;
+            else if (p->coord.x > coord.x) pushDir = DirectionNS::right;
+            else if (p->coord.y < coord.y) pushDir = DirectionNS::up;
+            else pushDir = DirectionNS::down;
+
+            Coord pushTarget = p->coord;
+            for (int i = 0; i < 3; ++i) {
+                Coord next = pushTarget;
+                switch(pushDir) {
+                    case DirectionNS::up: if (next.y > 0) --next.y; break;
+                    case DirectionNS::down: ++next.y; break;
+                    case DirectionNS::left: if (next.x > 0) --next.x; break;
+                    case DirectionNS::right: ++next.x; break;
+                    default: break;
+                }
+                if (!level->hitBuilding(next) && !level->hitPerson(next))
+                    pushTarget = next;
+            }
+            p->coord = pushTarget;
+        } else {
+            // chase the player
+            auto d = getMoveDirection(p->coord);
+            Coord next = coord;
+            switch(d) {
+                case DirectionNS::up: if (next.y > 0) --next.y; break;
+                case DirectionNS::down: ++next.y; break;
+                case DirectionNS::left: if (next.x > 0) --next.x; break;
+                case DirectionNS::right: ++next.x; break;
+                default: break;
+            }
+            if (!level->hit(next)) coord = next;
+        }
+    } else {
+        // patrol near home position
+        if (coord.distance(homePos) > 3) {
+            auto d = getMoveDirection(homePos);
+            Coord next = coord;
+            switch(d) {
+                case DirectionNS::up: if (next.y > 0) --next.y; break;
+                case DirectionNS::down: ++next.y; break;
+                case DirectionNS::left: if (next.x > 0) --next.x; break;
+                case DirectionNS::right: ++next.x; break;
+                default: break;
+            }
+            if (!level->hit(next)) coord = next;
+        } else if (common::random(30)) {
+            auto d = randomDirection();
+            Coord next = coord;
+            switch(d) {
+                case DirectionNS::up: if (next.y > 0) --next.y; break;
+                case DirectionNS::down: ++next.y; break;
+                case DirectionNS::left: if (next.x > 0) --next.x; break;
+                case DirectionNS::right: ++next.x; break;
+                default: break;
+            }
+            if (!level->hit(next) && next.distance(homePos) <= 4) coord = next;
+        }
+    }
+}
+
+bool Vartija::interact(std::string& msg, Person* source)
+{
+    msg = "Vartija: 'Älä koske muhun!'";
+    source->damage(3);
+    return true;
+}
+
+bool Vartija::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    msg = "Vartija väistää heittosi.";
+    return true;
+}

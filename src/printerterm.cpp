@@ -53,7 +53,7 @@ void PrinterTerm::printBorder(Level* l, bool top)
         cout << BOT_LEFT;
     }
 
-    for (uint32_t x = 0; x < l->sizex; ++x)
+    for (uint32_t x = 0; x < common::VIEWPORT_W; ++x)
         cout << HORIZONTAL;
 
     if (top) {
@@ -96,7 +96,6 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
     cout << "  VOIMA: "    << moneyAligned(stats->health);
     cout << "  PROMILLE: " << promilleAligned(stats->promilles);
     cout << "  NÄLKÄ: " << moneyAligned(stats->hunger);
-    cout << "  LEVEL: "  << l->stage << " ";
     cout << endl << endl;
 }
 
@@ -114,7 +113,7 @@ void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
     cout << "Kaikki hakatut oliot : " << scoreBoard->kaikki << "              " << endl;
     cout << "------------------------------" <<  "              " << endl;
     cout << "Yhteispistetilanteesi: " << scoreBoard->mummot + scoreBoard->kaikki <<  "              " << endl;
-    cout << "Kiitos P\xD0\x9F""LTSARI:n pelaamisesta!" <<  "              " << endl;
+    cout << "Kiitos P\xD0\x9F""LTSARI 2:n pelaamisesta!" <<  "              " << endl;
     cout << "                                                                " << endl;
     cout << "                                                                " << endl;
     cout << "                                                                " << endl;
@@ -122,7 +121,7 @@ void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
 
 void PrinterTerm::printHelp()
 {
-    cout << "P\xD0\x9F""LTSARI - Moskovan kadut                           " << endl;
+    cout << "P\xD0\x9F""LTSARI 2 - The Special Drunken Operation          " << endl;
     cout << "--los          : line of sight                        " << endl;
     cout << "--anims        : animaatiot                           " << endl;
     cout << "--path         : reitinhaku                           " << endl;
@@ -133,7 +132,7 @@ void PrinterTerm::printHelp()
 
 void PrinterTerm::emptyLine(uint32_t textLen)
 {
-    for (uint32_t i = 0; i < common::SIZEX - textLen; ++i) {
+    for (uint32_t i = 0; i < common::VIEWPORT_W - textLen; ++i) {
         cout << " ";
     }
     cout << endl;
@@ -141,7 +140,7 @@ void PrinterTerm::emptyLine(uint32_t textLen)
 
 void PrinterTerm::emptyTitleLine(uint32_t textLen)
 {
-    for (uint32_t i = 0; i < common::SIZEX / 2 - textLen; ++i) {
+    for (uint32_t i = 0; i < common::VIEWPORT_W / 2 - textLen; ++i) {
         cout << " ";
     }
 }

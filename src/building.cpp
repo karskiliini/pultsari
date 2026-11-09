@@ -155,6 +155,18 @@ Coord Building::getDoor() const
     }
 }
 
+void Building::setOffset(int32_t dx, int32_t dy)
+{
+    wallLeft = (uint32_t)((int32_t)wallLeft + dx);
+    wallRight = (uint32_t)((int32_t)wallRight + dx);
+    wallTop = (uint32_t)((int32_t)wallTop + dy);
+    wallBot = (uint32_t)((int32_t)wallBot + dy);
+    for (auto& w : windows) {
+        w.x = (uint32_t)((int32_t)w.x + dx);
+        w.y = (uint32_t)((int32_t)w.y + dy);
+    }
+}
+
 Coord Building::getSpawn() const
 {
     Coord c = getDoor();
@@ -641,3 +653,160 @@ void Kremlin::interact(PlayerNS::Player* player, std::string& msg)
 }
 
 std::string Kremlin::getWalkMsg() const { return "Kremlin muurit ovat läpäisemättömät."; }
+
+// HYPERMARKET
+
+Hypermarket::Hypermarket() : Building(BuildingType::EHypermarket) {
+    wallRight = 25;
+    wallTop = 0;
+    wallLeft = 0;
+    wallBot = 8;
+
+    door = DirectionNS::down;
+    windows.push_back({5, wallBot});
+    windows.push_back({10, wallBot});
+    windows.push_back({15, wallBot});
+    windows.push_back({20, wallBot});
+    windows.push_back({wallLeft, 4});
+    windows.push_back({wallRight, 4});
+}
+
+std::string Hypermarket::getName() const
+{
+    return onFire ? "ГОРЯЩИЙ ГИПЕРМАРКЕТ" : "ГИПЕРМАРКЕТ";
+}
+
+std::string Hypermarket::typeToChar(const Coord& c) const
+{
+    for (const auto& f : fireSpots) {
+        if (f == c) return "~";
+    }
+    for (const auto& s : smokeSpots) {
+        if (s == c) return ";";
+    }
+    return Building::typeToChar(c);
+}
+
+bool Hypermarket::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    if (onFire) {
+        msg = "Sisälle palavaan hypermarkettiin! Vaarallista!";
+        return true;
+    }
+    msg = "Vartijat estävät tiesi.";
+    return false;
+}
+
+bool Hypermarket::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    if (onFire) {
+        // inside the burning building - chance to find loot
+        int roll = std::rand() % 100;
+        if (roll < 20) {
+            msg = "Löydät kaljaa savuiselta hyllyltä!";
+            player->inventory.kalja += 2;
+        } else if (roll < 35) {
+            msg = "Löydät lenkkiä!";
+            player->inventory.lenkki += 1;
+        } else if (roll < 50) {
+            msg = "Löydät lonkkaa!";
+            player->inventory.lonkka += 2;
+        } else if (roll < 60) {
+            msg = "Löydät vodkaa romahtaneelta hyllyltä!";
+            player->inventory.kalja += 1;
+        } else if (roll < 75) {
+            msg = "Hylly kaatuu päällesi!";
+            player->damage(3);
+        } else {
+            msg = "Savu peittää näkyvyyden. Et löydä mitään.";
+        }
+    } else {
+        msg = "Hypermarketti on suljettu pummeilta.";
+    }
+    return true;
+}
+
+void Hypermarket::interact(PlayerNS::Player* player, std::string& msg)
+{
+    getInteractMsg(player, msg);
+}
+
+std::string Hypermarket::getWalkMsg() const { return "Hypermarketin seinät."; }
+
+void Hypermarket::npcAct()
+{
+    if (!onFire) return;
+
+    ++fireTurn;
+
+    // fire spreads inside the building
+    if (fireTurn % 3 == 0 && fireSpots.size() < 30) {
+        if (!fireSpots.empty()) {
+            auto& src = fireSpots[std::rand() % fireSpots.size()];
+            Coord newFire = src;
+            switch(std::rand() % 4) {
+                case 0: if (newFire.y > wallTop + 1) --newFire.y; break;
+                case 1: if (newFire.y < wallBot - 1) ++newFire.y; break;
+                case 2: if (newFire.x > wallLeft + 1) --newFire.x; break;
+                case 3: if (newFire.x < wallRight - 1) ++newFire.x; break;
+            }
+            fireSpots.push_back(newFire);
+        }
+    }
+
+    // smoke drifts out from fire
+    if (fireTurn % 5 == 0 && smokeSpots.size() < 20) {
+        if (!fireSpots.empty()) {
+            auto& src = fireSpots[std::rand() % fireSpots.size()];
+            Coord smoke = src;
+            // smoke drifts up and out
+            for (int i = 0; i < 2 + std::rand()%3; ++i) {
+                switch(std::rand() % 4) {
+                    case 0: if (smoke.y > 0) --smoke.y; break;
+                    case 1: ++smoke.y; break;
+                    case 2: if (smoke.x > 0) --smoke.x; break;
+                    case 3: ++smoke.x; break;
+                }
+            }
+            smokeSpots.push_back(smoke);
+        }
+    }
+
+    // old smoke dissipates
+    if (smokeSpots.size() > 5 && common::random(20)) {
+        smokeSpots.erase(smokeSpots.begin());
+    }
+
+    // damage player if standing in fire
+    if (level) {
+        auto p = level->getPlayer();
+        if (p) {
+            for (const auto& f : fireSpots) {
+                if (f == p->coord) {
+                    p->damage(2);
+                    p->printer->showMessage("Tuli polttaa sinua!", level, false);
+                    break;
+                }
+            }
+            for (const auto& s : smokeSpots) {
+                if (s == p->coord) {
+                    p->damage(1);
+                    p->printer->showMessage("Savu tukehduttaa sinua!", level, false);
+                    break;
+                }
+            }
+        }
+    }
+}
+
+void Hypermarket::startFire()
+{
+    onFire = true;
+    fireTurn = 0;
+    // initial fire spots near center of building
+    uint32_t cx = (wallLeft + wallRight) / 2;
+    uint32_t cy = (wallTop + wallBot) / 2;
+    fireSpots.push_back({cx, cy});
+    fireSpots.push_back({cx + 1, cy});
+    fireSpots.push_back({cx, cy + 1});
+}

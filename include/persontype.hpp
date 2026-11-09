@@ -19,7 +19,8 @@ enum PersonType {
     fsb,
     juoppo,
     sotilas,
-    ilmatorjunta
+    ilmatorjunta,
+    vartija
 };
 
 #endif

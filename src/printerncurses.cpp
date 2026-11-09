@@ -37,18 +37,18 @@ void PrinterNcurses::clear()
 
 void PrinterNcurses::endIntro()
 {
-    gamewindow = newwin(common::SIZEY + 2, common::SIZEX + 2, 5, 18);
+    gamewindow = newwin(common::VIEWPORT_H + 2, common::VIEWPORT_W + 2, 5, 18);
     inventorywindow = newwin(13, 16, 5, 1);
-    msgwindow = newwin(3, common::SIZEX + 2, 2, 18);
-    statswindow = newwin(3, common::SIZEX + 2, 35, 18);
+    msgwindow = newwin(3, common::VIEWPORT_W + 2, 2, 18);
+    statswindow = newwin(3, common::VIEWPORT_W + 2, 35, 18);
 }
 
 void PrinterNcurses::endGame()
 {
-    engameWindow = newwin((common::SIZEY + 2) * 2 / 3 + 1,
-                          (common::SIZEX + 2) * 2 / 3,
-                          (common::SIZEY + 2) / 3,
-                          (common::SIZEX + 2) / 3);
+    engameWindow = newwin((common::VIEWPORT_H + 2) * 2 / 3 + 1,
+                          (common::VIEWPORT_W + 2) * 2 / 3,
+                          (common::VIEWPORT_H + 2) / 3,
+                          (common::VIEWPORT_W + 2) / 3);
 }
 
 void PrinterNcurses::show_console_cursor(const bool show) {
@@ -144,7 +144,7 @@ void PrinterNcurses::printHelp()
 
 void PrinterNcurses::emptyLine(uint32_t textLen)
 {
-    for (uint32_t i = 0; i < common::SIZEX - textLen; ++i) {
+    for (uint32_t i = 0; i < common::VIEWPORT_W - textLen; ++i) {
         printw(" ");
     }
     printw("\n");
@@ -152,7 +152,7 @@ void PrinterNcurses::emptyLine(uint32_t textLen)
 
 void PrinterNcurses::emptyTitleLine(uint32_t textLen)
 {
-    for (uint32_t i = 0; i < common::SIZEX / 2 - textLen; ++i) {
+    for (uint32_t i = 0; i < common::VIEWPORT_W / 2 - textLen; ++i) {
         printw(" ");
     }
 }
@@ -175,35 +175,38 @@ void PrinterNcurses::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask,
 {
     wmove((WINDOW*)gamewindow, y+1, 1);
 
+    uint32_t worldY = y + (uint32_t)l->cameraY;
+
     Animation* anim = nullptr;
     if (common::animsEnabled) {
-        if (l->animation && l->animation->coord.y == y) {
+        if (l->animation && l->animation->coord.y == worldY) {
             anim = l->animation;
         }
     }
 
     Item* thrownItem = nullptr;
-    if (l->thrownItem && l->thrownItem->coord.y == y) {
+    if (l->thrownItem && l->thrownItem->coord.y == worldY) {
         thrownItem = l->thrownItem;
     }
 
     // find all people that are on this line
     vector<const Person*> persons;
     for (const auto& p : l->persons) {
-        if (p->coord.y == y) {
+        if (p->coord.y == worldY) {
             persons.push_back(p);
         }
     }
 
     vector<const Item*> items;
     for (const auto& i : l->items) {
-        if (i->coord.y == y) {
+        if (i->coord.y == worldY) {
             items.push_back(i);
         }
     }
 
-    for (uint32_t x = 0; x < l->sizex; ++x) {
-        Coord coord { x, y };
+    for (uint32_t vx = 0; vx < common::VIEWPORT_W; ++vx) {
+        uint32_t x = vx + (uint32_t)l->cameraX;
+        Coord coord { x, worldY };
         bool found = false;
         string c = " ";
 
@@ -296,7 +299,7 @@ void PrinterNcurses::print(Level* level)
 
     printInventory(0, &player->inventory);
 
-    for (uint32_t y = 0; y < level->sizey; ++y) {
+    for (uint32_t y = 0; y < common::VIEWPORT_H; ++y) {
         printLine(level, y, mask, pathmask);
     }
 

@@ -39,6 +39,7 @@ private:
     void artilleryBarrage();
     void meatAssault();
     void militaryParade();
+    void hypermarketFire();
 
     Level* level;
     std::vector<Fire> fires;

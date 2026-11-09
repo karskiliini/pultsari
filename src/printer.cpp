@@ -175,35 +175,37 @@ string Printer::promilleAligned(uint32_t value) const
 
 void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS::PathMask* pathmask)
 {
+    uint32_t worldY = y + (uint32_t)l->cameraY;
+
     Animation* anim = nullptr;
     if (common::animsEnabled) {
-        if (l->animation && l->animation->coord.y == y) {
+        if (l->animation && l->animation->coord.y == worldY) {
             anim = l->animation;
         }
     }
 
     Item* thrownItem = nullptr;
-    if (l->thrownItem && l->thrownItem->coord.y == y) {
+    if (l->thrownItem && l->thrownItem->coord.y == worldY) {
         thrownItem = l->thrownItem;
     }
 
-    // find all people that are on this line
     vector<const Person*> persons;
     for (const auto& p : l->persons) {
-        if (p->coord.y == y) {
+        if (p->coord.y == worldY) {
             persons.push_back(p);
         }
     }
 
     vector<const Item*> items;
     for (const auto& i : l->items) {
-        if (i->coord.y == y) {
+        if (i->coord.y == worldY) {
             items.push_back(i);
         }
     }
 
-    for (uint32_t x = 0; x < l->sizex; ++x) {
-        Coord coord { x, y };
+    for (uint32_t vx = 0; vx < common::VIEWPORT_W; ++vx) {
+        uint32_t x = vx + (uint32_t)l->cameraX;
+        Coord coord { x, worldY };
         bool found = false;
         string c = " ";
 
@@ -294,6 +296,33 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             }
         }
 
+        if (!found) {
+            for (auto b : l->buildings) {
+                if (b->type == EHypermarket) {
+                    Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
+                    if (hm && hm->onFire) {
+                        for (const auto& s : hm->smokeSpots) {
+                            if (s == coord) {
+                                c = std::string("\033[2;37m") + ";" + "\033[0m";
+                                found = true;
+                                break;
+                            }
+                        }
+                        if (!found) {
+                            for (const auto& f : hm->fireSpots) {
+                                if (f == coord) {
+                                    c = std::string("\033[91m") + "~" + "\033[0m";
+                                    found = true;
+                                    break;
+                                }
+                            }
+                        }
+                    }
+                    if (found) break;
+                }
+            }
+        }
+
         printChar(c);
     }
 }
@@ -305,7 +334,7 @@ void Printer::print(Level* level)
 
     printBorder(level, true);
 
-    for (uint32_t y = 0; y < level->sizey; ++y) {
+    for (uint32_t y = 0; y < common::VIEWPORT_H; ++y) {
 
         printInventory(y, &player->inventory);
 

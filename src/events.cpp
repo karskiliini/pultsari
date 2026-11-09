@@ -2,6 +2,7 @@
 #include "level.hpp"
 #include "printer.hpp"
 #include "player.hpp"
+#include "persons.hpp"
 #include "building.hpp"
 #include "animation.hpp"
 #include "common.hpp"
@@ -360,6 +361,11 @@ void EnvironmentEvents::randomEvent()
     if (!level->isWarLevel && roll >= 60 && roll < 70 && paradeCooldown == 0) {
         militaryParade();
     }
+
+    // Hypermarket fire (Ukrainian drone strike)
+    if (!level->isWarLevel && roll >= 70 && roll < 80) {
+        hypermarketFire();
+    }
 }
 
 void EnvironmentEvents::artilleryBarrage()
@@ -432,4 +438,40 @@ void EnvironmentEvents::militaryParade()
     }
 
     paradeCooldown = 40 + std::rand()%20;
+}
+
+void EnvironmentEvents::hypermarketFire()
+{
+    for (auto b : level->buildings) {
+        if (b->type == EHypermarket) {
+            Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
+            if (hm && !hm->onFire) {
+                hm->startFire();
+
+                level->printer->showMessage("RÄJÄHDYS! Ukrainalainen drone iski hypermarkettiin!", level, false);
+
+                // guards flee
+                for (auto& p : level->persons) {
+                    if (p->type == vartija) {
+                        Vartija* v = dynamic_cast<Vartija*>(p);
+                        if (v && v->homePos.distance(hm->getDoor()) < 5) {
+                            v->fleeing = true;
+                            static const char* reactions[] = {
+                                "ПОМОГИТЕ!!",
+                                "Tulipalo! JUOSKAA!",
+                                "Äää! Kaikki ulos!",
+                            };
+                            v->say(reactions[std::rand()%3]);
+                        }
+                    }
+                }
+
+                // start fire in the events system too
+                Coord center = {(hm->wallLeft + hm->wallRight) / 2, hm->wallBot + 1};
+                fires.push_back({center, 50, 30});
+
+                break;
+            }
+        }
+    }
 }

@@ -252,4 +252,17 @@ public:
     uint32_t fireCooldown = 0;
 };
 
+class Vartija : public Person {
+public:
+    Vartija(const Coord& pos);
+    virtual ~Vartija() = default;
+
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "V"; };
+    Coord homePos;
+    bool fleeing = false;
+};
+
 #endif

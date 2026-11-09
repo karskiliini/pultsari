@@ -23,6 +23,20 @@ Level::Level(uint32_t difficulty) : stage(difficulty)
 {
 }
 
+void Level::updateCamera()
+{
+    auto p = getPlayer();
+    if (!p) return;
+    cameraX = (int32_t)p->coord.x - (int32_t)common::VIEWPORT_W / 2;
+    cameraY = (int32_t)p->coord.y - (int32_t)common::VIEWPORT_H / 2;
+    if (cameraX < 0) cameraX = 0;
+    if (cameraY < 0) cameraY = 0;
+    if (cameraX > (int32_t)(sizex - common::VIEWPORT_W))
+        cameraX = (int32_t)(sizex - common::VIEWPORT_W);
+    if (cameraY > (int32_t)(sizey - common::VIEWPORT_H))
+        cameraY = (int32_t)(sizey - common::VIEWPORT_H);
+}
+
 Level::~Level() {
     for (auto& p : buildings)
     {
@@ -177,6 +191,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
                 break;
             case ilmatorjunta:
                 p = new ITYksikko(coord);
+                break;
+            case vartija:
+                p = new Vartija(coord);
                 break;
             default:
                 break;
@@ -449,11 +466,6 @@ void Level::addItem(ItemType item)
 bool Level::addBuilding(Building* building)
 {
     if (!building) return false;
-
-    for (const auto &b : buildings)
-    {
-        if (b->type == building->type) return false;
-    }
 
     building->level = this;
     buildings.push_back(building);

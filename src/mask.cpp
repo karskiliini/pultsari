@@ -39,8 +39,15 @@ void Mask::init()
 
     const Coord& c = p->coord;
 
-    for (uint32_t y = 0; y < common::SIZEY; ++y) {
-        for (uint32_t x = 0; x < common::SIZEX; ++x)
+    uint32_t startX = (level->cameraX > 0) ? (uint32_t)level->cameraX : 0;
+    uint32_t startY = (level->cameraY > 0) ? (uint32_t)level->cameraY : 0;
+    uint32_t endX = startX + common::VIEWPORT_W;
+    uint32_t endY = startY + common::VIEWPORT_H;
+    if (endX > common::SIZEX) endX = common::SIZEX;
+    if (endY > common::SIZEY) endY = common::SIZEY;
+
+    for (uint32_t y = startY; y < endY; ++y) {
+        for (uint32_t x = startX; x < endX; ++x)
         {
             Coord dc { x, y };
             auto& line = mask[y];
@@ -60,6 +67,7 @@ void Mask::init()
 
 bool Mask::visible(const Coord& c) const {
     if (!enabled) return true;
+    if (c.y >= common::SIZEY || c.x >= common::SIZEX) return false;
 
     auto& line = mask[c.y];
     return line[c.x] == '.';
