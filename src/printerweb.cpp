@@ -68,7 +68,7 @@ void PrinterWeb::print(Level* l)
     if (player) {
         const auto& s = player->stats;
         j += ",\"hud\":[" + to_string(s.money) + "," + to_string(s.health) + "," +
-             to_string(s.promilles) + "," + to_string(s.hunger) + "]";
+             to_string(s.promilles) + "," + to_string(s.hunger) + "," + to_string(s.kopecks) + "]";
         j += ",\"pos\":[" + to_string(player->coord.x) + "," + to_string(player->coord.y) + "]";
 
         j += ",\"snd\":[";

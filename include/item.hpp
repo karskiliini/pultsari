@@ -73,6 +73,7 @@ public:
     virtual ~Bona() = default;
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
 };
 
 class Kalja : public Item {

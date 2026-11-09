@@ -9,6 +9,7 @@
 #include "stats.hpp"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 class Level;
 
@@ -53,6 +54,11 @@ public:
     // pickpocketing: money taken from the player, and how many more actions to run away
     uint32_t stolenMoney = 0;
     uint32_t fleeActions = 0;
+    // bottle thieves: what they took (stealable() indexes), and how long a brawler keeps at you
+    uint32_t stolenBottles = 0;
+    std::vector<int> stolenItems;
+    uint32_t brawlActions = 0;
+    bool hasLoot() const { return stolenMoney > 0 || stolenBottles > 0 || !stolenItems.empty(); }
     bool armor = false; // a bulletproof vest takes the sting out of most hits
     // individual clothing colour (xterm-256 SGR), overrides the per-type colour
     const char* clothing = nullptr;

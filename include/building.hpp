@@ -49,6 +49,8 @@ public:
     virtual void interact(PlayerNS::Player* player, std::string& msg);
 
     virtual std::string getWalkMsg() const;
+    // walking into a wall cell from outside; true if the building handled it (msg set)
+    virtual bool bumpWall(PlayerNS::Player* player, const Coord& c, std::string& msg) { return false; }
 
     bool hitBuilding(const Coord& c) const;
     bool hitTopWall(const Coord& c) const;
@@ -196,6 +198,11 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+    virtual bool bumpWall(PlayerNS::Player* player, const Coord& c, std::string& msg);
+    // the bottle return hatch on the east wall
+    Coord getHatch() const { return Coord{ wallRight, wallBot - 2 }; }
+    // bottles handed in, waiting for the receipt
+    uint32_t hatchBottles = 0;
     void startFire();
     bool onFire = false;
     uint32_t fireTurn = 0;

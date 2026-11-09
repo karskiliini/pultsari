@@ -182,6 +182,7 @@ bool Player::drink(Level* level)
         {
             case InputNS::kalja:
                 --inventory.kalja;
+                ++inventory.pullot;
                 printer->showMessage("Glub glub glub glub ..... Burb !!!", level, false);
                 updatepromilles(2);
                 break;
@@ -203,6 +204,7 @@ bool Player::drink(Level* level)
     else if (inventory.kalja > 0) {
         printer->showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", level);
         --inventory.kalja;
+        ++inventory.pullot;
         updatepromilles(3);
     } else {
         printer->showMessage("Ei oo ehtaa tavaraa.", level);
@@ -729,7 +731,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             b = checkWalls(level, check);
             if (b)
             {
-                msg = b->getWalkMsg();
+                if (!b->bumpWall(this, check, msg)) msg = b->getWalkMsg();
                 printer->showMessage(msg, level, true);
                 blocked = true;
             }
@@ -757,12 +759,23 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             blocked = true;
         }
         Person* p = blocked ? nullptr : level->checkPerson(check);
-        if (p && p->stolenMoney > 0) {
-            // caught the pickpocket
-            msg = "Sait kiinni! Otat rahasi takaisin: " + std::to_string(p->stolenMoney) + " ruplaa.";
+        if (p && p->hasLoot()) {
+            // caught the pickpocket: money, bottles and whatever else he grabbed
+            msg = "Sait kiinni! Otat takaisin:";
+            if (p->stolenMoney > 0) msg += " " + std::to_string(p->stolenMoney) + " ruplaa,";
+            if (p->stolenBottles > 0) msg += " " + std::to_string(p->stolenBottles) + (p->stolenBottles == 1 ? " pullon," : " pulloa,");
+            for (int k : p->stolenItems) {
+                ++stealable(inventory, k);
+                msg += string(" ") + stealableName(k) + ",";
+            }
+            msg.back() = '.';
             stats.money += p->stolenMoney;
+            inventory.pullot += p->stolenBottles;
             p->stolenMoney = 0;
+            p->stolenBottles = 0;
+            p->stolenItems.clear();
             p->fleeActions = 0;
+            p->brawlActions = 0;
             p->say("Ei ollut minun! Ei ollut minun!");
             printer->showMessage(msg, level);
             blocked = true;

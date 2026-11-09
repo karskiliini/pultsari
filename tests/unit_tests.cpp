@@ -685,6 +685,159 @@ TEST(market_empty_door_lets_you_in_and_the_theft_alarm_brings_them_back)
     CHECK(m.g1->chasing && m.g2->chasing);
 }
 
+// ---- empty bottles: the return hatch and the people who want your sack ----
+
+TEST(picked_up_bottle_goes_into_the_sack)
+{
+    World w;
+    Bona b(Coord{ 51, 50 });
+    CHECK(b.interact(&w.player));
+    CHECK(w.player.inventory.pullot == 1);
+}
+
+TEST(kopecks_roll_over_into_roubles)
+{
+    Stats s;
+    s.money = 3;
+    s.addKopecks(80);
+    CHECK(s.money == 3 && s.kopecks == 80);
+    CHECK(moneyText(s) == "3,80");
+    s.addKopecks(40);
+    CHECK(s.money == 4 && s.kopecks == 20);
+    s.addKopecks(80);
+    CHECK(moneyText(s) == "5");
+}
+
+// standing just east of the hatch, ready to bump it
+static void atHatch(Market& m) { const Coord h = m.hm->getHatch(); m.w.player.coord = Coord{ h.x + 1, h.y }; }
+
+TEST(hatch_takes_one_bottle_per_bump_and_pays_on_the_receipt)
+{
+    Market m;
+    atHatch(m);
+    m.w.player.inventory.pullot = 6;
+    m.w.player.stats.money = 10;
+    for (uint32_t i = 1; i <= 6; ++i) {
+        m.w.player.move(DirectionNS::left, &m.w.level);
+        CHECK(m.w.player.inventory.pullot == 6 - i);
+        CHECK(m.w.player.stats.money == 10);       // nothing paid before the receipt
+    }
+    CHECK(m.hm->hatchBottles == 6);
+    m.w.player.move(DirectionNS::left, &m.w.level);  // one more bump: the receipt
+    CHECK(m.w.player.stats.money == 11 && m.w.player.stats.kopecks == 20);
+    CHECK(m.hm->hatchBottles == 0);
+    CHECK(m.w.printer.saw("kuitin"));
+}
+
+TEST(handing_in_a_bottle_calms_a_guard_who_sees_it)
+{
+    Market m;
+    atHatch(m);
+    m.g1->coord = Coord{ m.w.player.coord.x + 2, m.w.player.coord.y };
+    m.g1->provoke(&m.w.player);
+    m.w.player.inventory.pullot = 1;
+    m.w.player.move(DirectionNS::left, &m.w.level);
+    CHECK(!m.g1->chasing);
+}
+
+TEST(loitering_at_the_hatch_without_bottles_angers_the_guards)
+{
+    Market m;
+    atHatch(m);
+    m.g1->coord = Coord{ m.w.player.coord.x + 2, m.w.player.coord.y };
+    m.w.player.inventory.pullot = 0;
+    m.w.player.move(DirectionNS::left, &m.w.level);
+    CHECK(m.g1->chasing);
+    CHECK(m.w.player.stats.money == 20 && m.w.player.stats.kopecks == 0);
+}
+
+TEST(four_bottles_draw_nobody)
+{
+    World w;
+    auto* j = w.spawn(new Juoppo(Coord{ 52, 50 }));
+    w.player.inventory.pullot = 4;
+    for (int i = 0; i < 300; ++i) w.level.npcFrame(500);
+    CHECK(w.player.inventory.pullot == 4);
+    CHECK(j->stolenBottles == 0);
+}
+
+TEST(a_drunk_comes_for_a_full_sack_takes_a_handful_and_picks_a_fight)
+{
+    World w;
+    auto* j = w.spawn(new Juoppo(Coord{ 56, 50 }));   // further than he can normally see
+    w.player.inventory.pullot = 25;
+    bool came = false;
+    for (int i = 0; i < 400 && w.player.inventory.pullot == 25; ++i) {
+        w.level.npcFrame(500);
+        if (j->coord.distance(w.player.coord) <= 2) came = true;
+    }
+    CHECK(came);
+    CHECK(w.player.inventory.pullot < 25);
+    CHECK(j->stolenBottles == 25 - w.player.inventory.pullot);
+    CHECK(j->stolenBottles >= 2);                       // a handful, not just one
+    CHECK(j->brawlActions > 0);                         // and now he wants a fight
+}
+
+TEST(someone_feared_takes_just_one_bottle)
+{
+    World w;
+    auto* s = w.spawn(new Skinhead(Coord{ 51, 50 }));
+    w.player.inventory.pullot = 25;
+    for (int i = 0; i < 400 && w.player.inventory.pullot == 25; ++i) w.level.npcFrame(500);
+    CHECK(w.player.inventory.pullot == 24);
+    CHECK(!s->hasLoot());
+}
+
+TEST(the_poorer_want_bottles_more)
+{
+    // same sack, standing right next to you: how often do they help themselves?
+    auto thefts = [](Person* p) {
+        World w;
+        w.spawn(p);
+        int n = 0;
+        for (int i = 0; i < 600; ++i) {
+            p->coord = Coord{ 51, 50 };
+            p->fleeActions = p->brawlActions = 0;
+            w.player.inventory.pullot = 10;
+            w.level.npcFrame(500);
+            if (w.player.inventory.pullot < 10) ++n;
+        }
+        return n;
+    };
+    const int drunk = thefts(new Juoppo(Coord{ 51, 50 }));
+    const int fsb = thefts(new FSBAgent(Coord{ 51, 50 }));
+    CHECK(drunk > 50);
+    CHECK(drunk > fsb * 5);
+}
+
+TEST(a_brawler_forgets_you_out_of_sight)
+{
+    World w;
+    auto* j = w.spawn(new Juoppo(Coord{ 51, 50 }));
+    j->brawlActions = 10;
+    w.player.coord = Coord{ 90, 50 };
+    w.player.inventory.pullot = 30;
+    for (int i = 0; i < 5; ++i) w.level.npcFrame(500);   // he gets to act at least once
+    CHECK(j->brawlActions == 0);
+}
+
+TEST(catching_a_bottle_thief_gets_everything_back)
+{
+    World w;
+    auto* j = w.spawn(new Juoppo(Coord{ 51, 50 }));
+    j->stolenBottles = 3;
+    j->stolenItems = { 0, 3 };   // a Baltika and a sausage
+    j->stolenMoney = 5;
+    const auto before = w.player.inventory;
+    const uint32_t money = w.player.stats.money;
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.inventory.pullot == before.pullot + 3);
+    CHECK(w.player.inventory.kalja == before.kalja + 1);
+    CHECK(w.player.inventory.lenkki == before.lenkki + 1);
+    CHECK(w.player.stats.money == money + 5);
+    CHECK(!j->hasLoot());
+}
+
 // ---- fire, smoke and wind ----
 
 static size_t smokePuffs(const Level& l) { size_t n = 0; for (const auto& g : l.gas) if (g.smoke) ++n; return n; }

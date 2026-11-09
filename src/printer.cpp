@@ -666,6 +666,7 @@ std::vector<OverlayItem> overlayItems(const Inventory* inventory)
         {"PISTOOLI",  inventory->pistooli, true,  false, "[E] ammu "},
         {"AMMUKSET",  inventory->ammukset, false, false, "         "},
         {"RYNKKY",    inventory->rynkky,   true,  false, "[E] t\xC3\xA4ht\xC3\xA4\xC3\xA4"},
+        {"PULLOT",    inventory->pullot,   false, false, "         "},
     };
 }
 

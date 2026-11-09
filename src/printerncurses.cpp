@@ -102,7 +102,7 @@ void PrinterNcurses::printInventory(uint32_t /* y */, Inventory* inventory)
 
 void PrinterNcurses::printStats(Level* l, Stats* stats)
 {
-    mvwprintw((WINDOW*)statswindow, 1, 1, ("RAHAA: "      + moneyAligned(stats->money)).c_str());
+    mvwprintw((WINDOW*)statswindow, 1, 1, ("RAHAA: "      + moneyText(*stats) + " ").c_str());
     wprintw((WINDOW*)statswindow, ("  VOIMA: "    + moneyAligned(stats->health)).c_str());
     wprintw((WINDOW*)statswindow,("  PROMILLE: " + promilleAligned(stats->promilles)).c_str());
     wprintw((WINDOW*)statswindow,("  NÄLKÄ: " + moneyAligned(stats->hunger)).c_str());

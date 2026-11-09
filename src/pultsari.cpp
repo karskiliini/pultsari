@@ -972,7 +972,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             Mode mode = Mode::Normal;
             int invSelection = 0;
             bool throwMenu = false; // the inventory was opened with F, to throw something
-            constexpr int INV_ITEMS = 16;
+            constexpr int INV_ITEMS = 17; // rows in overlayItems()
 
             // aim state
             float aimAngle = 0.0f;
@@ -1036,7 +1036,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     case 0: // kalja
                         if (inv.kalja > 0) {
                             --inv.kalja;
-                            printer->showMessage("Glub glub glub ..... Burb !!!", &level, false);
+                            ++inv.pullot;
+                            printer->showMessage("Glub glub glub ..... Burb !!! Tyhj\xC3\xA4 pullo talteen.", &level, false);
                             common::sound("glug");
                             player.updatepromilles(2);
                             feedHunger(2);
@@ -1056,6 +1057,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             const bool piss = !inv.pissVodka.empty() &&
                                 (uint32_t)(std::rand() % inv.vodka) < inv.pissVodka.size();
                             --inv.vodka;
+                            ++inv.pullot; // whatever was in it, the bottle is worth 20 kopecks
                             if (piss) {
                                 const std::string seller = inv.pissVodka.back();
                                 inv.pissVodka.pop_back();

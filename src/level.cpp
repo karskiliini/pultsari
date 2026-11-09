@@ -1252,6 +1252,177 @@ static void fleeStep(Level* level, Person* p)
     p->coord = best;
 }
 
+// ---- empty bottles: from five up they draw people, and the poorer they are the harder ----
+
+static constexpr uint32_t BOTTLE_LURE_MIN = 5;
+static constexpr uint32_t BOTTLE_SACK_FULL = 25;
+
+static bool isOneLegged(const Person* p)
+{
+    const Veteraani* v = dynamic_cast<const Veteraani*>(p);
+    return v && v->oneLegged;
+}
+
+// the poor take bottles by the handful and anything else that comes loose
+static bool isPoor(const Person* p)
+{
+    switch (p->type) {
+        case juoppo: case yka: case avustaja: case mummo: case lapsi: case vanki: case varas: return true;
+        default: return isOneLegged(p);
+    }
+}
+
+// how much someone wants the bottles (percent per action with a full sack)
+static uint32_t bottleGreed(const Person* p)
+{
+    if (isOneLegged(p)) return 70;
+    switch (p->type) {
+        case juoppo: case yka:            return 70;
+        case avustaja:                    return dynamic_cast<const Avustaja*>(p)->collapsed ? 0 : 50;
+        case mummo: case lapsi:
+        case vanki: case varas:           return 45;
+        // the feared and the ordinary only want one, now and then
+        case jengi: case skinhead: case ryostaja: case diileri: case pankkirosvo:
+        case veteraani: case kansalainen: case kotiaiti: case rekryytti:
+                                          return 12;
+        case poliisi: case sotilas: case ilmatorjunta: case korealainen:
+                                          return 5;
+        case fsb: case putin: case medvedev: case shoigu: case gerasimov:
+                                          return 2;
+        default:                          return 0; // guards keep to their door; rats don't drink
+    }
+}
+
+// a drunk or an escaped convict wants a fight on top of the bottles
+static bool picksFights(const Person* p)
+{
+    return p->type == juoppo || p->type == vanki;
+}
+
+// in plain sight within `range`: a clinking sack carries further than a drunk's eyesight
+static bool seesPlayer(const Level* level, const Person* p, const Coord& target, uint32_t range)
+{
+    if (p->blind || p->coord.distance(target) > range) return false;
+    if (level->hitLOSBlocker(target) && p->coord.distance(target) > 1) return false;
+    return level->raycast(p->coord, target);
+}
+
+// one step towards the player, around walls and people
+static void approachStep(Level* level, Person* p, const Coord& target)
+{
+    Coord best = p->coord;
+    uint32_t bestDist = p->coord.distance(target);
+    const int d[4][2] = { {0, -1}, {1, 0}, {0, 1}, {-1, 0} };
+    for (const auto& o : d) {
+        Coord c { (uint32_t)((int)p->coord.x + o[0]), (uint32_t)((int)p->coord.y + o[1]) };
+        if (c.x >= common::SIZEX || c.y >= common::SIZEY) continue;
+        if (level->hitBuilding(c) || level->hitPerson(c) || level->hitItem(c)) continue;
+        const uint32_t dist = c.distance(target);
+        if (dist < bestDist) { best = c; bestDist = dist; }
+    }
+    p->coord = best;
+}
+
+static void stealBottles(Level* level, Person* p, Player* player)
+{
+    auto& inv = player->inventory;
+    const string name = level->nameOf(p);
+    if (!isPoor(p)) {
+        // someone you would rather not meet takes one bottle and goes; you breathe out
+        --inv.pullot;
+        static const char* relief[] = {
+            " otti tyhj\xC3\xA4n pullon ja k\xC3\xA4veli pois. Huh.",
+            " nappasi pullon. Onneksi vain pullon.",
+            " vei tyhj\xC3\xA4n pullon. Et aio pyyt\xC3\xA4\xC3\xA4 sit\xC3\xA4 takaisin.",
+        };
+        level->printer->showMessage(name + relief[std::rand() % 3], level, false);
+        p->say(common::random(50) ? "Pantti on pantti." : "T\xC3\xA4m\xC3\xA4 on nyt minun.");
+        return;
+    }
+
+    const uint32_t bottles = std::min(inv.pullot, std::max<uint32_t>(1, inv.pullot * (10 + std::rand() % 21) / 100));
+    inv.pullot -= bottles;
+    p->stolenBottles += bottles;
+    string msg = name + " kahmaisi sinulta " + std::to_string(bottles) + (bottles == 1 ? " pullon" : " pulloa");
+
+    // anything else that comes loose
+    for (int tries = 0; tries < 2; ++tries) {
+        if (!common::random(45)) continue;
+        const int k = std::rand() % STEALABLE_COUNT;
+        if (stealable(inv, k) == 0) continue;
+        --stealable(inv, k);
+        p->stolenItems.push_back(k);
+        msg += string(", ") + stealableName(k);
+    }
+    if (player->stats.money > 0 && common::random(25)) {
+        const uint32_t amount = std::max<uint32_t>(1, player->stats.money / 10);
+        player->stats.money -= amount;
+        p->stolenMoney += amount;
+        msg += " ja " + std::to_string(amount) + " ruplaa";
+    }
+    level->printer->showMessage(msg + "!", level, false);
+
+    if (picksFights(p)) {
+        p->brawlActions = 15;
+        static const char* taunts[] = {
+            "Mit\xC3\xA4 tuijotat? Haluatko turpaan?",
+            "Minun pulloni! Tule hakemaan!",
+            "Sinulla oli liikaa, bom\xC5\xBE!",
+        };
+        p->say(taunts[std::rand() % 3]);
+    } else {
+        p->fleeActions = 20;
+        p->say(p->type == lapsi ? "H\xC3\xA4h\xC3\xA4\xC3\xA4! Pantit minulle!" : "*kipitt\xC3\xA4\xC3\xA4 karkuun pullot kainalossa*");
+    }
+}
+
+// someone who sees your bottles comes for them; out of sight, out of mind
+static bool bottleLure(Level* level, Person* p)
+{
+    Player* player = level->getPlayer();
+    if (!player || level->playerDead || player->inJail) return false;
+    const uint32_t bottles = player->inventory.pullot;
+    if (bottles < BOTTLE_LURE_MIN) return false;
+    const uint32_t greed = bottleGreed(p);
+    if (greed == 0) return false;
+    // a bigger sack is noticed from further away and wanted more
+    const uint32_t reach = 4 + std::min(bottles, BOTTLE_SACK_FULL) / 2;
+    if (!seesPlayer(level, p, player->coord, reach)) return false;
+    const uint32_t chance = greed * std::min(bottles, BOTTLE_SACK_FULL) / BOTTLE_SACK_FULL;
+    if ((uint32_t)(std::rand() % 100) >= std::max<uint32_t>(1, chance)) return false;
+
+    if (p->coord.distance(player->coord) <= 1) {
+        stealBottles(level, p, player);
+    } else {
+        if (common::random(8)) p->say(isPoor(p) ? "Pulloja! Anna yksi, veli!" : "Mit\xC3\xA4 sinulla on siin\xC3\xA4 s\xC3\xA4kiss\xC3\xA4?");
+        approachStep(level, p, player->coord);
+    }
+    return true;
+}
+
+// a bottle thief who picked a fight keeps at you while he can see you
+static bool brawlAct(Level* level, Person* p)
+{
+    if (p->brawlActions == 0) return false;
+    Player* player = level->getPlayer();
+    if (!player || level->playerDead || !seesPlayer(level, p, player->coord, 12)) {
+        p->brawlActions = 0; // lost sight of you, forgot all about it
+        return false;
+    }
+    --p->brawlActions;
+    if (p->coord.distance(player->coord) <= 1) {
+        if (common::random(50)) {
+            level->printer->showMessage(level->nameOf(p) + (common::random(50) ? " ly\xC3\xB6 sinua!" : " potkaisee sinua s\xC3\xA4\xC3\xA4reen!"), level, false);
+            player->damage(1);
+        } else {
+            p->say(common::random(50) ? "No? Lyö sitten!" : "Pelk\xC3\xA4\xC3\xA4tk\xC3\xB6?");
+        }
+    } else {
+        approachStep(level, p, player->coord);
+    }
+    return true;
+}
+
 void Level::npcFrame(uint32_t ms)
 {
     // the player breathes the exhaust every step, not just on world ticks
@@ -1284,6 +1455,8 @@ void Level::npcFrame(uint32_t ms)
             if (p->fleeActions > 0) {
                 --p->fleeActions;
                 fleeStep(this, p);
+            } else if (brawlAct(this, p) || bottleLure(this, p)) {
+                // busy with the player's bottles
             } else if (!tryPickpocket(this, p)) {
                 p->npcAct();
             }

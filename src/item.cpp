@@ -53,6 +53,11 @@ std::string Bona::typeToChar() const { return "°"; }
 std::string Bona::getMsg() const {
     return "Löysit tyhjän pullon! Panttiraha on Moskovassa pyhä.";
 }
+bool Bona::interact(PlayerNS::Player* player)
+{
+    ++player->inventory.pullot;
+    return true;
+}
 
 // kalja
 Kalja::Kalja(const Coord& c) : Item(c, EKalja) { }

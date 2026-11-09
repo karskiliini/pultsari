@@ -260,8 +260,8 @@
         ui.msg.textContent = m.msg ? '» ' + m.msg : '';
         ui.level.textContent = m.lvl || '';
         if (m.hud) {
-            const [money, hp, prom, belly] = m.hud;
-            ui.money.textContent = money + ' ₽';
+            const [money, hp, prom, belly, kop] = m.hud;
+            ui.money.textContent = (kop ? money + ',' + String(kop).padStart(2, '0') : money) + ' ₽';
             ui.hp.textContent = hp;
             ui.hp.className = hp < 5 ? 'bad' : '';
             ui.prom.textContent = (prom / 10).toFixed(1) + ' ‰';

@@ -150,7 +150,7 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
     const char* bellyColor = stats->hunger <= 20 ? "1;91" : stats->hunger <= 50 ? "93" : "97";
 
     printLeftBorderSpaces();
-    cout << " \033[2;37mRUPLAT\033[0;1;93m " << stats->money << " \xE2\x82\xBD"
+    cout << " \033[2;37mRUPLAT\033[0;1;93m " << moneyText(*stats) << " \xE2\x82\xBD"
          << "   \033[2;37mVOIMA\033[0;1;" << healthColor << "m " << stats->health
          << "   \033[2;37mPROMILLE\033[0;1;" << promilleColor << "m " << promilleAligned(stats->promilles) << " \xE2\x80\xB0"
          << "   \033[2;37mVATSA\033[0;1;" << bellyColor << "m " << stats->hunger << "%"

@@ -713,7 +713,65 @@ std::string Hypermarket::typeToChar(const Coord& c) const
     for (const auto& s : smokeSpots) {
         if (s == c) return ";";
     }
+    if (c == getHatch() && !isBreach(c)) return "\xE2\x96\xA3"; // bottle return hatch
     return Building::typeToChar(c);
+}
+
+// ПРИЁМ СТЕКЛОТАРЫ: one bump hands in one bottle, one more with empty hands gets the receipt.
+// The guards don't like bums at the hatch, but one who sees you hand in a bottle lets it be.
+bool Hypermarket::bumpWall(PlayerNS::Player* player, const Coord& c, std::string& msg)
+{
+    if (!(c == getHatch()) || player->coord.x <= wallRight) return false;
+    if (onFire) {
+        msg = "Pullonpalautusluukku on kiinni. Kaikki palaa.";
+        return true;
+    }
+    auto guardsWhoSee = [&]() {
+        std::vector<Vartija*> seen;
+        if (!level) return seen;
+        for (auto p : level->persons) {
+            Vartija* v = dynamic_cast<Vartija*>(p);
+            if (v && !v->hasRadio && v->stats.health > 0 && v->canSeeTarget(player->coord)) seen.push_back(v);
+        }
+        return seen;
+    };
+
+    if (player->inventory.pullot > 0) {
+        --player->inventory.pullot;
+        ++hatchBottles;
+        static const char* grumble[] = {
+            "T\xC3\xA4ti: 'T\xC3\xA4m\xC3\xA4 on lohjennut. No, otetaan nyt.'",
+            "T\xC3\xA4ti: 'Etiketti on revitty. Ei kuulu minulle.'",
+            "T\xC3\xA4ti: 'Huuhtele seuraava ensin, svinya.'",
+            "T\xC3\xA4ti nuuhkaisee pulloa ja irvist\xC3\xA4\xC3\xA4.",
+            "T\xC3\xA4ti: 'Lis\xC3\xA4\xC3\xA4? Olenko min\xC3\xA4 joku automaatti?'",
+        };
+        msg = "Ojennat tyhj\xC3\xA4n pullon luukusta (" + std::to_string(hatchBottles) + "). " + grumble[std::rand() % 5];
+        if (player->inventory.pullot == 0) msg += " Kolauta luukkua viel\xC3\xA4 kerran, niin saat kuitin.";
+        for (auto v : guardsWhoSee()) {
+            if (!v->chasing) continue;
+            v->chasing = false;
+            v->say(common::random(50) ? "Ai, pulloja. No palauta sitten." : "Pullot, h\xC3\xA4? Ole sitten nopea.");
+        }
+        return true;
+    }
+    if (hatchBottles > 0) {
+        const uint32_t kop = hatchBottles * 20;
+        player->stats.addKopecks(kop);
+        char sum[32];
+        snprintf(sum, sizeof(sum), "%u,%02u", kop / 100, kop % 100);
+        msg = "T\xC3\xA4ti lein\xC3\xA4\xC3\xA4 kuitin: " + std::to_string(hatchBottles) + " pulloa \xC3\x97 20 kop = " +
+              sum + " \xE2\x82\xBD. Rahat tiskin yli. 'Seuraava!'";
+        hatchBottles = 0;
+        return true;
+    }
+    msg = "Luukussa lukee \xD0\x9F\xD0\xA0\xD0\x98\xD0\x81\xD0\x9C \xD0\xA1\xD0\xA2\xD0\x95\xD0\x9A\xD0\x9B\xD0\x9E\xD0\xA2\xD0\x90\xD0\xA0\xD0\xAB. "
+          "T\xC3\xA4ti: 'Ei pulloja? Mit\xC3\xA4 sin\xC3\xA4 t\xC3\xA4ss\xC3\xA4 notkut?'";
+    for (auto v : guardsWhoSee()) {
+        v->provoke(player);
+        v->say("Pummeille ei ole luukulla asiaa!");
+    }
+    return true;
 }
 
 // door guards still at their post (within a few steps of the door)
