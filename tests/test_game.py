@@ -80,6 +80,19 @@ def test_z_restarts():
     check('z_restarts_the_game', alive and any('Uusi pultsari' in m for m in msgs))
 
 
+def test_city_is_built_up():
+    g = Game()
+    time.sleep(1); g.keys(' ', 0); time.sleep(3)
+    maps = [e for e in g.events() if e.get('t') == 'map']
+    g.close()
+    kinds = [b[5] for b in maps[-1]['b']] if maps else []
+    PRISON, CLOSED_SHOP, SHOP, METRO, FLATS = 3, 10, 13, 14, 15
+    ok = (kinds.count(PRISON) >= 1 and kinds.count(METRO) >= 4 and kinds.count(CLOSED_SHOP) >= 20
+          and kinds.count(SHOP) >= 3 and kinds.count(FLATS) >= 30)
+    check('city_is_built_up', ok, f'prison {kinds.count(PRISON)} metro {kinds.count(METRO)} closed {kinds.count(CLOSED_SHOP)} '
+                                  f'shops {kinds.count(SHOP)} flats {kinds.count(FLATS)}')
+
+
 def test_random_play_does_not_crash():
     g = Game()
     time.sleep(1); g.keys(' ', 0)
@@ -100,6 +113,7 @@ if __name__ == '__main__':
     test_frame_rate()
     test_visibility_mask_is_sent()
     test_z_restarts()
+    test_city_is_built_up()
     test_random_play_does_not_crash()
-    print(f'{4 - len(failures)}/4 game tests passed')
+    print(f'{5 - len(failures)}/5 game tests passed')
     sys.exit(1 if failures else 0)

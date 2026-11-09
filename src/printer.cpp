@@ -401,6 +401,14 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         }
     }
 
+    // burning hypermarkets have their own fire and smoke
+    vector<Hypermarket*> burningMarkets;
+    for (auto b : l->buildings) {
+        if (b->type != EHypermarket) continue;
+        Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
+        if (hm && hm->onFire) burningMarkets.push_back(hm);
+    }
+
     // the building the player is standing in: from inside you don't see its name plate
     const Building* playerIn = nullptr;
     if (player) {
@@ -466,8 +474,8 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 
         if (!found && !mask->visible(coord)) {
             // a building's name plate shows whole as soon as any of its walls is in sight
-            for (auto b : l->buildings) {
-                if (!b->hitBuilding(coord) || b->hitWall(coord) || coord.y != (b->wallTop + b->wallBot) / 2) continue;
+            for (Building* b = l->buildingAt(coord); b; b = nullptr) {
+                if (b->hitWall(coord) || coord.y != (b->wallTop + b->wallBot) / 2) continue;
                 const string g = b->typeToChar(coord);
                 if (g == " ") break;
                 bool wallSeen = false;
@@ -503,8 +511,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 
         // walls, doors, windows and name plates; an empty interior lets people and items show
         if (!found) {
-            for (auto b : l->buildings) {
-                if (!b->hitBuilding(coord)) continue;
+            for (Building* b = l->buildingAt(coord); b; b = nullptr) {
                 if (b->isBreach(coord) && l->getVehicleAt(coord)) break; // the car in the hole shows
                 string g = b->typeToChar(coord);
                 if (b == playerIn && !b->hitWall(coord) && !b->isBreach(coord)) g = " ";
@@ -554,10 +561,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         }
 
         if (!found) {
-            for (auto b : l->buildings) {
-                if (b->type != EHypermarket) continue;
-                Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
-                if (!hm || !hm->onFire) continue;
+            for (auto hm : burningMarkets) {
                 for (const auto& s : hm->smokeSpots) {
                     if (s == coord) { c = ";"; color = "2;37"; found = true; break; }
                 }
@@ -574,9 +578,8 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             roadCell(l, coord, c, color);
             col = color;
             if (groundVisible && col.empty()) {
-                for (auto b : l->buildings) {
-                    if (b->walkable && b->hitBuilding(coord) && !b->hitWall(coord)) { col = "48;5;52"; break; }
-                }
+                const Building* b = l->buildingAt(coord);
+                if (b && b->walkable && !b->hitWall(coord)) col = "48;5;52";
             }
             // drifting gas: grey exhaust, yellowish toxic smoke
             if (groundVisible) {

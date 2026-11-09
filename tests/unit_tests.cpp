@@ -444,6 +444,40 @@ TEST(shop_name_hidden_while_inside)
     CHECK(!contains(row, "TESTNAME"));
 }
 
+// ---- metro ----
+
+TEST(metro_takes_you_to_the_next_station)
+{
+    World w(Coord{ 30, 30 });
+    auto* a = w.add(new Metro("A"), 20, 20);
+    auto* b = w.add(new Metro("B"), 200, 120);
+    w.player.stats.money = 100;
+    string msg;
+    CHECK(a->getEnterMsg(&w.player, msg));
+    a->interact(&w.player, msg);
+    CHECK(w.player.coord == b->getSpawn());
+    CHECK(w.player.stats.money == 40);
+    CHECK(contains(msg, "B"));
+    b->interact(&w.player, msg);              // and the line loops back round
+    CHECK(w.player.coord == a->getSpawn());
+}
+
+TEST(metro_fare_dodgers_sometimes_get_caught)
+{
+    int rode = 0, caught = 0;
+    for (int i = 0; i < 200; ++i) {
+        World w(Coord{ 30, 30 });
+        auto* a = w.add(new Metro("A"), 20, 20);
+        auto* b = w.add(new Metro("B"), 200, 120);
+        w.player.stats.money = 0;
+        string msg;
+        a->interact(&w.player, msg);
+        if (w.player.coord == b->getSpawn()) ++rode; else ++caught;
+    }
+    CHECK(rode > 100);
+    CHECK(caught > 20);
+}
+
 // ---- supermarket: lure the guards away and slip in ----
 
 struct Market {

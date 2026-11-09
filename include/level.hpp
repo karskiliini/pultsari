@@ -108,6 +108,10 @@ public:
     void cleanDiscardedItems();
 
     bool hitBuilding(const Coord& c) const;
+    // the building covering a cell, from a grid rebuilt whenever buildings are added
+    Building* buildingAt(const Coord& c) const;
+    mutable std::vector<Building*> buildingGrid;
+    mutable size_t buildingGridCount = (size_t)-1;
     bool hitWall(const Coord& c) const;
     bool hitWindow(const Coord& c) const;
     bool hitPerson(const Coord& c) const;

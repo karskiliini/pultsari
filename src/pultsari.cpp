@@ -119,6 +119,23 @@ static void populateRoads(Level& level)
     };
 }
 
+// is this patch of ground free for a new building: no building, road or map edge within it?
+static bool rectFree(const Level& level, uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1)
+{
+    if (x0 < 2 || y0 < 2 || x1 >= common::SIZEX - 2 || y1 >= common::SIZEY - 2) return false;
+    for (uint32_t y = y0; y <= y1; ++y) {
+        for (uint32_t x = x0; x <= x1; ++x) {
+            const Coord c { x, y };
+            if (level.hitBuilding(c)) return false;
+            const Road* h = nullptr;
+            const Road* v = nullptr;
+            level.roadsAt(c, h, v);
+            if (h || v) return false;
+        }
+    }
+    return true;
+}
+
 // the queue in a shop: drunks and babushkas waiting their turn, none of them patient
 // (level.hit() counts the whole shop, so place by walls; the sign row stays clear)
 static void spawnQueue(Level& level, Building* b, int count)
@@ -195,27 +212,8 @@ static void populateBuildings(Level& level, const GameState& gs)
     b->setOffset(100, 102);
     level.addBuilding(b);
 
-    // Western shops along Tverskaja, all closed since 2022
-    {
-        struct Shop { const char* name; const char* sign; uint32_t x; };
-        const Shop shops[] = {
-            { "McDONALD'S", "Ikkunassa lukee nyt 'Vkusno i totska'. Logo on sama, ilman M:\xC3\xA4\xC3\xA4.", 40 },
-            { "STARBUCKS", "Kyltiss\xC3\xA4 lukee 'Stars Coffee'. Sama nainen, eri kruunu.", 65 },
-            { "H&M", "Mallinuket seisovat alasti. Ne ovat odottaneet vuodesta 2022.", 90 },
-            { "ZARA", "Kyltiss\xC3\xA4 lukee nyt 'Maag'. Samat vaatteet, eri lappu.", 150 },
-            { "APPLE STORE", "Ikkunassa lukee 'reStore'. Hyllyt ovat tyhj\xC3\xA4t, omenalogo on maalattu punaiseksi.", 180 },
-            { "NIKE", "Ikkunassa on kiinalaisia lenkkareita. Swooshit ovat v\xC3\xA4\xC3\xA4rin p\xC3\xA4in.", 250 },
-            { "UNIQLO", "P\xC3\xB6ly\xC3\xA4. Paljon p\xC3\xB6ly\xC3\xA4.", 280 },
-            { "LEVI'S", "Farkkuja ei ole. On 'Lev'is'-farkkuja Kirgisiasta.", 300 },
-        };
-        for (const auto& s : shops) {
-            b = new SuljettuLiike(s.name, s.sign);
-            b->setOffset(s.x, 117);
-            level.addBuilding(b);
-        }
-    }
-
-    // Russian shops north of Tverskaja: open, rude and always queued up
+    // Russian shops north of Tverskaja: open, rude and always queued up, and the wrong sort
+    // of people hang around outside
     {
         struct Shop { const char* name; Kauppa::Kind kind; uint32_t x; };
         const Shop shops[] = {
@@ -223,11 +221,60 @@ static void populateBuildings(Level& level, const GameState& gs)
             { "\xD0\x9A\xD0\x98\xD0\x9E\xD0\xA1\xD0\x9A", Kauppa::Kind::Kioski, 160 },
             { "\xD0\x9C\xD0\x90\xD0\x93\xD0\x90\xD0\x97\xD0\x98\xD0\x9D", Kauppa::Kind::Produkty, 270 },
         };
+        const PersonType crooks[] = { varas, jengi, diileri, skinhead, ryostaja };
         for (const auto& s : shops) {
             b = new Kauppa(s.name, s.kind);
             b->setOffset(s.x, 104);
             level.addBuilding(b);
             spawnQueue(level, b, 3 + std::rand() % 3);
+            const Coord door = b->getDoor();
+            const int loiterers = 1 + std::rand() % 2;
+            for (int k = 0, tries = 0; k < loiterers && tries < 30; ++tries) {
+                const Coord at { door.x - 6 + std::rand() % 13, door.y + 1 + std::rand() % 2 };
+                if (level.createPerson(at, crooks[std::rand() % 5])) ++k;
+            }
+        }
+    }
+
+    // Tverskaja, the shopping street: both sides lined with Western shops, all shut since 2022
+    {
+        struct Shop { const char* name; const char* sign; };
+        const Shop brands[] = {
+            { "McDONALD'S", "Ikkunassa lukee nyt 'Vkusno i totska'. Logo on sama, ilman M:\xC3\xA4\xC3\xA4." },
+            { "STARBUCKS", "Kyltiss\xC3\xA4 lukee 'Stars Coffee'. Sama nainen, eri kruunu." },
+            { "H&M", "Mallinuket seisovat alasti. Ne ovat odottaneet vuodesta 2022." },
+            { "ZARA", "Kyltiss\xC3\xA4 lukee nyt 'Maag'. Samat vaatteet, eri lappu." },
+            { "APPLE STORE", "Ikkunassa lukee 'reStore'. Hyllyt ovat tyhj\xC3\xA4t, omenalogo on maalattu punaiseksi." },
+            { "NIKE", "Ikkunassa on kiinalaisia lenkkareita. Swooshit ovat v\xC3\xA4\xC3\xA4rin p\xC3\xA4in." },
+            { "UNIQLO", "P\xC3\xB6ly\xC3\xA4. Paljon p\xC3\xB6ly\xC3\xA4." },
+            { "LEVI'S", "Farkkuja ei ole. On 'Lev'is'-farkkuja Kirgisiasta." },
+            { "ADIDAS", "Kolme raitaa on teipattu yli. Nyt niit\xC3\xA4 on nelj\xC3\xA4." },
+            { "KFC", "Kyltiss\xC3\xA4 lukee 'Rostic's'. Eversti on vaihdettu viiksekk\xC3\xA4\xC3\xA4n mieheen." },
+            { "IKEA", "Ikkunassa on yksi Billy-hylly. Ohjeet puuttuvat. Kuten kaikki muukin." },
+            { "LEGO", "Kyltiss\xC3\xA4 lukee 'Mir Kubikov'. Palikat ovat vinossa." },
+            { "MANGO", "Ikkunassa on lappu: 'Vuokrataan. Ei l\xC3\xA4nsimaisille.'" },
+            { "SEPHORA", "Hajuvesipullot ovat tyhji\xC3\xA4. Joku on juonut ne." },
+            { "SAMSUNG", "N\xC3\xA4yt\xC3\xB6ss\xC3\xA4 py\xC3\xB6rii yh\xC3\xA4 sama mainos vuodelta 2021." },
+            { "PUMA", "Puma on vaihdettu kissaksi. Kissa nukkuu ikkunalla." },
+            { "BOSS", "Pomo l\xC3\xA4hti. Puvut j\xC3\xA4iv\xC3\xA4t, ja ne myyd\xC3\xA4\xC3\xA4n Dubaissa." },
+            { "L'OR\xC3\x89" "AL", "'Koska olet sen arvoinen.' Ei ole." },
+            { "ROLEX", "Kelloissa on aika 02:24. Ne ovat pys\xC3\xA4htyneet." },
+            { "VOLVO", "N\xC3\xA4yttelyauto on kiinalainen. Logo on liimattu." },
+            { "PEPSI", "Pullossa lukee 'Cool Cola'. Maku on 'cool'." },
+            { "AUCHAN", "Ovessa lukee: 'Lähdemme. Tai emme. Emme tiedä.'" },
+        };
+        const size_t nBrands = sizeof(brands) / sizeof(brands[0]);
+        size_t next = 0;
+        // north side faces south onto the street, south side faces north
+        for (int side = 0; side < 2; ++side) {
+            const uint32_t y = side == 0 ? 117 : 104;
+            for (uint32_t x = 18; x + 15 < common::SIZEX && next < nBrands * 2; x += 17) {
+                if (!rectFree(level, x - 1, y - 1, x + 15, y + 5)) continue;
+                const auto& br = brands[next++ % nBrands];
+                b = new SuljettuLiike(br.name, br.sign, side == 1);
+                b->setOffset(x, y);
+                level.addBuilding(b);
+            }
         }
     }
 
@@ -257,6 +304,52 @@ static void populateBuildings(Level& level, const GameState& gs)
         hm = new Hypermarket();
         hm->setOffset(300, 60);
         level.addBuilding(hm);
+    }
+
+    // metro stations dotted around the city, one line through them all
+    {
+        struct Station { const char* name; uint32_t x, y; };
+        const Station stations[] = {
+            { "Tverskaja", 62, 96 }, { "Ohotnyi Rjad", 232, 40 }, { "Park Kultury", 190, 140 },
+            { "Komsomolskaja", 330, 96 }, { "Kievskaja", 20, 140 },
+        };
+        for (const auto& st : stations) {
+            // the nearest free spot to where the station should be
+            bool placed = false;
+            for (int r = 0; r < 30 && !placed; ++r) {
+                for (int k = 0; k < 16 && !placed; ++k) {
+                    const int x = (int)st.x + (k % 4 - 2) * r, y = (int)st.y + (k / 4 - 2) * r / 2;
+                    if (x < 3 || y < 3) continue;
+                    if (!rectFree(level, x - 1, y - 1, x + 11, y + 4)) continue;
+                    b = new Metro(st.name);
+                    b->setOffset(x, y);
+                    level.addBuilding(b);
+                    placed = true;
+                }
+            }
+        }
+    }
+
+    // and the empty blocks fill up with grey flats, leaving alleys between them
+    {
+        const char* names[] = {
+            "\xD0\xA5\xD0\xA0\xD0\xA3\xD0\xA9\xD0\x81\xD0\x92\xD0\x9A\xD0\x90",   // ХРУЩЁВКА
+            "\xD0\x9F\xD0\x90\xD0\x9D\xD0\x95\xD0\x9B\xD0\xAC\xD0\x9A\xD0\x90",   // ПАНЕЛЬКА
+            "\xD0\x9E\xD0\x91\xD0\xA9\xD0\x95\xD0\x96\xD0\x98\xD0\xA2\xD0\x98\xD0\x95", // ОБЩЕЖИТИЕ
+            "", "", "",
+        };
+        const Coord start { common::PLAYER_START_X, common::PLAYER_START_Y };
+        for (uint32_t y = 6; y < common::SIZEY - 10; y += 4) {
+            for (uint32_t x = 4; x < common::SIZEX - 20; x += 5) {
+                const uint32_t w = 12 + std::rand() % 14, h = 5 + std::rand() % 4;
+                if (Coord{ x + w / 2, y + h / 2 }.distance(start) < 14) continue;
+                if (!rectFree(level, x - 2, y - 2, x + w + 1, y + h + 1)) continue;
+                if (!random(65)) continue;
+                b = new Kerrostalo(names[std::rand() % 6], w, h);
+                b->setOffset(x, y);
+                level.addBuilding(b);
+            }
+        }
     }
 }
 
@@ -661,7 +754,7 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
     const std::string card = cause + " Onneksi Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 syntyy joka p\xC3\xA4iv\xC3\xA4 uusia juoppoja.";
     if (web) {
         common::webSend("{\"t\":\"death\",\"cause\":" + common::jsonString(cause) +
-                        ",\"babuškat\":" + std::to_string(player.scoreBoard.mummot) +
+                        ",\"mummot\":" + std::to_string(player.scoreBoard.mummot) +
                         ",\"kaikki\":" + std::to_string(player.scoreBoard.kaikki) + "}");
     } else {
         printer->setMessage(card + " Paina mit\xC3\xA4 tahansa n\xC3\xA4pp\xC3\xA4int\xC3\xA4.");

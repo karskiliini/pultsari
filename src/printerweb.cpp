@@ -27,7 +27,7 @@ void PrinterWeb::printChar(string c)
 void PrinterWeb::printScore(const ScoreBoard* scoreBoard)
 {
     const uint32_t total = scoreBoard->mummot + scoreBoard->kaikki;
-    webSend("{\"t\":\"score\",\"babuškat\":" + to_string(scoreBoard->mummot) +
+    webSend("{\"t\":\"score\",\"mummot\":" + to_string(scoreBoard->mummot) +
             ",\"kaikki\":" + to_string(scoreBoard->kaikki) + ",\"total\":" + to_string(total) + "}");
 }
 
@@ -43,7 +43,8 @@ void PrinterWeb::sendCityMap(Level* l)
     bool first = true;
     for (auto b : l->buildings) {
         j += string(first ? "" : ",") + "[" + to_string(b->wallLeft) + "," + to_string(b->wallTop) + "," +
-             to_string(b->wallRight) + "," + to_string(b->wallBot) + "," + jsonString(b->getName()) + "," +
+             to_string(b->wallRight) + "," + to_string(b->wallBot) + "," +
+             jsonString(b->type == EFlats ? string() : b->getName()) + "," + // blocks of flats stay unnamed on the map
              to_string((int)b->type) + "]";
         first = false;
     }

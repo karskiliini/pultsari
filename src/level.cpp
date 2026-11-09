@@ -729,10 +729,8 @@ void Level::skyTick()
 
 bool Level::isLit(const Coord& c) const
 {
-    for (auto b : buildings) {
-        if (b->lit && b->hitBuilding(c)) return true;
-    }
-    return false;
+    const Building* b = buildingAt(c);
+    return b && b->lit;
 }
 
 uint32_t Level::wallsBetween(const Coord& a, const Coord& b) const
@@ -744,10 +742,8 @@ uint32_t Level::wallsBetween(const Coord& a, const Coord& b) const
     const Building* inWall = nullptr;
     for (int i = 1; i < steps; ++i) {
         Coord c { (uint32_t)((int)a.x + dx * i / steps), (uint32_t)((int)a.y + dy * i / steps) };
-        const Building* hit = nullptr;
-        for (auto bld : buildings) {
-            if (bld->hitWall(c) && !bld->hitWindow(c)) { hit = bld; break; }
-        }
+        const Building* bld = buildingAt(c);
+        const Building* hit = (bld && bld->hitWall(c) && !bld->hitWindow(c)) ? bld : nullptr;
         // a run of wall cells is one crossing
         if (hit && hit != inWall) walls += hit->type == EKremlin ? 2 : 1;
         inWall = hit;
@@ -905,32 +901,38 @@ void Level::cleanDiscardedItems()
     }
 }
 
+Building* Level::buildingAt(const Coord& c) const
+{
+    if (c.x >= common::SIZEX || c.y >= common::SIZEY) return nullptr;
+    if (buildingGridCount != buildings.size()) {
+        // a building's footprint never changes once placed, so the grid only follows additions
+        buildingGrid.assign(common::SIZEX * common::SIZEY, nullptr);
+        for (auto it = buildings.rbegin(); it != buildings.rend(); ++it) {
+            const Building* b = *it;
+            for (uint32_t y = b->wallTop; y <= b->wallBot && y < common::SIZEY; ++y)
+                for (uint32_t x = b->wallLeft; x <= b->wallRight && x < common::SIZEX; ++x)
+                    buildingGrid[y * common::SIZEX + x] = *it;   // earlier buildings win, as before
+        }
+        buildingGridCount = buildings.size();
+    }
+    return buildingGrid[c.y * common::SIZEX + c.x];
+}
+
 bool Level::hitBuilding(const Coord& c) const
 {
-    for (const auto& b : buildings)
-    {
-        if (b->hitBuilding(c))
-            return true;
-    }
-    return false;
+    return buildingAt(c) != nullptr;
 }
 
 bool Level::hitWall(const Coord& c) const
 {
-    for (const auto& b : buildings) {
-        if (b->hitWall(c)) return true;
-    }
-    return false;
+    const Building* b = buildingAt(c);
+    return b && b->hitWall(c);
 }
 
 bool Level::hitWindow(const Coord& c) const
 {
-    for (const auto& b : buildings)
-    {
-        if (b->hitWindow(c))
-            return true;
-    }
-    return false;
+    const Building* b = buildingAt(c);
+    return b && b->hitWindow(c);
 }
 
 bool Level::hitPerson(const Coord& c) const
@@ -1372,14 +1374,10 @@ bool Level::blocksLOS(const Coord& c) const
 {
     if (hitLOSBlocker(c)) return true;
 
-    for (const auto& b : buildings)
-    {
-        if (b->hitBuilding(c))
-        {
-            const bool seeThroughWindow = b->hitWindow(c) && (!b->walkable || b->lit);
-            if (b->hitWall(c) && !seeThroughWindow && !b->hitDoor(c))
-                return true;
-        }
+    if (const Building* b = buildingAt(c)) {
+        const bool seeThroughWindow = b->hitWindow(c) && (!b->walkable || b->lit);
+        if (b->hitWall(c) && !seeThroughWindow && !b->hitDoor(c))
+            return true;
     }
     return false;
 }
@@ -1390,12 +1388,7 @@ bool Level::raycast(Coord from, const Coord& to) const
     // solid buildings always show their walls and plates; a walkable interior
     // (the Kremlin) is seen only through windows, the door or from inside
     bool originBuilding = false;
-    for (const auto& b : buildings) {
-        if (b->hitBuilding(to)) {
-            originBuilding = !b->walkable || b->hitWall(to) || b->isBreach(to);
-            break;
-        }
-    }
+    if (const Building* b = buildingAt(to)) originBuilding = !b->walkable || b->hitWall(to) || b->isBreach(to);
 
     uint32_t block = 0;
     uint32_t dx = std::max(from.x, to.x) - std::min(from.x, to.x);

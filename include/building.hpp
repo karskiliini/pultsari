@@ -25,7 +25,9 @@ enum BuildingType {
     EClosedShop,
     ERefinery,
     EBank,
-    EShop
+    EShop,
+    EMetro,
+    EFlats
 };
 
 class Level;
@@ -202,7 +204,8 @@ public:
 // A Western shop that pulled out of Russia in 2022 and never came back.
 class SuljettuLiike : public Building {
 public:
-    SuljettuLiike(const std::string& name, const std::string& sign);
+    // frontSouth: the shop window faces south (the shop stands north of the street)
+    SuljettuLiike(const std::string& name, const std::string& sign, bool frontSouth = false);
     virtual std::string getName() const { return name; }
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
@@ -232,6 +235,29 @@ public:
 private:
     std::string name;
     Kind kind;
+};
+
+// A metro station entrance: in through the door, out at the next station. The fare is 60 roubles,
+// or you jump the turnstile and hope nobody saw.
+class Metro : public Building {
+public:
+    explicit Metro(const std::string& station);
+    virtual std::string getName() const { return "\xD0\x9C \xD0\x9C\xD0\x95\xD0\xA2\xD0\xA0\xD0\x9E"; } // "М МЕТРО"
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+    std::string station;
+};
+
+// A grey block of flats filling up the city: no way in, graffiti on the walls.
+class Kerrostalo : public Building {
+public:
+    Kerrostalo(const std::string& name, uint32_t w, uint32_t h);
+    virtual std::string getName() const { return name; }
+    virtual std::string getWalkMsg() const;
+private:
+    std::string name;
 };
 
 // An oil refinery: drones love it. Once hit it burns for a long time and

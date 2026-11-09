@@ -466,12 +466,14 @@ std::string KRauta::getWalkMsg() const { return "Rautakaupan seinä on vahvempaa
 
 // VANKILA
 Vankila::Vankila() : Building(BuildingType::EVankila) {
-    wallRight = 58;
+    // Butyrka: a big, grim block with barred windows all round
+    wallRight = 70;
     wallTop = 23;
     wallLeft = 48;
-    wallBot = 27;
+    wallBot = 31;
 
     door = DirectionNS::up;
+    for (uint32_t x = wallLeft + 3; x < wallRight - 1; x += 4) { windows.push_back({x, wallTop}); windows.push_back({x, wallBot}); }
 }
 
 void Vankila::npcAct()
@@ -492,7 +494,7 @@ void Vankila::npcAct()
 
 std::string Vankila::getName() const
 {
-    return "SIZO";
+    return "\xD0\x91\xD0\xA3\xD0\xA2\xD0\xAB\xD0\xA0\xD0\x9A\xD0\x90 \xC2\xB7 SIZO"; // "БУТЫРКА · SIZO"
 }
 
 bool Vankila::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
@@ -969,7 +971,7 @@ std::string Kauppa::getWalkMsg() const
 
 // CLOSED WESTERN SHOPS
 
-SuljettuLiike::SuljettuLiike(const std::string& name, const std::string& sign)
+SuljettuLiike::SuljettuLiike(const std::string& name, const std::string& sign, bool frontSouth)
     : Building(BuildingType::EClosedShop), name(name), sign(sign)
 {
     wallLeft = 0;
@@ -978,9 +980,10 @@ SuljettuLiike::SuljettuLiike(const std::string& name, const std::string& sign)
     wallBot = 4;
     // the front door is chained shut; business goes on through the back door
     walkable = true;
-    door = DirectionNS::down;
-    windows.push_back({3, wallTop});
-    windows.push_back({11, wallTop});
+    door = frontSouth ? DirectionNS::up : DirectionNS::down;
+    const uint32_t front = frontSouth ? wallBot : wallTop;
+    windows.push_back({3, front});
+    windows.push_back({11, front});
 }
 
 bool SuljettuLiike::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
@@ -1098,6 +1101,83 @@ void SuljettuLiike::npcAct()
             }
         }
     }
+}
+
+// METRO
+
+Metro::Metro(const std::string& station) : Building(BuildingType::EMetro), station(station)
+{
+    wallLeft = 0;
+    wallRight = 10;
+    wallTop = 0;
+    wallBot = 2;
+    door = DirectionNS::down;
+}
+
+bool Metro::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Liukuportaat vievät syvälle. Kattokruunut, marmori ja haju.";
+    return true;
+}
+
+bool Metro::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "";
+    return false;
+}
+
+void Metro::interact(PlayerNS::Player* player, std::string& msg)
+{
+    // the next station on the line
+    std::vector<Metro*> line;
+    for (auto b : level->buildings) if (auto m = dynamic_cast<Metro*>(b)) line.push_back(m);
+    Metro* next = nullptr;
+    for (size_t i = 0; i < line.size(); ++i) if (line[i] == this) next = line[(i + 1) % line.size()];
+    if (!next || next == this) { msg = "Juna ei tule. Se ei tule koskaan."; return; }
+
+    if (player->stats.money >= 60) {
+        player->updateMoney(-60);
+        msg = "Maksat 60 ruplaa. ";
+    } else if (common::random(25)) {
+        msg = "Hyppäät porttien yli - politsija näki! Saat pampusta ja potkun ulos.";
+        player->damage(3);
+        return;
+    } else {
+        msg = "Hyppäät porttien yli. Kukaan ei n\xC3\xA4hnyt. ";
+    }
+    msg += "Juna kolisee pimeässä... Asema " + next->station + ".";
+    player->coord = next->getSpawn();
+}
+
+std::string Metro::getWalkMsg() const
+{
+    return "Metroasema " + station + ". Seinässä mosaiikki: traktoreita ja onnellisia työläisiä.";
+}
+
+// BLOCKS OF FLATS
+
+Kerrostalo::Kerrostalo(const std::string& name, uint32_t w, uint32_t h)
+    : Building(BuildingType::EFlats), name(name)
+{
+    wallLeft = 0;
+    wallRight = w - 1;
+    wallTop = 0;
+    wallBot = h - 1;
+    hasDoor = false;
+    for (uint32_t x = 2; x + 1 < w; x += 3) { windows.push_back({x, wallTop}); windows.push_back({x, wallBot}); }
+}
+
+std::string Kerrostalo::getWalkMsg() const
+{
+    static const char* graffiti[] = {
+        "Sein\xC3\xA4ss\xC3\xA4 lukee: 'Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 kaikki on paskaa, paitsi kusi.'",
+        "Sein\xC3\xA4\xC3\xA4n on spreijattu Z. Joku on muuttanut sen kirjaimeksi N.",
+        "Rappukäytävästä haisee kissanpissa ja kaali.",
+        "Ikkunasta huudetaan: 'Häivy siitä, alkoholisti!'",
+        "Seinässä lukee 'Vova on ...' Loppu on maalattu yli tuoreeltaan.",
+        "Paneelien saumat vuotavat. Talo on rakennettu 1962 'väliaikaiseksi'.",
+    };
+    return name + ". " + graffiti[std::rand() % 6];
 }
 
 // OIL REFINERY
