@@ -56,10 +56,10 @@
             },
         },
         {
-            who: 'PÄÄOSISSA', name: 'VASJA, 19', line: 'Värvätty.',
+            who: 'PÄÄOSISSA', name: 'VANJA, 19', line: 'Värvätty.',
             color: '#9fb36a',
             dur: 6.4 + READ_S,
-            // close on Vasja's face, then pull back to the recruiting office: he writes his name
+            // close on Vanja's face, then pull back to the recruiting office: he writes his name
             // on the form and, before the pen is back on the desk, two men grab him under the
             // arms, drag him out and throw him in the back of the truck
             render(ctx, W, H, t, fs) {
@@ -80,7 +80,7 @@
 
                 // he writes his name, one letter at a time
                 const written = Math.max(0, Math.min(5, (t - 1.85) / 0.18));
-                if (t > 1.85) text('VASJA'.slice(0, Math.ceil(written)), 13, -0.35, '#7fa8ff');
+                if (t > 1.85) text('VANJA'.slice(0, Math.ceil(written)), 13, -0.35, '#7fa8ff');
 
                 // the grab, the drag to the truck and the throw
                 const rush = ease((t - 2.9) / 0.4);
@@ -89,7 +89,7 @@
                 const thrown = (t - 4.45) / 0.4;
                 const truckX = 44 + 40 * Math.pow(Math.max(0, (t - 5.3) / 1.1), 2);
 
-                const vasja = (x, y, angle, legs) => {
+                const vanja = (x, y, angle, legs) => {
                     ctx.save();
                     ctx.translate(cam.sx(x + 2.5), cam.sy(y));
                     ctx.rotate(angle);
@@ -100,7 +100,7 @@
                     ctx.restore();
                 };
                 if (thrown < 0) {
-                    vasja(vx, 0, 0, t > 3.45 ? ' / / ' : ' / \\ ');
+                    vanja(vx, 0, 0, t > 3.45 ? ' / / ' : ' / \\ ');
                     if (t > 1.85 && t < 2.9) {
                         // his arm across the desk to the pen on the form
                         const penX = 13 + written;
@@ -115,7 +115,7 @@
                     if (t > 3.45) text('~~', vx - 1.5, 2.4, '#666');
                 } else if (thrown < 1) {
                     // up and over, into the back of the truck
-                    vasja(37 + 10 * thrown, -0.5 - 3.4 * 4 * thrown * (1 - thrown), thrown * 7, ' / / ');
+                    vanja(37 + 10 * thrown, -0.5 - 3.4 * 4 * thrown * (1 - thrown), thrown * 7, ' / / ');
                 }
                 if (t > 3.3 && t < 3.75) text('*NAPS!*', vx - 1, -3.3, '#f2d34a');
 
