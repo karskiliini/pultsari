@@ -2868,53 +2868,211 @@ static void stepInside(Person* p, const KremlinArea& area, Direction d)
     }
 }
 
+// Everything he says is based on what the real one has posted since 2022:
+// the target lists, the "not a bluff", Finland on the list, "Micron",
+// Poseidon and Belgium, the Dead Hand, Kyiv as a melted spot. The joke is on him.
+
+std::string Medvedev::latestPost;
+constexpr uint32_t Medvedev::MAX_FROTH;
+constexpr uint32_t Medvedev::FOAM_AT;
+
+std::string Medvedev::randomPost()
+{
+    static const char* posts[] = {
+        "LÄNSI EI YMMÄRRÄ. KUUROILLE SANON: YDINASEET. EI BLUFFI.",
+        "ILOITKAA SUOMALAISET! OLETTE YDINKOHDELISTALLA!",
+        "EUROOPAN HOMOT SAAVAT YDINISKUN NISKAANSA!!!",
+        "EUROOPPA EI YMMÄRRÄ MITÄ VENÄJÄ VOI TEHDÄ YDINASEILLA!!!",
+        "BRITANNIA, KIROTTU KOSTEA SAARI. UPOTETAAN. PISTE.",
+        "MIKRON. HAHAHA. MIKRON!!!",
+        "POSEIDON. BELGIA KATOAA. KUKAAN EI HUOMAA.",
+        "KATSOKAA ZOMBIELEFFOJA JA MUISTAKAA: KUOLLUT KÄSI.",
+        "YDINVALTA EI HÄVIÄ SOTAA. EI KOSKAAN. (AFGANISTANIA EI LASKETA)",
+        "KIOVA, BERLIINI, LONTOO, WASHINGTON. JO LENTOSUUNNITELMASSA.",
+        "HAAGIN TUOMARIT: KATSOKAA TAIVAALLE. TARKKAAN.",
+        "EUROOPPA ON KYLMÄ VANHAPIIKA. YDINTALVI LÄMMITTÄÄ.",
+        "TILI HAKKEROITU. EN MINÄ SITÄ KIRJOITTANUT. MUTTA YDINASEET.",
+    };
+    return posts[std::rand() % (sizeof(posts) / sizeof(posts[0]))];
+}
+
 Medvedev::Medvedev(const Coord& pos, const KremlinArea& area) : Person(medvedev, pos), area(area)
 {
     stats.health = 6;
     visionRange = 5;
 }
 
+// drool and foam run down from his mouth
+void Medvedev::foam()
+{
+    static const char* flecks[] = { "°", "o", "°", "*", "~" };
+    const int dx = std::rand() % 3 - 1;
+    if ((int)coord.x + dx < 0) return;
+    Animation* a = new Animation(Coord{ (uint32_t)((int)coord.x + dx), coord.y + 1 },
+                                 flecks[std::rand() % 5], 2 + std::rand() % 3);
+    a->coordMove = { 0, 1 };
+    a->color = "1;97";
+    a->source = coord;
+    level->addAnimation(a, false);
+}
+
+void Medvedev::rant()
+{
+    Player* p = level->getPlayer();
+    const bool near = p && coord.distance(p->coord) <= 4 && canSeeTarget(p->coord);
+
+    // still sober enough to sound like a statesman
+    static const char* calm[] = {
+        "Länsi ei ymmärrä. Länsi ei koskaan ymmärrä.",
+        "Ydinvalta ei häviä sotaa. Se on luonnonlaki. Hic.",
+        "Tämä ei ole bluffi. Toistan: EI bluffi.",
+        "Olin ennen liberaali. Minulla oli iPhone. Hic.",
+        "Kuuroille sanon vielä kerran: ydinaseet.",
+        "Toscanasta tuli uusi viinilähetys. Nyt kirjoitan.",
+        "Haagin tuomarit, katsokaa taivaalle. Tarkkaan.",
+        "Ydinase ei ole lelu. Se on MINUN lelu.",
+    };
+    // the threats get specific
+    static const char* loud[] = {
+        "Kiova, Berliini, Lontoo, Washington! Jo lentosuunnitelmassa!",
+        "Britannia! Kirottu kostea saari! Upotetaan se!",
+        "Poseidon! Belgia katoaa! ...Kuka on Belgia?!",
+        "Macron! MIKRON! Hahaha! MIKRON!",
+        "Oreshnik! Ette ehdi edes huomata!",
+        "Stubb on imbesilli! Lattialistan alapuolella!",
+        "Saatana! Lucifer! Iblis! Ja EU:n ulkoministeri!",
+        "Muistatteko Kuolleen käden? Se muistaa teidät!",
+        "Tuomiopäivä tulee nopeasti! Piiloutuminen on vaikeaa!",
+        "Kiovasta iso harmaa sulanut läikkä! ...Ei kukaan halua ydinsotaa.",
+        "Ydinapokalypsi on todennäköinen! Hic! TODENNÄKÖINEN!",
+    };
+    // foaming at the mouth
+    static const char* foaming[] = {
+        "EUROOPAN HOMOT SAAVAT YDINISKUN NISKAANSA!!",
+        "EUROOPPA EI YMMÄRRÄ MITÄ VENÄJÄ VOI TEHDÄ YDINASEILLA!!",
+        "DEGENERAATIT! PASKIAISET! MINÄ VIHAAN HEITÄ!!",
+        "SARMAT! ORESHNIK! POSEIDON! BUREVESTNIK! *kuolaa*",
+        "EUROOPPA ON KYLMÄ VANHAPIIKA! YDINISKU LÄMMITTÄÄ!!",
+        "EN BLUFFAA!! EN BLUFFAA!! *vaahtoa lentää*",
+        "RADIOAKTIIVISTA TUHKAA!! KAIKILLE!! ILMAISEKSI!!",
+        "SCHENGENIIN ILMAN VIISUMIA!! KUIN 1812!!",
+        "YDINVALTA EI HÄVIÄ!! EI HÄVIÄ!! *pureskelee solmiotaan*",
+    };
+    // aimed at whoever stands in front of him
+    static const char* atYou[] = {
+        "Sinä! Suomalainen? Iloitse! Olet ydinkohteiden listalla!",
+        "Mitä tuijotat? Haluatko Oreshnikin?!",
+        "Sinä et ymmärrä! Kukaan ei ymmärrä!",
+        "Kirjoitan sinusta Telegramiin! ISOILLA!",
+        "Onko sinulla vodkaa? Sitten ammun vähemmän.",
+    };
+
+    const char* line;
+    const char* verb;
+    if (froth >= FOAM_AT + 3) {
+        line = foaming[std::rand() % (sizeof(foaming) / sizeof(foaming[0]))];
+        verb = "Medvedev vaahtoaa: '";
+    } else if (near && random(40)) {
+        line = atYou[std::rand() % (sizeof(atYou) / sizeof(atYou[0]))];
+        verb = "Medvedev huutaa sinulle: '";
+    } else if (froth >= 3) {
+        line = loud[std::rand() % (sizeof(loud) / sizeof(loud[0]))];
+        verb = "Medvedev raivoaa: '";
+    } else {
+        line = calm[std::rand() % (sizeof(calm) / sizeof(calm[0]))];
+        verb = "Medvedev mutisee: '";
+    }
+    say(line);
+    level->audio.addSound(coord, SoundType::Voice,
+        std::string(verb) + line + "'", "Humalaista ydinuhoamista", "...joku haukkuu kaukana...", 20);
+
+    // every rant winds him up, and you standing there winds him up more
+    froth = std::min(MAX_FROTH, froth + 1 + (near ? 1 : 0));
+}
+
 void Medvedev::npcAct()
 {
+    if (talkCooldown) --talkCooldown;
+    const uint32_t pause = common::realtimeEnabled ? 10 + std::rand() % 6 : 2 + std::rand() % 2;
+
     if (knowsPutinDead) {
-        if (random(8)) {
+        if (!talkCooldown) {
             static const char* lines[] = {
-                "Nyt MIN\xC3\x84 olen presidentti! Hic!",
+                "Nyt MINÄ olen presidentti! Hic!",
                 "Taas! Olen taas presidentti! Kolmannen kerran!",
                 "Kuka piilotti ydinsalkun?!",
+                "Ydinsalkku on nyt minun! Kenelle soitan ensin?!",
             };
-            say(lines[std::rand() % 3]);
+            say(lines[std::rand() % 4]);
+            talkCooldown = pause;
         }
-    } else if (random(10)) {
-        static const char* rants[] = {
-            "Hic! Ydinase Lontooseen!",
-            "Kaikki ovat natseja! KAIKKI!",
-            "Kirjoitan Telegramiin! ISOILLA KIRJAIMILLA!",
-            "Pommitamme teid\xC3\xA4t kivikaudelle! Hic!",
-            "Miss\xC3\xA4 on vodkani?! VODKAA!",
-            "L\xC3\xA4nsi on koira! Min\xC3\xA4 olen isompi koira! VUH!",
-            "Pidelk\xC3\xA4\xC3\xA4 minua! PIDELK\xC3\xA4\xC3\xA4 MINUA!",
-            "Olin kerran liberaali. Hic. Hahaha!",
-            "Sarmat-ohjus! Sarmat! SARMAT!",
-        };
-        say(rants[std::rand() % 9]);
+        if (random(60)) stepInside(this, area, randomDirection());
+        return;
     }
+
+    if (passedOut) {
+        // lies in a heap, bubbling
+        --passedOut;
+        if (random(25)) foam();
+        if (!talkCooldown && random(30)) {
+            static const char* dreams[] = {
+                "Zzz... Sarmat... zzz...", "*kuplii*", "Zzz... Mikron... hih... zzz...",
+                "...ei bluffi... zzz...", "*vaahtokupla poksahtaa*",
+            };
+            say(dreams[std::rand() % 5]);
+            talkCooldown = pause;
+        }
+        if (!passedOut) {
+            froth = 2;
+            say("*herää* ...Missä puhelimeni?");
+        }
+        return;
+    }
+
+    if (!talkCooldown) {
+        rant();
+        talkCooldown = pause;
+
+        if (froth >= MAX_FROTH) {
+            // the peak: it all goes on Telegram, in capitals, and he goes down
+            latestPost = randomPost();
+            say("*NAPUTTAA TELEGRAMIIN ISOILLA KIRJAIMILLA*");
+            level->audio.addSound(coord, SoundType::Voice,
+                "Medvedev postasi Telegramiin: '" + latestPost + "'",
+                "Puhelimet piippaavat: Medvedev postasi taas", "...puhelimet piippaavat...", 60);
+            report("Medvedev postaa Telegramiin, vaahtoaa suupielistä ja kaatuu selkälleen kuolaamaan.");
+            for (int i = 0; i < 4; ++i) foam();
+            passedOut = common::realtimeEnabled ? 30 + std::rand() % 20 : 6;
+            return;
+        }
+    }
+
+    // the more wound up, the more foam runs down his chin
+    if (froth >= FOAM_AT && random(15 + froth * 6)) foam();
 
     // staggers about like a drunk
     if (random(60)) stepInside(this, area, randomDirection());
-
-    level->audio.addSound(coord, SoundType::Voice,
-        "Medvedev uhoaa humalassa ja haukkuu kuin koira", "Humalaista uhoamista", "...joku haukkuu kaukana...", 20);
 }
 
 bool Medvedev::interact(std::string& msg, Person* source)
 {
     damage(2);
     level->alertCops(source);
-    msg = stats.health > 0
-        ? "Medvedev ulvoo kuin koira ja lupaa ydinaseita Telegramissa!"
-        : "Medvedev kaatuu. Viimeinen postaus j\xC3\xA4\xC3\xA4 kesken.";
-    say("Auuuu! Ydinase! YDINASE!");
+    if (stats.health <= 0) {
+        msg = "Medvedev kaatuu. Viimeinen postaus jää kesken: 'LÄNSI EI YMMÄR...'";
+        return true;
+    }
+    if (passedOut) {
+        msg = "Potkaiset vaahtoavaa Medvedeviä. Hän mutisee unissaan: 'Kuollut käsi...'";
+        say("*kuplii*");
+        return true;
+    }
+    froth = std::min(MAX_FROTH, froth + 2);
+    for (int i = 0; i < 2; ++i) foam();
+    msg = froth >= FOAM_AT
+        ? "Medvedev roiskii vaahtoa naamallesi ja lupaa ydiniskun Telegramissa!"
+        : "Medvedev ulvoo kuin koira ja lupaa ydinaseita Telegramissa!";
+    say(froth >= FOAM_AT ? "YDINASE!! *vaahtoa* YDINASE!!" : "Auuuu! Ydinase! YDINASE!");
     return true;
 }
 
@@ -2922,8 +3080,9 @@ bool Medvedev::interactThrow(Item* item, Person* source, std::string& msg)
 {
     damage(2);
     level->alertCops(source);
-    msg = "Osuit Medvedeviin! H\xC3\xA4n uhkaa koko maailmaa.";
-    say("Hic! Sota! Maailmansota!");
+    froth = std::min(MAX_FROTH, froth + 2);
+    msg = "Osuit Medvedeviin! Hän uhkaa koko maailmaa, vaahto lentää.";
+    say("Hic! Tämä on NATON hyökkäys! Sarmat!");
     return true;
 }
 
@@ -3320,6 +3479,16 @@ void Kansalainen::npcAct()
     }
     if (knowsPutinDead && random(6)) say(random(50) ? "Onko se totta?!" : "Svoboda!");
     else if (!panic && random(4)) say(jobLine);
+    else if (!panic && random(1)) {
+        // everyone's phone pings when Medvedev posts again
+        static const char* sighs[] = {
+            "*lukee puhelinta* '",
+            "Medvedev taas: '",
+            "Joko taas? '",
+        };
+        const std::string post = Medvedev::latestPost.empty() ? Medvedev::randomPost() : Medvedev::latestPost;
+        say(sighs[std::rand() % 3] + post + "'");
+    }
 
     Coord target = destination;
     if (panic) {

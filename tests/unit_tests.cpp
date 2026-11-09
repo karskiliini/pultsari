@@ -571,6 +571,83 @@ TEST(people_at_the_petrol_station_complain_about_prices)
           w.said(guy, "litraa") || w.said(guy, "kopeekoita") || w.said(guy, "öljymaa"));
 }
 
+// ---- Medvedev ----
+
+static const KremlinArea everywhere { { 0, 0 }, { 200, 200 } };
+
+static bool foamOnScreen(const World& w)
+{
+    for (auto a : w.level.animations) if (!a->isBubble && a->color && string(a->color) == "1;97") return true;
+    return false;
+}
+
+TEST(medvedev_rants_about_nukes_and_winds_himself_up)
+{
+    World w(Coord{ 150, 150 });
+    auto* m = w.spawn(new Medvedev(Coord{ 60, 60 }, everywhere));
+    common::realtimeEnabled = false;
+    m->npcAct();
+    CHECK(m->froth == 1);
+    bool spoke = false;
+    for (auto a : w.level.animations) if (a->isBubble && a->owner == m) spoke = true;
+    CHECK(spoke);
+    for (int i = 0; i < 6; ++i) m->npcAct();
+    CHECK(m->froth > 1);
+    common::realtimeEnabled = true;
+}
+
+TEST(medvedev_foams_at_the_mouth_when_wound_up)
+{
+    World w(Coord{ 150, 150 });
+    auto* m = w.spawn(new Medvedev(Coord{ 60, 60 }, everywhere));
+    m->froth = Medvedev::MAX_FROTH - 2;
+    for (int i = 0; i < 60 && !foamOnScreen(w); ++i) m->npcAct();
+    CHECK(foamOnScreen(w));
+}
+
+TEST(medvedev_posts_to_telegram_and_passes_out)
+{
+    World w(Coord{ 150, 150 });
+    auto* m = w.spawn(new Medvedev(Coord{ 60, 60 }, everywhere));
+    common::realtimeEnabled = false;
+    Medvedev::latestPost.clear();
+    m->froth = Medvedev::MAX_FROTH - 1;
+    for (int i = 0; i < 5 && !m->passedOut; ++i) m->npcAct();
+    CHECK(m->passedOut > 0);
+    CHECK(!Medvedev::latestPost.empty());
+    CHECK(w.said(m, "TELEGRAM"));
+    // he lies still in his foam, then wakes up for another round
+    const Coord at = m->coord;
+    for (int i = 0; i < 20 && m->passedOut; ++i) m->npcAct();
+    CHECK(m->passedOut == 0);
+    CHECK(m->coord == at);
+    CHECK(m->froth < Medvedev::FOAM_AT);
+    common::realtimeEnabled = true;
+}
+
+TEST(medvedev_sprays_foam_when_you_hit_him)
+{
+    World w(Coord{ 60, 60 });
+    auto* m = w.spawn(new Medvedev(Coord{ 61, 60 }, everywhere));
+    m->stats.health = 100;
+    m->froth = Medvedev::FOAM_AT;
+    string msg;
+    m->interact(msg, &w.player);
+    CHECK(contains(msg, "vaahtoa"));
+    CHECK(foamOnScreen(w));
+}
+
+TEST(citizens_read_medvedevs_posts_aloud)
+{
+    World w(Coord{ 60, 60 });
+    Medvedev::latestPost = "TESTIPOSTAUS";
+    auto* k = w.spawn(new Kansalainen(Coord{ 62, 60 }));
+    bool read = false;
+    for (int i = 0; i < 3000 && !read; ++i) { k->coord = Coord{ 62, 60 }; k->npcAct(); read = w.said(k, "TESTIPOSTAUS"); }
+    CHECK(read);
+    Medvedev::latestPost.clear();
+}
+
 // ---- metro ----
 
 TEST(metro_takes_you_to_the_next_station)

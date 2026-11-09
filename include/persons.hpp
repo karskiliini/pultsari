@@ -354,7 +354,8 @@ struct KremlinArea {
     }
 };
 
-// Drunk, raving like a mad dog.
+// Drunk, raving like a mad dog. Every rant about nukes winds him up further,
+// until he foams at the mouth, posts it all to Telegram and passes out.
 class Medvedev : public Person {
 public:
     Medvedev(const Coord& pos, const KremlinArea& area);
@@ -362,8 +363,20 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "D"; };
+
+    static constexpr uint32_t MAX_FROTH = 10;
+    uint32_t froth = 0;        // how wound up he is; foams from FOAM_AT up
+    uint32_t passedOut = 0;    // turns left lying in his own foam after a Telegram post
+    static constexpr uint32_t FOAM_AT = 5;
+
+    // the latest post on his Telegram channel; people on the street read it out
+    static std::string latestPost;
+    static std::string randomPost();
 private:
+    void rant();
+    void foam();
     KremlinArea area;
+    uint32_t talkCooldown = 0;
 };
 
 // Shoigu and Gerasimov: plan at the map table, curse at the map, and go to

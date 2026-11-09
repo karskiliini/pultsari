@@ -21,6 +21,7 @@ public:
     uint32_t tick = 0;               // where it happens; drawn only if the player sees that spot
     uint32_t delay = 66;
     bool isBubble = false;
+    const char* color = nullptr;     // SGR colour for a map effect; default bright red
 };
 
 #endif

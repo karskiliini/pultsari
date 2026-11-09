@@ -388,7 +388,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             if (a->isBubble && bubblesAsOverlay) continue;
             if (!mask->visible(a->source)) continue;
             // speech bubbles fade from white to dark grey as they expire
-            const char* color = "1;91";
+            const char* color = a->color ? a->color : "1;91";
             if (a->isBubble) {
                 const uint32_t left = a->frames ? a->ttl * 100 / a->frames : 0;
                 color = left > 60 ? "1;97" : left > 35 ? "37" : left > 15 ? "90" : "2;90";
