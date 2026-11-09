@@ -416,3 +416,9 @@ std::string PutinPoyta::getMsg() const {
 bool PutinPoyta::interact(PlayerNS::Player* player) {
     return false;
 }
+
+// war map
+Kartta::Kartta(const Coord& c, const char* glyph) : Item(c, EKartta), glyph(glyph) { }
+std::string Kartta::getMsg() const {
+    return "Sotakartta. Nuolet osoittavat yh\xC3\xA4 Kiovaan. Joku on piirt\xC3\xA4nyt ne tussilla uudestaan.";
+}

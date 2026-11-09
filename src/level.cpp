@@ -340,6 +340,14 @@ bool Level::hitBuilding(const Coord& c) const
     return false;
 }
 
+bool Level::hitWall(const Coord& c) const
+{
+    for (const auto& b : buildings) {
+        if (b->hitWall(c)) return true;
+    }
+    return false;
+}
+
 bool Level::hitWindow(const Coord& c) const
 {
     for (const auto& b : buildings)

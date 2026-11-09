@@ -34,7 +34,8 @@ enum ItemType {
     EGranata,
     EVodka,
     EViinaKellari,
-    EPutinPoyta
+    EPutinPoyta,
+    EKartta
 };
 
 class Level;
@@ -297,6 +298,17 @@ public:
     virtual std::string typeToChar() const;
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);
+private:
+    const char* glyph;
+};
+
+// the generals' war map, spread on a table
+class Kartta : public Item {
+public:
+    Kartta(const Coord& c, const char* glyph);
+    virtual std::string typeToChar() const { return glyph; }
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player) { return false; }
 private:
     const char* glyph;
 };

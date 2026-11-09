@@ -10,7 +10,8 @@ namespace PathNS {
 
 bool PathMask::blocked(const Coord& c) const
 {
-    if (level->hitBuilding(c)) return true;
+    // interiors (the Kremlin) are walkable; walls and doors are not
+    if (level->hitWall(c)) return true;
     Person* p = level->getPerson(c);
     if (!p) return false;
     if (p->type == poliisi && skipCop) return false;

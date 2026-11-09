@@ -44,6 +44,7 @@ public:
     void cleanDiscardedItems();
 
     bool hitBuilding(const Coord& c) const;
+    bool hitWall(const Coord& c) const;
     bool hitWindow(const Coord& c) const;
     bool hitPerson(const Coord& c) const;
     bool hitItem(const Coord& c) const;

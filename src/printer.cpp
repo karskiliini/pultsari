@@ -192,47 +192,51 @@ string Printer::promilleAligned(uint32_t value) const
 
 namespace {
 
-const char* personColor(PersonType t)
+// A person's colour is their clothing or skin (xterm 256-colour palette).
+const char* personColor(const Person* p)
 {
-    switch (t) {
-        case pelaaja:      return "1;93";
-        case putin:        return "1;97;41";
-        case fsb:          return "1;31";
-        case poliisi:      return "1;94";
+    switch (p->type) {
+        case pelaaja:
+            return static_cast<const Player*>(p)->isVeteran()
+                ? "1;38;5;107"          // faded front-line khaki
+                : "1;38;5;180";         // the pultsari's shabby beige coat
+        case putin:        return "1;38;5;223;48;5;17"; // pale face, navy suit
+        case medvedev:     return "1;38;5;203";         // drink-flushed red face
+        case shoigu:
+        case gerasimov:    return "1;38;5;71";          // general's green with gold
+        case fsb:          return "1;38;5;245";         // black suit, grey in the dark
+        case poliisi:      return "1;38;5;68";          // politsija blue-grey
         case sotilas:
-        case ilmatorjunta: return "32";
-        case veteraani:    return "33";
-        case vartija:      return "36";
-        case mummo:        return "95";
-        case juoppo:       return "93";
-        case jengi:        return "96";
-        case ryostaja:     return "91";
+        case ilmatorjunta: return "38;5;64";            // camouflage green
+        case veteraani:    return "38;5;143";           // old khaki
+        case vartija:      return "38;5;250";           // grey security uniform
+        case mummo:        return "38;5;168";           // pink headscarf
+        case juoppo:       return "38;5;137";           // grubby brown
+        case yka:          return "38;5;180";           // another shabby coat
+        case jengi:        return "1;38;5;27";          // blue Adidas tracksuit
+        case skinhead:     return "38;5;223";           // pale shaved head
+        case ryostaja:     return "38;5;240";           // black hoodie
+        case varas:        return "38;5;246";           // grey hoodie
+        case vanki:        return "38;5;101";           // worn prison black-olive
+        case diileri:      return "38;5;135";           // shiny purple tracksuit
         default:           return "37";
     }
 }
 
+// Things you can carry are white; scenery keeps its natural colour.
 const char* itemColor(ItemType t)
 {
     switch (t) {
-        case EKalja: case ELonkka: case EVodka:
-        case ELenkki: case EKala: case EOmppo: case EBanaani:
-            return "92";
-        case EPamppu: case EVeitsi: case EKetjut: case EKivi:
-        case EBootsit: case EPistooli: case EGranata:
-            return "1;37";
-        case ERaha:        return "1;93";
-        case EBona:        return "96";
         case EPaska:
         case EOksennus:    return "2;32";
-        case EViesti:      return "1;95";
         case ENextLevel:   return "1;97;44";
-        case EPropusk:
         case EViinaKellari:return "1;97;41";
         case EPensas:      return "32";
         case ERoskis:      return "90";
         case EBusStop:     return "1;93;44";
         case EPutinPoyta:  return "37";
-        default:           return "33";
+        case EKartta:      return "1;33";
+        default:           return "1;97";
     }
 }
 
@@ -325,14 +329,17 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             found = true;
         }
 
+        // walls, doors, windows and name plates; an empty interior lets people and items show
         if (!found) {
             for (auto b : l->buildings) {
-                if (b->hitBuilding(coord)) {
-                    c = b->typeToChar(coord);
+                if (!b->hitBuilding(coord)) continue;
+                string g = b->typeToChar(coord);
+                if (g != " " || b->type != EKremlin) {
+                    c = g;
                     color = buildingColor(b, c);
                     found = true;
-                    break;
                 }
+                break;
             }
         }
 
@@ -340,7 +347,7 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
             const Person* p = findPerson(persons, x);
             if (p) {
                 c = p->typeToChar();
-                color = personColor(p->type);
+                color = personColor(p);
                 found = true;
             }
         }

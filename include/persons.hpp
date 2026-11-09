@@ -274,7 +274,47 @@ public:
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
-    virtual std::string typeToChar() const { return "\xD0\x9F"; };
+    virtual std::string typeToChar() const { return "P"; };
+};
+
+// Rectangle inside the Kremlin that the inner circle never leaves.
+struct KremlinArea {
+    Coord min;
+    Coord max;
+    bool contains(const Coord& c) const {
+        return c.x >= min.x && c.x <= max.x && c.y >= min.y && c.y <= max.y;
+    }
+};
+
+// Drunk, raving like a mad dog.
+class Medvedev : public Person {
+public:
+    Medvedev(const Coord& pos, const KremlinArea& area);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "D"; };
+private:
+    KremlinArea area;
+};
+
+// Shoigu and Gerasimov: plan at the map table, curse at the map, and go to
+// Putin to beg and lie that everything is going to plan.
+class Kenraali : public Person {
+public:
+    Kenraali(const Coord& pos, PersonType type, const KremlinArea& area);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return type == shoigu ? "\xC5\xA0" : "G"; };
+    std::string name() const { return type == shoigu ? "\xC5\xA0oigu" : "Gerasimov"; }
+private:
+    enum class State { AtMap, ToPutin, Begging, Back };
+    bool stepTowards(const Coord& target);
+    KremlinArea area;
+    Coord home;
+    State state = State::AtMap;
+    uint32_t timer = 0;
 };
 
 #endif

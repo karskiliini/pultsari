@@ -2325,7 +2325,7 @@ void Putin::npcAct()
                 case DirectionNS::right: ++next.x; break;
                 default: break;
             }
-            if (!level->hitBuilding(next) && !level->hitPerson(next) && !level->hitItem(next)) {
+            if (!level->hitWall(next) && !level->hitPerson(next) && !level->hitItem(next)) {
                 coord = next;
             }
         }
@@ -2361,7 +2361,7 @@ void Putin::npcAct()
                 case DirectionNS::right: ++next.x; break;
                 default: break;
             }
-            if (!level->hitBuilding(next) && !level->hitPerson(next) && !level->hitItem(next)) {
+            if (!level->hitWall(next) && !level->hitPerson(next) && !level->hitItem(next)) {
                 coord = next;
             }
         }
@@ -2393,7 +2393,7 @@ void Putin::npcAct()
             case DirectionNS::right: ++next.x; break;
             default: break;
         }
-        if (!level->hitBuilding(next) && !level->hitPerson(next) && !level->hitItem(next)) {
+        if (!level->hitWall(next) && !level->hitPerson(next) && !level->hitItem(next)) {
             coord = next;
         }
     }
@@ -2479,5 +2479,195 @@ bool Putin::interactThrow(Item* item, Person* source, std::string& msg)
         msg = cries[std::rand()%4];
         say("*nyyhkii*");
     }
+    return true;
+}
+
+// ============ Kremlin inner circle ============
+
+static Person* findPutin(Level* level)
+{
+    for (auto p : level->persons) {
+        if (p->type == putin && p->stats.health > 0) return p;
+    }
+    return nullptr;
+}
+
+static void stepInside(Person* p, const KremlinArea& area, Direction d)
+{
+    Coord next = p->coord;
+    switch (d) {
+        case DirectionNS::up:    if (next.y > 0) --next.y; break;
+        case DirectionNS::down:  ++next.y; break;
+        case DirectionNS::left:  if (next.x > 0) --next.x; break;
+        case DirectionNS::right: ++next.x; break;
+        default: return;
+    }
+    if (area.contains(next) && !p->level->hitWall(next) && !p->level->hitPerson(next)) {
+        p->coord = next;
+    }
+}
+
+Medvedev::Medvedev(const Coord& pos, const KremlinArea& area) : Person(medvedev, pos), area(area)
+{
+    stats.health = 6;
+}
+
+void Medvedev::npcAct()
+{
+    if (level->putinDead) {
+        if (random(8)) {
+            static const char* lines[] = {
+                "Nyt MIN\xC3\x84 olen presidentti! Hic!",
+                "Taas! Olen taas presidentti! Kolmannen kerran!",
+                "Kuka piilotti ydinsalkun?!",
+            };
+            say(lines[std::rand() % 3]);
+        }
+    } else if (random(10)) {
+        static const char* rants[] = {
+            "Hic! Ydinase Lontooseen!",
+            "Kaikki ovat natseja! KAIKKI!",
+            "Kirjoitan Telegramiin! ISOILLA KIRJAIMILLA!",
+            "Pommitamme teid\xC3\xA4t kivikaudelle! Hic!",
+            "Miss\xC3\xA4 on vodkani?! VODKAA!",
+            "L\xC3\xA4nsi on koira! Min\xC3\xA4 olen isompi koira! VUH!",
+            "Pidelk\xC3\xA4\xC3\xA4 minua! PIDELK\xC3\xA4\xC3\xA4 MINUA!",
+            "Olin kerran liberaali. Hic. Hahaha!",
+            "Sarmat-ohjus! Sarmat! SARMAT!",
+        };
+        say(rants[std::rand() % 9]);
+    }
+
+    // staggers about like a drunk
+    if (random(60)) stepInside(this, area, randomDirection());
+
+    level->audio.addSound(coord, SoundType::Voice,
+        "Medvedev uhoaa humalassa ja haukkuu kuin koira", "Humalaista uhoamista", "...joku haukkuu kaukana...", 20);
+}
+
+bool Medvedev::interact(std::string& msg, Person* source)
+{
+    damage(2);
+    level->alertCops(source);
+    msg = stats.health > 0
+        ? "Medvedev ulvoo kuin koira ja lupaa ydinaseita Telegramissa!"
+        : "Medvedev kaatuu. Viimeinen postaus j\xC3\xA4\xC3\xA4 kesken.";
+    say("Auuuu! Ydinase! YDINASE!");
+    return true;
+}
+
+bool Medvedev::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    damage(2);
+    level->alertCops(source);
+    msg = "Osuit Medvedeviin! H\xC3\xA4n uhkaa koko maailmaa.";
+    say("Hic! Sota! Maailmansota!");
+    return true;
+}
+
+Kenraali::Kenraali(const Coord& pos, PersonType type, const KremlinArea& area)
+    : Person(type, pos), area(area), home(pos)
+{
+    stats.health = 8;
+}
+
+bool Kenraali::stepTowards(const Coord& target)
+{
+    if (coord.distance(target) <= 1) return true;
+    stepInside(this, area, getMoveDirection(target));
+    return coord.distance(target) <= 1;
+}
+
+void Kenraali::npcAct()
+{
+    if (level->putinDead) {
+        if (random(10)) {
+            static const char* panic[] = {
+                "Kenelle me nyt valehtelemme?!",
+                "Polttakaa kartat! Polttakaa kaikki!",
+                "Min\xC3\xA4 en ollut t\xC3\xA4\xC3\xA4ll\xC3\xA4 koskaan!",
+            };
+            say(panic[std::rand() % 3]);
+        }
+        if (random(50)) stepInside(this, area, randomDirection());
+        return;
+    }
+
+    Person* boss = findPutin(level);
+
+    switch (state) {
+    case State::AtMap:
+        if (!stepTowards(home)) break;
+        if (random(12)) {
+            static const char* curses[] = {
+                "Blyat! Kuka siirsi t\xC3\xA4t\xC3\xA4 nuolta?!",
+                "Pizdets... rintama on taas v\xC3\xA4\xC3\xA4r\xC3\xA4ss\xC3\xA4 kohdassa!",
+                "Huoltolinja on pelkk\xC3\xA4 viiva paperilla!",
+                "Miss\xC3\xA4 on 3. armeija?! Se oli t\xC3\xA4ss\xC3\xA4 eilen!",
+                "Kuka s\xC3\xB6i kartalta Harkovan?!",
+                "Jobanyi rot! Taas p\xC3\xA4in persett\xC3\xA4!",
+                "Piirr\xC3\xA4 nuoli isommaksi, se n\xC3\xA4ytt\xC3\xA4\xC3\xA4 paremmalta Putinille.",
+                "Kolme p\xC3\xA4iv\xC3\xA4\xC3\xA4 Kiovaan. Mink\xC3\xA4 vuoden?",
+            };
+            say(curses[std::rand() % 8]);
+            level->audio.addSound(coord, SoundType::Voice,
+                "Kenraalit kiroilevat karttap\xC3\xB6yd\xC3\xA4n \xC3\xA4\xC3\xA4ress\xC3\xA4", "Kiroilua", "...kiroilua kaukaa...", 15);
+        }
+        if (boss && random(3)) state = State::ToPutin;
+        break;
+
+    case State::ToPutin:
+        if (!boss) { state = State::Back; break; }
+        if (stepTowards(boss->coord)) {
+            static const char* lies[] = {
+                "Kaikki menee suunnitelman mukaan, Vladimir Vladimirovit\xC5\xA1!",
+                "Kiova kaatuu kolmessa p\xC3\xA4iv\xC3\xA4ss\xC3\xA4! Taas.",
+                "Rintama on vakaa. Hyvin vakaa. Liikkumaton.",
+                "Tappiot ovat minimaaliset. Ukrainalaisten.",
+                "Tarvitsemme vain v\xC3\xA4h\xC3\xA4n lis\xC3\xA4\xC3\xA4 miehi\xC3\xA4... ja tankkeja... ja rahaa.",
+                "Vastahy\xC3\xB6kk\xC3\xA4ys on torjuttu! Melkein.",
+            };
+            say(lies[std::rand() % 6]);
+            state = State::Begging;
+            timer = 6;
+        }
+        break;
+
+    case State::Begging:
+        if (timer > 0 && --timer == 3 && boss) {
+            static const char* replies[] = {
+                "Hyv\xC3\xA4. Jatkakaa.",
+                "Miksi Kiova ei ole viel\xC3\xA4 meid\xC3\xA4n?!",
+                "Lis\xC3\xA4\xC3\xA4 miehi\xC3\xA4 rintamalle!",
+                "Valehteletteko te minulle?",
+                "Antakaa h\xC3\xA4nelle mitali.",
+            };
+            boss->say(replies[std::rand() % 5]);
+        }
+        if (timer == 0) state = State::Back;
+        break;
+
+    case State::Back:
+        if (stepTowards(home)) state = State::AtMap;
+        break;
+    }
+}
+
+bool Kenraali::interact(std::string& msg, Person* source)
+{
+    damage(2);
+    level->alertCops(source);
+    msg = name() + (stats.health > 0
+        ? " parahtaa: \"Raportoin t\xC3\xA4st\xC3\xA4 Putinille! Kaikki on hyvin!\""
+        : " kaatuu karttap\xC3\xB6yd\xC3\xA4lle. Rintama ei huomaa eroa.");
+    say("OHRANA!");
+    return true;
+}
+
+bool Kenraali::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    damage(2);
+    level->alertCops(source);
+    msg = "Osuit kenraali " + name() + "iin! H\xC3\xA4n kiroilee karttaa.";
     return true;
 }

@@ -667,6 +667,21 @@ bool Player::move(DirectionNS::Direction d, Level* level)
 
     string msg;
     Building* b = checkDoor(level, check);
+    if (b && b->type == EKremlin) {
+        // the Kremlin is walked into through its door; the way out is always open
+        const bool leaving = b->hitBuilding(coord);
+        if (leaving || b->getEnterMsg(this, msg)) {
+            if (!leaving) {
+                printer->showMessage(msg, level, false);
+                b->getInteractMsg(this, msg);
+                printer->showMessage(msg, level, false);
+            }
+            coord = check;
+            return ret;
+        }
+        printer->showMessage(msg, level, false);
+        return ret;
+    }
     if (b) {
         blocked = true;
 

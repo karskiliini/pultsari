@@ -19,7 +19,10 @@ enum PersonType {
     sotilas,
     ilmatorjunta,
     vartija,
-    putin
+    putin,
+    medvedev,
+    shoigu,
+    gerasimov
 };
 
 #endif

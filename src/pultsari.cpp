@@ -301,6 +301,11 @@ static void populatePersons(Level& level, const GameState& gs)
     // Putin spawns inside the Kremlin + comically long conference table
     for (auto b : level.buildings) {
         if (b->type == EKremlin) {
+            // level.hit() counts the whole Kremlin rectangle, so place things by walls only
+            auto free = [&](const Coord& c) {
+                return !level.hitWall(c) && !level.hitPerson(c) && !level.hitItem(c);
+            };
+
             // Putin's famous comically long conference table: a dashed outline
             // with an empty, polished surface in the middle
             const uint32_t top = b->wallTop + 5;
@@ -317,14 +322,40 @@ static void populatePersons(Level& level, const GameState& gs)
                         glyph = y == top ? (x == left ? "\xE2\x95\xAD" : "\xE2\x95\xAE")
                                          : (x == left ? "\xE2\x95\xB0" : "\xE2\x95\xAF");
                     Coord tc { x, y };
-                    if (!level.hit(tc)) level.addItem(new PutinPoyta(tc, glyph));
+                    if (free(tc)) level.addItem(new PutinPoyta(tc, glyph));
                 }
             }
 
-            Coord putinPos = { left - 2, top + 1 };
-            if (!level.hit(putinPos)) {
-                level.createPerson(putinPos, putin);
+            const KremlinArea area { { b->wallLeft + 1, b->wallTop + 1 }, { b->wallRight - 1, b->wallBot - 1 } };
+            auto spawn = [&](Person* p) {
+                p->pathFinding = level.pathFinding;
+                p->printer = level.printer;
+                if (!free(p->coord) || !level.addPerson(p)) delete p;
+            };
+            spawn(new Putin(Coord{ left - 2, top + 1 }));
+
+            // the generals' war map: dashed table with a map on it
+            const uint32_t mapTop = b->wallBot - 6;
+            const uint32_t mapLeft = b->wallLeft + 6;
+            const char* mapRow[] = {
+                "~", "\xE2\x86\x92", "\xE2\x96\xB2", "~", "\xE2\x9C\x95", "\xE2\x86\x90", "\xE2\x96\xB2", "~", "\xE2\x86\x92",
+            };
+            const uint32_t mapW = sizeof(mapRow) / sizeof(mapRow[0]);
+            for (uint32_t x = mapLeft; x <= mapLeft + mapW + 1; ++x) {
+                for (uint32_t y = mapTop; y <= mapTop + 2; ++y) {
+                    Coord mc { x, y };
+                    if (!free(mc)) continue;
+                    const bool edgeCol = (x == mapLeft || x == mapLeft + mapW + 1);
+                    if (y == mapTop + 1 && !edgeCol)
+                        level.addItem(new Kartta(mc, mapRow[x - mapLeft - 1]));
+                    else
+                        level.addItem(new PutinPoyta(mc, edgeCol && y == mapTop + 1 ? "\xE2\x95\x8E" : "\xE2\x95\x8C"));
+                }
             }
+
+            spawn(new Kenraali(Coord{ mapLeft + 3, mapTop + 3 }, shoigu, area));
+            spawn(new Kenraali(Coord{ mapLeft + 7, mapTop + 3 }, gerasimov, area));
+            spawn(new Medvedev(Coord{ b->wallRight - 8, b->wallBot - 5 }, area));
             break;
         }
     }
