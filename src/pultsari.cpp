@@ -781,9 +781,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         populateItems(level, gameState);
         populateVehicles(level);
 
-        if (gameState.phase == GamePhase::War || level.stage > 2) {
-            level.events = new EnvironmentEvents(&level);
-        }
+        // fires burn everywhere; random disasters only from the third level and at the front
+        level.events = new EnvironmentEvents(&level, gameState.phase != GamePhase::War && level.stage <= 2);
 
         if (welcome) {
             welcome = false;

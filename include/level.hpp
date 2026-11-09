@@ -48,6 +48,7 @@ struct GasPuff {
     float x, y;
     uint32_t ttl;       // world ticks
     bool toxic;
+    bool smoke = false; // dark smoke from a fire, carried by the wind
 };
 
 class Car;
@@ -150,6 +151,11 @@ public:
     std::vector<Road> roads;
     std::vector<Drone> drones;
     std::vector<GasPuff> gas;
+    // the wind: never shown, but it carries the smoke; it veers slowly and now and then swings round
+    float windAngle = 0.3f;
+    float windSpeed = 0.35f;     // cells per world tick
+    uint32_t nearStrikeCooldown = 120;
+    void addSmoke(const Coord& c);
     // a drone over the city: a flyover, or a strike on `target`
     void launchDrone(Building* target);
     // world tick: spawn flyovers, drift and burn gas, let gas affect people

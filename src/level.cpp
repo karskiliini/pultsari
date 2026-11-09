@@ -411,7 +411,12 @@ void Level::droneImpact(const Coord& c, Building* target)
     for (auto p : persons) {
         if (p->stats.health > 0 && p->coord.distance(c) <= 4) p->damage(std::rand() % 6 + 2);
     }
-    if (events) events->addFiresAround(c);
+    if (events) {
+        if (target && target->type != EKremlin && !dynamic_cast<Jalostamo*>(target))
+            events->setAblaze(target->wallLeft, target->wallTop, target->wallRight, target->wallBot);
+        else
+            events->addFiresAround(c);
+    }
 
     Jalostamo* refinery = dynamic_cast<Jalostamo*>(target);
     if (refinery) refinery->burning = 900;
@@ -612,6 +617,14 @@ void Level::addGas(const Coord& c, bool toxic)
     gas.push_back({ (float)c.x, (float)c.y, toxic ? 60u : 6u, toxic });
 }
 
+void Level::addSmoke(const Coord& c)
+{
+    if (gas.size() >= 900) return;
+    GasPuff g { (float)c.x, (float)c.y, 18u + (uint32_t)(std::rand() % 14), false };
+    g.smoke = true;
+    gas.push_back(g);
+}
+
 int Level::gasAt(const Coord& c) const
 {
     if (gasGrid.empty() || c.x >= common::SIZEX || c.y >= common::SIZEY) return 0;
@@ -622,6 +635,31 @@ void Level::skyTick()
 {
     // now and then a drone just passes over
     if (common::random(isWarLevel ? 4 : 1)) launchDrone(nullptr);
+
+    // the wind veers a little all the time, and now and then swings right round
+    windAngle += (std::rand() % 100 - 50) / 900.0f;
+    if (common::random(1) && std::rand() % 4 == 0) windAngle += (std::rand() % 2 ? 1.0f : -1.0f) * (1.0f + (std::rand() % 100) / 80.0f);
+    windSpeed = std::max(0.1f, std::min(0.8f, windSpeed + (std::rand() % 100 - 50) / 1500.0f));
+
+    // every so often a drone comes down on a building close to the player and sets it ablaze
+    if (nearStrikeCooldown > 0) --nearStrikeCooldown;
+    const PlayerNS::Player* pl = getPlayer();
+    if (nearStrikeCooldown == 0 && pl && !playerDead) {
+        nearStrikeCooldown = 250 + std::rand() % 350; // about two to four minutes
+        std::vector<Building*> near;
+        for (auto b : buildings) {
+            if (b->type == EKremlin) continue;
+            const Coord mid { (b->wallLeft + b->wallRight) / 2, (b->wallTop + b->wallBot) / 2 };
+            const uint32_t d = mid.distance(pl->coord);
+            if (d >= 10 && d <= 30) near.push_back(b);
+        }
+        if (!near.empty()) launchDrone(near[std::rand() % near.size()]);
+    }
+
+    // fires send up smoke
+    if (events) {
+        for (const auto& f : events->getFires()) if (common::random(35)) addSmoke(f.coord);
+    }
     for (const auto& d : drones) {
         audio.addSound(Coord{ (uint32_t)std::max(0.0f, d.x), (uint32_t)std::max(0.0f, d.y) }, SoundType::Drone,
             "Drooni p\xC3\xB6risee aivan yl\xC3\xA4puolella!", "Droonin p\xC3\xB6rin\xC3\xA4\xC3\xA4", "...kaukaista p\xC3\xB6rin\xC3\xA4\xC3\xA4...", 35);
@@ -643,12 +681,13 @@ void Level::skyTick()
         }
     }
 
-    // refinery smoke drifts east on the wind; exhaust just hangs where the car left it
+    // smoke goes wherever the wind blows; exhaust just hangs where the car left it
+    const float wx = std::cos(windAngle) * windSpeed, wy = std::sin(windAngle) * windSpeed * 0.6f;
     for (size_t i = 0; i < gas.size();) {
         GasPuff& g = gas[i];
-        if (g.toxic) {
-            g.x += (std::rand() % 100 - 50) / 80.0f + 0.25f;
-            g.y += (std::rand() % 100 - 50) / 120.0f;
+        if (g.toxic || g.smoke) {
+            g.x += wx + (std::rand() % 100 - 50) / 110.0f;
+            g.y += wy + (std::rand() % 100 - 50) / 160.0f;
         }
         if (--g.ttl == 0 || g.x < 0 || g.y < 0 || g.x >= common::SIZEX || g.y >= common::SIZEY) {
             gas[i] = gas.back();
@@ -660,14 +699,20 @@ void Level::skyTick()
     gasGrid.assign(common::SIZEX * common::SIZEY, 0);
     for (const auto& g : gas) {
         uint8_t& cell = gasGrid[(uint32_t)g.y * common::SIZEX + (uint32_t)g.x];
-        cell = std::max<uint8_t>(cell, g.toxic ? 2 : 1);
+        cell = std::max<uint8_t>(cell, g.toxic ? 2 : g.smoke ? 3 : 1);
     }
 
     // breathing it
     for (auto p : persons) {
         if (p->stats.health == 0) continue;
         const int kind = gasAt(p->coord);
-        if (kind == 2 && common::random(35)) {
+        if (kind == 3 && common::random(20)) {
+            if (p->type == pelaaja) {
+                if (common::random(30)) p->damage(1);
+                printer->showMessage(common::random(50) ? "Savu kirvelee silmi\xC3\xA4. *K\xC3\xB6h k\xC3\xB6h*" : "Vedät palaneen muovin savua keuhkoihin.", this, false);
+                common::sound("cough", 0.6f);
+            }
+        } else if (kind == 2 && common::random(35)) {
             p->damage(1);
             if (p->type == pelaaja) {
                 printer->showMessage("Myrkyllinen savu polttaa keuhkojasi! *K\xC3\x96H K\xC3\x96H*", this, false);

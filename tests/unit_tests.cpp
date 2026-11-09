@@ -4,6 +4,7 @@
 #include "building.hpp"
 #include "input.hpp"
 #include "common.hpp"
+#include "events.hpp"
 #include "item.hpp"
 #include "level.hpp"
 #include "mask.hpp"
@@ -429,6 +430,112 @@ TEST(shop_name_hidden_when_no_wall_in_sight)
     string row;
     for (const auto& cell : w.printer.rowCells(&w.level, 102 - (uint32_t)w.level.cameraY)) row += cell.first;
     CHECK(!contains(row, "TESTNAME"));
+}
+
+// ---- fire, smoke and wind ----
+
+static size_t smokePuffs(const Level& l) { size_t n = 0; for (const auto& g : l.gas) if (g.smoke) ++n; return n; }
+
+TEST(drone_sometimes_strikes_a_building_near_the_player)
+{
+    World w(Coord{ 100, 100 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* nearShop = w.add(new Kauppa("NEAR", Kauppa::Kind::Produkty), 110, 110);
+    w.add(new Kauppa("FAR", Kauppa::Kind::Produkty), 300, 20);
+    w.level.nearStrikeCooldown = 1;
+    w.level.drones.clear();
+    w.level.skyTick();
+    bool aimed = false;
+    for (const auto& d : w.level.drones) if (d.target == nearShop) aimed = true;
+    CHECK(aimed);
+    CHECK(w.level.nearStrikeCooldown >= 250); // and then not again for minutes
+}
+
+TEST(drone_hit_sets_the_building_ablaze)
+{
+    World w(Coord{ 100, 100 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 110, 110);
+    w.level.droneImpact(Coord{ 117, 112 }, k);
+    const auto& fires = w.level.events->getFires();
+    CHECK(fires.size() >= 6);
+    bool onWall = false;
+    for (const auto& f : fires) if (k->hitWall(f.coord)) onWall = true;
+    CHECK(onWall);
+    for (int i = 0; i < 30; ++i) w.level.events->update(); // calm events keep it burning
+    CHECK(!w.level.events->getFires().empty());
+}
+
+TEST(fire_smokes_and_the_wind_carries_it)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.level.events->setAblaze(200, 100, 204, 102);
+    w.level.windAngle = 0.0f;   // blowing east
+    w.level.windSpeed = 0.7f;
+    for (int i = 0; i < 25; ++i) { w.level.windAngle = 0.0f; w.level.skyTick(); }
+    CHECK(smokePuffs(w.level) > 5);
+    float sum = 0; size_t n = 0;
+    for (const auto& g : w.level.gas) if (g.smoke) { sum += g.x; ++n; }
+    CHECK(n && sum / n > 205.0f);   // drifted downwind of the fire
+    CHECK(w.level.gasAt(Coord{ 0, 0 }) == 0);
+}
+
+TEST(wind_blowing_west_takes_smoke_west)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.level.events->setAblaze(200, 100, 204, 102);
+    w.level.windSpeed = 0.7f;
+    for (int i = 0; i < 25; ++i) { w.level.windAngle = 3.14159f; w.level.skyTick(); }
+    float sum = 0; size_t n = 0;
+    for (const auto& g : w.level.gas) if (g.smoke) { sum += g.x; ++n; }
+    CHECK(n && sum / n < 199.0f);
+}
+
+TEST(wind_changes_direction_over_time)
+{
+    World w(Coord{ 20, 20 });
+    const float start = w.level.windAngle;
+    float lo = start, hi = start;
+    for (int i = 0; i < 3000; ++i) {
+        w.level.skyTick();
+        lo = std::min(lo, w.level.windAngle); hi = std::max(hi, w.level.windAngle);
+    }
+    CHECK(hi - lo > 1.0f);
+    CHECK(w.level.windSpeed >= 0.1f && w.level.windSpeed <= 0.8f);
+}
+
+TEST(flames_flicker)
+{
+    World w(Coord{ 50, 50 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.level.events->setAblaze(48, 48, 56, 52);
+    w.level.updateCamera();
+    w.mask.init();
+    const uint32_t row = 50 - (uint32_t)w.level.cameraY;
+    auto snapshot = [&]() { string s; for (const auto& c : w.printer.rowCells(&w.level, row)) s += c.first + c.second; return s; };
+    const string a = snapshot();
+    bool changed = false;
+    for (int i = 0; i < 5 && !changed; ++i) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(120));
+        changed = snapshot() != a;
+    }
+    CHECK(changed);
+}
+
+TEST(breathing_smoke_makes_you_cough)
+{
+    World w(Coord{ 80, 80 });
+    for (int i = 0; i < 300 && !w.printer.saw("Savu") && !w.printer.saw("savua"); ++i) {
+        GasPuff g { 80.0f, 80.0f, 30u, false };
+        g.smoke = true;
+        w.level.gas.push_back(g);
+        w.level.windSpeed = 0.1f;
+        w.player.stats.health = 100;
+        w.level.skyTick();
+    }
+    CHECK(w.printer.saw("Savu") || w.printer.saw("savua"));
 }
 
 // ---- timing ----

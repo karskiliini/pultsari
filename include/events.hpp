@@ -17,13 +17,15 @@ struct Fire {
 
 class EnvironmentEvents {
 public:
-    EnvironmentEvents(Level* level);
+    EnvironmentEvents(Level* level, bool calm = false);
     ~EnvironmentEvents() = default;
 
     void update();
 
     bool hasFire(const Coord& c) const;
     void addFiresAround(const Coord& c);
+    // a whole building catches fire: flames over its walls and inside, burning for a long while
+    void setAblaze(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom);
     const std::vector<Fire>& getFires() const { return fires; }
 
 private:
@@ -43,6 +45,7 @@ private:
     void hypermarketFire();
 
     Level* level;
+    bool calm;  // early Moscow: only fires burn, no random disasters
     std::vector<Fire> fires;
     uint32_t droneCooldown = 0;
     uint32_t aaCooldown = 0;

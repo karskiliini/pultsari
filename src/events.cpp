@@ -7,10 +7,11 @@
 #include "animation.hpp"
 #include "common.hpp"
 #include <cstdlib>
+#include <algorithm>
 
 using common::random;
 
-EnvironmentEvents::EnvironmentEvents(Level* level) : level(level)
+EnvironmentEvents::EnvironmentEvents(Level* level, bool calm) : level(level), calm(calm)
 {
     if (level->isWarLevel) {
         droneCooldown = 5 + std::rand()%8;
@@ -26,6 +27,12 @@ EnvironmentEvents::EnvironmentEvents(Level* level) : level(level)
 
 void EnvironmentEvents::update()
 {
+    if (calm) {
+        updateFires();
+        fireDamage();
+        if (random(5)) spreadFire();
+        return;
+    }
     droneSound();
     droneStrike();
     aaFire();
@@ -81,6 +88,17 @@ void EnvironmentEvents::droneSound()
 
     // a harmless drone buzzes over the city
     if (random(30)) level->launchDrone(nullptr);
+}
+
+void EnvironmentEvents::setAblaze(uint32_t left, uint32_t top, uint32_t right, uint32_t bottom)
+{
+    const uint32_t w = right - left + 1, h = bottom - top + 1;
+    const uint32_t count = std::min<uint32_t>(40, 6 + w * h / 5);
+    for (uint32_t i = 0; i < count; ++i) {
+        const Coord fc { left + std::rand() % w, top + std::rand() % h };
+        if (fc.x >= common::SIZEX || fc.y >= common::SIZEY || hasFire(fc)) continue;
+        fires.push_back(Fire{ fc, 60 + (uint32_t)(std::rand() % 80), 6 });
+    }
 }
 
 void EnvironmentEvents::addFiresAround(const Coord& c)

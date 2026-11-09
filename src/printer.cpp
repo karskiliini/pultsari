@@ -1,4 +1,5 @@
 #include "printer.hpp"
+#include <chrono>
 #include "player.hpp"
 #include "item.hpp"
 #include "input.hpp"
@@ -357,6 +358,18 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
     printChar(line);
 }
 
+// a flickering flame: glyph and colour change every ~0.1 s, differently in each cell
+static void flameAt(uint32_t x, uint32_t y, string& c, const char*& color)
+{
+    static const char* flame[] = { "^", "*", "~", "\"", "^", "'", "*", "\xE2\x96\xB2" };
+    static const char* heat[] = { "1;91", "1;93", "91", "33", "1;31", "1;93", "1;97", "91" };
+    const uint32_t t = (uint32_t)(std::chrono::duration_cast<std::chrono::milliseconds>(
+        std::chrono::steady_clock::now().time_since_epoch()).count() / 110);
+    const uint32_t h = (x * 73856093u) ^ (y * 19349663u) ^ (t * 83492791u);
+    c = flame[(h >> 3) % 8];
+    color = heat[(h >> 7) % 8];
+}
+
 vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 {
     uint32_t worldY = y + (uint32_t)l->cameraY;
@@ -431,6 +444,18 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             }
         }
 
+        // fire glows and smoke rises above the roofs: both show from a distance, even out of sight
+        if (!found && !mask->visible(coord) && player && coord.distance(player->coord) <= 40) {
+            if (l->events && l->events->hasFire(coord)) {
+                flameAt(x, worldY, c, color);
+                found = true;
+            } else if (l->gasAt(coord) == 3) {
+                c = "\xE2\x96\x92";
+                color = (x + worldY) % 3 ? "38;5;240" : "38;5;243";
+                found = true;
+            }
+        }
+
         if (!found && !mask->visible(coord)) {
             // a building's name plate shows whole as soon as any of its walls is in sight
             for (auto b : l->buildings) {
@@ -459,6 +484,12 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         if (thrownItem && thrownItem->coord.x == x) {
             c = thrownItem->typeToChar();
             color = "1;97";
+            found = true;
+        }
+
+        // flames flicker every frame, over walls too: a burning building looks like one
+        if (!found && l->events && l->events->hasFire(coord)) {
+            flameAt(x, worldY, c, color);
             found = true;
         }
 
@@ -522,7 +553,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
                     if (s == coord) { c = ";"; color = "2;37"; found = true; break; }
                 }
                 for (const auto& f : hm->fireSpots) {
-                    if (!found && f == coord) { c = "~"; color = "1;91"; found = true; break; }
+                    if (!found && f == coord) { flameAt(x, worldY, c, color); found = true; break; }
                 }
                 if (found) break;
             }
@@ -542,8 +573,8 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             if (groundVisible) {
                 const int gasKind = l->gasAt(coord);
                 if (gasKind && c == " ") {
-                    c = gasKind == 2 ? "\xE2\x96\x92" : "\xE2\x96\x91";
-                    col = gasKind == 2 ? "38;5;143" : "38;5;245";
+                    c = gasKind == 1 ? "\xE2\x96\x91" : "\xE2\x96\x92";
+                    col = gasKind == 2 ? "38;5;143" : gasKind == 3 ? ((x + worldY) % 3 ? "38;5;240" : "38;5;243") : "38;5;245";
                     if (string(color).find("48;") != string::npos) col += string(";") + color;
                 }
             }
