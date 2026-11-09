@@ -192,21 +192,6 @@
             },
         },
         {
-            who: 'SEKÄ', name: 'BOMŽ', line: 'Korjaa Ladan teipillä ja vodkalla.',
-            color: '#e2b46a',
-            art: [
-                '   [VODKA]   ~~~~~~ teippiä ~~~~~~',
-                '     ________',
-                '   _/  ____  \\___',
-                '  |___[____]_____|',
-                '     O        O',
-            ],
-            anim(ctx, t, x, y, cw, ch) {
-                ctx.fillStyle = '#f2d34a';
-                if (Math.floor(t * 6) % 2 === 0) ctx.fillText('*kilk*', x + cw * 20, y + ch * 5);
-            },
-        },
-        {
             who: 'SEKÄ', name: 'JUOPPO', line: '"Aitoa, brat!" Juo mitä tahansa.',
             color: '#c9b37a',
             dur: CARD_S,

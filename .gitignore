@@ -7,3 +7,4 @@ package-lock.json
 tests/unit_tests
 tests/*.o
 tests/*.d
+__pycache__/
