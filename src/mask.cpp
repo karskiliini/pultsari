@@ -48,17 +48,29 @@ float length(const Vec& v)
 
 }
 
+bool Mask::glanceTick()
+{
+    const auto now = std::chrono::steady_clock::now();
+    if (now - lastGlanceTick < std::chrono::milliseconds(GLANCE_DECIDE_MS)) return false;
+    lastGlanceTick = now;
+    return true;
+}
+
 Vec Mask::gazeDirection(const Vec& walk)
 {
-    // glancing sideways now and then
-    if (glances && glanceTurns == 0 && common::random(GLANCE_CHANCE)) {
-        glanceTurns = common::random(25) ? 2 : 1;
-        float span = GLANCE_MAX_ANGLE - GLANCE_MIN_ANGLE;
-        glanceAngle = GLANCE_MIN_ANGLE + span * (float)(std::rand() % 101) / 100.f;
-        if (std::rand() % 2) glanceAngle = -glanceAngle;
+    // glancing sideways now and then: decided at most every GLANCE_DECIDE_MS,
+    // so in real time the head turns and stays a moment instead of flickering
+    if (glances && glanceTick()) {
+        if (glanceTurns > 0) {
+            --glanceTurns;
+        } else if (common::random(GLANCE_CHANCE)) {
+            glanceTurns = common::random(25) ? 2 : 1;
+            float span = GLANCE_MAX_ANGLE - GLANCE_MIN_ANGLE;
+            glanceAngle = GLANCE_MIN_ANGLE + span * (float)(std::rand() % 101) / 100.f;
+            if (std::rand() % 2) glanceAngle = -glanceAngle;
+        }
     }
     if (glanceTurns > 0) {
-        --glanceTurns;
         return rotate(walk, glanceAngle);
     }
 
@@ -104,8 +116,16 @@ void Mask::init()
     const float sickness = (float)sight / (float)VISION_DISTANCE;
 
     // the eyes follow the walking direction; drunkenness narrows the cone
-    const Vec walk = p->heading.dir();
-    const Vec gaze = gazeDirection(walk);
+    // they turn gradually: never more than maxTurn degrees per update
+    if (!aimed) {
+        shownWalk = turnTowards(p->heading.dir(), p->heading.dir(), 0.f);
+        shownGaze = shownWalk;
+        aimed = true;
+    }
+    shownWalk = turnTowards(shownWalk, p->heading.dir(), maxTurn);
+    shownGaze = turnTowards(shownGaze, gazeDirection(shownWalk), maxTurn);
+    const Vec walk = shownWalk;
+    const Vec gaze = shownGaze;
     const float cone = coneScale(p->stats.promilles);
 
     uint32_t startX = (level->cameraX > 0) ? (uint32_t)level->cameraX : 0;

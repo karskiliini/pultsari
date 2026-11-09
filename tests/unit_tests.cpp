@@ -538,6 +538,41 @@ TEST(vision_reaches_far_ahead_and_short_behind)
     CHECK(!w.mask.visible(Coord{ 62, 50 }));
 }
 
+TEST(turning_is_limited_per_update)
+{
+    using VisionNS::Vec;
+    // right to left, at most 60 degrees at a time: up-right, up-left, left
+    Vec v { 1.f, 0.f };
+    const Vec left { -1.f, 0.f };
+    v = VisionNS::turnTowards(v, left, 60.f);
+    CHECK(std::fabs(VisionNS::angleBetween(v, Vec{ 1.f, 0.f }) - 60.f) < 0.5f);
+    CHECK(v.y < 0.f);                           // an about-turn goes counter-clockwise: up first
+    v = VisionNS::turnTowards(v, left, 60.f);
+    CHECK(std::fabs(VisionNS::angleBetween(v, left) - 60.f) < 0.5f);
+    v = VisionNS::turnTowards(v, left, 60.f);
+    CHECK(VisionNS::angleBetween(v, left) < 0.5f);
+    // a small turn is done at once, the shorter way round
+    v = VisionNS::turnTowards(Vec{ 1.f, 0.f }, Vec{ 1.f, 1.f }, 60.f);
+    CHECK(VisionNS::angleBetween(v, Vec{ 1.f, 1.f }) < 0.5f);
+}
+
+TEST(field_of_vision_turns_around_gradually)
+{
+    World w(Coord{ 50, 50 });
+    w.mask.enable();
+    w.mask.maxTurn = VisionNS::TURN_PER_STEP;
+    w.level.updateCamera();
+    w.mask.init();                              // facing right
+    CHECK(w.mask.visible(Coord{ 62, 50 }));
+    for (int i = 0; i < 8; ++i) w.player.heading.step(-1, 0);
+    w.mask.init();                              // turned a little: still not seeing far behind
+    CHECK(!w.mask.visible(Coord{ 42, 50 }));
+    w.mask.init();
+    w.mask.init();                              // 3 x 60 degrees: now facing left
+    CHECK(w.mask.visible(Coord{ 42, 50 }));
+    CHECK(!w.mask.visible(Coord{ 62, 50 }));
+}
+
 TEST(vision_stares_at_nearest_person_in_front)
 {
     World w(Coord{ 50, 50 });

@@ -69,6 +69,23 @@ Vec rotate(const Vec& v, float degrees)
     return { v.x * c - v.y * s, v.x * s + v.y * c };
 }
 
+Vec turnTowards(const Vec& from, const Vec& to, float maxDegrees)
+{
+    const float lf = std::sqrt(from.x * from.x + from.y * from.y);
+    const float lt = std::sqrt(to.x * to.x + to.y * to.y);
+    if (lt < 0.0001f) return lf < 0.0001f ? Vec{ 1.f, 0.f } : Vec{ from.x / lf, from.y / lf };
+    if (lf < 0.0001f) return { to.x / lt, to.y / lt };
+    const Vec f { from.x / lf, from.y / lf };
+
+    // angles counter-clockwise as seen on screen (y grows downwards)
+    float diff = (std::atan2(-to.y, to.x) - std::atan2(-f.y, f.x)) * 180.f / PI;
+    while (diff > 180.f) diff -= 360.f;
+    while (diff <= -180.f) diff += 360.f;
+    if (diff < -179.9f) diff = 180.f; // an about-turn, give or take rounding: counter-clockwise
+    if (std::fabs(diff) <= maxDegrees) return { to.x / lt, to.y / lt };
+    return rotate(f, diff > 0.f ? maxDegrees : -maxDegrees);
+}
+
 float coneScale(unsigned promilles)
 {
     if (promilles <= SOBER_PROMILLES) return 1.f;

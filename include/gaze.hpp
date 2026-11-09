@@ -27,6 +27,16 @@ constexpr unsigned GLANCE_CHANCE = 25;
 constexpr float GLANCE_MIN_ANGLE = 60.f;
 constexpr float GLANCE_MAX_ANGLE = 120.f;
 
+// The field of vision never jumps: the walking direction and the gaze turn
+// towards where they should point at most this much per update. A turn-based
+// game updates once per turn, the real-time game 20 times a second (a full
+// about-turn then takes some 0.75 s).
+constexpr float TURN_PER_STEP = 60.f;
+constexpr float TURN_PER_FRAME = 12.f;
+// In real time a sideways glance is decided at most this often, so a glance
+// is a turn of the head, not a flicker.
+constexpr unsigned GLANCE_DECIDE_MS = 500;
+
 // Drunkenness narrows the vision cone. Below SOBER_PROMILLES the cone is
 // full width, at DRUNK_PROMILLES and above its angles are DRUNK_CONE_SCALE
 // of normal (tunnel vision).
@@ -58,6 +68,10 @@ float angleBetween(const Vec& a, const Vec& b);
 
 // Rotate a vector by given degrees (positive = counter-clockwise on screen).
 Vec rotate(const Vec& v, float degrees);
+
+// `from` turned towards `to` by at most maxDegrees (the shorter way round;
+// an exact about-turn goes counter-clockwise). Returns a unit vector.
+Vec turnTowards(const Vec& from, const Vec& to, float maxDegrees);
 
 // Cone width multiplier for given promilles, 1.0 = sober.
 float coneScale(unsigned promilles);

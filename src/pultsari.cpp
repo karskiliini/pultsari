@@ -1038,6 +1038,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         level.pathFinding = pathFinding;
 
         VisionNS::Mask mask(&level);
+        // the field of vision turns gradually, per frame in real time, per turn otherwise
+        mask.maxTurn = common::realtimeEnabled ? VisionNS::TURN_PER_FRAME : VisionNS::TURN_PER_STEP;
 #ifdef LOS_ENABLED
         if (losEnabled)
             mask.enable();
