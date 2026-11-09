@@ -11,6 +11,7 @@ joka mahtuu ikkunaan.
 | `mainos-100.txt` / `.ans` | 100×75, kirkkausramppi, mustavalkoinen / ANSI-värit |
 | `mainos-200.txt` / `.ans` | 200×150, kirkkausramppi, mustavalkoinen / ANSI-värit |
 | `mainos-shape-64` / `-100` `.txt` / `.ans` | Muotoon valitut merkit, etu- ja taustaväri (terminaali-intro) |
+| `mainos-shape-64-anim.json` / `-100-anim.json` | Terminaali-intron liekki-, savu- ja palo-animaatio (48 kehystä, 12 fps) |
 | `mainos-anim.html` | Animoitu 200×150-versio omana sivunaan (klikkaus: tauko / jatka) |
 | `mainos-anim.json` | Animaation data: liekit, savu ja horisontin palot, 48 ruudun silmukka 12 fps |
 
@@ -37,8 +38,17 @@ python3 art/tools/build_webjs.py art/mainos-anim.json web/adart-data.js
 # terminaali: muotoon valitut merkit
 python3 art/tools/ascii_shape.py /tmp/m.bmp 100 art/mainos-shape-100.ans
 python3 art/tools/ascii_shape.py /tmp/m.bmp 64 art/mainos-shape-64.ans
-python3 art/tools/gen_cpp.py src/introart.cpp art/mainos-shape-64.ans art/mainos-shape-100.ans
+python3 art/tools/gen_shape_anim.py /tmp/m.bmp 100 art/mainos-shape-100-anim.json 48
+python3 art/tools/gen_shape_anim.py /tmp/m.bmp 64 art/mainos-shape-64-anim.json 48
+python3 art/tools/gen_cpp.py src/introart.cpp \
+    art/mainos-shape-64.ans:art/mainos-shape-64-anim.json \
+    art/mainos-shape-100.ans:art/mainos-shape-100-anim.json
 ```
+
+`gen_shape_anim.py` maalaa liekin, savun ja palojen välkkeen kuvan pikselinäytteisiin
+kehys kerrallaan ja sovittaa vain niiden koskemat ruudut uudelleen, joten animoidut
+ruudut näyttävät samalta kuin muu kuva. Intro piirtää kehyksiä odotusten aikana eikä
+koske ruutuihin, joiden päällä on tekstiä.
 
 `ascii_shape.py` vertaa jokaisen merkin muotoa (`tools/glyphs4x8.json`, Menlo-fontista
 mitattu musteen peitto 4×8-ruudukossa) kuvaan ja valitsee merkin sekä etu- ja
