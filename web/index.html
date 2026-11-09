@@ -252,6 +252,12 @@
             send(ch);
         }
 
+        // the version shows from the start; game frames keep it up to date
+        fetch('api/version').then((r) => r.text()).then((v) => {
+            const el = $('version');
+            if (v && el && !el.textContent) el.textContent = v;
+        }).catch(() => {});
+
         // browsers only allow audio after a user gesture, so start on the first key or click
         const startOverlay = $('start');
         // the game ad, animated, behind the start screen; the intro draws it on its own canvas

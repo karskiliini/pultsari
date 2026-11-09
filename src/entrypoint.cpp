@@ -3,9 +3,20 @@
 #include "printerweb.hpp"
 #include "pultsari.hpp"
 #include "common.hpp"
+#include "version.hpp"
+#include <cstdio>
+#include <cstring>
 
 int main(int argc, char *argv[])
 {
+    // before any printer touches the terminal
+    for (int i = 1; i < argc; ++i) {
+        if (std::strcmp(argv[i], "--version") == 0) {
+            std::puts(gameVersion());
+            return 0;
+        }
+    }
+
 #ifdef USE_NCURSES
     PrinterNcurses printer;
     return init(argc, argv, &printer);

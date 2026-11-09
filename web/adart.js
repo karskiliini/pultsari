@@ -111,6 +111,8 @@
         (function frame(now) {
             if (!running) return;
             const w = container.clientWidth, h = container.clientHeight, dpr = window.devicePixelRatio || 1;
+            // hidden or not laid out yet (e.g. a background tab): wait, a 0-size canvas cannot be drawn
+            if (w < 1 || h < 1) { requestAnimationFrame(frame); return; }
             if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
                 canvas.width = Math.round(w * dpr); canvas.height = Math.round(h * dpr);
             }
