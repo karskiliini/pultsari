@@ -1,4 +1,4 @@
-// Synthesized sound effects for PПLTSAЯI 2. The game asks for them with an
+// Synthesized sound effects for Grand Tyr Moscow. The game asks for them with an
 // OSC 777 escape ("snd;<name>;<volume>") that the page intercepts.
 (function () {
     let ctx = null;

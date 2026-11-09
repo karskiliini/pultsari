@@ -59,13 +59,13 @@ void Intro::show()
     snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y, CENTER_X);
     cout << posBuf;
 
-    // "PПLTSARI 2: " appears letter by letter in bold white
+    // "GRAND TYR MOSCOW: " appears letter by letter in bold white
     cout << "\033[1;37m";
-    typewrite("P" "\xD0\x9F" "LTSA" "\xD0\xAF" "I 2: ", 120);
+    typewrite("GRAND TYR MOSCOW: ", 100);
     cout << "\033[0m";
 
-    // subtitle sits right after the 12-column "PПLTSAЯI 2: "
-    const int SUB_X = CENTER_X + 12;
+    // subtitle sits right after the 18-column "GRAND TYR MOSCOW: "
+    const int SUB_X = CENTER_X + 18;
     const int CYR_Y = TITLE_Y + 1; // the Cyrillic forms on the very next line
     auto at = [&](int y, int x) {
         snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", y, x);

@@ -33,7 +33,7 @@ void PrinterWeb::printScore(const ScoreBoard* scoreBoard)
 
 void PrinterWeb::printHelp()
 {
-    printChar("PПLTSAЯI 2 · Русский Мир\n");
+    printChar("GRAND TYR MOSCOW · Русский Мир\n");
 }
 
 // buildings and streets for the overview map (Tab in the browser)

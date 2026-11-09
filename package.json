@@ -1,7 +1,7 @@
 {
   "name": "pultsari",
   "version": "2.0.0",
-  "description": "PПLTSAЯI 2: Russki Mir — browser client: the C++ game streams JSON frames that the page draws on a canvas",
+  "description": "Grand Tyr Moscow – Russki Mir — browser client: the C++ game streams JSON frames that the page draws on a canvas",
   "private": true,
   "scripts": {
     "start": "make && node web/server.js"

@@ -444,7 +444,7 @@
         ctx.textBaseline = 'middle';
         ctx.font = `bold ${fs}px ui-monospace, Menlo, monospace`;
         ctx.fillStyle = '#fff';
-        ctx.fillText('P\u041FLTSA\u042FI 2', W / 2, H * 0.4);
+        ctx.fillText('GRAND TYR MOSCOW', W / 2, H * 0.4);
         ctx.font = `bold ${Math.round(fs * 0.6)}px ui-monospace, Menlo, monospace`;
         ctx.fillStyle = '#7fbf1f';
         ctx.fillText('Russki Mir · Русский Мир', W / 2, H * 0.4 + fs * 0.95);

@@ -1,4 +1,6 @@
-# PПLTSAЯI 2: Russki Mir
+# Grand Tyr Moscow – Russki Mir
+
+*Гранд Тырь Москва — Русский Мир.* (*тырить*: Russian slang for to nick, to pinch.)
 
 A satirical roguelike set in Moscow, 2025. You are a pultsari (a street drunk). Collect empty bottles, avoid the politsija, gopniks and FSB, get hold of a propusk and make your way into Vova's wine cellar inside the Kremlin. The game text is in Finnish, with Russian thrown in.
 
@@ -49,4 +51,4 @@ Then open http://localhost:3000.
 
 The original Pultsari was written in QuickBasic 4.5 at the turn of 1991–1992 by Jari Maaranen, Tero Maaranen and Kimmo Korhonen. The original sources are in `basic/`: `pulsubin.bas` is the original binary-format file and `pultsari.bas` is a lightly refactored ASCII version. They can be run with [QB64](https://qb64.com/) or with QuickBasic 4.5 in DOSBox.
 
-The game was later ported to C++, and that port became PПLTSAЯI 2.
+The game was later ported to C++, and that port became PПLTSAЯI 2, now Grand Tyr Moscow.

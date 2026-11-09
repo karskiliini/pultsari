@@ -787,7 +787,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         if (welcome) {
             welcome = false;
             std::string welcomeMsg = restartedByZ ? "Uusi pultsari her\xC3\xA4\xC3\xA4 penkilt\xC3\xA4. Edellisest\xC3\xA4 ei kukaan kysy."
-                : "Tervetuloa P\xD0\x9F""LTSARI 2:een! \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80";
+                : "Tervetuloa Grand Tyr Moscow'hun! \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80";
             restartedByZ = false;
             printer->showMessage(welcomeMsg, &level, false);
         } else {
@@ -1460,7 +1460,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
     if (gameState.phase == GamePhase::Victory) {
         printer->clear();
-        printer->printChar("P\xD0\x9F""LTSARI 2 - \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80 p\xC3\xA4\xC3\xA4ttyi!\n\n");
+        printer->printChar("GRAND TYR MOSCOW - \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80 p\xC3\xA4\xC3\xA4ttyi!\n\n");
         printer->printChar("Teljet oven takanasi...\n");
         printer->printChar("Viinirivistöt loistavat edessäsi kuin paratiisi.\n\n");
         common::sleep(2000);

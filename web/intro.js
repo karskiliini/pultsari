@@ -26,7 +26,7 @@
         const fs = Math.max(22, Math.min(46, W / 19));
         const font = `bold ${fs}px ui-monospace, "Cascadia Code", Menlo, monospace`;
         ctx.font = font;
-        const titleText = 'PПLTSAЯI 2: ';
+        const titleText = 'GRAND TYR MOSCOW: ';
         const latinText = 'Russki Mir';
         const cyrText = 'Русский Мир';
         const titleW = ctx.measureText(titleText).width;

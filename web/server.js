@@ -185,5 +185,5 @@ wss.on('connection', (ws, req) => {
 });
 
 server.listen(PORT, '0.0.0.0', () => {
-    console.log(`PПLTSAЯI 2 running at http://localhost:${PORT}`);
+    console.log(`Grand Tyr Moscow running at http://localhost:${PORT}`);
 });

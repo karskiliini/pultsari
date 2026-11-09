@@ -1,4 +1,4 @@
-// PПLTSAЯI 2 browser client: draws the game's JSON frames as ASCII on a canvas
+// Grand Tyr Moscow browser client: draws the game's JSON frames as ASCII on a canvas
 // and layers pixel effects (blood, explosions) on top. No terminal involved.
 (function () {
     const COLS = 80, ROWS = 28;
