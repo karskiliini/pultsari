@@ -698,6 +698,7 @@ static uint32_t baseSpeed(PersonType t)
         case kotiaiti:     return 11;
         case lapsi:        return 34;
         case kansalainen:  return 22;
+        case rotta:        return 30;
         default:           return 20;
     }
 }
@@ -769,6 +770,7 @@ std::string Level::nameOf(const Person* p) const
         case kotiaiti:     return "Koti\xC3\xA4iti";
         case lapsi:        return "Lapsi";
         case kansalainen:  return dynamic_cast<const Kansalainen*>(p)->name;
+        case rotta:        return "Rotta";
         default:           return "Joku";
     }
 }

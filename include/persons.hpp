@@ -395,4 +395,15 @@ private:
     uint32_t panic = 0;
 };
 
+// A rat that lives in a trash pile and defends its patch.
+class Rotta : public Person {
+public:
+    Rotta(const Coord& pos);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "r"; };
+    Coord home;
+};
+
 #endif

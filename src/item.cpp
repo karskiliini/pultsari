@@ -1,4 +1,6 @@
 #include "item.hpp"
+#include "persons.hpp"
+#include "level.hpp"
 #include "player.hpp"
 #include "level.hpp"
 #include <string>
@@ -322,7 +324,7 @@ bool Pensas::interact(PlayerNS::Player* player) {
 Roskis::Roskis(const Coord& c) : Item(c, ERoskis) { blocksLOS = true; }
 std::string Roskis::typeToChar() const { return "U"; }
 std::string Roskis::getMsg() const {
-    return "Roskis. Haisee, mutta voit piiloutua taakse.";
+    return "Roskis on tyhj\xC3\xA4. Kaikki roska on maassa sen ymp\xC3\xA4rill\xC3\xA4. Voit piiloutua taakse.";
 }
 bool Roskis::interact(PlayerNS::Player* player) {
     return false;
@@ -436,4 +438,52 @@ bool PutinPoyta::interact(PlayerNS::Player* player) {
 Kartta::Kartta(const Coord& c, const char* glyph) : Item(c, EKartta), glyph(glyph) { }
 std::string Kartta::getMsg() const {
     return "Sotakartta. Nuolet osoittavat yh\xC3\xA4 Kiovaan. Joku on piirt\xC3\xA4nyt ne tussilla uudestaan.";
+}
+
+// trash pile: what it holds is decided when it is dropped
+Roska::Roska(const Coord& c) : Item(c, ERoska)
+{
+    static const char* glyphs[] = { ",", ";", "`", "\"" };
+    glyph = glyphs[std::rand() % 4];
+    outcome = std::rand() % 100;
+    if (outcome < 14) msg = "Penkot roskia ja l\xC3\xB6yd\xC3\xA4t puolikkaan makkaran. Vain v\xC3\xA4h\xC3\xA4n homeessa.";
+    else if (outcome < 22) msg = "Roskista l\xC3\xB6ytyy omena. Siin\xC3\xA4 on yksi puraisu.";
+    else if (outcome < 32) msg = "Roskista l\xC3\xB6ytyy avaamaton Baltika! Kuka t\xC3\xA4llaisen heitt\xC3\xA4\xC3\xA4 pois?";
+    else if (outcome < 37) msg = "Pullon pohjalla on viel\xC3\xA4 vodkaa. Tai jotain.";
+    else if (outcome < 50) msg = "Kolikoita roskien seassa.";
+    else if (outcome < 58) msg = "Astut lasinsiruun. Au.";
+    else if (outcome < 62) msg = "Neula! Toivottavasti se oli vain neula.";
+    else if (outcome < 64) msg = "Roskien seassa on ammuksia. Moskova on t\xC3\xA4ynn\xC3\xA4 yll\xC3\xA4tyksi\xC3\xA4.";
+    else if (outcome < 65) msg = "Muoviin k\xC3\xA4\xC3\xA4ritty pistooli! Joku palaa hakemaan sit\xC3\xA4.";
+    else if (outcome < 80) msg = "Roskien alta s\xC3\xA4ntillee rotta! Se ei pid\xC3\xA4 vieraista.";
+    else msg = "Pelkk\xC3\xA4\xC3\xA4 roskaa. Ja haju.";
+}
+
+bool Roska::interact(PlayerNS::Player* player)
+{
+    auto& inv = player->inventory;
+    if (outcome < 14) ++inv.lenkki;
+    else if (outcome < 22) ++inv.omppo;
+    else if (outcome < 32) ++inv.kalja;
+    else if (outcome < 37) ++inv.vodka;
+    else if (outcome < 50) player->updateMoney(std::rand() % 8 + 1);
+    else if (outcome < 58) player->damage(1);
+    else if (outcome < 62) player->damage(2);
+    else if (outcome < 64) ++inv.ammukset;
+    else if (outcome < 65) ++inv.pistooli;
+    else if (outcome < 80) {
+        Level* level = player->level;
+        const int d[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+        for (const auto& o : d) {
+            Coord c { (uint32_t)((int)coord.x + o[0]), (uint32_t)((int)coord.y + o[1]) };
+            if (level->hit(c)) continue;
+            Rotta* rat = new Rotta(c);
+            rat->home = coord;
+            rat->pathFinding = level->pathFinding;
+            rat->printer = level->printer;
+            if (level->addPerson(rat)) break;
+            delete rat;
+        }
+    }
+    return true;
 }

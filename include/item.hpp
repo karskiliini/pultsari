@@ -35,7 +35,8 @@ enum ItemType {
     EVodka,
     EViinaKellari,
     EPutinPoyta,
-    EKartta
+    EKartta,
+    ERoska
 };
 
 class Level;
@@ -313,6 +314,19 @@ public:
     virtual bool interact(PlayerNS::Player* player) { return false; }
 private:
     const char* glyph;
+};
+
+// Litter on the ground around a trash bin: search it and see what you get.
+class Roska : public Item {
+public:
+    Roska(const Coord& c);
+    virtual std::string typeToChar() const { return glyph; }
+    virtual std::string getMsg() const { return msg; }
+    virtual bool interact(PlayerNS::Player* player);
+private:
+    const char* glyph;
+    std::string msg;
+    int outcome;
 };
 
 #endif

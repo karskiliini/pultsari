@@ -262,6 +262,7 @@ const char* personColor(const Person* p)
         case avustaja:     return "38;5;216";           // flushed drunk face
         case kotiaiti:     return "38;5;175";           // pink velour tracksuit
         case lapsi:        return "1;38;5;214";         // bright orange puffer jacket
+        case rotta:        return "38;5;246";           // grey fur
         default:           return "37";
     }
 }
@@ -279,6 +280,7 @@ const char* itemColor(ItemType t)
         case EBusStop:     return "1;93;44";
         case EPutinPoyta:  return "37";
         case EKartta:      return "1;33";
+        case ERoska:       return "38;5;94";
         default:           return "1;97";
     }
 }

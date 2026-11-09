@@ -3106,7 +3106,7 @@ Kansalainen::Kansalainen(const Coord& pos) : Person(kansalainen, pos), destinati
 {
     static const char* names[] = {
         "Irina", "Nina", "Boris", "Lena", "Kostja", "Dima", "Tanja", "Fjodor",
-        "Rita", "Zoja", "Juri", "Uljana", "Ksenija", "Ivan", "Eduard", "Hristina",
+        "Sveta", "Zoja", "Juri", "Uljana", "Ksenija", "Ivan", "Eduard", "Hristina",
     };
     struct Job { const char* job; const char* line; };
     static const Job jobs[] = {
@@ -3198,5 +3198,61 @@ bool Kansalainen::interactThrow(Item* item, Person* source, std::string& msg)
     say("Hei! Politsija!");
     damage(1);
     level->alertCops(source);
+    return true;
+}
+
+// ============ Trash rats ============
+
+Rotta::Rotta(const Coord& pos) : Person(rotta, pos), home(pos)
+{
+    stats.health = 2;
+    visionRange = 4;
+}
+
+void Rotta::npcAct()
+{
+    Player* p = level->getPlayer();
+    const bool intruder = p && p->coord.distance(home) <= 3 && canSeeTarget(p->coord);
+    Coord target = home;
+    if (intruder) {
+        if (coord.distance(p->coord) <= 1) {
+            if (random(40)) {
+                say("*VIIIK!*");
+                p->damage(1);
+                report("Rotta puraisee nilkkaasi!");
+            }
+            return;
+        }
+        if (random(25)) say("*viik viik*");
+        level->audio.addSound(coord, SoundType::Voice, "Rotta vinkuu vihaisesti", "Vinkunaa", "...vinkunaa...", 6);
+        target = p->coord;
+    } else if (random(50)) {
+        target = Coord{ home.x + std::rand() % 7 - 3, home.y + std::rand() % 5 - 2 };
+    }
+
+    Coord next = coord;
+    switch (getMoveDirection(target)) {
+        case DirectionNS::up:    if (next.y > 0) --next.y; break;
+        case DirectionNS::down:  ++next.y; break;
+        case DirectionNS::left:  if (next.x > 0) --next.x; break;
+        case DirectionNS::right: ++next.x; break;
+        default: return;
+    }
+    // stays on its own patch
+    if (next.distance(home) <= 4 && !level->hit(next)) coord = next;
+}
+
+bool Rotta::interact(std::string& msg, Person* source)
+{
+    damage(1);
+    msg = stats.health > 0 ? "Potkaiset rottaa. Se vinkuu ja puree takaisin!" : "Rotta lent\xC3\xA4\xC3\xA4 kaaressa roskiin.";
+    if (stats.health > 0) source->damage(1);
+    return true;
+}
+
+bool Rotta::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    damage(2);
+    msg = "Osuit rottaan.";
     return true;
 }

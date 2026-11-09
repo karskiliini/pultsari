@@ -66,8 +66,35 @@ static void populateItems(Level& level, const GameState& gs)
     if (random(20)) level.addItem(EVodka);
     for (int i = 0; i < std::rand() % 8 + 4; ++i)
         level.addItem(EPensas);
-    for (int i = 0; i < std::rand() % 4 + 2; ++i)
-        level.addItem(ERoskis);
+    // a bin or two beside each building, the ground around them full of litter
+    for (auto b : level.buildings) {
+        if (b->type == ESeina || b->type == EKremlin) continue;
+        for (int k = 0; k < 1 + std::rand() % 2; ++k) {
+            const bool right = random(50);
+            Coord bin { right ? b->wallRight + 1 : (b->wallLeft > 0 ? b->wallLeft - 1 : 0),
+                        b->wallTop + std::rand() % (b->wallBot - b->wallTop + 1) };
+            const Road* h = nullptr;
+            const Road* v = nullptr;
+            level.roadsAt(bin, h, v);
+            if (h || v || level.hit(bin)) continue;
+            level.addItem(new Roskis(bin));
+            bool ratPlaced = !random(30);
+            for (int t = 0; t < 4 + std::rand() % 5; ++t) {
+                Coord c { bin.x + std::rand() % 5 - 2, bin.y + std::rand() % 5 - 2 };
+                level.roadsAt(c, h, v);
+                if (h || v || level.hit(c)) continue;
+                if (!ratPlaced) {
+                    Rotta* rat = new Rotta(c);
+                    rat->home = bin;
+                    rat->pathFinding = level.pathFinding;
+                    rat->printer = level.printer;
+                    if (level.addPerson(rat)) { ratPlaced = true; continue; }
+                    delete rat;
+                }
+                level.addItem(new Roska(c));
+            }
+        }
+    }
     if (random(20))
         level.addItem(EPropusk);
     {
