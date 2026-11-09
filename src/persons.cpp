@@ -2272,7 +2272,14 @@ void Vartija::stepTo(const Coord& target)
         case DirectionNS::right: ++next.x; break;
         default: return;
     }
-    if (!level->hitWall(next) && !level->hitPerson(next)) coord = next;
+    if (!level->hitWall(next) && !level->hitPerson(next)) { coord = next; return; }
+    // blocked (a colleague in the way): step along the other axis instead
+    const bool wentSideways = next.y == coord.y;
+    const int dx = (int)target.x - (int)coord.x, dy = (int)target.y - (int)coord.y;
+    next = coord;
+    if (wentSideways && dy != 0) next.y = (uint32_t)((int)coord.y + (dy > 0 ? 1 : -1));
+    else if (!wentSideways && dx != 0) next.x = (uint32_t)((int)coord.x + (dx > 0 ? 1 : -1));
+    if (next != coord && !level->hitWall(next) && !level->hitPerson(next)) coord = next;
 }
 
 void Vartija::radioGuardAct()
@@ -2364,9 +2371,25 @@ void Vartija::npcAct()
     }
 
     uint32_t dist = coord.distance(p->coord);
+    const bool sees = dist <= 8 && canSeeTarget(p->coord);
 
-    if (dist <= 6 && canSeeTarget(p->coord)) {
-        if (dist <= 1) {
+    // spotted close to the door: he leaves his post and goes after you, but only so far
+    if (!chasing && sees && dist <= 6) {
+        chasing = true;
+        lostTicks = 0;
+        investigateTicks = 0;
+        if (random(60)) say(random(50) ? "SEIS, pummi!" : "Mihin sinä luulet meneväsi?!");
+    }
+    if (chasing) {
+        if (sees) { lostTicks = 0; lastKnownPos = p->coord; } else ++lostTicks;
+        if (lostTicks > 10 || coord.distance(homePos) > 24) {
+            chasing = false;
+            say(random(50) ? "Pah. Takaisin ovelle." : "Kyllä mä sut vielä nappaan.");
+        }
+    }
+
+    if (chasing) {
+        if (dist <= 1 && sees) {
             static const char* kicks[] = {
                 "Vartija potkaisee sinua ulos!",
                 "POIS! EI SAA TULLA SISÄÄN!",
@@ -2398,8 +2421,8 @@ void Vartija::npcAct()
             }
             p->coord = pushTarget;
         } else {
-            // chase the player
-            auto d = getMoveDirection(p->coord);
+            // after the player, or where he was last seen
+            auto d = getMoveDirection(lastKnownPos);
             Coord next = coord;
             switch(d) {
                 case DirectionNS::up: if (next.y > 0) --next.y; break;
@@ -2410,8 +2433,13 @@ void Vartija::npcAct()
             }
             if (!level->hit(next)) coord = next;
         }
+    } else if (investigateTicks > 0) {
+        // something clattered over there: go and look
+        --investigateTicks;
+        if (coord.distance(investigate) > 1) stepTo(investigate);
+        if (investigateTicks == 0 && random(60)) say("Ei mitään. Kakarat.");
     } else {
-        // patrol near home position
+        // back at the post, or patrolling near it
         if (coord.distance(homePos) > 3) {
             auto d = getMoveDirection(homePos);
             Coord next = coord;
@@ -2445,8 +2473,26 @@ void Vartija::npcAct()
     }
 }
 
+void Vartija::hearNoise(const Coord& c)
+{
+    if (hasRadio || chasing || fleeing) return;
+    investigate = c;
+    investigateTicks = 14 + std::rand() % 8;
+    if (random(50)) say("Mitä tuo oli?");
+}
+
+void Vartija::provoke(Person* by)
+{
+    if (hasRadio) return;
+    chasing = true;
+    lostTicks = 0;
+    investigateTicks = 0;
+    lastKnownPos = by->coord;
+}
+
 bool Vartija::interact(std::string& msg, Person* source)
 {
+    provoke(source);
     msg = "Vartija: 'Älä koske muhun!'";
     source->damage(3);
     if (hasRadio) {
@@ -2460,7 +2506,9 @@ bool Vartija::interact(std::string& msg, Person* source)
 
 bool Vartija::interactThrow(Item* item, Person* source, std::string& msg)
 {
-    msg = "Vartija väistää heittosi.";
+    provoke(source);
+    say("SINÄ! Odota vaan!");
+    msg = "Vartija väistää heittosi ja lähtee perääsi.";
     return true;
 }
 

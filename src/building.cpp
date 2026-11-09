@@ -714,17 +714,42 @@ std::string Hypermarket::typeToChar(const Coord& c) const
     return Building::typeToChar(c);
 }
 
+// door guards still at their post (within a few steps of the door)
+static int guardsAtDoor(const Building* b)
+{
+    if (!b->level) return 0;
+    const Coord door = b->getDoor();
+    int n = 0;
+    for (auto p : b->level->persons) {
+        const Vartija* v = dynamic_cast<const Vartija*>(p);
+        if (v && !v->hasRadio && v->stats.health > 0 && v->coord.distance(door) <= 4) ++n;
+    }
+    return n;
+}
+
 bool Hypermarket::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     if (onFire) {
         msg = "Sisälle palavaan hypermarkettiin! Vaarallista!";
         return true;
     }
-    msg = "Vartijat estävät tiesi.";
-    return false;
+    if (guardsAtDoor(this) > 0) {
+        msg = random(50) ? "Vartijat estävät tiesi. Houkuttele ne ensin muualle."
+                         : "Vartija: 'Pummeille ei ole asiaa. Häivy.'";
+        return false;
+    }
+    msg = "Ovella ei ole ketään! Livahdat sisään kassojen ohi.";
+    return true;
 }
 
 bool Hypermarket::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = onFire ? "Savua ja liekkejä. Hyllyt romahtelevat."
+                 : "Loisteputket surisevat. Hyllyt ovat täynnä. Kukaan ei katso.";
+    return true;
+}
+
+void Hypermarket::interact(PlayerNS::Player* player, std::string& msg)
 {
     if (onFire) {
         // inside the burning building - chance to find loot
@@ -747,15 +772,32 @@ bool Hypermarket::getInteractMsg(PlayerNS::Player* player, std::string& msg) con
         } else {
             msg = "Savu peittää näkyvyyden. Et löydä mitään.";
         }
-    } else {
-        msg = "Hypermarketti on suljettu pummeilta.";
+        return;
     }
-    return true;
-}
-
-void Hypermarket::interact(PlayerNS::Player* player, std::string& msg)
-{
-    getInteractMsg(player, msg);
+    // grand tyr: grab what you can and run
+    auto& inv = player->inventory;
+    msg = "Kahmit hyllyistä:";
+    const int grabs = 1 + std::rand() % 3;
+    for (int i = 0; i < grabs; ++i) {
+        switch (std::rand() % 6) {
+        case 0: ++inv.vodka; msg += " vodkaa,"; break;
+        case 1: inv.kalja += 2; msg += " kaksi Baltikaa,"; break;
+        case 2: ++inv.lenkki; msg += " makkaraa,"; break;
+        case 3: ++inv.kalat; msg += " voblaa,"; break;
+        case 4: ++inv.lonkka; msg += " Jaguaria,"; break;
+        default: ++inv.bansku; msg += " banaanin,"; break;
+        }
+    }
+    msg.back() = '!';
+    // the theft alarm beeps: guards who hear it come running
+    msg += " Hälytin piippaa: VARAS!";
+    if (level) {
+        level->audio.addSound(getDoor(), SoundType::Siren, "Hypermarketin hälytin piippaa!", "Hälytin", "...piippausta...", 30);
+        for (auto p : level->persons) {
+            Vartija* v = dynamic_cast<Vartija*>(p);
+            if (v && !v->hasRadio && v->stats.health > 0 && level->canHear(v->coord, getDoor(), 30, true)) v->provoke(player);
+        }
+    }
 }
 
 std::string Hypermarket::getWalkMsg() const { return "Hypermarketin seinät."; }

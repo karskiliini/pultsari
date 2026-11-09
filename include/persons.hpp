@@ -298,6 +298,13 @@ public:
     virtual std::string typeToChar() const { return "W"; };
     Coord homePos;
     bool fleeing = false;
+    // a door guard can be lured off: he chases you only so far, and goes to look at noises
+    bool chasing = false;
+    uint32_t lostTicks = 0;
+    Coord investigate { 0, 0 };
+    uint32_t investigateTicks = 0;
+    void hearNoise(const Coord& c);
+    void provoke(Person* by);
 private:
     // Kremlin guards carry radios (hasRadio) and react to what they see, hear or are told
     void radioGuardAct();

@@ -432,6 +432,85 @@ TEST(shop_name_hidden_when_no_wall_in_sight)
     CHECK(!contains(row, "TESTNAME"));
 }
 
+// ---- supermarket: lure the guards away and slip in ----
+
+struct Market {
+    World w;
+    Hypermarket* hm;
+    Vartija* g1;
+    Vartija* g2;
+    Coord door;
+    Market() : w(Coord{ 113, 60 }) {
+        hm = w.add(new Hypermarket(), 100, 40);          // door on the bottom wall
+        door = hm->getDoor();
+        g1 = w.spawn(new Vartija(Coord{ door.x, door.y + 1 }));
+        g2 = w.spawn(new Vartija(Coord{ door.x + 2, door.y + 1 }));
+        g1->homePos = g2->homePos = door;
+    }
+};
+
+TEST(market_guards_block_the_door)
+{
+    Market m;
+    string msg;
+    CHECK(!m.hm->getEnterMsg(&m.w.player, msg));
+    CHECK(contains(msg, "Vartija"));
+}
+
+TEST(market_lured_guard_leaves_the_door_then_gives_up)
+{
+    Market m;
+    m.w.player.coord = Coord{ m.door.x, m.door.y + 4 };
+    m.g1->provoke(&m.w.player);
+    uint32_t farthest = 0;
+    // the player runs off down the street; the guard follows for a while
+    for (int i = 0; i < 60; ++i) {
+        if (m.w.player.coord.y < m.door.y + 40) m.w.player.coord.y += 1;
+        m.g1->npcAct();
+        farthest = std::max(farthest, m.g1->coord.distance(m.door));
+    }
+    CHECK(farthest > 6);            // he left his post
+    CHECK(!m.g1->chasing);          // and gave up
+    for (int i = 0; i < 200 && m.g1->coord.distance(m.door) > 3; ++i) m.g1->npcAct();
+    CHECK(m.g1->coord.distance(m.door) <= 3); // back at the door
+}
+
+TEST(market_noise_draws_a_guard)
+{
+    Market m;
+    m.w.player.coord = Coord{ 160, 90 };   // well out of sight
+    const Coord noise { m.door.x + 10, m.door.y + 6 };
+    m.g1->hearNoise(noise);
+    uint32_t closest = 1000;
+    for (int i = 0; i < 30; ++i) { m.g1->npcAct(); closest = std::min(closest, m.g1->coord.distance(noise)); }
+    CHECK(closest <= 2);
+}
+
+TEST(market_thrown_item_makes_guards_look)
+{
+    Market m;
+    m.w.player.coord = Coord{ m.door.x + 4, m.door.y + 1 };
+    m.w.player.executeThrow(6, DirectionNS::down);   // a stone clatters onto the street
+    CHECK(m.g1->investigateTicks > 0 || m.g2->investigateTicks > 0);
+}
+
+TEST(market_empty_door_lets_you_in_and_the_theft_alarm_brings_them_back)
+{
+    Market m;
+    m.g1->coord = Coord{ m.door.x - 15, m.door.y + 8 };
+    m.g2->coord = Coord{ m.door.x + 15, m.door.y + 8 };
+    string msg;
+    CHECK(m.hm->getEnterMsg(&m.w.player, msg));
+    const auto before = m.w.player.inventory;
+    m.hm->interact(&m.w.player, msg);
+    const auto& after = m.w.player.inventory;
+    const uint32_t gained = (after.vodka - before.vodka) + (after.kalja - before.kalja) + (after.lenkki - before.lenkki) +
+                            (after.kalat - before.kalat) + (after.lonkka - before.lonkka) + (after.bansku - before.bansku);
+    CHECK(gained >= 1);
+    CHECK(contains(msg, "VARAS"));
+    CHECK(m.g1->chasing && m.g2->chasing);
+}
+
 // ---- fire, smoke and wind ----
 
 static size_t smokePuffs(const Level& l) { size_t n = 0; for (const auto& g : l.gas) if (g.smoke) ++n; return n; }

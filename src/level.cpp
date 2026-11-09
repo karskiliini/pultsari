@@ -142,6 +142,11 @@ void Level::actThrow(Person* source)
         {
             Coord landed = thrownItem->coord;
             bool grenade = thrownItem->type == EGranata;
+            // it clattered: door guards nearby go and look
+            for (auto p : persons) {
+                Vartija* v = dynamic_cast<Vartija*>(p);
+                if (v && v->stats.health > 0 && v->coord.distance(landed) <= 16) v->hearNoise(landed);
+            }
             delete thrownItem;
             thrownItem = nullptr;
             if (grenade) {
