@@ -207,10 +207,6 @@ void Intro::show()
     cout.flush();
     wait(1200);
 
-    cover(TITLE_Y + 2, CENTER_X, 6);
-    at(TITLE_Y + 2, CENTER_X);
-    cout << "\033[33m*R\xC3\x96KH*\033[0m";
-    cout.flush();
     common::sound("cough");
     wait(600);
 
@@ -220,10 +216,6 @@ void Intro::show()
     cout.flush();
     wait(400);
 
-    cover(TITLE_Y + 4, CENTER_X - 2, 10);
-    at(TITLE_Y + 4, CENTER_X - 2);
-    cout << "\033[33;1m*BLAAARGH*\033[0m";
-    cout.flush();
     common::sound("vomit");
     wait(600);
 
