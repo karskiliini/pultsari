@@ -232,10 +232,6 @@ void Intro::show()
         wait(120);
     }
 
-    cover(TITLE_Y + 3, SUB_X + 13, 11);
-    at(TITLE_Y + 3, SUB_X + 13);
-    cout << "\033[33;1m*\xC3\x96\xC3\x96\xC3\x96RRRKKK*\033[0m";
-    cout.flush();
     common::sound("vomit2");
     wait(500);
 

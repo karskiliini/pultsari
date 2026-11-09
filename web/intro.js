@@ -1026,7 +1026,6 @@
 
             const typed = Math.min(titleText.length, Math.floor(t / 0.11));
             text(titleText.slice(0, typed), startX, baseY, '#fff');
-            if (t > 5.0) text('*ÖÖÖRRRKKK*', latinX + latinW * 0.45, baseY - fs * 1.15, '#f0c040', fs * 0.45);
 
             drawFluid();
             drawDrips();
