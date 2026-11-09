@@ -272,6 +272,111 @@
             },
         },
         {
+            // the joke, shot like a film: close-ups, hard cuts, subtitles, letterbox
+            who: '', name: '', line: '', color: '#ddd', dur: 7.2, noCredit: true,
+            render(ctx, W, H, t, fs) {
+                const faces = {
+                    vova: { color: '#e6dccb', art: [
+                        '    _________    ',
+                        '   /         \\   ',
+                        '  |  ò     ó  |  ',
+                        '  |     ^     |  ',
+                        '  |   _____   |  ',
+                        '   \\_________/   ',
+                        '     |=====|     ',
+                    ] },
+                    vovaSquint: { color: '#e6dccb', art: [
+                        '    _________    ',
+                        '   /         \\   ',
+                        '  |  -     -  |  ',
+                        '  |     ^     |  ',
+                        '  |   _____   |  ',
+                        '   \\_________/   ',
+                        '     |=====|     ',
+                    ] },
+                    gerasimov: { color: '#b9c08f', art: [
+                        '   _[==★==]_     ',
+                        '  /         \\    ',
+                        ' |  ò     ò  |   ',
+                        ' |     o     |   ',
+                        ' |   \\___/   |   ',
+                        '  \\_________/    ',
+                        '   |✱ ✱ ✱ ✱|     ',
+                    ] },
+                    shoigu: { color: '#b9c08f', art: [
+                        '   _[==★==]_     ',
+                        '  /         \\  , ',
+                        ' |  °     °  | \' ',
+                        ' |     -     |   ',
+                        ' |    ~~~    |   ',
+                        '  \\_________/    ',
+                        '   |✱ ✱ ✱ ✱|     ',
+                    ] },
+                };
+                const shots = [
+                    { until: 1.8, face: 'vova',       who: 'VOVA',      say: 'Kuinka sota menee? Yhdellä sanalla.' },
+                    { until: 2.9, face: 'gerasimov',  who: 'GERASIMOV', say: 'Hyvin.' },
+                    { until: 4.4, face: 'vovaSquint', who: 'VOVA',      say: 'Entä kahdella sanalla?' },
+                    { until: 5.7, face: 'shoigu',     who: 'ŠOIGU',     say: 'Ei hyvin.' },
+                    { until: 99,  face: null,         who: '',          say: '' },
+                ];
+                let k = 0;
+                while (t >= shots[k].until) k++;
+                const shot = shots[k];
+                const from = k ? shots[k - 1].until : 0;
+                const lt = t - from;
+
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, W, H);
+                ctx.textAlign = 'center';
+                if (shot.face) {
+                    // a slow push-in on each close-up
+                    const f = faces[shot.face];
+                    const size = Math.round(fs * (2.1 + lt * 0.08));
+                    ctx.font = `${size}px ui-monospace, Menlo, monospace`;
+                    ctx.fillStyle = f.color;
+                    f.art.forEach((line, i) => ctx.fillText(line, W / 2, H * 0.46 + (i - f.art.length / 2) * size * 1.05));
+                    // Šoigu sweats
+                    if (shot.face === 'shoigu') {
+                        ctx.fillStyle = '#9fc8e8';
+                        const dy = (lt * 1.4 % 1) * size * 3;
+                        ctx.fillText('\'', W / 2 + size * 4.6, H * 0.46 - size * 1.6 + dy);
+                    }
+                } else {
+                    // the wide shot: the table, the two ends, nobody says anything
+                    ctx.font = `${Math.round(fs * 0.9)}px ui-monospace, Menlo, monospace`;
+                    ctx.fillStyle = '#c8b27a';
+                    ctx.fillText('o o ' + '_'.repeat(70) + ' o', W / 2, H * 0.48);
+                    ctx.fillText('|' + ' '.repeat(74) + '|', W / 2, H * 0.48 + fs);
+                    ctx.fillStyle = '#888';
+                    if (lt > 0.4) ctx.fillText('. . .', W / 2, H * 0.38);
+                }
+
+                // letterbox
+                const bar = H * 0.13;
+                ctx.fillStyle = '#000';
+                ctx.fillRect(0, 0, W, bar);
+                ctx.fillRect(0, H - bar, W, bar);
+                // subtitles in the bottom bar
+                if (shot.say && lt > 0.15) {
+                    ctx.font = `italic ${Math.round(fs * 0.95)}px ui-monospace, Menlo, monospace`;
+                    ctx.fillStyle = '#f2d34a';
+                    ctx.fillText(shot.who + ':', W / 2, H - bar * 0.68);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText(shot.say, W / 2, H - bar * 0.3);
+                }
+                // film grain and a vignette
+                ctx.fillStyle = 'rgba(255,255,255,0.05)';
+                for (let i = 0; i < 160; i++) ctx.fillRect(Math.random() * W, bar + Math.random() * (H - 2 * bar), 1.5, 1.5);
+                const vg = ctx.createRadialGradient(W / 2, H / 2, H * 0.25, W / 2, H / 2, H * 0.75);
+                vg.addColorStop(0, 'rgba(0,0,0,0)');
+                vg.addColorStop(1, 'rgba(0,0,0,0.6)');
+                ctx.fillStyle = vg;
+                ctx.fillRect(0, bar, W, H - 2 * bar);
+                ctx.textAlign = 'left';
+            },
+        },
+        {
             who: 'SEKÄ', name: 'VKUSNO I TOTŠKA', line: 'Ei ole sama. Jono on silti sama.',
             color: '#e05050',
             art: [
@@ -415,6 +520,13 @@
         ctx.restore();
         }
 
+        if (s.noCredit) {
+            if (local < 0.12) {
+                ctx.fillStyle = `rgba(255,255,255,${0.8 * (1 - local / 0.12)})`;
+                ctx.fillRect(0, 0, W, H);
+            }
+            return true;
+        }
         // the credit bar slides in from the left
         const slide = Math.min(1, local / 0.35);
         const barY = H * 0.78;
