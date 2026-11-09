@@ -27,7 +27,9 @@ enum BuildingType {
     EBank,
     EShop,
     EMetro,
-    EFlats
+    EFlats,
+    EGasStation,
+    EGasPump
 };
 
 class Level;
@@ -248,6 +250,28 @@ public:
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
     std::string station;
+};
+
+// A petrol station kiosk: hot dogs and beer, and outside people complain about the prices.
+class Bensa : public Building {
+public:
+    Bensa();
+    virtual std::string getName() const { return "\xD0\x90\xD0\x97\xD0\xA1 \xC2\xB7 95"; } // "АЗС · 95"
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+    virtual void npcAct();
+    uint32_t grumbleTicks = 0;
+    bool outOfFuel = false;   // then the queue of cars stretches down the road
+};
+
+// A petrol pump in front of the kiosk.
+class Pumppu : public Building {
+public:
+    Pumppu();
+    virtual std::string typeToChar(const Coord& c) const;
+    virtual std::string getWalkMsg() const;
 };
 
 // A grey block of flats filling up the city: no way in, graffiti on the walls.

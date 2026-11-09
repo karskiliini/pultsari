@@ -330,6 +330,37 @@ static void populateBuildings(Level& level, const GameState& gs)
         }
     }
 
+    // petrol stations by the big roads: a kiosk, two pumps, and people complaining about prices
+    {
+        const Coord wanted[] = { { 100, 142 }, { 300, 38 } };
+        for (const auto& want : wanted) {
+            bool placed = false;
+            for (int r = 0; r < 30 && !placed; ++r) {
+                for (int k = 0; k < 16 && !placed; ++k) {
+                    const int x = (int)want.x + (k % 4 - 2) * r, y = (int)want.y + (k / 4 - 2) * r / 2;
+                    if (x < 3 || y < 3) continue;
+                    if (!rectFree(level, x - 1, y - 1, x + 13, y + 9)) continue;
+                    Bensa* station = new Bensa();
+                    station->outOfFuel = random(50);
+                    b = station;
+                    b->setOffset(x, y);
+                    level.addBuilding(b);
+                    for (int px : { 3, 9 }) {
+                        Building* pump = new Pumppu();
+                        pump->setOffset(x + px, y + 7);
+                        level.addBuilding(pump);
+                    }
+                    // customers waiting, and grumbling
+                    for (int c = 0, tries = 0; c < 3 && tries < 30; ++tries) {
+                        const Coord at { (uint32_t)(x + std::rand() % 13), (uint32_t)(y + 5 + std::rand() % 4) };
+                        if (level.createPerson(at, common::random(60) ? kansalainen : juoppo)) ++c;
+                    }
+                    placed = true;
+                }
+            }
+        }
+    }
+
     // and the empty blocks fill up with grey flats, leaving alleys between them
     {
         const char* names[] = {
@@ -641,6 +672,33 @@ static void populateVehicles(Level& level)
                     if (free) level.addVehicle(car); else delete car;
                 }
             }
+        }
+    }
+
+    // a petrol station that has run dry: a queue of cars, kilometres long, parked down the road
+    for (auto b : level.buildings) {
+        const Bensa* station = dynamic_cast<const Bensa*>(b);
+        if (!station || !station->outOfFuel) continue;
+        const Road* road = nullptr;
+        uint32_t best = 1000;
+        for (const auto& r : level.roads) {
+            if (!r.horizontal) continue;
+            const uint32_t d = r.pos > b->wallBot ? r.pos - b->wallBot : b->wallTop - r.pos;
+            if (d < best) { best = d; road = &r; }
+        }
+        if (!road || best > 20) continue;
+        const uint32_t lane = road->pos + (road->pos > b->wallBot ? 0 : 2);
+        const int dir = road->pos > b->wallBot ? -1 : 1;
+        // the queue runs back from the station, against the direction of travel
+        int x = (int)(b->wallLeft + b->wallRight) / 2;
+        for (int k = 0, tries = 0; k < 18 + std::rand() % 12 && tries < 60; ++tries) {
+            x -= dir * 4;
+            if (x < 2 || x > (int)common::SIZEX - 6) break;
+            Car* car = new Car(Coord{ (uint32_t)x, lane }, true, dir);
+            car->script = Car::Script::Parked;
+            bool free = true;
+            for (const auto& cell : car->cells()) free = free && !level.hit(cell) && !level.getVehicleAt(cell);
+            if (free) { level.addVehicle(car); ++k; } else delete car;
         }
     }
 

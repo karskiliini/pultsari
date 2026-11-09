@@ -489,6 +489,41 @@ TEST(north_korean_marches_and_hits_back)
     CHECK(hit);
 }
 
+// ---- petrol station ----
+
+TEST(petrol_station_sells_hot_dogs)
+{
+    World w(Coord{ 30, 30 });
+    auto* st = w.add(new Bensa(), 100, 100);
+    w.player.stats.money = 20;
+    const uint32_t had = w.player.inventory.lenkki;
+    feedKeys("1");
+    string msg;
+    st->interact(&w.player, msg);
+    CHECK(w.player.inventory.lenkki == had + 1);
+    CHECK(w.player.stats.money == 14);
+}
+
+TEST(petrol_station_says_when_it_is_dry)
+{
+    World w(Coord{ 30, 30 });
+    auto* st = w.add(new Bensa(), 100, 100);
+    string msg;
+    st->outOfFuel = true;
+    st->getInteractMsg(&w.player, msg);
+    CHECK(contains(msg, "LOPPU"));
+}
+
+TEST(people_at_the_petrol_station_complain_about_prices)
+{
+    World w(Coord{ 30, 30 });
+    auto* st = w.add(new Bensa(), 100, 100);
+    auto* guy = w.spawn(new Juoppo(Coord{ 106, 107 }));
+    for (int i = 0; i < 40; ++i) st->npcAct();
+    CHECK(w.said(guy, "bensa") || w.said(guy, "Hinnat") || w.said(guy, "Jalostamo") || w.said(guy, "tankkaan") ||
+          w.said(guy, "litraa") || w.said(guy, "kopeekoita") || w.said(guy, "öljymaa"));
+}
+
 // ---- metro ----
 
 TEST(metro_takes_you_to_the_next_station)
@@ -503,6 +538,7 @@ TEST(metro_takes_you_to_the_next_station)
     CHECK(w.player.coord == b->getSpawn());
     CHECK(w.player.stats.money == 40);
     CHECK(contains(msg, "B"));
+    w.player.stats.money = 100;               // pay this time too, no fare-dodging luck involved
     b->interact(&w.player, msg);              // and the line loops back round
     CHECK(w.player.coord == a->getSpawn());
 }

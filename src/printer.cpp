@@ -333,6 +333,7 @@ const char* itemColor(ItemType t)
 
 const char* buildingColor(const Building* b, const string& glyph)
 {
+    if (b->type == EGasPump) return "1;31";   // red pumps
     if (glyph == "\xE2\x96\x88") return b->type == EKremlin ? "31" : "90";
     if (glyph == "\xE2\x96\x9E") return "37";
     if (glyph == "\xE2\x96\x91") return "33";

@@ -1154,6 +1154,108 @@ std::string Metro::getWalkMsg() const
     return "Metroasema " + station + ". Seinässä mosaiikki: traktoreita ja onnellisia työläisiä.";
 }
 
+// PETROL STATION
+
+Bensa::Bensa() : Building(BuildingType::EGasStation)
+{
+    walkable = true;
+    wallLeft = 0;
+    wallRight = 12;
+    wallTop = 0;
+    wallBot = 4;
+    door = DirectionNS::down;
+    windows.push_back({3, wallBot});
+    windows.push_back({9, wallBot});
+}
+
+bool Bensa::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "Kioskissa haisee bensa ja grillimakkara. Hintataulua päivitetään tussilla.";
+    return true;
+}
+
+bool Bensa::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = std::string(outOfFuel ? "BENSA LOPPU. " : "") + "KASSA: 1) Hot dog 6\xE2\x82\xBD  2) Baltika 12\xE2\x82\xBD  3) Bensaa  muu) ulos";
+    return true;
+}
+
+void Bensa::interact(PlayerNS::Player* player, std::string& msg)
+{
+    const char c = InputNS::Input::getMenuKey();
+    if (c == '1' || c == '2') {
+        const int price = c == '1' ? 6 : 12;
+        if ((int)player->stats.money < price) { msg = "Kassa: 'Rahat ensin. Hinnat nousivat juuri.'"; return; }
+        player->updateMoney(-price);
+        if (c == '1') { ++player->inventory.lenkki; msg = "Hot dog on ollut grillissä viikon. Se on nyt osa grilliä."; }
+        else { ++player->inventory.kalja; msg = "Baltika maksaa enemmän kuin eilen. Kassa ei tiedä miksi."; }
+        return;
+    }
+    if (c == '3') {
+        // no car, but there is a pump
+        player->updatepromilles(2);
+        if (random(40)) player->damage(1);
+        msg = "Sinulla ei ole autoa. Haistelet pumppua. Pää kevenee, hinta ei.";
+        return;
+    }
+    msg = "Kassa: 'Seuraava. Ja hinnat nousevat huomenna.'";
+}
+
+std::string Bensa::getWalkMsg() const
+{
+    return "Hintataulussa: 95 - hinta päivitetty tänään. Kahdesti.";
+}
+
+void Bensa::npcAct()
+{
+    // somebody standing about here complains about prices, now and then
+    if (++grumbleTicks < 18) return;
+    grumbleTicks = 0;
+    const Coord door = getDoor();
+    std::vector<Person*> near;
+    for (auto p : level->persons) {
+        if (p->type == pelaaja || p->stats.health == 0) continue;
+        if (p->coord.distance(door) <= 9) near.push_back(p);
+    }
+    if (near.empty()) return;
+    static const char* moans[] = {
+        "95-bensa maksaa taas enemmän! Eilen se maksoi vähemmän!",
+        "Venäjä on öljymaa, ja bensa on loppu. Selitä se.",
+        "Jalostamo paloi taas. Droonit, sanovat.",
+        "Ennen tankkasin täyteen. Nyt tankkaan toivoa.",
+        "Hinnat nousevat, palkka seisoo, Lada ruostuu.",
+        "Vain kaksikymmentä litraa per auto! Kuka keksi tämän?",
+        "Isoisä maksoi bensasta kopeekoita. Hän myös kuoli nuorena.",
+    };
+    static const char* queueMoans[] = {
+        "Jono on kolme kilometriä! Kolme!",
+        "Olen jonottanut tiistaista. Nyt on perjantai.",
+        "Bensa loppui. Taas. Mutta jono ei lopu.",
+        "Ensi kerralla tuon teltan.",
+    };
+    if (outOfFuel && random(50)) near[std::rand() % near.size()]->say(queueMoans[std::rand() % 4]);
+    else near[std::rand() % near.size()]->say(moans[std::rand() % 7]);
+}
+
+Pumppu::Pumppu() : Building(BuildingType::EGasPump)
+{
+    wallLeft = 0;
+    wallRight = 1;
+    wallTop = 0;
+    wallBot = 0;
+    hasDoor = false;
+}
+
+std::string Pumppu::typeToChar(const Coord& c) const
+{
+    return c.x == wallLeft ? "\xE2\x96\x90" : "\xE2\x96\x8C"; // ▐▌
+}
+
+std::string Pumppu::getWalkMsg() const
+{
+    return "Pumpun näytössä: 'EI BENSAA'. Joku on lisännyt tussilla: 'EIKÄ TOIVOA'.";
+}
+
 // BLOCKS OF FLATS
 
 Kerrostalo::Kerrostalo(const std::string& name, uint32_t w, uint32_t h)
