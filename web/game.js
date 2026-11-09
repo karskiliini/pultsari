@@ -127,16 +127,32 @@
         return { b: stops[3][1], s: stops[3][2] };
     }
 
+    // the view always fits the browser window: scale the whole grid, keep its shape
+    function fit() {
+        const dpr = window.devicePixelRatio || 1;
+        const frameEl = canvas.closest('#frame') || canvas.parentElement;
+        const side = document.getElementById('side');
+        const sideW = side && side.offsetParent ? side.offsetWidth + 10 : 0;
+        const availW = Math.max(200, document.documentElement.clientWidth - 32 - sideW - 4);
+        const top = frameEl.getBoundingClientRect().top + window.scrollY;
+        const below = 64; // HUD and sound line under the map
+        const availH = Math.max(150, window.innerHeight - top - below - 4);
+        const scale = Math.max(0.35, Math.min(3, availW / W, availH / H));
+        canvas.width = Math.round(W * scale * dpr);
+        canvas.height = Math.round(H * scale * dpr);
+        canvas.style.width = Math.round(W * scale) + 'px';
+        canvas.style.height = Math.round(H * scale) + 'px';
+        ctx.setTransform(dpr * scale, 0, 0, dpr * scale, 0, 0);
+        const main = document.getElementById('main');
+        if (main) main.style.width = Math.round(W * scale) + 4 + 'px';
+    }
+
     function setup(els) {
         ui = els;
         canvas = els.canvas;
-        const dpr = window.devicePixelRatio || 1;
-        canvas.width = COLS * CW * dpr;
-        canvas.height = ROWS * CH * dpr;
-        canvas.style.width = COLS * CW + 'px';
-        canvas.style.height = ROWS * CH + 'px';
         ctx = canvas.getContext('2d');
-        ctx.scale(dpr, dpr);
+        fit();
+        window.addEventListener('resize', fit);
         requestAnimationFrame(render);
     }
 

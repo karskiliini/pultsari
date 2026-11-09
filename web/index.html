@@ -21,8 +21,8 @@
         #inv li { display: flex; justify-content: space-between; color: #cfcfcf; line-height: 1.5; }
         #inv li.empty { color: var(--muted); }
         #main { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
-        #msg { min-height: 1.3em; font-weight: bold; font-size: 14px; }
-        #frame { border: 2px solid var(--red); position: relative; background: #000; overflow: auto; max-width: 100%; }
+        #msg { min-height: 1.3em; font-weight: bold; font-size: 14px; overflow-wrap: anywhere; }
+        #frame { border: 2px solid var(--red); position: relative; background: #000; overflow: hidden; max-width: 100%; }
         #framebar { display: flex; justify-content: space-between; font-size: 13px; }
         #framebar .title { background: var(--red); color: #fff; font-weight: bold; padding: 0 6px; }
         #level { color: #f2d34a; font-weight: bold; }
@@ -32,7 +32,7 @@
         #hud .lbl { color: var(--muted); }
         #hud b { color: #fff; }
         #hud b.good { color: #5ee05e; } #hud b.warn { color: #f2d34a; } #hud b.bad { color: #ff4d4d; }
-        #sounds { font-size: 13px; color: #3fb8b8; min-height: 1.3em; }
+        #sounds { overflow-wrap: anywhere; font-size: 13px; color: #3fb8b8; min-height: 1.3em; }
         #sounds:not(:empty)::before { content: "KUULET: "; color: #2b7b7b; }
         #sounds span + span::before { content: " | "; color: #2b7b7b; }
         #sounds .loud { color: #ff5050; font-weight: bold; }

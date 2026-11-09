@@ -431,6 +431,21 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         }
 
         if (!found && !mask->visible(coord)) {
+            // a building's name plate shows whole as soon as any of its walls is in sight
+            for (auto b : l->buildings) {
+                if (!b->hitBuilding(coord) || b->hitWall(coord) || coord.y != (b->wallTop + b->wallBot) / 2) continue;
+                const string g = b->typeToChar(coord);
+                if (g == " ") break;
+                bool wallSeen = false;
+                for (uint32_t wx = b->wallLeft; wx <= b->wallRight && !wallSeen; ++wx)
+                    wallSeen = mask->visible(Coord{ wx, b->wallTop }) || mask->visible(Coord{ wx, b->wallBot });
+                for (uint32_t wy = b->wallTop; wy <= b->wallBot && !wallSeen; ++wy)
+                    wallSeen = mask->visible(Coord{ b->wallLeft, wy }) || mask->visible(Coord{ b->wallRight, wy });
+                if (wallSeen) { c = g; color = buildingColor(b, c); found = true; }
+                break;
+            }
+        }
+        if (!found && !mask->visible(coord)) {
             // out of sight the streets still show faintly, so you can tell where you are
             const Road* h = nullptr;
             const Road* v = nullptr;
