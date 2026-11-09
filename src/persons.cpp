@@ -2126,7 +2126,9 @@ bool Sotilas::move(Direction d, std::string& msg)
         coord = check;
     } else {
         auto p = level->getPerson(check);
-        if (p && p->type != sotilas && p->type != poliisi && p->type != fsb) {
+        // at the front the player is one of them: a comrade just squeezes past
+        if (p && p->type != sotilas && p->type != poliisi && p->type != fsb &&
+            !(level->isWarLevel && p->type == pelaaja)) {
             msg = "Sotilas tönäisee tieltään!";
             p->damage(std::rand()%2 + 1);
         }
@@ -2195,6 +2197,24 @@ void Sotilas::npcAct()
         return;
     }
 
+    // at the front the player is already where they wanted him: a comrade, not a catch
+    if (level->isWarLevel) {
+        if (random(40)) move(randomDirection(), msg);
+        if (random(4)) {
+            static const char* lines[] = {
+                "Taas niitä FPV:itä... kuuletko sen ulinan?",
+                "Kuka vei verkon kaivannon päältä?",
+                "Ukropit lähettävät drooneja kuin sääskipilviä.",
+                "Minulle luvattiin kolmen viikon erikoisoperaatio.",
+                "Pysy erossa minusta, sinua ne jahtaavat!",
+                "Polttaisitko? Viimeinen. Huomenna ei tarvita.",
+            };
+            say(lines[std::rand() % 6]);
+        }
+        report(msg);
+        return;
+    }
+
     bool seesPlayer = canSeeTarget(p->coord);
 
     if (seesPlayer && coord.distance(p->coord) <= visionRange) {
@@ -2243,6 +2263,10 @@ void Sotilas::npcAct()
 
 bool Sotilas::interact(std::string& msg, Person* source)
 {
+    if (source->type == pelaaja && level->isWarLevel) {
+        msg = "Sotilas tuuppaa takaisin: 'Mene omaan kuoppaasi, juoppo!'";
+        return true;
+    }
     if (source->type == pelaaja) {
         msg = "Sotilas iskee takaisin kiväärin perällä!";
         uint32_t dmg = std::rand()%4 + 4;
@@ -2255,6 +2279,10 @@ bool Sotilas::interact(std::string& msg, Person* source)
 
 bool Sotilas::interactThrow(Item* item, Person* source, std::string& msg)
 {
+    if (source->type == pelaaja && level->isWarLevel) {
+        msg = "Sotilas väistää: 'Heitä ukropeja, älä minua!'";
+        return true;
+    }
     msg = "Sotilas väistää ja ampuu!";
     damage(1);
     if (source->type == pelaaja) {

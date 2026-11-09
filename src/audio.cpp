@@ -34,7 +34,7 @@ static const char* effectFor(const AudioEvent& e)
         case SoundType::Radio:        return "radio";
         case SoundType::Vomit:        return "vomit";
         case SoundType::Fire:         return "fire";
-        case SoundType::Drone:        return "drone";
+        case SoundType::Drone:        return e.textClose.rfind("Ziii", 0) == 0 ? "fpv" : "drone";
         case SoundType::Glass:        return "glass";
         case SoundType::Engine:       return e.textClose.rfind("T\xC3\x96\xC3\x96T", 0) == 0 ? "horn" : nullptr;
         default:                      return nullptr;

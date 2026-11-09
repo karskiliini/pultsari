@@ -419,6 +419,15 @@ static void populatePersons(Level& level, const GameState& gs)
         for (int i = 0; i < (int)gs.warStage; ++i) {
             if (random(50)) spawnVeteran(level);
         }
+        // comrades in the trenches around the player: they shoot at the FPV drones, and the drones hunt them
+        for (int i = 0; i < 4 + (int)gs.warStage * 2; ++i) {
+            Coord c = level.freePosition();
+            for (int tries = 0; tries < 30; ++tries) {
+                const Coord near { common::PLAYER_START_X + std::rand() % 41 - 20, common::PLAYER_START_Y + std::rand() % 17 - 8 };
+                if (near.x < common::SIZEX && near.y < common::SIZEY && !level.hit(near)) { c = near; break; }
+            }
+            level.createPerson(c, sotilas);
+        }
         return;
     }
 
@@ -763,6 +772,8 @@ struct RestartGame {};
 static bool restartedByZ = false;
 // --car: a car with the keys in waits right next to where you wake up (for trying out driving)
 static bool startByCar = false;
+// --front: start at the front, for trying out the war levels
+static bool startAtFront = false;
 
 static void parkCarByPlayer(Level& level, const Coord& at)
 {
@@ -1020,6 +1031,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
     GameState gameState;
     gameState.moscowStage = stage;
+    if (startAtFront) gameState.sendToWar();
 
     bool quit = false;
     bool skipWaitKey = false;
@@ -1906,6 +1918,8 @@ int init(int argc, char *argv[], Printer* printer)
             return 0;
         } else if (a == "--car") {
             startByCar = true;
+        } else if (a == "--front") {
+            startAtFront = true;
         } else if (a == "--path") {
             pathFinding = true;
         } else if ((a == "--realtime") || (a == "--rt")) {

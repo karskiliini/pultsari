@@ -1,5 +1,6 @@
 
 #include "level.hpp"
+#include "fpv.hpp"
 #include "item.hpp"
 #include "persons.hpp"
 #include "player.hpp"
@@ -387,6 +388,20 @@ void Level::vehicleFrame(uint32_t ms)
     for (size_t i = 0; i < drones.size();) {
         Drone& d = drones[i];
         const float dt = ms / 1000.0f;
+        if (d.fpv) {
+            Coord blastAt;
+            if (fpvFrame(*this, d, dt, blastAt)) {
+                drones.erase(drones.begin() + i);
+                fpvBlast(*this, blastAt);
+                continue;
+            }
+            if (d.x < -12 || d.y < -12 || d.x > common::SIZEX + 12 || d.y > common::SIZEY + 12) {
+                drones.erase(drones.begin() + i);
+                continue;
+            }
+            ++i;
+            continue;
+        }
         d.age += dt;
         float heading = std::atan2(d.vy, d.vx);
         const float speed = std::hypot(d.vx, d.vy);
@@ -735,6 +750,8 @@ void Level::skyTick()
 
     // now and then a drone just passes over
     if (common::random(isWarLevel ? 4 : 1)) launchDrone(nullptr);
+    // at the front the small FPV drones hunt soldiers
+    fpvTick(*this);
 
     // the wind veers a little all the time, and now and then swings right round
     windAngle += (std::rand() % 100 - 50) / 900.0f;
@@ -761,6 +778,7 @@ void Level::skyTick()
         for (const auto& f : events->getFires()) if (common::random(35)) addSmoke(f.coord);
     }
     for (const auto& d : drones) {
+        if (d.fpv) continue;    // they whine on their own (fpvTick)
         audio.addSound(Coord{ (uint32_t)std::max(0.0f, d.x), (uint32_t)std::max(0.0f, d.y) }, SoundType::Drone,
             "Drooni p\xC3\xB6risee aivan yl\xC3\xA4puolella!", "Droonin p\xC3\xB6rin\xC3\xA4\xC3\xA4", "...kaukaista p\xC3\xB6rin\xC3\xA4\xC3\xA4...", 35);
     }

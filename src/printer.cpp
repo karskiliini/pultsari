@@ -259,10 +259,19 @@ const vector<vector<const char*>>& droneSprite(const Drone& d)
 }
 
 // glyph of any drone covering (x, y), with `shadow` set for its shadow on the ground
-const char* droneCell(const Level* l, uint32_t x, uint32_t y, bool& shadow)
+// and `fpv` for a small FPV quadcopter (2 when it is diving)
+const char* droneCell(const Level* l, uint32_t x, uint32_t y, bool& shadow, int& fpv)
 {
     shadow = false;
+    fpv = 0;
     for (const auto& d : l->drones) {
+        if (d.fpv) {
+            // one cell: the X of the four rotor arms, flying low with its shadow right under
+            const int dx = (int)std::lround(d.x), dy = (int)std::lround(d.y);
+            if ((int)x == dx && (int)y == dy) { fpv = d.diving ? 2 : 1; return "\xE2\x95\xB3"; }   // ╳
+            if ((int)x == dx + 1 && (int)y == dy + 1) shadow = true;
+            continue;
+        }
         const auto& sprite = droneSprite(d);
         const int w = sprite[0].size();
         const int left = (int)std::lround(d.x) - w / 2;
@@ -459,9 +468,10 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 
         // drones are up in the sky, above everything, fog included
         bool droneShadow = false;
-        if (const char* g = droneCell(l, x, worldY, droneShadow)) {
+        int fpv = 0;
+        if (const char* g = droneCell(l, x, worldY, droneShadow, fpv)) {
             c = g;
-            color = "1;38;5;250";
+            color = fpv == 2 ? "1;38;5;196" : fpv ? "1;38;5;214" : "1;38;5;250";
             found = true;
         }
 

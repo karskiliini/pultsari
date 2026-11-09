@@ -7,6 +7,7 @@
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
+#include "fpv.hpp"
 #include "gaze.hpp"
 #include "disease.hpp"
 #include "item.hpp"
@@ -2991,4 +2992,103 @@ TEST(new_patrols_walk_in_out_of_sight)
     w.level.cleanDead();
     for (int i = 0; i < 500; ++i) Patrol::patrolTick(w.level);
     CHECK(w.count(poliisi) == 0);
+}
+
+// ---- FPV suicide drones at the front ----
+
+static size_t fpvCount(const Level& l) { size_t n = 0; for (const auto& d : l.drones) if (d.fpv) ++n; return n; }
+
+TEST(fpv_drone_goes_for_a_russian_soldier_not_a_prisoner)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    auto* pow = w.spawn(new Vanki(Coord{ 105, 100 }));           // close by, but a prisoner
+    auto* soldier = w.spawn(new Sotilas(Coord{ 120, 100 }));
+    CHECK(!isRussianSoldier(w.level, pow));
+    CHECK(isRussianSoldier(w.level, soldier));
+    CHECK(fpvPickPrey(w.level, 100.0f, 100.0f) == soldier);
+    // the conscripted player at the front is fair game, and the nearest one goes first
+    CHECK(isRussianSoldier(w.level, &w.player));
+    CHECK(fpvPickPrey(w.level, 22.0f, 22.0f) == &w.player);
+}
+
+TEST(fpv_drone_leaves_a_civilian_drunk_alone_in_moscow)
+{
+    World w(Coord{ 20, 20 });
+    CHECK(!isRussianSoldier(w.level, &w.player));       // not called up: just a drunk
+    w.player.conscripted = true;
+    CHECK(isRussianSoldier(w.level, &w.player));        // the FSB took him: now he is a soldier
+}
+
+TEST(fpv_drone_hunts_its_target_and_dives_in)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* soldier = w.spawn(new Sotilas(Coord{ 150, 100 }));
+    soldier->stats.health = 15;
+    launchFpv(w.level, 110.0f, 80.0f, soldier);
+    CHECK(fpvCount(w.level) == 1);
+    CHECK(w.level.drones[0].prey == soldier);
+    bool dived = false;
+    for (int f = 0; f < 20 * 30 && !w.level.drones.empty(); ++f) {
+        if (f % 8 == 0 && soldier->stats.health > 0) soldier->coord.y += (f / 8) % 2 ? 1 : -1;   // he shuffles about
+        w.level.vehicleFrame(50);
+        if (!w.level.drones.empty() && w.level.drones[0].diving) dived = true;
+    }
+    CHECK(dived);
+    CHECK(w.level.drones.empty());          // it blew itself up
+    CHECK(soldier->stats.health < 15);      // on him
+}
+
+TEST(fpv_blast_kills_at_the_point_and_spares_those_far_away)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* target = w.spawn(new Skinhead(Coord{ 100, 100 }));
+    auto* far = w.spawn(new Skinhead(Coord{ 110, 100 }));
+    fpvBlast(w.level, Coord{ 100, 100 });
+    CHECK(target->stats.health == 0);
+    CHECK(far->stats.health == 7);
+}
+
+TEST(fpv_drones_swarm_the_front_but_not_moscow)
+{
+    World front(Coord{ 100, 100 });
+    front.level.isWarLevel = true;
+    front.spawn(new Sotilas(Coord{ 130, 110 }));
+    for (int i = 0; i < 200; ++i) fpvTick(front.level);
+    CHECK(fpvCount(front.level) >= 3);
+    CHECK(fpvCount(front.level) <= FPV_MAX);
+
+    World moscow(Coord{ 100, 100 });
+    moscow.spawn(new Sotilas(Coord{ 130, 110 }));
+    for (int i = 0; i < 200; ++i) fpvTick(moscow.level);
+    CHECK(fpvCount(moscow.level) == 0);
+}
+
+TEST(soldiers_at_the_front_shoot_fpv_drones_down)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.spawn(new Sotilas(Coord{ 100, 100 }));
+    w.spawn(new Sotilas(Coord{ 104, 102 }));
+    launchFpv(w.level, 110.0f, 95.0f, nullptr);
+    w.level.drones[0].vx = w.level.drones[0].vy = 0;
+    for (int i = 0; i < 400 && fpvCount(w.level) > 0; ++i) antiDroneFire(w.level);
+    CHECK(fpvCount(w.level) == 0);
+}
+
+TEST(comrades_at_the_front_do_not_send_the_player_to_the_front)
+{
+    World w(Coord{ 100, 100 });
+    w.level.isWarLevel = true;
+    auto* s = w.spawn(new Sotilas(Coord{ 101, 100 }));
+    s->firstMove = false;
+    const uint32_t hp = w.player.stats.health;
+    for (int i = 0; i < 50; ++i) s->npcAct();
+    CHECK(!w.player.inJail);
+    CHECK(w.player.stats.health == hp);
 }

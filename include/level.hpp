@@ -44,6 +44,11 @@ struct Drone {
     Building* target = nullptr;
     float turn = 0;     // flyovers: radians per second of slow bank
     float age = 0;      // seconds in the air; a homing drone turns harder the longer it flies
+    // a small FPV quadcopter with a grenade: it hunts a soldier (`prey`) and dives onto him
+    bool fpv = false;
+    Person* prey = nullptr;     // only compared against level.persons, never trusted on its own
+    bool diving = false;        // locked onto (diveX, diveY) and coming straight down
+    float diveX = 0, diveY = 0;
 };
 
 // A puff of gas drifting on the wind: Lada exhaust or toxic refinery smoke.

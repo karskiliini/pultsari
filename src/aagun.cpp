@@ -490,7 +490,7 @@ void antiDroneFire(Level& level)
         else if (common::random(15)) p->say(common::random(50) ? "Drooni! Ampukaa se alas!" : "Bespilotnik! OGON!");
         level.audio.addSound(p->coord, SoundType::Gunshot,
             "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Sotilaat ampuvat droonia!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
-        if (common::random(15)) {
+        if (common::random(d.fpv ? 10 : 15)) {   // a small, darting FPV is harder to hit
             downDrone(level, target);
             continue;
         }

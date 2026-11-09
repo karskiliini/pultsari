@@ -6,7 +6,7 @@
     let muted = false;
     const lastPlayed = {};
     // continuous sources are re-announced every NPC tick; play them sparingly
-    const minGapMs = { grind: 250, crash: 300, starter: 700, splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380, horn: 1200 };
+    const minGapMs = { grind: 250, crash: 300, starter: 700, splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380, fpv: 300, horn: 1200 };
 
     // Recorded sounds from Pixabay (web/sounds/CREDITS.md), decoded once the context exists.
     const sampleFiles = {
@@ -245,6 +245,36 @@
             o.connect(f).connect(g).connect(master);
             o.start(t); wob.start(t);
             o.stop(t + 0.5); wob.stop(t + 0.5);
+        },
+        // an FPV quadcopter: four tiny props screaming high, the pitch hunting up and down
+        fpv(t, v) {
+            const base = 420 + Math.random() * 60;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(level(0.12 * v), t + 0.05);
+            g.gain.setValueAtTime(level(0.12 * v), t + 0.28);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+            const f = ctx.createBiquadFilter();
+            f.type = 'bandpass';
+            f.frequency.value = 1400;
+            f.Q.value = 0.8;
+            f.connect(g).connect(master);
+            const oscs = [];
+            for (let i = 0; i < 2; i++) {
+                const o = ctx.createOscillator();
+                o.type = 'sawtooth';
+                o.frequency.setValueAtTime(base * (1 + i * 0.013), t);
+                o.frequency.linearRampToValueAtTime(base * (1.12 + i * 0.013), t + 0.2);
+                o.frequency.linearRampToValueAtTime(base * (1.03 + i * 0.013), t + 0.38);
+                const wob = ctx.createOscillator();
+                wob.frequency.value = 37 + i * 4;
+                const wobGain = ctx.createGain();
+                wobGain.gain.value = 9;
+                wob.connect(wobGain).connect(o.frequency);
+                o.connect(f);
+                oscs.push(o, wob);
+            }
+            for (const o of oscs) { o.start(t); o.stop(t + 0.4); }
         },
         glass(t, v) {
             for (let i = 0; i < 9; i++) {
