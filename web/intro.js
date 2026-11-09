@@ -73,6 +73,7 @@
         // the vomit first piles up on the screen's bottom border, then oozes over it and drips away
         const floorCell = Math.floor(H / CELL) - 1;
         const smear = new Uint8Array(FW * 3); // stains on the border rows
+        const smearK = new Uint8Array(FW * 3); // and what they are made of
         const drips = [];   // slime strands hanging from the border
         const drops = [];   // drops that let go and fall
 
@@ -89,13 +90,40 @@
         const G = 0.03, R0 = 1.15, H_ = 2.3, K = 0.09, COH = 0.009, VISC = 0.13;
         const grid = new Map();
 
-        function emit(x, y, ux, uy, th = 1) {
+        // What the drunk had eaten: the liquid is bile, pizza sauce, beer and sausage gravy, and it
+        // carries lumps of pepperoni, cheese, sausage, pizza crust and green pepper.
+        const PAL = [
+            [196, 214, 96],   // 0 bile
+            [222, 112, 44],   // 1 pizza sauce
+            [232, 200, 104],  // 2 beer and bile
+            [180, 112, 74],   // 3 sausage gravy
+            [176, 36, 28],    // 4 pepperoni
+            [252, 212, 76],   // 5 cheese
+            [226, 142, 128],  // 6 sausage
+            [210, 162, 92],   // 7 crust
+            [92, 156, 40],    // 8 green pepper
+        ];
+        const CHUNK0 = 4;
+        const kind = new Uint8Array(MAX);
+        let mealMix = 1;   // the liquid the current retch is mostly made of
+        function pickChunk() {
+            const c = Math.random();
+            return c < 0.3 ? 4 : c < 0.55 ? 5 : c < 0.75 ? 6 : c < 0.9 ? 7 : 8;
+        }
+        function pickKind() {
+            const r = Math.random();
+            if (r < 0.14) return pickChunk();
+            if (r < 0.8) return mealMix;
+            return (Math.random() * CHUNK0) | 0;
+        }
+
+        function emit(x, y, ux, uy, th = 1, k = pickKind()) {
             if (n >= MAX) return;
-            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; rest[n] = 0; fly[n] = 0; n++;
+            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; rest[n] = 0; fly[n] = 0; kind[n] = k; n++;
         }
         function remove(i) {
             n--;
-            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n]; rest[i] = rest[n]; fly[i] = fly[n];
+            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n]; rest[i] = rest[n]; fly[i] = fly[n]; kind[i] = kind[n];
         }
         const at = (mask, x, y) => {
             const cx = x | 0, cy = y | 0;
@@ -165,7 +193,11 @@
                     // lands on the border and pools there
                     py[i] = floorCell; if (vy[i] > 0) vy[i] *= -0.05; vx[i] *= 0.975;
                     const sx = px[i] | 0;
-                    if (rest[i] === 0 && Math.random() < 0.25) smear[(Math.random() < 0.5 ? FW : 0) + sx] = 1 + (thick[i] > 0.5);
+                    if (rest[i] === 0 && Math.random() < 0.25) {
+                        const si = (Math.random() < 0.5 ? FW : 0) + sx;
+                        smear[si] = 1 + (thick[i] > 0.5);
+                        smearK[si] = kind[i];
+                    }
                     if (rest[i] < 65000) rest[i]++;
                     // the puddle creeps toward the nearest hanging drip, which drains it
                     let best = 1e9, near = 0;
@@ -232,17 +264,32 @@
             return [Math.round(196 - 140 * t + shimmer), Math.round(238 - 110 * t + shimmer), Math.round(92 - 72 * t)];
         }
 
+        const tintR = new Float32Array(FW * FH), tintG = new Float32Array(FW * FH), tintB = new Float32Array(FW * FH);
+        const tintW = new Float32Array(FW * FH);
+        const lumpAt = new Uint8Array(FW * FH);   // a lump of food in this cell, by kind
         function drawFluid() {
             density.fill(0);
             thickness.fill(0);
+            tintR.fill(0); tintG.fill(0); tintB.fill(0); tintW.fill(0);
+            lumpAt.fill(0);
             for (let i = 0; i < n; i++) {
                 const cx = px[i] | 0, cy = py[i] | 0;
+                const k = kind[i], c = PAL[k], tw = k >= CHUNK0 ? 0.3 : 1;
                 for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
                     const x = cx + ox, y = cy + oy;
                     if (x < 0 || y < 0 || x >= FW || y >= FH) continue;
                     const w = (ox === 0 && oy === 0) ? 1 : (ox === 0 || oy === 0) ? 0.55 : 0.3;
-                    density[y * FW + x] += w;
-                    thickness[y * FW + x] += w * thick[i];
+                    const j = y * FW + x;
+                    density[j] += w;
+                    thickness[j] += w * thick[i];
+                    tintR[j] += w * tw * c[0]; tintG[j] += w * tw * c[1]; tintB[j] += w * tw * c[2]; tintW[j] += w * tw;
+                }
+                // lumps are a cell or two of solid colour, ragged in shape
+                if (k >= CHUNK0 && cx >= 0 && cy >= 0 && cx < FW - 1 && cy < FH - 1) {
+                    const j = cy * FW + cx;
+                    lumpAt[j] = k;
+                    if (i & 1) lumpAt[j + 1] = k;
+                    if (i & 2) lumpAt[j + FW] = k;
                 }
             }
             for (let i = 0; i < FW * FH; i++) if (density[i] > 0.3 && latin.mask[i]) revealed[i] = 1;
@@ -252,9 +299,10 @@
                 const row = (i / FW) | 0;
                 const sr = row - floorCell;
                 if (sr >= 0 && sr < 3 && density[i] < 0.85 && smear[sr * FW + (i % FW)]) {
-                    // stains left on the bottom border: slime darker than the watery splashes
-                    const slime = smear[sr * FW + (i % FW)] === 2;
-                    d[o] = slime ? 70 : 140; d[o + 1] = slime ? 105 : 160; d[o + 2] = slime ? 20 : 70; d[o + 3] = 210;
+                    // stains left on the bottom border, in the colour of what made them; slime darker
+                    const si = sr * FW + (i % FW);
+                    const f = smear[si] === 2 ? 0.45 : 0.7, c = PAL[smearK[si]];
+                    d[o] = c[0] * f; d[o + 1] = c[1] * f; d[o + 2] = c[2] * f; d[o + 3] = 210;
                     continue;
                 }
                 if (filled[i]) {
@@ -264,7 +312,16 @@
                     // slime is dark and deep green, water a pale watery yellow-green; deeper is darker
                     const t = Math.min(1, (density[i] - 0.85) / 2.5);
                     const s = thickness[i] / density[i];
-                    const r = 205 - 60 * s, g = 220 - 20 * s, b = 140 - 110 * s;
+                    let r = 205 - 60 * s, g = 220 - 20 * s, b = 140 - 110 * s;
+                    // coloured by what it is made of: sauce, gravy, beer; lumps show in their own colour
+                    const lump = lumpAt[i];
+                    if (lump) {
+                        const c = PAL[lump], v = 0.92 + ((i * 2654435761) >>> 28) / 60;
+                        r = c[0] * v; g = c[1] * v; b = c[2] * v;
+                    } else if (tintW[i] > 0) {
+                        const tw = tintW[i];
+                        r = r * 0.3 + 0.7 * tintR[i] / tw; g = g * 0.3 + 0.7 * tintG[i] / tw; b = b * 0.3 + 0.7 * tintB[i] / tw;
+                    }
                     // relief: light from the upper left on the slopes of the blob, shadow on the far side,
                     // and a wet gloss on the thickest spots, so the thick parts seem to bulge out
                     const col = i % FW;
@@ -277,7 +334,7 @@
                     d[o] = Math.min(255, Math.round(r * shade + gloss));
                     d[o + 1] = Math.min(255, Math.round(g * shade + gloss));
                     d[o + 2] = Math.min(255, Math.round(b * shade + gloss * 0.6));
-                    d[o + 3] = Math.round(255 * (0.55 + 0.45 * s));
+                    d[o + 3] = lump ? 255 : Math.round(255 * (0.55 + 0.45 * s));
                 } else if (revealed[i]) {
                     // a letter the vomit has run over: stained bile green
                     const shimmer = ((i % FW) * 7 + ((i / FW) | 0) * 13) % 5 * 4;
@@ -324,23 +381,59 @@
                 if (tr.top > HT + 4) { trickles.splice(k, 1); nextTrickleAt = performance.now() + 1000 + Math.random() * 1000; }
             }
         }
+        // the colour of the pool on the border, column by column, from what lies there: it changes
+        // slowly, so a strand of pizza sauce hangs next to one of sausage gravy
+        const colRaw = new Float32Array(FW * 4);
+        const colTint = new Float32Array(FW * 3);
+        for (let x = 0; x < FW; x++) { colTint[x * 3] = 200; colTint[x * 3 + 1] = 150; colTint[x * 3 + 2] = 70; }
+        function updateTint() {
+            colRaw.fill(0);
+            for (let i = 0; i < n; i++) {
+                if (rest[i] === 0) continue;
+                const c = PAL[kind[i]], w = kind[i] >= CHUNK0 ? 0.35 : 1, x = px[i] | 0;
+                colRaw[x * 4] += c[0] * w; colRaw[x * 4 + 1] += c[1] * w; colRaw[x * 4 + 2] += c[2] * w; colRaw[x * 4 + 3] += w;
+            }
+            for (let x = 0; x < FW; x++) {
+                let r = 0, g = 0, b = 0, w = 0;
+                for (let o = -3; o <= 3; o++) {
+                    const c = x + o;
+                    if (c < 0 || c >= FW) continue;
+                    const f = 1 - Math.abs(o) / 4;
+                    r += colRaw[c * 4] * f; g += colRaw[c * 4 + 1] * f; b += colRaw[c * 4 + 2] * f; w += colRaw[c * 4 + 3] * f;
+                }
+                if (w <= 0) continue;
+                const k = x * 3;
+                colTint[k] += (r / w - colTint[k]) * 0.08;
+                colTint[k + 1] += (g / w - colTint[k + 1]) * 0.08;
+                colTint[k + 2] += (b / w - colTint[k + 2]) * 0.08;
+            }
+        }
+        function tintAt(x) {
+            const k = Math.min(FW - 1, Math.max(0, (x / CELL) | 0)) * 3;
+            return [colTint[k], colTint[k + 1], colTint[k + 2]];
+        }
+        const mix = (a, b) => [(a[0] + b[0]) / 2, (a[1] + b[1]) / 2, (a[2] + b[2]) / 2];
+        const rgba = (c, f = 1, a = 1) => `rgba(${Math.min(255, c[0] * f) | 0},${Math.min(255, c[1] * f) | 0},${Math.min(255, c[2] * f) | 0},${a})`;
+
         function drawTrickles() {
             for (const tr of trickles) {
                 const y0 = Math.max(tr.top, lipTop), y1 = Math.min(tr.bottom, HT + 2);
                 if (y1 <= y0) continue;
                 const x0 = Math.round(tr.x - tr.w / 2);
-                ctx.fillStyle = '#5a8618';
+                const c = tintAt(tr.x);
+                ctx.fillStyle = rgba(c, 0.6);
                 ctx.fillRect(x0, y0, Math.max(1, tr.w), y1 - y0);
-                ctx.fillStyle = 'rgba(205,240,120,0.55)';
+                ctx.fillStyle = rgba(c, 1.3, 0.55);
                 ctx.fillRect(x0, y0, Math.max(0.5, tr.w * 0.35), y1 - y0);
                 ctx.beginPath();
                 ctx.arc(tr.x, y1, Math.max(0.9, tr.w * 0.8), 0, Math.PI * 2);
-                ctx.fillStyle = '#6f9e22';
+                ctx.fillStyle = rgba(c, 0.75);
                 ctx.fill();
             }
         }
         function updateDrips() {
             updateTrickles();
+            updateTint();
             colCount.fill(0);
             for (let i = 0; i < n; i++) if (rest[i] > 0) colCount[px[i] | 0] += 1;
 
@@ -358,7 +451,8 @@
                     drips.push({ x, dead: false, len: 0, w: 3 + Math.random() * Math.random() * 9, vol: 3, starve: 0,
                                  ox: 0, ovx: mv * CELL * 1.6 + (Math.random() - 0.5) * 0.4, bvx: mv * CELL * 0.6,
                                  maxLen: 25 + Math.random() * Math.max(30, (HT - H) * 0.8),
-                                 speed: 0.1 + Math.random() * 0.16 });
+                                 speed: 0.1 + Math.random() * 0.16, tint: tintAt(x),
+                                 streak: (Math.random() * CHUNK0) | 0, lump: Math.random() < 0.25 ? { k: pickChunk(), s: 0.05, r: 1.3 + Math.random() * 1.3 } : null });
                     break;
                 }
             }
@@ -373,9 +467,23 @@
                         const dd = Math.abs(px[i] * CELL - d.x);
                         if (dd < best) { best = dd; bi = i; }
                     }
-                    if (bi >= 0 && best < 3 * CELL + d.w) { remove(bi); d.vol += 1; fed = true; }
+                    if (bi >= 0 && best < 3 * CELL + d.w) {
+                        // a lump in the puddle gets carried down the strand
+                        if (kind[bi] >= CHUNK0 && !d.lump) d.lump = { k: kind[bi], s: 0.02, r: 1.3 + Math.random() * 1.3 };
+                        remove(bi); d.vol += 1; fed = true;
+                    }
                 }
                 d.starve = fed ? 0 : d.starve + 1;
+                d.tint = tintAt(d.x);   // already smoothed over time, so it matches the lip it hangs from
+                if (d.lump) {
+                    // the lump slides down the strand and falls off the end with a drop
+                    d.lump.s += 0.0012 + Math.min(0.004, d.vol / 4000);
+                    if (d.lump.s > 0.95 && d.len > 10) {
+                        drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: d.lump.r, vy: 0.3, vx: d.ovx, c: d.tint.slice(), lump: d.lump.k });
+                        d.lump = null;
+                        d.len *= 0.75;
+                    }
+                }
 
                 // the root slides with the puddle; the tip swings like a slow pendulum
                 d.x += d.bvx; d.bvx *= 0.992;
@@ -397,7 +505,7 @@
                 d.r = Math.min(d.w * 0.95, 1.4 + Math.sqrt(d.vol) * 0.7);
                 if ((d.vol > 18 + d.w * 4 && Math.random() < 0.015) || d.len > d.maxLen) {
                     // the heavy drop lets go; the strand snaps back up and keeps oozing
-                    drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: d.r, vy: d.speed, vx: d.ovx });
+                    drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: d.r, vy: d.speed, vx: d.ovx, c: d.tint.slice() });
                     d.vol *= 0.25;
                     d.ovx *= -0.5; // recoil
                     d.len *= 0.35 + Math.random() * 0.3;
@@ -406,7 +514,7 @@
                 if (d.starve > 90 && d.vol < 4) {
                     // the puddle is gone here: the strand thins to a hair and breaks
                     d.w *= 0.985;
-                    if (d.w < 0.7) { drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: Math.max(1, d.r * 0.7), vy: 0.3, vx: d.ovx }); d.dead = true; drips.splice(k, 1); }
+                    if (d.w < 0.7) { drops.push({ x: d.x + d.ox, y: lipTop + d.len, r: Math.max(1, d.r * 0.7), vy: 0.3, vx: d.ovx, c: d.tint.slice() }); d.dead = true; drips.splice(k, 1); }
                 }
             }
             for (let a = drips.length - 1; a >= 0; a--) {
@@ -414,7 +522,7 @@
                     const A = drips[a], B = drips[b];
                     if (Math.abs(A.x - B.x) > (A.w + B.w) * 0.5) continue;
                     B.vol += A.vol; B.w = Math.max(A.w, B.w) * 1.1; B.len = Math.max(A.len, B.len);
-                    B.ovx = (A.ovx + B.ovx) * 0.5; A.dead = true; drips.splice(a, 1); break;
+                    B.ovx = (A.ovx + B.ovx) * 0.5; if (!B.lump) B.lump = A.lump; A.dead = true; drips.splice(a, 1); break;
                 }
             }
             for (let k = drops.length - 1; k >= 0; k--) {
@@ -424,7 +532,7 @@
             }
         }
 
-        const GLOSS = 'rgba(205,240,120,0.5)';
+        const GLOSS = 'rgba(255,240,200,0.45)';
         // one vertical shade for everything that hangs from the border, so the lip, the strands
         // and the threads between them read as a single mass of slime with no seams
         let slimeGrad = null;
@@ -432,10 +540,11 @@
             if (slimeGrad) return slimeGrad;
             const span = Math.max(30, HT + 20 - lipTop);
             slimeGrad = ctx.createLinearGradient(0, lipTop, 0, lipTop + span);
-            slimeGrad.addColorStop(0, '#7aa82c');
-            slimeGrad.addColorStop(Math.min(0.9, 6 / span), '#5f8a1c');
-            slimeGrad.addColorStop(Math.min(0.95, 16 / span), '#4a7212');
-            slimeGrad.addColorStop(1, '#33550b');
+            // neutral and brownish: the colour of what lies above is laid over it
+            slimeGrad.addColorStop(0, '#b4a452');
+            slimeGrad.addColorStop(Math.min(0.9, 6 / span), '#8e7c38');
+            slimeGrad.addColorStop(Math.min(0.95, 16 / span), '#6c5a26');
+            slimeGrad.addColorStop(1, '#4a3c16');
             return slimeGrad;
         }
 
@@ -532,7 +641,7 @@
                 if (--br.life < 0 || br.strain > (br.web ? 1.6 : 1.9) || br.thick / Math.sqrt(br.strain) < 0.35) {
                     // it snaps and what hung at the bottom falls
                     drops.push({ x: (A.x + B.x) / 2, y: (A.y + B.y) / 2 + br.sag,
-                                 r: Math.max(1, br.web ? br.thick * 1.2 : br.bead), vy: 0.2, vx: 0 });
+                                 r: Math.max(1, br.web ? br.thick * 1.2 : br.bead), vy: 0.2, vx: 0, c: mix(br.a.tint, br.b.tint) });
                     bridges.splice(k, 1);
                 }
             }
@@ -544,8 +653,9 @@
             if (A.x > B.x) { [a, b] = [b, a]; [A, B] = [B, A]; }
             const [cx, cy] = sagCtl(A, B, br.sag);
             const film = ctx.createLinearGradient(0, lipTop, 0, Math.max(A.y, B.y) + br.sag);
-            film.addColorStop(0, 'rgba(95,138,28,0.9)');
-            film.addColorStop(1, 'rgba(70,110,18,0.5)');
+            const c = mix(a.tint, b.tint);
+            film.addColorStop(0, rgba(c, 0.62, 0.9));
+            film.addColorStop(1, rgba(c, 0.45, 0.5));
             ctx.fillStyle = film;
             ctx.beginPath();
             ctx.moveTo(A.x, lipTop);
@@ -566,7 +676,9 @@
             ctx.strokeStyle = slimeFill();
             ctx.lineWidth = th * 1.6;
             ctx.beginPath(); ctx.moveTo(A.x, A.y); ctx.quadraticCurveTo(cx, cy, B.x, B.y); ctx.stroke();
-            ctx.strokeStyle = 'rgba(205,240,120,0.4)';
+            ctx.strokeStyle = rgba(mix(br.a.tint, br.b.tint), 1, 0.75);
+            ctx.stroke();
+            ctx.strokeStyle = 'rgba(255,240,200,0.4)';
             ctx.lineWidth = 0.6;
             ctx.beginPath(); ctx.moveTo(A.x, A.y - th * 0.4); ctx.quadraticCurveTo(cx, cy - th * 0.4, B.x, B.y - th * 0.4); ctx.stroke();
         }
@@ -586,25 +698,51 @@
                 up.push(x + nx * w, y + ny * w);
                 dn.push(x - nx * w, y - ny * w);
             }
+            const path = new Path2D();
+            path.moveTo(up[0], up[1]);
+            for (let k = 2; k < up.length; k += 2) path.lineTo(up[k], up[k + 1]);
+            for (let k = dn.length - 2; k >= 0; k -= 2) path.lineTo(dn[k], dn[k + 1]);
+            path.closePath();
             ctx.fillStyle = slimeFill();
-            ctx.beginPath();
-            ctx.moveTo(up[0], up[1]);
-            for (let k = 2; k < up.length; k += 2) ctx.lineTo(up[k], up[k + 1]);
-            for (let k = dn.length - 2; k >= 0; k -= 2) ctx.lineTo(dn[k], dn[k + 1]);
-            ctx.closePath();
-            ctx.fill();
-            ctx.strokeStyle = 'rgba(205,240,120,0.35)';
+            ctx.fill(path);
+            // coloured like the strands at either end, blending between them
+            const tg = ctx.createLinearGradient(A.x, A.y, B.x, B.y);
+            tg.addColorStop(0, rgba(br.a.tint, 1, 0.75));
+            tg.addColorStop(1, rgba(br.b.tint, 1, 0.75));
+            ctx.fillStyle = tg;
+            ctx.fill(path);
+            ctx.strokeStyle = 'rgba(255,240,200,0.35)';
             ctx.lineWidth = 0.5;
             ctx.beginPath(); ctx.moveTo(A.x, A.y - th * 0.3); ctx.quadraticCurveTo(cx, cy - th * 0.3, B.x, B.y - th * 0.3); ctx.stroke();
         }
-        function drawBead(x, y, r) {
+        // a wet ball lit from the upper left, in the colour c
+        function ballFill(x, y, r, c) {
+            const bg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.3);
+            bg.addColorStop(0, rgba(c, 1.35));
+            bg.addColorStop(0.5, rgba(c, 0.72));
+            bg.addColorStop(1, rgba(c, 0.3));
+            return bg;
+        }
+        function drawBead(x, y, r, c) {
             ctx.beginPath();
             ctx.ellipse(x, y, r * 0.9, r * 1.1, 0, 0, Math.PI * 2);
-            const bg = ctx.createRadialGradient(x - r * 0.35, y - r * 0.4, r * 0.1, x, y, r * 1.3);
-            bg.addColorStop(0, '#a6d65a');
-            bg.addColorStop(0.5, '#507c14');
-            bg.addColorStop(1, '#243c05');
-            ctx.fillStyle = bg;
+            ctx.fillStyle = ballFill(x, y, r, c);
+            ctx.fill();
+        }
+        // a lump of food: ragged, matt and darker at the edge
+        function drawLump(x, y, r, k, seed) {
+            const c = PAL[k];
+            ctx.beginPath();
+            for (let a = 0; a < 7; a++) {
+                const ang = a / 7 * Math.PI * 2, rr = r * (0.75 + 0.35 * (((seed * 31 + a * 17) % 7) / 7));
+                const X = x + Math.cos(ang) * rr, Y = y + Math.sin(ang) * rr * 0.85;
+                if (a) ctx.lineTo(X, Y); else ctx.moveTo(X, Y);
+            }
+            ctx.closePath();
+            const g = ctx.createRadialGradient(x - r * 0.3, y - r * 0.3, r * 0.1, x, y, r * 1.2);
+            g.addColorStop(0, rgba(c, 1.15));
+            g.addColorStop(1, rgba(c, 0.55));
+            ctx.fillStyle = g;
             ctx.fill();
         }
 
@@ -635,23 +773,55 @@
             // webs hang behind everything, a translucent film between their strands
             for (const br of bridges) if (br.web) drawWeb(br);
 
-            ctx.fillStyle = slimeFill();
-            ctx.beginPath();
-            let open = false;
-            for (let x = 0; x <= FW; x++) {
-                const h = x < FW ? lip[x] : 0;
-                if (h > 0.4 && !open) { ctx.moveTo(x * CELL, lipTop); open = true; }
-                if (open) ctx.lineTo(x * CELL + CELL / 2, lipTop + h);
-                if (h <= 0.4 && open) { ctx.lineTo(x * CELL, lipTop); ctx.closePath(); open = false; }
-            }
-            ctx.fill();
-
-            // the strands, in the same slime as the lip so they grow out of it
+            // the strands, in the same slime as the lip; the lip covers their roots so they grow out of it
             for (const d of drips) {
                 if (!d.geo.ok) continue;
                 strandPath(d.geo);
+                ctx.fillStyle = slimeFill();
                 ctx.fill();
+                ctx.fillStyle = rgba(d.tint, 1, 0.75);
+                ctx.fill();
+                // a streak of something else marbled through it: sauce in the bile, bile in the gravy
+                const p = d.geo.pts;
+                ctx.strokeStyle = rgba(PAL[d.streak], 0.95, 0.55);
+                ctx.lineCap = 'round';
+                ctx.beginPath();
+                let on = false;
+                for (let k = 0; k < p.length; k++) {
+                    if (p[k].y < d.geo.yL + 1) continue;
+                    const x = p[k].x + p[k].w * (0.12 + 0.1 * Math.sin(k * 0.9 + d.x));
+                    if (on) ctx.lineTo(x, p[k].y); else { ctx.moveTo(x, p[k].y); on = true; }
+                }
+                ctx.lineWidth = Math.max(0.6, d.w * 0.22);
+                ctx.stroke();
             }
+            const lipPath = new Path2D();
+            let open = false;
+            for (let x = 0; x <= FW; x++) {
+                const h = x < FW ? lip[x] : 0;
+                if (h > 0.4 && !open) { lipPath.moveTo(x * CELL, lipTop); open = true; }
+                if (open) lipPath.lineTo(x * CELL + CELL / 2, lipTop + h);
+                if (h <= 0.4 && open) { lipPath.lineTo(x * CELL, lipTop); lipPath.closePath(); open = false; }
+            }
+            ctx.fillStyle = slimeFill();
+            ctx.fill(lipPath);
+            // the colour of what lies above, column by column: sauce here, gravy or beer there
+            ctx.save();
+            ctx.clip(lipPath);
+            for (let x = 0; x < FW; x++) {
+                if (lip[x] <= 0.4) continue;
+                ctx.fillStyle = rgba([colTint[x * 3], colTint[x * 3 + 1], colTint[x * 3 + 2]], 1, 0.75);
+                ctx.fillRect(x * CELL - 0.5, lipTop, CELL + 1, lip[x] + 2);
+            }
+            ctx.restore();
+            // lumps of food stuck in it
+            for (let i = 0; i < n; i++) {
+                if (rest[i] < 20 || kind[i] < CHUNK0) continue;
+                const x = px[i] * CELL, h = lip[Math.min(FW - 1, px[i] | 0)];
+                if (h < 3) continue;
+                drawLump(x, lipTop + Math.min(h * 0.5, 2 + (i % 4)), 1.2 + (i % 3) * 0.35, kind[i], i);
+            }
+
             for (const br of bridges) if (br.web) drawWebRim(br); else drawThread(br);
 
             // round in cross-section: a lit stripe on the left, shadow on the right; it fades in
@@ -667,7 +837,7 @@
                     if (fade <= 0) continue;
                     const w = (a.w + b.w) / 2;
                     ctx.globalAlpha = fade;
-                    ctx.strokeStyle = 'rgba(160,210,80,0.45)';
+                    ctx.strokeStyle = 'rgba(255,235,190,0.3)';
                     ctx.lineWidth = w * 0.25;
                     ctx.beginPath(); ctx.moveTo(a.x - a.w * 0.22, a.y); ctx.lineTo(b.x - b.w * 0.22, b.y); ctx.stroke();
                     ctx.strokeStyle = 'rgba(18,34,2,0.5)';
@@ -677,27 +847,24 @@
                 ctx.globalAlpha = 1;
                 ctx.beginPath();
                 ctx.ellipse(g.tx, g.tip, d.r, d.r * 1.15, d.ovx * 0.15, 0, Math.PI * 2);
-                const bulb = ctx.createRadialGradient(g.tx - d.r * 0.4, g.tip - d.r * 0.45, d.r * 0.1, g.tx, g.tip, d.r * 1.2);
-                bulb.addColorStop(0, '#a6d65a');
-                bulb.addColorStop(0.45, '#5a8618');
-                bulb.addColorStop(1, '#2a4506');
-                ctx.fillStyle = bulb;
+                ctx.fillStyle = ballFill(g.tx, g.tip, d.r, mix(d.tint, [150, 120, 60]));
                 ctx.fill();
+                if (d.lump) {
+                    const q = strandAt(g, Math.min(0.95, d.lump.s));
+                    drawLump(q.x, q.y, Math.max(d.lump.r, q.w * 0.45), d.lump.k, d.x | 0);
+                }
             }
             for (const br of bridges) {
                 if (br.web || br.bead < 0.6) continue;
                 const [cx, cy] = sagCtl(br.A, br.B, br.sag);
-                drawBead((br.A.x + 2 * cx + br.B.x) / 4, (br.A.y + 2 * cy + br.B.y) / 4 + br.bead * 0.5, br.bead);
+                drawBead((br.A.x + 2 * cx + br.B.x) / 4, (br.A.y + 2 * cy + br.B.y) / 4 + br.bead * 0.5, br.bead, mix(br.a.tint, br.b.tint));
             }
             for (const p of drops) {
                 ctx.beginPath();
                 ctx.ellipse(p.x, p.y, p.r * 0.85, p.r * (1.1 + Math.min(0.8, p.vy * 0.08)), 0, 0, Math.PI * 2);
-                const dg = ctx.createRadialGradient(p.x - p.r * 0.35, p.y - p.r * 0.4, p.r * 0.1, p.x, p.y, p.r * 1.3);
-                dg.addColorStop(0, '#a6d65a');
-                dg.addColorStop(0.5, '#507c14');
-                dg.addColorStop(1, '#243c05');
-                ctx.fillStyle = dg;
+                ctx.fillStyle = ballFill(p.x, p.y, p.r, p.c || [190, 150, 70]);
                 ctx.fill();
+                if (p.lump) drawLump(p.x, p.y - p.r * 0.2, p.r * 0.75, p.lump, (p.x * 7) | 0);
             }
             // a wet highlight down the left side of each strand and on its drop
             ctx.strokeStyle = GLOSS;
@@ -755,7 +922,7 @@
             let at = 0;
             for (let r = 0; r < retches; r++) {
                 const dur = (long && r === retches - 1 ? 34 : 14) + Math.random() * 12;  // the last one drags on
-                pulses.push({ at, dur, rate: perFrame * (0.7 + Math.random() * 0.6) });
+                pulses.push({ at, dur, rate: perFrame * (0.7 + Math.random() * 0.6), mix: [1, 3, 0, 2, 1][(Math.random() * 5) | 0] });
                 at += dur + 6 + Math.random() * 9;                                       // a gasp between
             }
         }
@@ -766,6 +933,7 @@
             if (jetT > end.at + end.dur) { pulses = []; return; }
             const pulse = pulses.find((p) => jetT >= p.at && jetT < p.at + p.dur);
             if (!pulse) return; // between retches
+            mealMix = pulse.mix;
             const k = (jetT - pulse.at) / pulse.dur;
             const progress = jetT / (end.at + end.dur);
             // each retch surges and dies away, with lumps in it
