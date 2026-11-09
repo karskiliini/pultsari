@@ -49,7 +49,7 @@ string GameState::getLevelName() const
         case GamePhase::Kremlin:
             return "Kreml";
         case GamePhase::Victory:
-            return "Putinin viinakellarissa";
+            return "Vovan viinakellarissa";
     }
     return "???";
 }

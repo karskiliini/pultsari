@@ -94,24 +94,89 @@
             who: 'SEKÄ', name: 'JOHTAJA, 61', line: 'Kaatui ikkunasta. Ihan itse.',
             color: '#cfcfcf',
             art: [
-                '   |▒▒|▒▒|',
-                '   |▒▒|  |',
-                '   |▒▒|▒▒|',
-                '   |▒▒|▒▒|',
-                '   |▒▒|▒▒|',
+                '  _______________',
+                ' |  ▒▒  ▒▒  ▒▒  |',
+                ' |  ▒▒  ▒▒      |',
+                ' |  ▒▒  ▒▒  ▒▒  |',
+                ' |  ▒▒  ▒▒  ▒▒  |',
+                ' |  ▒▒  ▒▒  ▒▒  |',
+                ' |  ▒▒  ▒▒  ▒▒  |',
+                ' |  ▒▒  ▒▒  ▒▒  |',
+                '_|______________|______________',
             ],
             anim(ctx, t, x, y, cw, ch) {
+                // a little deterministic randomness, the same every time the scene plays
+                const rnd = (i) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
+                const winX = x + cw * 13, winY = y + ch * 2;
+                const groundY = y + ch * 7.6;
+                const T0 = 0.35, FALL = 1.0;            // stands a moment, then about a second in the air
+                const g = 2 * (groundY - winY) / (FALL * FALL);
+                const vx = cw * 7.5;  // out and clear of the wall
+                const figure = (px, py, angle) => {
+                    // a stick figure, spinning as one piece
+                    ctx.save();
+                    ctx.translate(px, py);
+                    ctx.rotate(angle);
+                    ctx.fillStyle = '#fff';
+                    ctx.fillText('o', -cw * 0.5, -ch * 0.9);
+                    ctx.fillText('/|\\', -cw * 1.5, 0);
+                    ctx.fillText('/ \\', -cw * 1.5, ch * 0.9);
+                    ctx.restore();
+                };
+                if (t < T0) {
+                    figure(winX, winY, Math.sin(t * 20) * 0.08); // wobbling on the sill
+                    return;
+                }
+                const tf = t - T0;
+                if (tf < FALL) {
+                    figure(winX + vx * tf, winY + 0.5 * g * tf * tf, tf * tf * 9);
+                    return;
+                }
+                // impact: he comes apart, blood everywhere
+                const tl = tf - FALL;
+                const landX = winX + vx * FALL;
+                const parts = ['o', '/', '\\', '|', '/', '\\', '|'];
                 ctx.fillStyle = '#fff';
-                const fall = Math.min(1, t / 1.6);
-                ctx.fillText('\\o/', x + cw * 8, y + ch * (1 + fall * 5));
+                parts.forEach((p, i) => {
+                    const pvx = (rnd(i) - 0.35) * cw * 9, pvy = -(0.4 + rnd(i + 9)) * ch * 6;
+                    let px = landX + pvx * Math.min(tl, 0.7), py = groundY - ch * 0.3 + pvy * tl + 0.5 * g * tl * tl;
+                    if (py > groundY - ch * 0.2) py = groundY - ch * 0.2;   // lying on the ground
+                    ctx.save();
+                    ctx.translate(px, py);
+                    ctx.rotate(rnd(i + 3) * 6 + tl * (rnd(i + 5) - 0.5) * 14 * Math.max(0, 0.7 - tl));
+                    ctx.fillText(p, 0, 0);
+                    ctx.restore();
+                });
+                // blood spray: droplets fly out and fall back down
+                for (let i = 0; i < 40; i++) {
+                    const bvx = (rnd(i + 40) - 0.5) * cw * 12, bvy = -(0.2 + rnd(i + 90)) * ch * 7;
+                    const bx = landX + bvx * tl, by = Math.min(groundY, groundY - ch * 0.2 + bvy * tl + 0.5 * g * tl * tl);
+                    ctx.fillStyle = rnd(i + 7) < 0.5 ? '#b01010' : '#7a0808';
+                    const sz = 2 + rnd(i + 13) * 3;
+                    ctx.fillRect(bx, by, sz, sz);
+                }
+                // the pool spreads
+                const r = Math.min(1, tl / 0.8);
+                ctx.fillStyle = 'rgba(140,10,10,0.85)';
+                ctx.beginPath();
+                ctx.ellipse(landX, groundY + 1, cw * (1 + 4 * r), ch * (0.15 + 0.2 * r), 0, 0, Math.PI * 2);
+                ctx.fill();
+                if (tl < 0.6) {
+                    ctx.fillStyle = '#f2d34a';
+                    ctx.fillText('*KRÄTS*', landX - cw * 3, groundY - ch * 2.2);
+                }
             },
         },
         {
             who: 'ERITYISESSÄ ROOLISSA', name: 'PRESIDENTTI', line: 'Neuvottelee nukkejen kanssa.',
             color: '#f2d34a',
             art: [
-                ' P ═════════════════════════════  z  o',
-                '      (naurettavan pitkä pöytä)',
+                '  ___                                                     _  _ ',
+                ' (o_o)  ________________________________________________ (z)(o)',
+                ' /|=|\\ |________________________________________________|/|\\/|\\',
+                '  |_|_  ||                                            ||  | |  |',
+                '  |  |  ||                                            ||  ^  ^ ',
+                '                     naurettavan pitkä pöytä                     ',
             ],
         },
         {

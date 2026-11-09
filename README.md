@@ -1,6 +1,6 @@
 # PПLTSAЯI 2: Russki Mir
 
-A satirical roguelike set in Moscow, 2025. You are a pultsari (a street drunk). Collect empty bottles, avoid the politsija, gopniks and FSB, get hold of a propusk and make your way into Putin's wine cellar inside the Kremlin. The game text is in Finnish, with Russian thrown in.
+A satirical roguelike set in Moscow, 2025. You are a pultsari (a street drunk). Collect empty bottles, avoid the politsija, gopniks and FSB, get hold of a propusk and make your way into Vova's wine cellar inside the Kremlin. The game text is in Finnish, with Russian thrown in.
 
 ## Build
 

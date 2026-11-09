@@ -259,7 +259,7 @@ std::string Viesti::getMsg() const {
         "Babuškat tietävät, missä FSB asuu.",
         "Границы России нигде не заканчиваются.",
         "Импортозамещение: iPhone on nyt puinen.",
-        "Kremlin viinakellari on Putinin pöydän päässä.",
+        "Kremlin viinakellari on Vovan pöydän päässä.",
         "Varkaille kannattaa antaa pamppua.",
         "Vankikarkuri kupsahtaa vasta kolmannella pampulla.",
         "Voblaa kannattaa syödä harkiten.",
@@ -425,7 +425,7 @@ bool Vodka::interact(PlayerNS::Player* player) {
 ViinaKellari::ViinaKellari(const Coord& c, Level* level) : Item(c, EViinaKellari), level(level) { }
 std::string ViinaKellari::typeToChar() const { return "\xD0\x96"; }
 std::string ViinaKellari::getMsg() const {
-    return "Putinin viinakellariin johtava ovi!";
+    return "Vovan viinakellariin johtava ovi!";
 }
 bool ViinaKellari::interact(PlayerNS::Player* player) {
     if (player->hasKremlinPass) {
@@ -445,13 +445,13 @@ std::string PutinPoyta::getMsg() const {
 
     // Putin plays with dolls on his desk, like Dark Helmet in Spaceballs
     static const char* dolls[] = {
-        "Pöydällä on leikkinukkeja: Zelenskyi ja von der Leyen. Putin on ilmeisesti leikkinyt niillä.",
+        "Pöydällä on leikkinukkeja: Zelenskyi ja von der Leyen. Vova on ilmeisesti leikkinyt niillä.",
         "Zelenskyi- ja von der Leyen -nuket suutelevat. Joku on piirtänyt niille sydämen tussilla.",
         "Pöydän toisessa päässä istuu pieni Macron-nukke. Hyvin, hyvin kaukana.",
-        "Rutte-nukella on kädessä lappu 'Artikla 5'. Putin on yrittänyt repiä sen irti.",
+        "Rutte-nukella on kädessä lappu 'Artikla 5'. Vova on yrittänyt repiä sen irti.",
         "Stubb-nukke on puettu saunatakkiin. Vieressä lappu: 'NATO?! MIKSI?!'",
         "Pienoistankki on ajettu Zelenskyi-nuken yli. Zelenskyi-nukke seisoo silti.",
-        "Pöydällä on Putin-nukke hevosen selässä ilman paitaa. Se on kuluneempi kuin muut.",
+        "Pöydällä on Vova-nukke hevosen selässä ilman paitaa. Se on kuluneempi kuin muut.",
         "Pöytä on naurettavan pitkä. Toisessa päässä on nukeille katettu teekutsut.",
     };
     return dolls[std::rand() % (sizeof(dolls) / sizeof(dolls[0]))];

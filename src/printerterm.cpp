@@ -207,7 +207,7 @@ void PrinterTerm::printHelp()
     cout << "  Q (tai Tab) / F     tavarat / heit\xC3\xA4: W/S valitse, E k\xC3\xA4yt\xC3\xA4, F heit\xC3\xA4" << endl;
     cout << "  T\xC3\xA4ht\xC3\xA4ys            A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti heit\xC3\xA4/ammu, Esc peru" << endl;
     cout << "  Z                  restart" << endl << endl;
-    cout << "Tavoite: p\xC3\xA4\xC3\xA4se Putinin viinakellariin Kremliss\xC3\xA4." << endl;
+    cout << "Tavoite: p\xC3\xA4\xC3\xA4se Vovan viinakellariin Kremliss\xC3\xA4." << endl;
 }
 
 void PrinterTerm::emptyLine(uint32_t textLen)

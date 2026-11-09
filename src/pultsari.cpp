@@ -1240,7 +1240,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             if (!insideKremlin) {
                                 level.celebrating = true;
                                 player.killedPutin = true;
-                                printer->showMessage("Kansa tajuaa mitä tapahtui... PUTIN ON KUOLLUT! Juhla alkaa!", &level, false);
+                                printer->showMessage("Kansa tajuaa mitä tapahtui... VOVA ON KUOLLUT! Juhla alkaa!", &level, false);
                             }
                         }
 
@@ -1401,7 +1401,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         if (!insideKremlin) {
                             level.celebrating = true;
                             player.killedPutin = true;
-                            printer->showMessage("Kansa tajuaa mitä tapahtui... PUTIN ON KUOLLUT! Juhla alkaa!", &level, false);
+                            printer->showMessage("Kansa tajuaa mitä tapahtui... VOVA ON KUOLLUT! Juhla alkaa!", &level, false);
                         }
                     }
 
@@ -1485,7 +1485,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         printer->printChar("Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 pyrit\xC3\xA4\xC3\xA4n DELIRIUM TREMENSIIN.\n");
         printer->printChar("  (\xD0\x91\xD0\x95\xD0\x9B\xD0\x90\xD0\xAF \xD0\x93\xD0\x9E\xD0\xA0\xD0\xAF\xD0\xA7\xD0\x9A\xD0\x90)\n\n");
         common::sleep(2000);
-        printer->printChar("Ja sin\xC3\xA4 saavutit sen. Putinin viinakellarissa.\n");
+        printer->printChar("Ja sin\xC3\xA4 saavutit sen. Vovan viinakellarissa.\n");
         printer->printChar("Loputtomasti vodkaa ja aikaa. Ven\xC3\xA4l\xC3\xA4inen unelma.\n\n");
         common::sleep(2000);
     }

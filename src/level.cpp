@@ -842,9 +842,9 @@ void Level::spreadNews()
 
         const bool loyal = p->type == fsb || p->type == sotilas || p->type == vartija ||
                            p->type == shoigu || p->type == gerasimov || p->type == medvedev;
-        p->say(loyal ? "Prezident ubit!" : "PUTIN ON KUOLLUT!");
+        p->say(loyal ? "Prezident ubit!" : "VOVA ON KUOLLUT!");
         audio.addSound(p->coord, SoundType::Voice,
-            "Joku huutaa jotain Putinista", "Huutoa Putinista", "...joku huutaa jotain Putinista...", 14);
+            "Joku huutaa jotain Vovasta", "Huutoa Vovasta", "...joku huutaa jotain Vovasta...", 14);
 
         for (auto q : persons) {
             if (q != p && q->type != pelaaja && !q->knowsPutinDead && canHear(q->coord, p->coord, 12))
@@ -1182,7 +1182,7 @@ std::string Level::nameOf(const Person* p) const
         case sotilas:      return "Sotilas";
         case ilmatorjunta: return "Ilmatorjuntamies";
         case vartija:      return "Vartija";
-        case putin:        return "Putin";
+        case putin:        return "Vova";
         case medvedev:     return "Medvedev";
         case shoigu:       return "\xC5\xA0oigu";
         case gerasimov:    return "Gerasimov";

@@ -276,7 +276,7 @@ Car::Car(const Coord& pos, bool horiz, int dir, Kind kind)
     if (kind == Kind::Police) m = { "Politsijan auto", "1;94", 55, 4 };
     if (kind == Kind::Getaway) m = { "Ry\xC3\xB6st\xC3\xA4jien Lada", "1;38;5;130", 60, 3 };
     loot = kind == Kind::Getaway;
-    if (kind == Kind::Limousine) m = { "Putinin limusiini", "38;5;16", 55, 10 };
+    if (kind == Kind::Limousine) m = { "Vovan limusiini", "38;5;16", 55, 10 };
     limousine = kind == Kind::Limousine;
     model = m.name;
     paint = m.paint;

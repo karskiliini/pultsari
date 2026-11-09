@@ -369,7 +369,7 @@ void Cop::npcAct()
         if (random(20)) {
             static const char* party[] = {
                 "*hic* VAPAUS!",
-                "Putin on kuollut! *RÖYH*",
+                "Vova on kuollut! *RÖYH*",
                 "Vodkaa kaikille!",
                 "*horskaa* Elämä on kaunista!",
                 "Kenraalit juoksee! *hic*",
@@ -1753,7 +1753,7 @@ void Juoppo::npcAct()
     if (knowsPutinDead) {
         if (random(15)) {
             static const char* party[] = {
-                "PUTIN KUOLI! *RÖYH*",
+                "VOVA KUOLI! *RÖYH*",
                 "URAAA! *hic*",
                 "СВОБОДА! *glub*",
                 "Vodkaa! Lisää vodkaa!",
@@ -1790,7 +1790,7 @@ void Juoppo::npcAct()
             "Blyat...",
             "Elämä on kaunista...",
             "*horskaa*",
-            "Putin on... *hic*",
+            "Vova on... *hic*",
             "Ei ole kylmä...",
             "Missä minä olen?",
         };
@@ -1906,7 +1906,7 @@ void FSBAgent::npcAct()
         move(getMoveDirection(lastKnownPos), msg);
         if (coord.distance(killer->coord) <= 1) {
             killer->damage(5);
-            say("За Путина!");
+            say("За Вову!");
         }
         level->audio.addSound(coord, SoundType::Voice,
             "FSB-agentti raivostuu!", "Raivoisaa huutoa", "...raivokasta huutoa...", 30);
@@ -2620,7 +2620,7 @@ bool Putin::interact(std::string& msg, Person* source)
     level->alertCops(source);
 
     if (stats.health > 10) {
-        msg = "Putin: 'ОХРАНА! ОХРАНА!!'";
+        msg = "Vova: 'ОХРАНА! ОХРАНА!!'";
         source->damage(2);
         damage(3);
         return true;
@@ -2628,13 +2628,13 @@ bool Putin::interact(std::string& msg, Person* source)
 
     if (stats.health > 5) {
         static const char* rages[] = {
-            "Putin: 'Я ДЗЮДОИСТ! Я тебя сломаю!'",
-            "Putin: 'Heitän sinut RINTAMALLE! RINTAMALLE!'",
-            "Putin: 'Minä olen VENÄJÄN PRESIDENTTI!'",
-            "Putin: 'На колени, свинья!'",
-            "Putin: 'ПОЗВОНИТЕ ШОЙГУ!!!'",
-            "Putin: 'Minulla on musta vyö judossa!'",
-            "Putin: 'Tunnetko judoheiton? TUNNETKO?!'",
+            "Vova: 'Я ДЗЮДОИСТ! Я тебя сломаю!'",
+            "Vova: 'Heitän sinut RINTAMALLE! RINTAMALLE!'",
+            "Vova: 'Minä olen VENÄJÄN PRESIDENTTI!'",
+            "Vova: 'На колени, свинья!'",
+            "Vova: 'ПОЗВОНИТЕ ШОЙГУ!!!'",
+            "Vova: 'Minulla on musta vyö judossa!'",
+            "Vova: 'Tunnetko judoheiton? TUNNETKO?!'",
         };
         msg = rages[std::rand()%7];
         say("Я ДЗЮДОИСТ!!!");
@@ -2645,13 +2645,13 @@ bool Putin::interact(std::string& msg, Person* source)
 
     // crying and desperate but still raging
     static const char* cries[] = {
-        "Putin: '*nyyhkii* ...Я ВСЕМОГУЩИЙ!'",
-        "Putin: '*itkee* JUDOKA! Olen JUDOKA!!!'",
-        "Putin: 'Tämä on LÄNNEN salajuoni! *nyyhkii*'",
-        "Putin: '*itkee* ШОЙГУ! ГЕРАСИМОВ! КОГО-НИБУДЬ!'",
-        "Putin: '*nyyhkii* Minulla on ydinaseita... *nyyhkii*'",
-        "Putin: '*itkee* Kim... Kim auttaisi... *nyyhkii*'",
-        "Putin: '*nyyhkii* Judoheitolla... *horjuu* ...kaadan sinut...'",
+        "Vova: '*nyyhkii* ...Я ВСЕМОГУЩИЙ!'",
+        "Vova: '*itkee* JUDOKA! Olen JUDOKA!!!'",
+        "Vova: 'Tämä on LÄNNEN salajuoni! *nyyhkii*'",
+        "Vova: '*itkee* ШОЙГУ! ГЕРАСИМОВ! КОГО-НИБУДЬ!'",
+        "Vova: '*nyyhkii* Minulla on ydinaseita... *nyyhkii*'",
+        "Vova: '*itkee* Kim... Kim auttaisi... *nyyhkii*'",
+        "Vova: '*nyyhkii* Judoheitolla... *horjuu* ...kaadan sinut...'",
     };
     msg = cries[std::rand()%7];
     say("*nyyhkii*");
@@ -2665,28 +2665,28 @@ bool Putin::interactThrow(Item* item, Person* source, std::string& msg)
     damage(2);
 
     if (stats.health <= 0) {
-        msg = "Putin kaatuu! '*nyyhkii* Это... конец... дзюдоист... не может... проиграть...'";
+        msg = "Vova kaatuu! '*nyyhkii* Это... конец... дзюдоист... не может... проиграть...'";
         return true;
     }
 
     if (stats.health > 10) {
-        msg = "Heittosi osuu Putinia! Putin: 'ОХРАНА!!!'";
+        msg = "Heittosi osuu Vovaa! Vova: 'ОХРАНА!!!'";
         say("ОХРАНА!!!");
     } else if (stats.health > 5) {
         static const char* rages[] = {
-            "Heittosi osuu! Putin: 'Я ДЗЮДОИСТ! En kaadu!'",
-            "Heittosi osuu! Putin: 'Rintamalle! RINTAMALLE!'",
-            "Heittosi osuu! Putin: 'Minä olen PRESIDENTTI!'",
-            "Heittosi osuu! Putin: 'Odotas kun soitan Kimille!'",
+            "Heittosi osuu! Vova: 'Я ДЗЮДОИСТ! En kaadu!'",
+            "Heittosi osuu! Vova: 'Rintamalle! RINTAMALLE!'",
+            "Heittosi osuu! Vova: 'Minä olen PRESIDENTTI!'",
+            "Heittosi osuu! Vova: 'Odotas kun soitan Kimille!'",
         };
         msg = rages[std::rand()%4];
         say("Я ДЗЮДОИСТ!!!");
     } else {
         static const char* cries[] = {
-            "Heittosi osuu! Putin: '*itkee* Judoka ei kaadu... ei kaadu...'",
-            "Heittosi osuu! Putin: '*nyyhkii* Шойгу... auta...'",
-            "Heittosi osuu! Putin: '*itkee* Länsi... länsi teki tämän...'",
-            "Heittosi osuu! Putin: '*nyyhkii* ...musta vyö... *nyyhkii*'",
+            "Heittosi osuu! Vova: '*itkee* Judoka ei kaadu... ei kaadu...'",
+            "Heittosi osuu! Vova: '*nyyhkii* Шойгу... auta...'",
+            "Heittosi osuu! Vova: '*itkee* Länsi... länsi teki tämän...'",
+            "Heittosi osuu! Vova: '*nyyhkii* ...musta vyö... *nyyhkii*'",
         };
         msg = cries[std::rand()%4];
         say("*nyyhkii*");
@@ -2820,7 +2820,7 @@ void Kenraali::npcAct()
                 "Miss\xC3\xA4 on 3. armeija?! Se oli t\xC3\xA4ss\xC3\xA4 eilen!",
                 "Kuka s\xC3\xB6i kartalta Harkovan?!",
                 "Jobanyi rot! Taas p\xC3\xA4in persett\xC3\xA4!",
-                "Piirr\xC3\xA4 nuoli isommaksi, se n\xC3\xA4ytt\xC3\xA4\xC3\xA4 paremmalta Putinille.",
+                "Piirr\xC3\xA4 nuoli isommaksi, se n\xC3\xA4ytt\xC3\xA4\xC3\xA4 paremmalta Vovalle.",
                 "Kolme p\xC3\xA4iv\xC3\xA4\xC3\xA4 Kiovaan. Mink\xC3\xA4 vuoden?",
             };
             say(curses[std::rand() % 8]);
@@ -2872,7 +2872,7 @@ bool Kenraali::interact(std::string& msg, Person* source)
     damage(2);
     level->alertCops(source);
     msg = name() + (stats.health > 0
-        ? " parahtaa: \"Raportoin t\xC3\xA4st\xC3\xA4 Putinille! Kaikki on hyvin!\""
+        ? " parahtaa: \"Raportoin t\xC3\xA4st\xC3\xA4 Vovalle! Kaikki on hyvin!\""
         : " kaatuu karttap\xC3\xB6yd\xC3\xA4lle. Rintama ei huomaa eroa.");
     say("OHRANA!");
     return true;
