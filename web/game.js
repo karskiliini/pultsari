@@ -163,6 +163,22 @@
             });
         }
     }
+    // vomit: a chunky green-yellow spray, shorter and wetter than blood
+    const VOMIT = ['#6f8f1a', '#8aa828', '#9fb83a', '#5e7a14', '#b5c24a', '#7d6a1e'];
+    function vomit(m) {
+        const bx = m.dx || 0, by = m.dy || 0;
+        for (let i = 0; i < 46; i++) {
+            let a = Math.random() * Math.PI * 2;
+            if (bx || by) a = Math.atan2(by, bx) + (Math.random() - 0.5) * 1.1;
+            const sp = 30 + Math.random() * (bx || by ? 190 : 110);
+            particles.push({
+                wx: m.x + 0.5, wy: m.y + 0.5,
+                ox: 0, oy: 0, vx: Math.cos(a) * sp, vy: Math.sin(a) * sp,
+                life: 0.2 + Math.random() * 0.4, color: VOMIT[(Math.random() * VOMIT.length) | 0],
+                size: Math.random() < 0.35 ? 3 : 2, stain: true,
+            });
+        }
+    }
     function boom(m) {
         flashes.push({ wx: m.x + 0.5, wy: m.y + 0.5, r: (m.r || 3) * CW * 1.4, t: 0 });
         addStain(m.x + 0.5, m.y + 0.5, 0, 0, 'rgba(20,16,12,0.55)', (m.r || 3) * CW * 0.9, true);
@@ -203,6 +219,7 @@
             case 'aim': aim = m; aimAt = performance.now(); break;
             case 'snd': if (window.SFX) SFX.play(m.n, m.v); break;
             case 'hit': blood(m); break;
+            case 'vomit': vomit(m); break;
             case 'boom': boom(m); break;
             case 'clear': ui.text.textContent = ''; ui.text.hidden = false; break;
             case 'text': ui.text.hidden = false; ui.text.textContent += m.s; break;

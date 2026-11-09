@@ -88,6 +88,14 @@ void hitEvent(const Coord& at, uint32_t damage)
     webSend(buf);
 }
 
+void vomitEvent(const Coord& at, int dx, int dy)
+{
+    if (!webMode()) return;
+    char buf[96];
+    snprintf(buf, sizeof(buf), "{\"t\":\"vomit\",\"x\":%u,\"y\":%u,\"dx\":%d,\"dy\":%d}", at.x, at.y, dx, dy);
+    webSend(buf);
+}
+
 void boomEvent(const Coord& at, uint32_t radius)
 {
     if (!webMode()) return;

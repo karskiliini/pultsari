@@ -389,9 +389,13 @@ void Car::frame(uint32_t ms)
     waiting = 0;
     coord = next;
 
-    // old Ladas leave a cloud behind them
-    if ((model == "Lada" || model == "UAZ") && common::random(30)) {
-        const auto body = cells();
-        level->addGas(body.back(), false);
+    // old Ladas leave a cloud right behind them
+    if ((model == "Lada" || model == "UAZ") && common::random(40)) {
+        Coord behind = cells().back();
+        uint32_t& axis = horizontal ? behind.x : behind.y;
+        if (direction > 0 ? axis > 0 : axis + 1 < (horizontal ? common::SIZEX : common::SIZEY)) {
+            axis = direction > 0 ? axis - 1 : axis + 1;
+            level->addGas(behind, false);
+        }
     }
 }

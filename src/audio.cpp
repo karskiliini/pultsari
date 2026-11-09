@@ -15,6 +15,7 @@ void AudioSystem::addSound(const AudioEvent& event)
 {
     events.push_back(event);
     cue(event);
+    if (event.type == SoundType::Vomit) common::vomitEvent(event.position, 0, 0);
 }
 
 // sound effect for an event, picked by type and, for guns, by the weapon's text
@@ -70,6 +71,7 @@ void AudioSystem::addSound(const Coord& pos, SoundType type,
     e.range = range;
     events.push_back(e);
     cue(e);
+    if (type == SoundType::Vomit) common::vomitEvent(pos, 0, 0);
 }
 
 std::vector<HeardSound> AudioSystem::getHeardSounds(const Coord& listenerPos) const

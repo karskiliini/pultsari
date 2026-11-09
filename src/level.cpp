@@ -563,7 +563,7 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
 void Level::addGas(const Coord& c, bool toxic)
 {
     if (gas.size() >= 700) return;
-    gas.push_back({ (float)c.x, (float)c.y, toxic ? 60u : 12u, toxic });
+    gas.push_back({ (float)c.x, (float)c.y, toxic ? 60u : 6u, toxic });
 }
 
 int Level::gasAt(const Coord& c) const
@@ -597,11 +597,13 @@ void Level::skyTick()
         }
     }
 
-    // gas drifts east on the wind and thins out
+    // refinery smoke drifts east on the wind; exhaust just hangs where the car left it
     for (size_t i = 0; i < gas.size();) {
         GasPuff& g = gas[i];
-        g.x += (std::rand() % 100 - 50) / 80.0f + 0.25f;
-        g.y += (std::rand() % 100 - 50) / 120.0f;
+        if (g.toxic) {
+            g.x += (std::rand() % 100 - 50) / 80.0f + 0.25f;
+            g.y += (std::rand() % 100 - 50) / 120.0f;
+        }
         if (--g.ttl == 0 || g.x < 0 || g.y < 0 || g.x >= common::SIZEX || g.y >= common::SIZEY) {
             gas[i] = gas.back();
             gas.pop_back();

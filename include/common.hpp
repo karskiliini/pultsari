@@ -38,6 +38,8 @@ void sound(const char* name, float volume = 1.0f);
 // Visual events for the browser's pixel effects (world coordinates).
 void hitEvent(const Coord& at, uint32_t damage);
 void boomEvent(const Coord& at, uint32_t radius);
+// someone throws up at `at`, spraying towards (dx, dy) (0, 0 = all around)
+void vomitEvent(const Coord& at, int dx, int dy);
 // direction of the next hit (e.g. a bullet), so the blood sprays the right way
 void setHitDirection(int dx, int dy);
 

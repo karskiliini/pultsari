@@ -318,6 +318,9 @@ bool Player::eat(Level* level)
 
 bool Player::puke(DirectionNS::Direction d, Level* level)
 {
+    common::vomitEvent(coord, d == DirectionNS::right ? 1 : d == DirectionNS::left ? -1 : 0,
+                       d == DirectionNS::down ? 1 : (d == DirectionNS::up || d == DirectionNS::none) ? -1 : 0);
+    common::sound("vomit", 1.0f);
     Coord check = coord;
     switch(d)
     {
