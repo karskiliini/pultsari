@@ -134,7 +134,7 @@
             },
         },
         {
-            who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Pelasti perunat droonilta. Taas.',
+            who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Toivoo saavansa säkin perunoita – ja onnistuu!',
             color: '#d07a9a',
             dur: 7.2 + READ_S,
             // she stares into the camera; pull back: a man brings her a sack of potatoes for her
