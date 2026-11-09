@@ -372,6 +372,9 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         if (gameState.phase == GamePhase::War) {
             level.isWarLevel = true;
         }
+        if (gameState.getLandmark() == MoscowLandmark::Bolshoi) {
+            level.isBolshoi = true;
+        }
         if (gameState.hasKremlinPass) {
             player.hasKremlinPass = true;
         }

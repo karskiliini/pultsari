@@ -36,6 +36,8 @@ private:
     void defenestration();
     void novichok();
     void randomEvent();
+    void artilleryBarrage();
+    void meatAssault();
 
     Level* level;
     std::vector<Fire> fires;

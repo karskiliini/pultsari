@@ -89,6 +89,7 @@ public:
     uint32_t stage = 1;
     bool pathFinding = false;
     bool isWarLevel = false;
+    bool isBolshoi = false;
 };
 
 

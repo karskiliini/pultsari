@@ -256,8 +256,13 @@ void EnvironmentEvents::gasAttack()
     uint32_t cy = (target->wallTop + target->wallBot) / 2;
     gasCenter = Coord{ cx, cy };
 
-    level->printer->showMessage("PANTTIVANKITILANNE! Erikoisjoukot kaasuttavat " +
-        target->getName() + "! PAKENE!!", level, false);
+    if (level->isBolshoi) {
+        level->printer->showMessage(
+            "PANTTIVANKITILANNE BOLSHOI-TEATTERISSA! Erikoisjoukot pumppavat kaasua sisään! PAKENE!!", level, false);
+    } else {
+        level->printer->showMessage("PANTTIVANKITILANNE! Erikoisjoukot kaasuttavat " +
+            target->getName() + "! PAKENE!!", level, false);
+    }
 
     Animation* anim = new Animation(gasCenter, "~~KAASU~~", 15);
     level->addAnimation(anim);
@@ -330,12 +335,66 @@ void EnvironmentEvents::randomEvent()
     eventCooldown = 20 + std::rand()%30;
 
     int roll = std::rand() % 100;
-    if (roll < 5) {
+    int gasChance = level->isBolshoi ? 30 : 5;
+    if (roll < gasChance) {
         gasAttack();
-    } else if (roll < 15) {
+    } else if (roll < gasChance + 10) {
         defenestration();
-    } else if (roll < 20) {
+    } else if (roll < gasChance + 15) {
         novichok();
     }
-    // otherwise nothing happens this cycle
+
+    // war-specific events
+    if (level->isWarLevel) {
+        if (roll >= 20 && roll < 50) {
+            artilleryBarrage();
+        } else if (roll >= 50 && roll < 65) {
+            meatAssault();
+        }
+    }
+}
+
+void EnvironmentEvents::artilleryBarrage()
+{
+    level->printer->showMessage("TYKISTÖISKU!! Maahan!!", level, false);
+
+    int shells = 3 + std::rand()%4;
+    for (int i = 0; i < shells; ++i) {
+        uint32_t sx = std::rand() % common::SIZEX;
+        uint32_t sy = std::rand() % common::SIZEY;
+        Coord shellCoord { sx, sy };
+
+        Animation* anim = new Animation(shellCoord, "*KRUMP*", 6);
+        level->addAnimation(anim);
+
+        for (auto& p : level->persons) {
+            if (p->stats.health > 0 && p->coord.distance(shellCoord) <= 3) {
+                uint32_t dmg = std::rand()%8 + 3;
+                p->damage(dmg);
+                if (p->type == pelaaja) {
+                    level->printer->showMessage("Kranaatin sirpale osuu!", level, false);
+                }
+            }
+        }
+
+        // craters leave fires
+        if (!hasFire(shellCoord)) {
+            fires.push_back(Fire{ shellCoord, 10 + (uint32_t)(std::rand()%8), 10 });
+        }
+    }
+}
+
+void EnvironmentEvents::meatAssault()
+{
+    level->printer->showMessage("LIHAHYÖKKÄYS! Pakkovärvätyt rynnäköivät!", level, false);
+
+    // spawn 3-5 skinheads from the right edge rushing left
+    int count = 3 + std::rand()%3;
+    for (int i = 0; i < count; ++i) {
+        uint32_t sy = std::rand() % common::SIZEY;
+        Coord spawnCoord { common::SIZEX - 2, sy };
+        if (!level->hit(spawnCoord)) {
+            level->createPerson(spawnCoord, skinhead);
+        }
+    }
 }

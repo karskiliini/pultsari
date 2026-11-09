@@ -239,6 +239,18 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
             msg = "Kiitos,ja hyvää päivän jatkoa.";
             break;
     }
+    // queue rage: nearby NPCs get angry waiting for their vodka
+    if (common::random(25)) {
+        static const char* rage[] = {
+            "Jonossa olija: 'KIIREHDI! Vodkani odottaa!'",
+            "Joku jonossa: 'Liiku jo, svinya!'",
+            "Jonottaja lyö sinua takaraivoon!",
+            "Vihainen asiakas tönäisee sinua!",
+        };
+        msg += "\n";
+        msg += rage[std::rand()%4];
+        player->damage(std::rand()%2 + 1);
+    }
 }
 
 std::string Alko::getWalkMsg() const { return "Isket paasi alkon seinaan. Mielenkiintoista."; }
