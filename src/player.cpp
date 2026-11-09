@@ -548,6 +548,9 @@ bool Player::shoot(DirectionNS::Direction dir)
     Coordinate<int> from { static_cast<int>(coord.x), static_cast<int>(coord.y) };
     auto d = dirToCoord(dir);
 
+    level->audio.addSound(coord, SoundType::Gunshot,
+        "PAM! Pistooli pamahtaa!", "Pistoolinlaukaus", "...pamaus kaukaa...", 30);
+
     Person* target = level->raycast(from, d);
     if (target) {
         string msg = "";

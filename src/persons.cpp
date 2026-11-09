@@ -1243,6 +1243,8 @@ void Ryostaja::npcAct()
                     msg = "Ryöstäjä ampuu sinua kun ei ole rahaa!";
                 }
                 level->alertCops(this);
+                level->audio.addSound(coord, SoundType::Gunshot,
+                    "PAM! Pistooli pamahtaa!", "Pistoolinlaukaus", "...pamaus kaukaa...", 25);
             } else {
                 p->damage(std::rand()%2+1);
                 msg = "Ryöstäjä lyö sinua!";
@@ -1251,6 +1253,8 @@ void Ryostaja::npcAct()
             p->damage(std::rand()%2+1);
             msg = "Ryöstäjä ampuu sinua kaukaa!";
             level->alertCops(this);
+            level->audio.addSound(coord, SoundType::Gunshot,
+                "PAM! Pistooli pamahtaa!", "Pistoolinlaukaus", "...pamaus kaukaa...", 25);
         } else {
             Direction d = getMoveDirection(chasePos);
             move(d, msg);
@@ -1514,6 +1518,8 @@ void Veteraani::npcAct()
             }
             Animation* anim = new Animation(coord, "***BOOM***", 8);
             level->addAnimation(anim);
+            level->audio.addSound(coord, SoundType::Explosion,
+                "PAUUUUM! Kranaatti räjähtää!", "Räjähdys!", "...räjähdys kaukaa...", 40);
         }
         // shoot at nearest visible target
         else if (ammo > 0 && seesPlayer && coord.distance(p->coord) <= 8) {
@@ -1524,6 +1530,8 @@ void Veteraani::npcAct()
             } else {
                 msg = "Veteraani ampuu mutta menee ohi!";
             }
+            level->audio.addSound(coord, SoundType::Gunshot,
+                "RÄKÄKÄKÄ! Rynnäkkökivääri laulaa!", "Sarjatulta!", "...sarjatulta kaukaa...", 30);
         }
         // chase nearest person
         else if (seesPlayer && coord.distance(p->coord) <= visionRange) {
@@ -1942,7 +1950,7 @@ void Sotilas::npcAct()
                     say("Огонь!");
                 }
                 level->audio.addSound(coord, SoundType::Gunshot,
-                    "LAUKAUS! Sotilas ampuu!", "Laukauksen kaiku", "...laukaus kaukaa...", 35);
+                    "PAKPAKPAKPAK! Konekivääri jyskyttää!", "Konekiväärin tulitusta!", "...jyskytystä kaukaa...", 40);
             } else {
                 Direction d = getMoveDirection(p->coord);
                 move(d, msg);
@@ -1990,7 +1998,7 @@ void Sotilas::npcAct()
             }
             level->alertCops(this);
             level->audio.addSound(coord, SoundType::Gunshot,
-                "LAUKAUS vierest\xC3\xA4!", "Laukauksen kaiku", "...laukaus kaukaa...", 35);
+                "RÄKÄKÄKÄ! Rynnäkkökivääri!", "Sarjatulta!", "...sarjatulta kaukaa...", 30);
         } else {
             Direction d = getMoveDirection(p->coord);
             move(d, msg);
@@ -2065,6 +2073,9 @@ void ITYksikko::npcAct()
         "OGON!",
     };
     say(fire_lines[std::rand()%4]);
+
+    level->audio.addSound(coord, SoundType::Gunshot,
+        "BUUM BUUM! Ilmatorjunta jyrisee!", "Ilmatorjuntatulta!", "...jyrinää kaukaa...", 45);
 
     Animation* anim = new Animation(coord, "***", 5);
     anim->coordMove = Coordinate<int>(0, -1);
