@@ -134,7 +134,7 @@
             },
         },
         {
-            who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Pelasti perunat droonilta. Taas.',
+            who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Toivoo saavansa säkin perunoita – ja onnistuu!',
             color: '#d07a9a',
             dur: 7.2 + READ_S,
             // she stares into the camera; pull back: a man brings her a sack of potatoes for her
@@ -173,21 +173,6 @@
                     text('"Tässä on 3 kg perunoita."', -1, -3.4, '#ddd');
                     if (t > 3.9) text('"Kiitos palveluksestanne Äiti-Venäjälle."', -1, -2.4, '#ddd');
                 }
-            },
-        },
-        {
-            who: 'SEKÄ', name: 'BOMŽ', line: 'Korjaa Ladan teipillä ja vodkalla.',
-            color: '#e2b46a',
-            art: [
-                '   [VODKA]   ~~~~~~ teippiä ~~~~~~',
-                '     ________',
-                '   _/  ____  \\___',
-                '  |___[____]_____|',
-                '     O        O',
-            ],
-            anim(ctx, t, x, y, cw, ch) {
-                ctx.fillStyle = '#f2d34a';
-                if (Math.floor(t * 6) % 2 === 0) ctx.fillText('*kilk*', x + cw * 20, y + ch * 5);
             },
         },
         {
