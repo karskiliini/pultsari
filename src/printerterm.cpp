@@ -88,7 +88,8 @@ void PrinterTerm::printBorder(Level* l, bool top)
     cout << FRAME << (top ? TOP_LEFT : BOT_LEFT);
 
     string left = top ? " GRAND TYR MOSCOW \xC2\xB7 \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80 " : "";
-    string right = (top && !levelName.empty()) ? " " + truncateColumns(levelName, 36) + " " : "";
+    const string place = top ? locationName(l) : "";
+    string right = !place.empty() ? " " + truncateColumns(place, 36) + " " : "";
     uint32_t used = columns(left) + columns(right) + 4 + (right.empty() ? 2 : 0);
     uint32_t fill = common::VIEWPORT_W > used ? common::VIEWPORT_W - used : 0;
 

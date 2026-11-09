@@ -80,6 +80,8 @@ public:
     static constexpr uint32_t MSG_FRAMES = 60;
     uint32_t msgTtl = 0;
     std::string levelName;
+    // the title bar's place name: where the player stands, else the level's name
+    std::string locationName(const Level* l) const;
     // accidental-discharge risk while aiming a pistol (0..1), or negative when not shooting
     float aimRisk = -1.0f;
     // map view size in cells; grows when the camera zooms out after death

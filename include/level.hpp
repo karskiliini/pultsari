@@ -177,6 +177,8 @@ public:
     std::vector<uint8_t> gasGrid;   // per-cell gas kind, rebuilt every world tick
     // the horizontal and vertical road at a cell (either may be null)
     void roadsAt(const Coord& c, const Road*& h, const Road*& v) const;
+    // where a cell is, for the title bar: the building in or next to, else the street; "" if nowhere named
+    std::string locationAt(const Coord& c) const;
     // cars move on their own clock, every frame
     void vehicleFrame(uint32_t ms);
     Item* thrownItem = nullptr;

@@ -324,6 +324,49 @@ void Level::roadsAt(const Coord& c, const Road*& h, const Road*& v) const
     }
 }
 
+std::string Level::locationAt(const Coord& c) const
+{
+    if (isWarLevel) return "";
+
+    // a named building the cell is in or within two steps of; blocks of flats and walls have no name
+    const Building* near = nullptr;
+    uint32_t nearDist = 3;
+    for (auto b : buildings) {
+        if (b->type == EFlats || b->type == ESeina || b->getName().empty()) continue;
+        const uint32_t dx = c.x < b->wallLeft ? b->wallLeft - c.x : c.x > b->wallRight ? c.x - b->wallRight : 0;
+        const uint32_t dy = c.y < b->wallTop ? b->wallTop - c.y : c.y > b->wallBot ? c.y - b->wallBot : 0;
+        const uint32_t dist = std::max(dx, dy);
+        if (b->type == EKremlin) {
+            // deep inside it is the Kremlin; along either side of its walls it is the Kremlin wall
+            const bool inside = dist == 0;
+            const uint32_t toWall = std::min(std::min(c.x - b->wallLeft, b->wallRight - c.x),
+                                             std::min(c.y - b->wallTop, b->wallBot - c.y));
+            if (inside && toWall > 1) return b->getName();
+            if (dist < 3) return "KREMLIN MUURI";
+            continue;
+        }
+        if (dist < nearDist) { near = b; nearDist = dist; }
+    }
+    if (near) return near->getName();
+
+    const Road* h = nullptr;
+    const Road* v = nullptr;
+    roadsAt(c, h, v);
+    if (h && v) return h->name + " / " + v->name;
+    if (h) return h->name;
+    if (v) return v->name;
+
+    // off the streets: the nearest one, if it is close
+    const Road* best = nullptr;
+    uint32_t bestDist = 16;
+    for (const auto& r : roads) {
+        const uint32_t at = r.horizontal ? c.y : c.x;
+        const uint32_t dist = at < r.pos ? r.pos - at : at - (r.pos + 2);
+        if (dist < bestDist) { best = &r; bestDist = dist; }
+    }
+    return best ? best->name : "";
+}
+
 void Level::vehicleFrame(uint32_t ms)
 {
     for (auto v : vehicles) v->frame(ms);

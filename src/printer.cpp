@@ -767,3 +767,12 @@ void Printer::printErr(const std::string& msg)
 {
     std::cerr << msg << std::endl;
 }
+
+std::string Printer::locationName(const Level* l) const
+{
+    if (l && player) {
+        const std::string here = l->locationAt(player->coord);
+        if (!here.empty()) return here;
+    }
+    return levelName;
+}

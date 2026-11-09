@@ -61,7 +61,7 @@ void PrinterWeb::print(Level* l)
 {
     if (++framesSinceMap > 40) { framesSinceMap = 0; sendCityMap(l); }
     string j = "{\"t\":\"frame\",\"msg\":" + jsonString(msg) +
-               ",\"lvl\":" + jsonString(levelName) +
+               ",\"lvl\":" + jsonString(locationName(l)) +
                ",\"cam\":[" + to_string(l->cameraX) + "," + to_string(l->cameraY) + "]" +
                ",\"cols\":" + to_string(viewW) + (l->playerDead ? ",\"dead\":1" : "");
 

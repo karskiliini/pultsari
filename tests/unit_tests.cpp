@@ -1036,6 +1036,31 @@ TEST(frame_clock_holds_twenty_fps)
     CHECK(ms >= 950 && ms <= 1100);
 }
 
+// the title bar names where the player stands, not the stage's old landmark
+TEST(location_follows_the_player)
+{
+    World w;
+    w.level.roads = { { true, 112, "TVERSKAJA UL." }, { false, 135, "SADOVOJE KOLTSO" } };
+    w.add(new Kremlin(), 250, 20);  // walls at x 250..295, y 20..40
+    CHECK(w.level.locationAt(Coord{ 272, 30 }) == "KREML");
+    CHECK(w.level.locationAt(Coord{ 250, 30 }) == "KREMLIN MUURI");  // on the wall
+    CHECK(w.level.locationAt(Coord{ 272, 41 }) == "KREMLIN MUURI");  // just outside it
+    CHECK(w.level.locationAt(Coord{ 60, 113 }) == "TVERSKAJA UL.");
+    CHECK(w.level.locationAt(Coord{ 136, 113 }) == "TVERSKAJA UL. / SADOVOJE KOLTSO");
+    CHECK(w.level.locationAt(Coord{ 60, 120 }) == "TVERSKAJA UL.");   // a few steps off the street
+    CHECK(w.level.locationAt(Coord{ 60, 170 }).empty());
+
+    // nowhere named: the title bar falls back to the level's name
+    w.printer.levelName = "Gorkin Puisto";
+    w.player.coord = Coord{ 60, 170 };
+    CHECK(w.printer.locationName(&w.level) == "Gorkin Puisto");
+    w.player.coord = Coord{ 251, 30 };
+    CHECK(w.printer.locationName(&w.level) == "KREMLIN MUURI");
+
+    w.level.isWarLevel = true;
+    CHECK(w.level.locationAt(Coord{ 60, 113 }).empty());
+}
+
 int main(int argc, char** argv)
 {
     std::srand(12345);
