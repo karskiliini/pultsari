@@ -39,6 +39,8 @@ struct Drone {
     float x, y;
     float vx, vy;       // tiles per second
     Building* target = nullptr;
+    float turn = 0;     // flyovers: radians per second of slow bank
+    float age = 0;      // seconds in the air; a homing drone turns harder the longer it flies
 };
 
 // A puff of gas drifting on the wind: Lada exhaust or toxic refinery smoke.
@@ -73,6 +75,7 @@ public:
     void npcTurn();
     // real time: every NPC acts when its own initiative has built up enough energy
     void npcFrame(uint32_t ms);
+    uint32_t exhaustMs = 0;   // cooldown between exhaust sniffs
     // a name for messages, e.g. "Gopnik" or a drunk's own name
     std::string nameOf(const Person* p) const;
     void actThrow(Person* source);

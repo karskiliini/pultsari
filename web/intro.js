@@ -64,6 +64,7 @@
             return { mask, minY, maxY, minX, maxX, count };
         }
         const latin = textMask(latinText, latinX, baseY);
+        const title = textMask(titleText, startX, baseY);
         const cyr = textMask(cyrText, cyrX, cyrY);
         const filled = new Uint8Array(FW * FH);
         let filledCount = 0;
@@ -132,6 +133,10 @@
                 if (at(latin.mask, px[i], py[i]) || at(latin.mask, px[i], py[i] + 1)) {
                     vx[i] *= 0.93 - 0.23 * t; vy[i] *= 0.95 - 0.2 * t;
                     fly[i] = 0;
+                } else if (at(title.mask, px[i], py[i]) || at(title.mask, px[i], py[i] + 1)) {
+                    // the title gets smeared on the way: it slows the jet, a little of it stays behind
+                    vx[i] *= 0.985 - 0.02 * t; vy[i] *= 0.9;
+                    if (Math.random() < 0.004 * t) { vx[i] *= 0.2; fly[i] = 0; }
                 }
                 // the jet flies freely until it hits something; after that slime drags on everything
                 if (fly[i]) {
@@ -427,7 +432,7 @@
         let jet = 0;
         function jetFrame() {
             if (jet <= 0) return;
-            const srcX = (startX + titleW * 0.15) / CELL, srcY = (baseY - fs * 0.55) / CELL;
+            const srcX = startX / CELL - 14, srcY = (baseY - fs * 0.5) / CELL;
             for (let k = 0; k < 30 && jet > 0; k++, jet--) {
                 emit(srcX + Math.random() * 8, srcY + (Math.random() - 0.5) * 7,
                      2.2 + Math.random() * 0.8, -0.75 + Math.random() * 0.35, jet % 2 ? 0 : 1);

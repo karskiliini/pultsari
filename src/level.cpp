@@ -322,8 +322,26 @@ void Level::vehicleFrame(uint32_t ms)
     // drones fly on; a striking drone dives in when it reaches its target
     for (size_t i = 0; i < drones.size();) {
         Drone& d = drones[i];
-        d.x += d.vx * ms / 1000.0f;
-        d.y += d.vy * ms / 1000.0f;
+        const float dt = ms / 1000.0f;
+        d.age += dt;
+        float heading = std::atan2(d.vy, d.vx);
+        const float speed = std::hypot(d.vx, d.vy);
+        if (d.target) {
+            // homing: it banks toward the target in a wide arc, tighter the longer it has flown
+            const float tx = (d.target->wallLeft + d.target->wallRight) / 2.0f;
+            const float ty = (d.target->wallTop + d.target->wallBot) / 2.0f;
+            float diff = std::atan2(ty - d.y, tx - d.x) - heading;
+            while (diff > 3.14159f) diff -= 6.28318f;
+            while (diff < -3.14159f) diff += 6.28318f;
+            const float maxTurn = (0.45f + 0.25f * d.age) * dt;
+            heading += std::max(-maxTurn, std::min(maxTurn, diff));
+        } else {
+            heading += d.turn * dt;
+        }
+        d.vx = std::cos(heading) * speed;
+        d.vy = std::sin(heading) * speed;
+        d.x += d.vx * dt;
+        d.y += d.vy * dt;
         if (d.target) {
             const float tx = (d.target->wallLeft + d.target->wallRight) / 2.0f;
             const float ty = (d.target->wallTop + d.target->wallBot) / 2.0f;
@@ -353,8 +371,12 @@ void Level::launchDrone(Building* target)
         d.x = common::random(50) ? -8.0f : common::SIZEX + 8.0f;
         d.y = (float)(std::rand() % common::SIZEY);
         const float len = std::max(1.0f, std::hypot(tx - d.x, ty - d.y));
-        d.vx = (tx - d.x) / len * SPEED;
-        d.vy = (ty - d.y) / len * SPEED;
+        // it does not come straight in: it starts off at an angle and curves onto the target
+        const float off = (0.5f + (std::rand() % 50) / 100.0f) * (common::random(50) ? 1.0f : -1.0f);
+        const float h = std::atan2(ty - d.y, tx - d.x) + off;
+        (void)len;
+        d.vx = std::cos(h) * SPEED;
+        d.vy = std::sin(h) * SPEED;
         d.target = target;
     } else {
         // a flyover, often close enough to the player to be seen
@@ -376,6 +398,7 @@ void Level::launchDrone(Building* target)
             d.vy = south ? speed * 0.6f : -speed * 0.6f; // cells are taller than wide
         }
     }
+    if (!target && common::random(50)) d.turn = ((std::rand() % 2) ? 1.0f : -1.0f) * (0.04f + (std::rand() % 10) / 100.0f);
     drones.push_back(d);
 }
 
@@ -392,6 +415,15 @@ void Level::droneImpact(const Coord& c, Building* target)
 
     Jalostamo* refinery = dynamic_cast<Jalostamo*>(target);
     if (refinery) refinery->burning = 900;
+    if (target && target->walkable && target->type != EKremlin) {
+        // the blast tears holes in the walls: the building can now be walked into
+        const uint32_t cx = (target->wallLeft + target->wallRight) / 2;
+        for (int k = -1; k <= 1; ++k) {
+            target->breaches.push_back(Coord{ cx + k, target->wallTop });
+            target->breaches.push_back(Coord{ cx + k, target->wallBot });
+        }
+        for (const auto& w : target->windows) target->breaches.push_back(w);
+    }
 
     const PlayerNS::Player* player = getPlayer();
     if (player && !playerDead && canHear(player->coord, c, 60, true)) {
@@ -641,12 +673,6 @@ void Level::skyTick()
                 printer->showMessage("Myrkyllinen savu polttaa keuhkojasi! *K\xC3\x96H K\xC3\x96H*", this, false);
                 common::sound("cough", 0.8f);
             }
-        } else if (kind == 1 && p->type == pelaaja && common::random(40)) {
-            // a sniff of hydrocarbons: a quick buzz, at a price
-            PlayerNS::Player* pl = static_cast<PlayerNS::Player*>(p);
-            pl->updatepromilles(1);
-            if (common::random(50)) pl->damage(1);
-            if (common::random(40)) printer->showMessage("Haistelet Ladan pakokaasua. P\xC3\xA4\xC3\xA4 kevenee. Hiilivetyj\xC3\xA4!", this, false);
         }
     }
 }
@@ -1168,6 +1194,26 @@ static void fleeStep(Level* level, Person* p)
 
 void Level::npcFrame(uint32_t ms)
 {
+    // the player breathes the exhaust every step, not just on world ticks
+    if (PlayerNS::Player* pl = getPlayer()) {
+        exhaustMs = exhaustMs > ms ? exhaustMs - ms : 0;
+        if (pl->stats.health > 0 && !playerDead && gasAt(pl->coord) == 1 && exhaustMs == 0) {
+            exhaustMs = 1200;
+            if (common::random(60)) {
+                // a sniff of hydrocarbons: a quick buzz, at a price
+                pl->updatepromilles(1);
+                if (common::random(40)) pl->damage(1);
+                static const char* lines[] = {
+                    "Vedät pakokaasua henkeen.",
+                    "Vedät hiilivetyj\xC3\xA4 keuhkoihin.",
+                    "Ladan pakokaasu kirvelee silmi\xC3\xA4. P\xC3\xA4\xC3\xA4 kevenee.",
+                    "Hengit\xC3\xA4t lyijyll\xC3\xA4 maustettua ilmaa. *K\xC3\xB6h*",
+                };
+                printer->showMessage(lines[std::rand() % 4], this, false);
+            }
+        }
+    }
+
     // index loop: an NPC's action may add people
     for (size_t i = 0; i < persons.size(); ++i) {
         Person* p = persons[i];

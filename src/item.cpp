@@ -351,6 +351,20 @@ std::string Oksennus::getMsg() const {
 
 bool Oksennus::interact(PlayerNS::Player* player)
 {
+    // someone who sees you wade through it has an opinion
+    if (player->level) {
+        for (auto p : player->level->persons) {
+            if (p == player || p->stats.health == 0 || p->coord.distance(player->coord) > 8) continue;
+            if (!p->canSeeTarget(player->coord) || !common::random(60)) continue;
+            static const char* lines[] = {
+                "Ven\xC3\xA4l\xC3\xA4ist\xC3\xA4 korkeakulttuuria!",
+                "Kas, Moskovan baletti!",
+                "Puhdasta ven\xC3\xA4l\xC3\xA4ist\xC3\xA4 kulttuuriperint\xC3\xB6\xC3\xA4.",
+            };
+            p->say(common::random(60) ? lines[0] : lines[1 + std::rand() % 2]);
+            break;
+        }
+    }
     return true;
 }
 

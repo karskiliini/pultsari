@@ -1,4 +1,5 @@
 #include "printerweb.hpp"
+#include "mask.hpp"
 #include "level.hpp"
 #include "building.hpp"
 #include "player.hpp"
@@ -109,7 +110,27 @@ void PrinterWeb::print(Level* l)
         flush();
         j += "]";
     }
-    j += "]}";
+    j += "]";
+
+    // what the player can see: one hex digit per 4 cells, so blood and vomit stay hidden out of sight
+    if (mask) {
+        static const char* HEX = "0123456789abcdef";
+        j += ",\"vis\":[";
+        for (uint32_t y = 0; y < viewH; ++y) {
+            string row;
+            for (uint32_t x = 0; x < viewW; x += 4) {
+                int bits = 0;
+                for (uint32_t k = 0; k < 4; ++k) {
+                    const int wx = (int)(x + k) + l->cameraX, wy = (int)y + l->cameraY;
+                    if (x + k < viewW && wx >= 0 && wy >= 0 && mask->visible(Coord{ (uint32_t)wx, (uint32_t)wy })) bits |= 1 << k;
+                }
+                row += HEX[bits];
+            }
+            j += string(y ? "," : "") + "\"" + row + "\"";
+        }
+        j += "]";
+    }
+    j += "}";
     webSend(j);
 }
 

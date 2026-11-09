@@ -208,6 +208,29 @@ Coord Building::getSpawn() const
 }
 
 
+// a customer standing next to the player in the queue loses patience
+static void queueRage(Building* b, PlayerNS::Player* player, std::string& msg, int chance)
+{
+    Person* angry = nullptr;
+    for (auto p : b->level->persons) {
+        if (p == player || p->stats.health == 0 || !b->hitBuilding(p->coord)) continue;
+        if (p->coord.distance(player->coord) <= 2) { angry = p; break; }
+    }
+    if (!angry || !common::random(chance)) return;
+    static const char* rage[] = {
+        "KIIREHDI! Vodkani odottaa!",
+        "Liiku jo, svinya!",
+        "Min\xC3\xA4 olin ensin!",
+        "Jono, ty\xC3\xB6l\xC3\xA4inen! JONO!",
+        "Sinun takiasi t\xC3\xA4\xC3\xA4ll\xC3\xA4 haisee!",
+        "Mit\xC3\xA4 tuijotat? Haluatko turpaan?",
+    };
+    angry->say(rage[std::rand() % 6]);
+    msg += "\n";
+    msg += b->level->nameOf(angry) + (common::random(50) ? " ly\xC3\xB6 sinua takaraivoon!" : " t\xC3\xB6n\xC3\xA4isee sinua!");
+    player->damage(std::rand() % 2 + 1);
+}
+
 // ALKO
 Alko::Alko() : Building(BuildingType::EAlko) {
     walkable = true;
@@ -277,24 +300,7 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
             msg = "Myyjä: 'Hyvää päivänjatkoa. Tai mitä niitä nyt on.'";
             break;
     }
-    // queue rage: a customer standing next to you loses patience
-    Person* angry = nullptr;
-    for (auto p : level->persons) {
-        if (p == player || p->stats.health == 0 || !hitBuilding(p->coord)) continue;
-        if (p->coord.distance(player->coord) <= 2) { angry = p; break; }
-    }
-    if (angry && common::random(35)) {
-        static const char* rage[] = {
-            "KIIREHDI! Vodkani odottaa!",
-            "Liiku jo, svinya!",
-            "Min\xC3\xA4 olin ensin!",
-            "Jono, ty\xC3\xB6l\xC3\xA4inen! JONO!",
-        };
-        angry->say(rage[std::rand() % 4]);
-        msg += "\n";
-        msg += level->nameOf(angry) + (common::random(50) ? " ly\xC3\xB6 sinua takaraivoon!" : " t\xC3\xB6n\xC3\xA4isee sinua!");
-        player->damage(std::rand() % 2 + 1);
-    }
+    queueRage(this, player, msg, 35);
 }
 
 std::string Alko::getWalkMsg() const { return "Isket pääsi viinakaupan seinään. Jonottajat nauravat."; }
@@ -830,6 +836,93 @@ void Hypermarket::startFire()
     fireSpots.push_back({cx, cy});
     fireSpots.push_back({cx + 1, cy});
     fireSpots.push_back({cx, cy + 1});
+}
+
+// RUSSIAN SHOPS: open, but nobody is happy about it
+
+Kauppa::Kauppa(const std::string& name, Kind kind)
+    : Building(BuildingType::EShop), name(name), kind(kind)
+{
+    walkable = true;
+    wallLeft = 0;
+    wallRight = 14;
+    wallTop = 0;
+    wallBot = 4;
+    door = DirectionNS::down;
+    windows.push_back({3, wallBot});
+    windows.push_back({11, wallBot});
+}
+
+bool Kauppa::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    static const char* lines[] = {
+        "Ovikello kilahtaa. Myyj\xC3\xA4 katsoo sinua kuin rottaa.",
+        "Myyj\xC3\xA4 ei nosta katsettaan puhelimesta. 'Mit\xC3\xA4?'",
+        "Myyj\xC3\xA4 huokaa syv\xC3\xA4\xC3\xA4n. 'Taas sin\xC3\xA4.'",
+    };
+    msg = lines[std::rand() % 3];
+    return true;
+}
+
+bool Kauppa::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    if (kind == Kind::Produkty)
+        msg = "MYYJ\xC3\x84: 1) Makkara 6\xE2\x82\xBD  2) Vobla 4\xE2\x82\xBD  3) Antonovka 2\xE2\x82\xBD  4) Baltika 10\xE2\x82\xBD  muu) ulos";
+    else
+        msg = "MYYJ\xC3\x84: 1) Baltika 10\xE2\x82\xBD  2) Banaani 5\xE2\x82\xBD  3) Jaguar 15\xE2\x82\xBD  4) Vodka 25\xE2\x82\xBD  muu) ulos";
+    return true;
+}
+
+void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
+{
+    const char c = InputNS::Input::getMenuKey();
+    static const int foodPrice[] = { 6, 4, 2, 10 };
+    static const int kioskPrice[] = { 10, 5, 15, 25 };
+    if (c < '1' || c > '4') {
+        static const char* bye[] = {
+            "Myyj\xC3\xA4: 'Ei ostoksia? Ulos sitten. T\xC3\xA4m\xC3\xA4 ei ole museo.'",
+            "Myyj\xC3\xA4: 'Ja \xC3\xA4l\xC3\xA4 tule takaisin.'",
+            "Myyj\xC3\xA4 sylk\xC3\xA4isee lattialle per\xC3\xA4\xC3\xA4si.",
+        };
+        msg = bye[std::rand() % 3];
+        queueRage(this, player, msg, 25);
+        return;
+    }
+    const int k = c - '1';
+    const int price = kind == Kind::Produkty ? foodPrice[k] : kioskPrice[k];
+    if ((int)player->stats.money < price) {
+        static const char* broke[] = {
+            "Myyj\xC3\xA4: 'Ei rahaa? Ulos, bom\xC5\xBE""!'",
+            "Myyj\xC3\xA4: 'Velaksi? Velaksi saat turpaan.'",
+            "Myyj\xC3\xA4: 'Ruplat ensin. Sitten puhutaan.'",
+        };
+        msg = broke[std::rand() % 3];
+        queueRage(this, player, msg, 40);
+        return;
+    }
+    player->updateMoney(-price);
+    auto& inv = player->inventory;
+    if (kind == Kind::Produkty) {
+        switch (k) {
+        case 0: ++inv.lenkki; msg = "Makkarassa on 30 % lihaa. Loput on toivoa."; break;
+        case 1: ++inv.kalat;  msg = "Vobla on kuivempi kuin myyj\xC3\xA4n huumorintaju."; break;
+        case 2: ++inv.omppo;  msg = "Antonovka. Kotimainen. Ainoa asia, jota ei ole pakotteissa."; break;
+        default: ++inv.kalja; msg = "Myyj\xC3\xA4 l\xC3\xA4im\xC3\xA4ytt\xC3\xA4\xC3\xA4 Baltikan tiskille. 'Seuraava!'"; break;
+        }
+    } else {
+        switch (k) {
+        case 0: ++inv.kalja;  msg = "Myyj\xC3\xA4: 'Baltika. L\xC3\xA4mmin. Ota tai j\xC3\xA4t\xC3\xA4.'"; break;
+        case 1: ++inv.bansku; msg = "Banaani on Ecuadorista. Se on n\xC3\xA4hnyt enemm\xC3\xA4n maailmaa kuin sin\xC3\xA4."; break;
+        case 2: ++inv.lonkka; msg = "Myyj\xC3\xA4: 'Jaguar on kielletty. Siksi se maksaa enemm\xC3\xA4n.'"; break;
+        default: ++inv.vodka; msg = "Vodka tiskin alta. Etiketti on liimattu vinoon."; break;
+        }
+    }
+    queueRage(this, player, msg, 35);
+}
+
+std::string Kauppa::getWalkMsg() const
+{
+    return name + ": ikkunassa lukee 'EI VAIHTORAHAA. EI VELKAA. EI PALAUTUKSIA.'";
 }
 
 // CLOSED WESTERN SHOPS

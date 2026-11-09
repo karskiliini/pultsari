@@ -32,6 +32,17 @@ void sleep(uint32_t ms)
     std::this_thread::sleep_for(std::chrono::milliseconds(ms));
 }
 
+void frameSleep(uint32_t ms)
+{
+    // hold a steady frame rate: sleep until the next frame is due, not a full frame on top of the work
+    using clock = std::chrono::steady_clock;
+    static clock::time_point next = clock::now();
+    next += std::chrono::milliseconds(ms);
+    const auto now = clock::now();
+    if (next < now - std::chrono::milliseconds(200)) next = now; // far behind: don't try to catch up
+    std::this_thread::sleep_until(next);
+}
+
 bool webMode()
 {
     static const bool web = std::getenv("PULTSARI_WEB") != nullptr;

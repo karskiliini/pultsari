@@ -141,6 +141,16 @@
     }
 
     // world cell -> screen pixel (cell centre)
+    // is a world cell in the player's sight? (no mask sent means everything is visible)
+    function seen(wx, wy) {
+        if (!frame || !frame.vis) return true;
+        const x = Math.floor(wx + 0.5) - frame.cam[0], y = Math.floor(wy + 0.5) - frame.cam[1];
+        const row = frame.vis[y];
+        if (!row || x < 0) return false;
+        const digit = parseInt(row[x >> 2], 16);
+        return !isNaN(digit) && (digit >> (x & 3) & 1) === 1;
+    }
+
     function toScreen(wx, wy) {
         if (!frame) return [0, 0];
         return [(wx - frame.cam[0]) * cw + cw / 2, (wy - frame.cam[1]) * ch + ch / 2];
@@ -296,6 +306,7 @@
             });
             // stains lie on the ground under everyone
             for (const s of stains) {
+                if (!seen(s.wx - 0.5 + s.ox / CW, s.wy - 0.5 + s.oy / CH)) continue;
                 const [sx, sy] = toScreen(s.wx - 0.5, s.wy - 0.5);
                 const px = sx + s.ox * scale, py = sy + s.oy * scale;
                 if (px < -20 || py < -20 || px > W + 20 || py > H + 20) continue;
@@ -334,7 +345,7 @@
             p.vx *= Math.pow(0.04, dt); p.vy *= Math.pow(0.04, dt);
             p.life -= dt;
             const [sx, sy] = toScreen(p.wx - 0.5, p.wy - 0.5);
-            ctx.fillStyle = p.color;
+            ctx.fillStyle = seen(p.wx - 0.5 + p.ox / CW, p.wy - 0.5 + p.oy / CH) ? p.color : 'rgba(0,0,0,0)';
             ctx.fillRect(Math.round(sx + p.ox * scale), Math.round(sy + p.oy * scale), Math.max(1, p.size * scale), Math.max(1, p.size * scale));
             if (p.life <= 0) {
                 if (p.stain) addStain(p.wx, p.wy, p.ox, p.oy, p.color, p.size, false);

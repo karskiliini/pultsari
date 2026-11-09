@@ -119,6 +119,21 @@ static void populateRoads(Level& level)
     };
 }
 
+// the queue in a shop: drunks and babushkas waiting their turn, none of them patient
+// (level.hit() counts the whole shop, so place by walls; the sign row stays clear)
+static void spawnQueue(Level& level, Building* b, int count)
+{
+    uint32_t x = b->wallLeft + 3;
+    for (int k = 0; k < count && x < b->wallRight; ++k, x += 3) {
+        const Coord at { x, b->wallTop + (k % 2 ? 1u : 3u) };
+        if (level.hitWall(at) || level.hitPerson(at)) continue;
+        Person* p = (k % 3 == 1) ? (Person*)new Mummo(at) : (Person*)new Juoppo(at);
+        p->pathFinding = level.pathFinding;
+        p->printer = level.printer;
+        if (!level.addPerson(p)) delete p;
+    }
+}
+
 static void populateBuildings(Level& level, const GameState& gs)
 {
     if (gs.phase == GamePhase::War) {
@@ -139,19 +154,7 @@ static void populateBuildings(Level& level, const GameState& gs)
     b = new Alko();
     b->setOffset(30, 85);
     level.addBuilding(b);
-    // the queue: drunks and babushkas waiting for their bottle
-    // (level.hit() counts the whole shop, so place by walls; the sign row stays clear)
-    {
-        uint32_t x = b->wallLeft + 3;
-        for (int k = 0; k < 5; ++k, x += 3) {
-            const Coord at { x, b->wallTop + (k % 2 ? 1u : 3u) };
-            if (level.hitWall(at) || level.hitPerson(at)) continue;
-            Person* p = (k == 1 || k == 4) ? (Person*)new Mummo(at) : (Person*)new Juoppo(at);
-            p->pathFinding = level.pathFinding;
-            p->printer = level.printer;
-            if (!level.addPerson(p)) delete p;
-        }
-    }
+    spawnQueue(level, b, 5);
 
     // KRauta - west side
     b = new KRauta();
@@ -209,6 +212,22 @@ static void populateBuildings(Level& level, const GameState& gs)
             b = new SuljettuLiike(s.name, s.sign);
             b->setOffset(s.x, 117);
             level.addBuilding(b);
+        }
+    }
+
+    // Russian shops north of Tverskaja: open, rude and always queued up
+    {
+        struct Shop { const char* name; Kauppa::Kind kind; uint32_t x; };
+        const Shop shops[] = {
+            { "\xD0\x9F\xD0\xA0\xD0\x9E\xD0\x94\xD0\xA3\xD0\x9A\xD0\xA2\xD0\xAB", Kauppa::Kind::Produkty, 45 },
+            { "\xD0\x9A\xD0\x98\xD0\x9E\xD0\xA1\xD0\x9A", Kauppa::Kind::Kioski, 160 },
+            { "\xD0\x9C\xD0\x90\xD0\x93\xD0\x90\xD0\x97\xD0\x98\xD0\x9D", Kauppa::Kind::Produkty, 270 },
+        };
+        for (const auto& s : shops) {
+            b = new Kauppa(s.name, s.kind);
+            b->setOffset(s.x, 104);
+            level.addBuilding(b);
+            spawnQueue(level, b, 3 + std::rand() % 3);
         }
     }
 
@@ -695,7 +714,7 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
             printer->setMessage(card + " Paina mit\xC3\xA4 tahansa n\xC3\xA4pp\xC3\xA4int\xC3\xA4.");
             printer->print(&level);
         }
-        common::sleep(FRAME_MS);
+        common::frameSleep(FRAME_MS);
     }
 
     printer->viewW = common::VIEWPORT_W;
@@ -1020,7 +1039,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                         // the drunker you are, the longer each step takes; an early key waits its turn
                         InputNS::InputType input = InputNS::inputpending;
-                        const uint32_t stepMs = 90 + player.stats.promilles * 8;
+                        const uint32_t stepMs = 80 + player.stats.promilles * 5;
                         if (queuedMove != InputNS::inputpending && msSinceMove >= stepMs) {
                             input = queuedMove;
                             queuedMove = InputNS::inputpending;
@@ -1311,7 +1330,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     break;
                 }
 
-                common::sleep(FRAME_MS);
+                common::frameSleep(FRAME_MS);
             }
 
             InputNS::Input::noraw();

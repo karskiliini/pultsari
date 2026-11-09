@@ -26,6 +26,8 @@ extern bool realtimeEnabled;
 bool random(uint32_t pct);
 bool checkBounds(Coord& coord);
 void sleep(uint32_t ms);
+// sleeps until the next frame of `ms` is due
+void frameSleep(uint32_t ms);
 // Browser mode (PULTSARI_WEB): the game talks to the web client in JSON messages,
 // one per line, each starting with an ASCII record separator (0x1E).
 bool webMode();

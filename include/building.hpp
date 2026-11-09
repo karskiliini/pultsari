@@ -24,7 +24,8 @@ enum BuildingType {
     EHypermarket,
     EClosedShop,
     ERefinery,
-    EBank
+    EBank,
+    EShop
 };
 
 class Level;
@@ -216,6 +217,21 @@ public:
 private:
     std::string name;
     std::string sign;
+};
+
+// A Russian shop that is open: a few things for sale, a rude seller and an angry queue.
+class Kauppa : public Building {
+public:
+    enum class Kind { Produkty, Kioski };
+    Kauppa(const std::string& name, Kind kind);
+    virtual std::string getName() const { return name; }
+    virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
+    virtual std::string getWalkMsg() const;
+private:
+    std::string name;
+    Kind kind;
 };
 
 // An oil refinery: drones love it. Once hit it burns for a long time and
