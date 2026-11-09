@@ -181,6 +181,14 @@ bool Input::getInputPutka()
     return sel;
 }
 
+char Input::getMenuKey()
+{
+    Input::raw();
+    const int c = getchar();
+    Input::noraw();
+    return (char)c;
+}
+
 uint32_t Input::getInputDivari()
 {
     Input::raw();

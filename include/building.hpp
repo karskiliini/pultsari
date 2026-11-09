@@ -28,6 +28,7 @@ enum BuildingType {
 };
 
 class Level;
+class Person;
 
 class Building {
 public:
@@ -203,7 +204,15 @@ public:
     SuljettuLiike(const std::string& name, const std::string& sign);
     virtual std::string getName() const { return name; }
     virtual bool getEnterMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
+    virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+    virtual void npcAct();
+    // a stone through the shop window: glass, alarm, maybe loot, police later
+    void smashWindow(const Coord& c, Person* source);
+    bool smashed = false;
+    uint32_t alarmTicks = 0;
+    Person* burglar = nullptr;
 private:
     std::string name;
     std::string sign;

@@ -139,6 +139,19 @@ static void populateBuildings(Level& level, const GameState& gs)
     b = new Alko();
     b->setOffset(30, 85);
     level.addBuilding(b);
+    // the queue: drunks and babushkas waiting for their bottle
+    // (level.hit() counts the whole shop, so place by walls; the sign row stays clear)
+    {
+        uint32_t x = b->wallLeft + 3;
+        for (int k = 0; k < 5; ++k, x += 3) {
+            const Coord at { x, b->wallTop + (k % 2 ? 1u : 3u) };
+            if (level.hitWall(at) || level.hitPerson(at)) continue;
+            Person* p = (k == 1 || k == 4) ? (Person*)new Mummo(at) : (Person*)new Juoppo(at);
+            p->pathFinding = level.pathFinding;
+            p->printer = level.printer;
+            if (!level.addPerson(p)) delete p;
+        }
+    }
 
     // KRauta - west side
     b = new KRauta();
@@ -187,7 +200,7 @@ static void populateBuildings(Level& level, const GameState& gs)
             { "STARBUCKS", "Kyltiss\xC3\xA4 lukee 'Stars Coffee'. Sama nainen, eri kruunu.", 65 },
             { "H&M", "Mallinuket seisovat alasti. Ne ovat odottaneet vuodesta 2022.", 90 },
             { "ZARA", "Kyltiss\xC3\xA4 lukee nyt 'Maag'. Samat vaatteet, eri lappu.", 150 },
-            { "APPLE STORE", "Takahuoneessa myyd\xC3\xA4\xC3\xA4n harmaan tuonnin iPhoneja kolminkertaisella hinnalla.", 180 },
+            { "APPLE STORE", "Ikkunassa lukee 'reStore'. Hyllyt ovat tyhj\xC3\xA4t, omenalogo on maalattu punaiseksi.", 180 },
             { "NIKE", "Ikkunassa on kiinalaisia lenkkareita. Swooshit ovat v\xC3\xA4\xC3\xA4rin p\xC3\xA4in.", 250 },
             { "UNIQLO", "P\xC3\xB6ly\xC3\xA4. Paljon p\xC3\xB6ly\xC3\xA4.", 280 },
             { "LEVI'S", "Farkkuja ei ole. On 'Lev'is'-farkkuja Kirgisiasta.", 300 },
@@ -539,6 +552,9 @@ static void populateVehicles(Level& level)
     }
 }
 
+// thrown by Z: the game starts over with a fresh drunk
+struct RestartGame {};
+
 static bool processInput(InputNS::InputType input, PlayerNS::Player& player, Level* level, Printer& printer)
 {
     bool ret;
@@ -586,7 +602,7 @@ static bool processInput(InputNS::InputType input, PlayerNS::Player& player, Lev
         default:
         case InputNS::quit:
             ret = false;
-            throw std::out_of_range("quit!");
+            throw RestartGame();
     }
     return ret;
 }
@@ -962,7 +978,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
 
                     for (const char c : keys) {
-                    if (c == 'z') throw std::out_of_range("quit!");
+                    if (c == 'z') throw RestartGame();
 
                     switch (mode) {
                     case Mode::Normal: {
@@ -1514,8 +1530,14 @@ int init(int argc, char *argv[], Printer* printer)
     }
 
     try {
-        // every death is followed by a new drunk; Z quits for good
-        while (mainloop(printer, stage, losEnabled, animsEnabled, pathFinding)) { }
+        // every death, and Z, is followed by a new drunk
+        for (;;) {
+            try {
+                if (!mainloop(printer, stage, losEnabled, animsEnabled, pathFinding)) break;
+            } catch (const RestartGame&) {
+                printer->setMessage("Uusi pultsari her\xC3\xA4\xC3\xA4 penkilt\xC3\xA4.");
+            }
+        }
     }
     catch(const std::out_of_range& e)
     {

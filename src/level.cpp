@@ -116,7 +116,18 @@ void Level::actThrow(Person* source)
                 hit = true;
             } else if (hitWall(thrownItem->coord))
             {
-                printer->showMessage("Osuit seinään.", this, false);
+                SuljettuLiike* shop = nullptr;
+                for (auto b : buildings) {
+                    if (b->hitWindow(thrownItem->coord)) { shop = dynamic_cast<SuljettuLiike*>(b); break; }
+                }
+                const bool heavy = thrownItem->type == EKivi || thrownItem->type == EPamppu ||
+                                   thrownItem->type == EKetjut || thrownItem->type == EVodka;
+                if (shop && heavy) {
+                    shop->smashWindow(thrownItem->coord, source);
+                    printer->showMessage("KILIN\xC3\x84! Ikkuna hajoaa ja h\xC3\xA4lytin alkaa ulvoa!", this, false);
+                } else {
+                    printer->showMessage("Osuit seinään.", this, false);
+                }
                 hit = true;
             } else {
                 Coord copy { thrownItem->coord.x, thrownItem->coord.y };

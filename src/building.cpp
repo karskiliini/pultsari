@@ -228,28 +228,36 @@ std::string Alko::getName() const
 
 bool Alko::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    if (player->stats.promilles > 14) {
-        msg = "Myyjä: 'Пошёл вон!' Olet liian kännissä edes Moskovan mittapuulla.";
-        return false;
-    } else if ((player->stats.promilles < 5) && (player->stats.money >= 15)) {
-        msg = "Myyjä: 'Selvä mies? Täällä? Se korjataan.'";
-        return true;
-    } else if (player->stats.money < 15) {
-        msg = "Myyjä: 'Ei ruplia, ei vodkaa.'";
-        return false;
-    }
-    msg = "";
+    // anyone gets in; the counter is where you get turned away
+    msg = "Ovikello kilahtaa. Hyllyt notkuvat vodkaa, jonossa seisoo puoli kortteli\xC3\xA4.";
     return true;
+}
+
+static bool alkoRefuses(PlayerNS::Player* player, std::string& msg)
+{
+    if (player->stats.promilles > 14) {
+        msg = "Myyj\xC3\xA4: '\xD0\x9F\xD0\xBE\xD1\x88\xD1\x91\xD0\xBB \xD0\xB2\xD0\xBE\xD0\xBD!' Olet liian k\xC3\xA4nniss\xC3\xA4 edes Moskovan mittapuulla.";
+        return true;
+    }
+    if (player->stats.money < 10) {
+        msg = "Myyj\xC3\xA4: 'Ei ruplia, ei vodkaa. Katsele vaan, katsominen on ilmaista.'";
+        return true;
+    }
+    return false;
 }
 
 bool Alko::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Myyjä: 'Mitä otetaan? Baltika vai Jaguar (1/2)?'";
+    if (alkoRefuses(player, msg)) return true;
+    msg = player->stats.promilles < 5 ? "Myyj\xC3\xA4: 'Selv\xC3\xA4 mies? T\xC3\xA4\xC3\xA4ll\xC3\xA4? Se korjataan. Baltika vai Jaguar (1/2)?'"
+                                      : "Myyj\xC3\xA4: 'Mit\xC3\xA4 otetaan? Baltika vai Jaguar (1/2)?'";
     return true;
 }
 
 void Alko::interact(PlayerNS::Player* player, std::string& msg)
 {
+    std::string refusal;
+    if (alkoRefuses(player, refusal)) { msg.clear(); return; }
     auto purchase = Input::getInputAlko();
     switch(purchase)
     {
@@ -259,6 +267,7 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
             player->updateMoney(-10);
             break;
         case InputNS::ostalonkka:
+            if (player->stats.money < 15) { msg = "Myyj\xC3\xA4: 'Jaguar maksaa viisitoista. Ota Baltika.'"; break; }
             ++player->inventory.lonkka;
             player->updateMoney(-15);
             msg = "Myyjä: 'Jaguar on kielletty. Se maksaa siksi vähän enemmän.'";
@@ -268,17 +277,23 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
             msg = "Myyjä: 'Hyvää päivänjatkoa. Tai mitä niitä nyt on.'";
             break;
     }
-    // queue rage: nearby NPCs get angry waiting for their vodka
-    if (common::random(25)) {
+    // queue rage: a customer standing next to you loses patience
+    Person* angry = nullptr;
+    for (auto p : level->persons) {
+        if (p == player || p->stats.health == 0 || !hitBuilding(p->coord)) continue;
+        if (p->coord.distance(player->coord) <= 2) { angry = p; break; }
+    }
+    if (angry && common::random(35)) {
         static const char* rage[] = {
-            "Jonossa olija: 'KIIREHDI! Vodkani odottaa!'",
-            "Joku jonossa: 'Liiku jo, svinya!'",
-            "Jonottaja lyö sinua takaraivoon!",
-            "Vihainen asiakas tönäisee sinua!",
+            "KIIREHDI! Vodkani odottaa!",
+            "Liiku jo, svinya!",
+            "Min\xC3\xA4 olin ensin!",
+            "Jono, ty\xC3\xB6l\xC3\xA4inen! JONO!",
         };
+        angry->say(rage[std::rand() % 4]);
         msg += "\n";
-        msg += rage[std::rand()%4];
-        player->damage(std::rand()%2 + 1);
+        msg += level->nameOf(angry) + (common::random(50) ? " ly\xC3\xB6 sinua takaraivoon!" : " t\xC3\xB6n\xC3\xA4isee sinua!");
+        player->damage(std::rand() % 2 + 1);
     }
 }
 
@@ -826,20 +841,128 @@ SuljettuLiike::SuljettuLiike(const std::string& name, const std::string& sign)
     wallRight = 14;
     wallTop = 0;
     wallBot = 4;
-    door = DirectionNS::up;
+    // the front door is chained shut; business goes on through the back door
+    walkable = true;
+    door = DirectionNS::down;
     windows.push_back({3, wallTop});
     windows.push_back({11, wallTop});
 }
 
 bool SuljettuLiike::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Ovi on lukossa. Lapussa: 'Suljettu toistaiseksi. 03/2022.' " + sign;
-    return false;
+    msg = "Takaovi raottuu. Kalju p\xC3\xA4\xC3\xA4 kurkistaa: 'Kuka l\xC3\xA4hetti? ...No tule, bystro.'";
+    return true;
+}
+
+bool SuljettuLiike::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
+{
+    msg = "TAKAHUONE: 1) Vodka 20\xE2\x82\xBD  2) Samogon 8\xE2\x82\xBD  3) Pussi 'suolaa' 15\xE2\x82\xBD  muu) poistu";
+    return true;
+}
+
+void SuljettuLiike::interact(PlayerNS::Player* player, std::string& msg)
+{
+    const char c = InputNS::Input::getMenuKey();
+    const int price = c == '1' ? 20 : c == '2' ? 8 : c == '3' ? 15 : 0;
+    if (price == 0) {
+        msg = "Myyj\xC3\xA4: 'Et n\xC3\xA4hnyt mit\xC3\xA4\xC3\xA4n. T\xC3\xA4\xC3\xA4ll\xC3\xA4 on ollut kiinni vuodesta 2022.'";
+        return;
+    }
+    if ((int)player->stats.money < price) {
+        msg = "Myyj\xC3\xA4: 'Ei rahaa, ei kamaa. T\xC3\xA4m\xC3\xA4 ei ole sosiaalitoimisto.'";
+        return;
+    }
+    player->updateMoney(-price);
+    switch (c) {
+    case '1':
+        ++player->inventory.vodka;
+        msg = "Pullossa lukee 'Absolut'. Kirjaimet ovat v\xC3\xA4\xC3\xA4rin p\xC3\xA4in. Sis\xC3\xA4lt\xC3\xB6 on aitoa.";
+        break;
+    case '2':
+        if (common::random(25)) {
+            player->updatepromilles(15);
+            player->damage(2);
+            msg = "Samogon polttaa kurkkua kuin jet-polttoaine. N\xC3\xA4k\xC3\xB6kentt\xC3\xA4 kapenee hetkeksi.";
+        } else {
+            ++player->inventory.vodka;
+            msg = "Samogon kolmen litran kurkkupurkissa. Mummon resepti, sanoo myyj\xC3\xA4.";
+        }
+        break;
+    default:
+        if (common::random(40)) {
+            player->updatepromilles(8);
+            player->damage(1);
+            msg = "Pussissa oli jotain muuta kuin suolaa. Sein\xC3\xA4t hengitt\xC3\xA4v\xC3\xA4t.";
+        } else {
+            player->powerup(3);
+            msg = "Syd\xC3\xA4n hakkaa kuin konekivri. Olet yht\xC3\xA4kki\xC3\xA4 todella tehokas.";
+        }
+        break;
+    }
 }
 
 std::string SuljettuLiike::getWalkMsg() const
 {
-    return name + " on ollut kiinni vuodesta 2022. Ikkunat ovat p\xC3\xB6lyss\xC3\xA4.";
+    if (smashed) return name + ": ikkuna on rikki. H\xC3\xA4lytin piippaa yh\xC3\xA4.";
+    return "Etuovi on lukossa. Lapussa: 'Suljettu toistaiseksi. 03/2022.' " + sign +
+           " Takapihalta kuuluu musiikkia.";
+}
+
+void SuljettuLiike::smashWindow(const Coord& c, Person* source)
+{
+    breaches.push_back(c);
+    smashed = true;
+    burglar = source;
+    alarmTicks = 40;
+    level->audio.addSound(c, SoundType::Glass, "KILIN\xC3\x84! " + name + ":n ikkuna hajoaa!",
+                          "Lasin s\xC3\xA4rkymist\xC3\xA4", "...lasin helin\xC3\xA4\xC3\xA4...", 30);
+    level->audio.addSound(c, SoundType::Siren, name + ":n h\xC3\xA4lytin ulvoo!",
+                          "Murtoh\xC3\xA4lytin", "...h\xC3\xA4lytin ulvoo jossain...", 40);
+    if (source) level->alertCops(source, 40);
+
+    // usually there is nothing inside but dust
+    if (!common::random(30)) return;
+    static const uint32_t loot[] = { 1, 2, 13, 3, 5, 14 };
+    const uint32_t idx = loot[std::rand() % 6];
+    for (int tries = 0; tries < 20; ++tries) {
+        const Coord at { wallLeft + 1 + std::rand() % (wallRight - wallLeft - 1),
+                         wallTop + 1 + std::rand() % (wallBot - wallTop - 1) };
+        if (level->getItem(at) || level->hitPerson(at)) continue;
+        if (Item* it = Item::createItem(idx, at)) level->addItem(it);
+        break;
+    }
+}
+
+void SuljettuLiike::npcAct()
+{
+    if (alarmTicks == 0) return;
+    --alarmTicks;
+    const Coord front { (wallLeft + wallRight) / 2, wallTop };
+    if (alarmTicks % 6 == 0)
+        level->audio.addSound(front, SoundType::Siren, name + ":n h\xC3\xA4lytin ulvoo!",
+                              "Murtoh\xC3\xA4lytin", "...h\xC3\xA4lytin ulvoo jossain...", 40);
+
+    // the patrol turns up a while after the alarm, if the burglar is still around
+    if (alarmTicks == 22 && level->isAlive(burglar) && burglar->coord.distance(front) < 25) {
+        for (int k = 0; k < 2; ++k) {
+            for (int tries = 0; tries < 30; ++tries) {
+                const int dx = (std::rand() % 2 ? 1 : -1) * (14 + std::rand() % 6);
+                const int dy = (int)(std::rand() % 9) - 4;
+                const int x = (int)burglar->coord.x + dx, y = (int)burglar->coord.y + dy;
+                if (x < 1 || y < 1 || x >= (int)common::SIZEX - 1 || y >= (int)common::SIZEY - 1) continue;
+                const Coord at { (uint32_t)x, (uint32_t)y };
+                if (level->hit(at)) continue;
+                Person* cop = level->createPerson(at, poliisi);
+                if (!cop) break;
+                cop->chaseTarget = burglar;
+                cop->alerted = true;
+                cop->lastKnownPos = burglar->coord;
+                cop->alertCooldown = 40;
+                cop->say(k ? "Murtoh\xC3\xA4lytys! Seis!" : "Tuolla se on!");
+                break;
+            }
+        }
+    }
 }
 
 // OIL REFINERY

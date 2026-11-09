@@ -62,6 +62,8 @@ public:
     static InputAlkoType getInputAlko();
     static bool getInputPutka();
     static uint32_t getInputDivari();
+    // one key, whatever it is
+    static char getMenuKey();
     static char inputYka();
 };
 
