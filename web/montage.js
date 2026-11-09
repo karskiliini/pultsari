@@ -93,77 +93,124 @@
         {
             who: 'SEKÄ', name: 'JOHTAJA, 61', line: 'Kaatui ikkunasta. Ihan itse.',
             color: '#cfcfcf',
+            dur: 4.2,
             art: [
                 '  _______________',
                 ' |  ▒▒  ▒▒  ▒▒  |',
-                ' |  ▒▒  ▒▒      |',
                 ' |  ▒▒  ▒▒  ▒▒  |',
                 ' |  ▒▒  ▒▒  ▒▒  |',
                 ' |  ▒▒  ▒▒  ▒▒  |',
                 ' |  ▒▒  ▒▒  ▒▒  |',
                 ' |  ▒▒  ▒▒  ▒▒  |',
-                '_|______________|______________',
+                ' |  ▒▒  ▒▒  ▒▒  |',
+                '_|______________|______________________',
             ],
             anim(ctx, t, x, y, cw, ch) {
-                // a little deterministic randomness, the same every time the scene plays
+                // fixed pseudo-randomness, so the scene plays the same every time
                 const rnd = (i) => { const v = Math.sin(i * 127.1 + 311.7) * 43758.5453; return v - Math.floor(v); };
-                const winX = x + cw * 13, winY = y + ch * 2;
-                const groundY = y + ch * 7.6;
-                const T0 = 0.35, FALL = 1.0;            // stands a moment, then about a second in the air
-                const g = 2 * (groundY - winY) / (FALL * FALL);
-                const vx = cw * 7.5;  // out and clear of the wall
-                const figure = (px, py, angle) => {
-                    // a stick figure, spinning as one piece
+                const winL = x + cw * 12, winC = x + cw * 13, winY = y + ch * 2;
+                const groundY = y + ch * 7.75;
+                const BREAK = 0.9;                       // the building stands intact until then
+                const FALL = 0.8;                        // fast: he comes out hard
+                const vx = cw * 13, vy0 = -ch * 1.2;     // out through the glass, a little upward first
+                const g = 2 * (groundY - winY - vy0 * FALL) / (FALL * FALL);
+                const landX = winC + vx * FALL;
+                const tb = t - BREAK;
+
+                const stickman = (px, py, angle, squash) => {
                     ctx.save();
                     ctx.translate(px, py);
                     ctx.rotate(angle);
+                    ctx.scale(1, squash);
                     ctx.fillStyle = '#fff';
                     ctx.fillText('o', -cw * 0.5, -ch * 0.9);
                     ctx.fillText('/|\\', -cw * 1.5, 0);
                     ctx.fillText('/ \\', -cw * 1.5, ch * 0.9);
                     ctx.restore();
                 };
-                if (t < T0) {
-                    figure(winX, winY, Math.sin(t * 20) * 0.08); // wobbling on the sill
-                    return;
-                }
-                const tf = t - T0;
-                if (tf < FALL) {
-                    figure(winX + vx * tf, winY + 0.5 * g * tf * tf, tf * tf * 9);
-                    return;
-                }
-                // impact: he comes apart, blood everywhere
-                const tl = tf - FALL;
-                const landX = winX + vx * FALL;
-                const parts = ['o', '/', '\\', '|', '/', '\\', '|'];
-                ctx.fillStyle = '#fff';
-                parts.forEach((p, i) => {
-                    const pvx = (rnd(i) - 0.35) * cw * 9, pvy = -(0.4 + rnd(i + 9)) * ch * 6;
-                    let px = landX + pvx * Math.min(tl, 0.7), py = groundY - ch * 0.3 + pvy * tl + 0.5 * g * tl * tl;
-                    if (py > groundY - ch * 0.2) py = groundY - ch * 0.2;   // lying on the ground
+
+                if (tb < 0) return; // the building, intact
+
+                // the window is smashed: a dark hole with jagged glass left in the frame
+                ctx.fillStyle = '#000';
+                ctx.fillRect(winL - cw * 0.1, winY - ch * 0.5, cw * 2.2, ch);
+                ctx.fillStyle = '#9fb7c9';
+                ctx.fillText('\u25E5', winL - cw * 0.1, winY - ch * 0.3);
+                ctx.fillText('\u25E3', winL + cw * 1.2, winY + ch * 0.3);
+
+                // glass shards fly out with him and rain down, then lie glittering on the ground
+                for (let i = 0; i < 26; i++) {
+                    const svx = cw * (2 + rnd(i) * 9), svy = -ch * (rnd(i + 30) * 2.5);
+                    const sg = g * (0.8 + rnd(i + 60) * 0.4);
+                    let sx = winC + svx * tb, sy = winY + svy * tb + 0.5 * sg * tb * tb;
+                    const landed = sy >= groundY;
+                    if (landed) {
+                        // where it came down: solve for the moment it reached the ground
+                        const tl = (-svy + Math.sqrt(svy * svy + 2 * sg * (groundY - winY))) / sg;
+                        sx = winC + svx * tl; sy = groundY;
+                    }
                     ctx.save();
-                    ctx.translate(px, py);
-                    ctx.rotate(rnd(i + 3) * 6 + tl * (rnd(i + 5) - 0.5) * 14 * Math.max(0, 0.7 - tl));
-                    ctx.fillText(p, 0, 0);
+                    ctx.translate(sx, sy);
+                    ctx.rotate(landed ? rnd(i + 5) * 3 : tb * (4 + rnd(i + 7) * 10));
+                    ctx.fillStyle = (Math.floor(t * 12 + i) % 3 === 0) ? '#e8f4ff' : '#8fb0c8';
+                    ctx.fillRect(-2, -1, 3 + rnd(i + 11) * 3, 2);
                     ctx.restore();
-                });
-                // blood spray: droplets fly out and fall back down
-                for (let i = 0; i < 40; i++) {
-                    const bvx = (rnd(i + 40) - 0.5) * cw * 12, bvy = -(0.2 + rnd(i + 90)) * ch * 7;
-                    const bx = landX + bvx * tl, by = Math.min(groundY, groundY - ch * 0.2 + bvy * tl + 0.5 * g * tl * tl);
-                    ctx.fillStyle = rnd(i + 7) < 0.5 ? '#b01010' : '#7a0808';
-                    const sz = 2 + rnd(i + 13) * 3;
-                    ctx.fillRect(bx, by, sz, sz);
                 }
-                // the pool spreads
-                const r = Math.min(1, tl / 0.8);
-                ctx.fillStyle = 'rgba(140,10,10,0.85)';
-                ctx.beginPath();
-                ctx.ellipse(landX, groundY + 1, cw * (1 + 4 * r), ch * (0.15 + 0.2 * r), 0, 0, Math.PI * 2);
-                ctx.fill();
-                if (tl < 0.6) {
-                    ctx.fillStyle = '#f2d34a';
-                    ctx.fillText('*KRÄTS*', landX - cw * 3, groundY - ch * 2.2);
+
+                if (tb < FALL) {
+                    // the fall: fast, tumbling
+                    stickman(winC + vx * tb, winY + vy0 * tb + 0.5 * g * tb * tb, tb * 11, 1);
+                } else {
+                    // the landing: no bounce, no pieces - the body just folds into a broken heap
+                    const tl = tb - FALL;
+                    const k = Math.min(1, tl / 0.12);
+                    // blood spreads out along the ground from under him
+                    const r = Math.min(1, tl / 1.2);
+                    ctx.fillStyle = 'rgba(120,8,8,0.92)';
+                    ctx.beginPath();
+                    ctx.ellipse(landX, groundY + ch * 0.05, cw * (1.2 + 5 * Math.sqrt(r)), ch * (0.12 + 0.22 * r), 0, 0, Math.PI * 2);
+                    ctx.fill();
+                    for (let i = 0; i < 14; i++) {
+                        const dir = rnd(i + 200) < 0.5 ? -1 : 1;
+                        const reach = cw * (1 + rnd(i + 210) * 6) * Math.min(1, tl / 0.35);
+                        ctx.fillStyle = i % 2 ? '#8a0a0a' : '#5e0505';
+                        ctx.fillRect(landX + dir * reach, groundY - 1 + rnd(i + 220) * 3, 2 + rnd(i + 230) * 4, 2);
+                    }
+                    // the heap: squashed flat, limbs at wrong angles
+                    ctx.save();
+                    ctx.translate(landX, groundY - ch * 0.15);
+                    ctx.fillStyle = '#e8e8e8';
+                    ctx.scale(1, 1 - 0.55 * k);
+                    ctx.rotate(1.35);
+                    ctx.fillText('o', -cw * 0.4, -ch * 0.6);
+                    ctx.restore();
+                    ctx.save();
+                    ctx.translate(landX, groundY - ch * 0.1);
+                    ctx.fillStyle = '#d8d8d8';
+                    ctx.scale(1.25, 0.45 + 0.55 * (1 - k));
+                    ctx.fillText('\\_/\u203E\\', -cw * 2, 0);
+                    ctx.restore();
+                    ctx.fillStyle = 'rgba(150,10,10,0.9)';
+                    ctx.fillText('~', landX - cw * 0.5, groundY - ch * 0.3);
+                    if (tl < 0.5) {
+                        ctx.fillStyle = '#f2d34a';
+                        ctx.fillText('*MÄTS*', landX - cw * 3, groundY - ch * 1.6);
+                    }
+                }
+
+                // a man from the FSB looks down from the window for a moment, then is gone
+                const fsbAt = FALL + 0.45, fsbFor = 1.1;
+                if (tb > fsbAt && tb < fsbAt + fsbFor) {
+                    const peek = Math.min(1, (tb - fsbAt) / 0.2) * Math.min(1, (fsbAt + fsbFor - tb) / 0.2);
+                    ctx.globalAlpha = peek;
+                    ctx.fillStyle = '#7e8c6a';
+                    ctx.fillText('\u2580', winL + cw * 0.5, winY - ch * 0.45);  // hat brim
+                    ctx.fillStyle = '#ddd';
+                    ctx.fillText('o', winL + cw * 0.7, winY);
+                    ctx.fillStyle = '#c33';
+                    ctx.font = ctx.font.replace(/\d+px/, (m) => Math.round(parseInt(m, 10) * 0.55) + 'px');
+                    ctx.fillText('ФСБ', winL - cw * 0.2, winY + ch * 0.55);
+                    ctx.globalAlpha = 1;
                 }
             },
         },
@@ -215,8 +262,12 @@
             .catch(() => {});
     }
     const useClips = () => clips.length > 0;
+    // scenes last SCENE_S unless they say otherwise
+    const sceneLen = (sc) => sc.dur || SCENE_S;
+    const scenesTotal = () => scenes.reduce((sum, sc) => sum + sceneLen(sc), 0);
+
     function duration() {
-        return (useClips() ? clips.reduce((s, c) => s + c.seconds, 0) : scenes.length * SCENE_S) + 3.5;
+        return (useClips() ? clips.reduce((s, c) => s + c.seconds, 0) : scenesTotal()) + 3.5;
     }
 
     function drawClip(ctx, W, H, clip, local) {
@@ -283,13 +334,14 @@
             return true;
         }
 
-        const index = Math.floor(t / SCENE_S);
+        let index = 0, startAt = 0;
+        while (index < scenes.length && t >= startAt + sceneLen(scenes[index])) startAt += sceneLen(scenes[index++]);
         if (index >= scenes.length) {
-            titleCard(ctx, W, H, t - scenes.length * SCENE_S);
+            titleCard(ctx, W, H, t - startAt);
             return true;
         }
         const s = scenes[index];
-        const local = t - index * SCENE_S;
+        const local = t - startAt;
 
         // quick zoom-in cut and a white flash between scenes, like the eighties
         const zoom = 1.25 - Math.min(0.25, local * 0.6);
