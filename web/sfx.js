@@ -295,6 +295,20 @@
         },
         door(t, v) { thump(t, v * 0.7, 160, 0.1); burst(t, v * 0.3, { type: 'bandpass', freq: 1500, q: 2, decay: 0.04, dur: 0.05 }); },
         vomit(t, v) { gurgle(t, v, 1.0, 500); },
+        // metro: a train thundering through the tunnel, the live rail, the door chime
+        train(t, v) {
+            burst(t, v * 0.8, { type: 'lowpass', freq: 160, q: 0.8, decay: 2.2, dur: 2.4, peak: 1.1 });
+            for (let i = 0; i < 8; i++) thump(t + 0.15 + i * 0.27, v * 0.35, 70, 0.1);   // wheels over the joints
+            burst(t + 0.3, v * 0.25, { type: 'bandpass', freq: 2600, q: 8, decay: 1.4, dur: 1.5 });  // rails singing
+        },
+        zap(t, v) {
+            tone(t, v * 0.7, { type: 'sawtooth', f0: 120, f1: 90, dur: 0.6, peak: 0.6 });
+            burst(t, v * 0.6, { type: 'bandpass', freq: 3500, q: 1.5, decay: 0.5, dur: 0.55 });
+        },
+        chime(t, v) {
+            tone(t, v, { type: 'sine', f0: 660, dur: 0.35, peak: 0.45 });
+            tone(t + 0.32, v, { type: 'sine', f0: 523, dur: 0.6, peak: 0.45 });
+        },
         vomit2(t, v) { gurgle(t, v, 1.3, 380); },
         // a wet slap: a low, short burst of mush with a few lumps after it
         splat(t, v) {

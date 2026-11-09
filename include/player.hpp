@@ -15,6 +15,7 @@
 class Level;
 class Car;
 class AAGun;
+class Metro;
 
 namespace PlayerNS {
 
@@ -96,6 +97,11 @@ public:
     bool killedPutin = false;
     // the anti-aircraft gun the player sits behind, if any
     AAGun* manning = nullptr;
+
+    // through the metro's doors: the main loop plays the trip as a mini-game
+    Metro* metroFrom = nullptr;
+    Metro* metroTrip = nullptr;     // the station the trip is to
+    bool metroDodged = false;       // jumped the turnstiles
 };
 
 }

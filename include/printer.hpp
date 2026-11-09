@@ -91,6 +91,12 @@ public:
     // shells left in the anti-aircraft gun the player mans, or negative when not on a gun
     int gunAmmo = -1;     // a lowered pistol's laser only reaches a few steps
 
+    // a mini-game's own picture (the metro) drawn where the map usually is: rows of
+    // (glyph, SGR colour) cells, with its own title; null for the city
+    const std::vector<std::vector<std::pair<std::string, std::string>>>* scene = nullptr;
+    std::string sceneTitle;
+    int sceneShake = 0;     // ms of screen shake left, for the browser
+
     // the browser draws speech bubbles itself, translucent, over the map
     bool bubblesAsOverlay = false;
 

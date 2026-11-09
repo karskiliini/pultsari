@@ -11,6 +11,7 @@
 #include "item.hpp"
 #include "level.hpp"
 #include "mask.hpp"
+#include "metro.hpp"
 #include "persons.hpp"
 #include "player.hpp"
 #include "printerweb.hpp"
@@ -808,12 +809,17 @@ TEST(metro_takes_you_to_the_next_station)
     string msg;
     CHECK(a->getEnterMsg(&w.player, msg));
     a->interact(&w.player, msg);
-    CHECK(w.player.coord == b->getSpawn());
+    // the station only takes the fare: the trip itself is the mini-game, played by the main loop
+    CHECK(w.player.metroFrom == a);
+    CHECK(w.player.metroTrip == b);
+    CHECK(!w.player.metroDodged);
     CHECK(w.player.stats.money == 40);
-    CHECK(contains(msg, "B"));
-    w.player.stats.money = 100;               // pay this time too, no fare-dodging luck involved
-    b->interact(&w.player, msg);              // and the line loops back round
-    CHECK(w.player.coord == a->getSpawn());
+    CHECK(w.player.coord == (Coord{ 30, 30 }));
+    CHECK(a->nextOnLine() == b);
+    CHECK(b->nextOnLine() == a);               // and the line loops back round
+    w.player.stats.money = 100;
+    b->interact(&w.player, msg);
+    CHECK(w.player.metroTrip == a);
 }
 
 TEST(metro_fare_dodgers_sometimes_get_caught)
@@ -826,10 +832,471 @@ TEST(metro_fare_dodgers_sometimes_get_caught)
         w.player.stats.money = 0;
         string msg;
         a->interact(&w.player, msg);
-        if (w.player.coord == b->getSpawn()) ++rode; else ++caught;
+        if (w.player.metroTrip == b) { ++rode; CHECK(w.player.metroDodged); } else ++caught;
     }
     CHECK(rode > 100);
     CHECK(caught > 20);
+}
+
+// ---- the metro mini-game ----
+
+using MetroNS::MetroGame;
+using MetroNS::Kind;
+using MetroNS::Outcome;
+using MetroNS::Phase;
+
+static MetroNS::Npc metroNpc(Kind k, int x, int y, int waitMs = -1)
+{
+    MetroNS::Npc n;
+    n.kind = k;
+    n.x = x;
+    n.y = y;
+    n.glyph = "?";
+    n.waitMs = waitMs;
+    return n;
+}
+
+// a trip from A to B (C after that), sober, with full health and some money
+struct Trip {
+    World w;
+    MetroGame g;
+    explicit Trip(bool dodged = false) : w(), g((w.player.stats.promilles = 0, w.player.stats.health = 10, w.player.stats.money = 500, &w.player), "A", "B", "C", dodged) { }
+    // let time pass until the trip ends or `ms` is up
+    void run(int ms) { for (int t = 0; t < ms && !g.over() && !g.prompt.id; t += 50) g.tick(50); }
+};
+
+TEST(metro_trip_starts_in_the_tunnel_and_the_tunnel_leads_to_the_platform)
+{
+    Trip trip;
+    auto& g = trip.g;
+    CHECK(g.phase == Phase::Tunnel);
+    CHECK(g.px == 1);
+    // the far end of the upper walkway is the way up to the platform
+    g.px = MetroGame::W - 2;
+    g.py = 6;
+    CHECK(g.tiles[6][MetroGame::W - 1] == MetroNS::TExit);
+    g.step(1, 0);
+    CHECK(g.phase == Phase::Platform);
+}
+
+TEST(metro_turning_back_in_the_tunnel_returns_you_to_the_street)
+{
+    Trip trip;
+    trip.g.step(-1, 0);
+    trip.g.step(-1, 0);
+    CHECK(trip.g.outcome == Outcome::TurnedBack);
+}
+
+TEST(metro_train_in_the_tunnel_kills)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 9;                                  // on the upper track
+    g.trains[0].active = true;
+    g.trains[0].x = 42;                        // coming from the right
+    g.tick(50);
+    CHECK(g.outcome == Outcome::Dead);
+    CHECK(trip.w.player.stats.health > 0);    // the main loop does the dying
+    CHECK(contains(g.cause, "Juna"));
+}
+
+TEST(metro_gravel_between_the_tracks_is_safe)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 11;
+    if (g.tiles[11][40] != MetroNS::TGravel) g.px = 41;
+    g.trains[0].active = true;
+    g.trains[0].x = 30;
+    g.trains[1].active = true;
+    g.trains[1].x = 30;
+    g.tick(50);
+    CHECK(g.outcome == Outcome::None);
+}
+
+TEST(metro_live_rail_shocks_but_the_boards_are_safe)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.npcs.clear();
+    g.trains[0].nextMs = g.trains[1].nextMs = 100000;
+    int live = -1, cover = -1;
+    for (int x = 1; x < MetroGame::W - 1; ++x) {
+        if (g.tiles[7][x] == MetroNS::TLive && g.tiles[6][x] == MetroNS::TWalk && live < 0) live = x;
+        if (g.tiles[7][x] == MetroNS::TCover && g.tiles[6][x] == MetroNS::TWalk && cover < 0) cover = x;
+    }
+    CHECK(live >= 0 && cover >= 0);
+
+    g.px = cover;
+    g.py = 6;
+    g.step(0, 1);
+    CHECK(g.py == 7);
+    CHECK(trip.w.player.stats.health == 10);
+
+    g.px = live;
+    g.py = 6;
+    g.step(0, 1);
+    CHECK(trip.w.player.stats.health == 6);
+    CHECK(g.stunMs > 0);
+    CHECK(contains(g.msg, "virtakisko"));
+    // and it keeps on biting until you get off it, once the legs obey again
+    g.stunMs = 0;
+    g.tick(50);
+    CHECK(trip.w.player.stats.health == 6);
+    g.sinceShock = 5000;
+    g.tick(50);
+    CHECK(trip.w.player.stats.health == 2);
+}
+
+TEST(metro_walking_into_people_on_the_platform_is_a_punch_and_the_cop_comes)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 15;
+    g.npcs.push_back(metroNpc(Kind::Babushka, 40, 14));
+    g.npcs.push_back(metroNpc(Kind::Cop, 44, 15));
+    const uint32_t mummot = trip.w.player.scoreBoard.mummot;
+    g.step(0, -1);
+    CHECK(g.hits == 1);
+    CHECK(g.py == 15);                                       // a punch, not a step
+    CHECK(trip.w.player.scoreBoard.mummot == mummot + 1);
+    CHECK(g.npcs[1].chasing);
+    trip.run(5000);
+    CHECK(g.outcome == Outcome::Arrested);
+}
+
+TEST(metro_the_third_punch_gets_returned)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.npcs.push_back(metroNpc(Kind::Citizen, g.px + 1, g.py));
+    g.step(1, 0);
+    g.step(1, 0);
+    CHECK(g.npcs[0].angryMs == 0);
+    g.step(1, 0);
+    CHECK(g.hits == 3);
+    CHECK(g.npcs[0].angryMs > 0);
+    const uint32_t hp = trip.w.player.stats.health;
+    trip.run(1500);
+    CHECK(trip.w.player.stats.health < hp);
+}
+
+TEST(metro_punching_a_cop_or_the_fsb_ends_the_trip)
+{
+    {
+        Trip trip;
+        trip.g.startRide();
+        trip.g.npcs.clear();
+        trip.g.npcs.push_back(metroNpc(Kind::Cop, trip.g.px + 1, trip.g.py));
+        trip.g.step(1, 0);
+        CHECK(trip.g.outcome == Outcome::Arrested);
+    }
+    {
+        Trip trip;
+        trip.g.startRide();
+        trip.g.npcs.clear();
+        trip.g.npcs.push_back(metroNpc(Kind::Fsb, trip.g.px + 1, trip.g.py));
+        trip.g.step(1, 0);
+        CHECK(trip.g.outcome == Outcome::Recruited);
+    }
+}
+
+TEST(metro_open_doors_let_you_on_the_train_closed_ones_do_not)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.px = 10;                                 // under the first carriage's door
+    g.py = 6;
+    g.step(0, -1);                             // no train: down onto the track
+    CHECK(g.phase == Phase::Platform);
+    CHECK(g.py == 5);
+
+    g.py = 6;
+    g.stop = MetroGame::Stop::Boarding;
+    g.trains[0].active = true;
+    g.step(0, -1);
+    CHECK(g.phase == Phase::Ride);
+}
+
+TEST(metro_falling_onto_the_track_as_the_train_comes_kills)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 5;
+    g.stop = MetroGame::Stop::Arriving;
+    g.stopMs = 2400;                           // the train is all but in
+    g.trains[0].active = true;
+    g.tick(50);
+    CHECK(g.outcome == Outcome::Dead);
+}
+
+TEST(metro_fsb_recruiter_signs_you_up)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Fsb, g.px + 1, g.py, 0));
+    g.tick(50);
+    CHECK(g.prompt.id == 6);
+    g.key('1');
+    CHECK(g.outcome == Outcome::Recruited);
+}
+
+TEST(metro_fsb_recruiter_takes_no_for_an_answer_only_twice)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Fsb, g.px + 1, g.py, 0));
+    for (int round = 0; round < 2; ++round) {
+        g.tick(50);
+        CHECK(g.prompt.id == 6);
+        g.key('2');
+        CHECK(g.outcome == Outcome::None);
+        CHECK(g.npcs[0].refusals == round + 1);
+        g.npcs[0].stunMs = 0;                  // he's back
+        g.npcs[0].x = g.px + 1;
+        g.npcs[0].y = g.py;
+    }
+    g.tick(50);
+    CHECK(g.prompt.id == 7);                   // he grabs your arm
+    g.key('2');                                // no cop about: you tear free
+    CHECK(g.outcome == Outcome::None);
+    CHECK(g.npcs[0].talked);
+}
+
+TEST(metro_buying_from_the_dealer_next_to_a_cop_gets_you_arrested)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Dealer, g.px - 1, g.py, 0));
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 5, g.py - 2));
+    g.tick(50);
+    CHECK(g.prompt.id == 2);
+    g.key('1');
+    CHECK(trip.w.player.stats.money == 350);
+    CHECK(g.outcome == Outcome::Arrested);
+}
+
+TEST(metro_gopniks_want_a_hundred)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Gopnik, g.px + 1, g.py));
+    g.npcs.push_back(metroNpc(Kind::Gopnik, g.px + 6, g.py - 3));
+    g.tick(50);
+    CHECK(g.prompt.id == 1);
+    g.key('1');
+    CHECK(trip.w.player.stats.money == 400);
+    CHECK(g.npcs[0].talked && g.npcs[1].talked);
+    CHECK(g.npcs[0].angryMs == 0);
+    // saying no to a gopnik with no money is another matter
+    trip.w.player.stats.money = 50;
+    g.npcs[0].talked = false;
+    g.prompt = MetroNS::Prompt();
+    g.npcs[0].waitMs = 0;
+    g.tick(50);
+    CHECK(g.prompt.id == 1);
+    g.key('1');
+    CHECK(g.npcs[0].angryMs > 0);
+}
+
+TEST(metro_ticket_check_catches_fare_dodgers)
+{
+    Trip trip(true);
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 1, g.py, 0));
+    trip.w.player.stats.money = 50;
+    g.tick(50);
+    CHECK(g.prompt.id == 4);
+    g.key('1');                                // the fine is 300 and you have 50
+    CHECK(g.outcome == Outcome::Arrested);
+}
+
+TEST(metro_running_from_the_ticket_check_gets_a_head_start_and_he_tires)
+{
+    Trip trip(true);
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 1, g.py, 0));
+    g.tick(50);
+    CHECK(g.prompt.id == 4);
+    g.key('3');
+    CHECK(g.npcs[0].chasing);
+    g.tick(50);
+    CHECK(g.outcome == Outcome::None);        // not caught on the spot
+    // he gives up in the end, if you keep away
+    g.npcs[0].x = 70;
+    g.npcs[0].y = 7;
+    g.px = 2;
+    g.py = 13;
+    g.npcs[0].chaseMs = 100;
+    trip.run(300);
+    CHECK(!g.npcs[0].chasing);
+    CHECK(g.outcome == Outcome::None);
+}
+
+TEST(metro_paying_passengers_pass_the_ticket_check_sober)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 1, g.py, 0));
+    g.tick(50);
+    CHECK(g.prompt.id == 0);
+    CHECK(g.npcs[0].talked);
+    CHECK(g.outcome == Outcome::None);
+}
+
+TEST(metro_pickpocket_lifts_money_and_a_punch_gets_it_back)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Pickpocket, g.px + 1, g.py, 0));
+    for (int i = 0; i < 30 && g.npcs[0].stolen == 0; ++i) g.tick(50);
+    CHECK(g.npcs[0].stolen > 0);
+    CHECK(trip.w.player.stats.money < 500);
+    g.npcs[0].x = g.px + 1;
+    g.npcs[0].y = g.py;
+    g.step(1, 0);
+    CHECK(trip.w.player.stats.money == 500);
+}
+
+TEST(metro_getting_off_at_the_station)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.rideLeft = 50;
+    g.tick(50);
+    CHECK(g.doorsOpen());
+    g.px = 9;
+    g.py = 14;
+    g.step(0, 1);
+    CHECK(g.outcome == Outcome::Arrived);
+    CHECK(contains(MetroNS::summarize(g), "B"));
+}
+
+TEST(metro_missing_the_stop_takes_you_one_further)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.rideLeft = 50;
+    g.tick(50);
+    CHECK(g.doorsOpen());
+    trip.run(MetroGame::DOORS_MS + 100);
+    CHECK(!g.doorsOpen());
+    CHECK(g.overshot);
+    CHECK(g.outcome == Outcome::None);
+    trip.run(16000 + MetroGame::DOORS_MS + 200);
+    CHECK(g.outcome == Outcome::Overshot);
+    CHECK(contains(g.cause, "C"));
+}
+
+TEST(metro_drunk_legs_go_their_own_way)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.stop = MetroGame::Stop::Waiting;
+    g.stopMs = -1000000;                       // no train for a good while
+    trip.w.player.stats.promilles = 5;         // sober enough: straight steps
+    for (int i = 0; i < 100; ++i) {
+        g.px = 40;
+        g.py = 14;
+        g.queued = 'a';
+        g.sinceStep = 10000;
+        g.tick(50);
+        CHECK(g.py == 14);
+    }
+    trip.w.player.stats.promilles = 40;
+    int astray = 0;
+    for (int i = 0; i < 100; ++i) {
+        g.px = 40;
+        g.py = 14;
+        g.queued = 'a';
+        g.sinceStep = 10000;
+        g.tick(50);
+        if (g.py != 14) ++astray;
+    }
+    CHECK(astray > 15);
+    CHECK(astray < 70);
+}
+
+TEST(metro_hothead_does_not_like_being_stared_at)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.npcs.push_back(metroNpc(Kind::Hothead, g.px + 2, g.py));
+    for (int i = 0; i < 60 && g.npcs[0].angryMs == 0; ++i) g.tick(50);
+    CHECK(g.npcs[0].angryMs > 0);
+    const uint32_t hp = trip.w.player.stats.health;
+    trip.run(3000);
+    CHECK(trip.w.player.stats.health < hp);
+}
+
+TEST(metro_scene_is_drawn_where_the_map_usually_is)
+{
+    Trip trip;
+    const MetroNS::Rows rows = trip.g.render();
+    CHECK(rows.size() == (size_t)MetroGame::H);
+    for (const auto& r : rows) CHECK(r.size() == (size_t)MetroGame::W);
+    trip.w.printer.scene = &rows;
+    trip.w.printer.sceneTitle = trip.g.title();
+    const auto cells = trip.w.printer.rowCells(&trip.w.level, trip.g.py);
+    CHECK(cells.size() == trip.w.printer.viewW);
+    CHECK(cells[trip.g.px].first == "@");
+    CHECK(contains(trip.w.printer.locationName(&trip.w.level), "METRO"));
+    trip.w.printer.scene = nullptr;
+    // every part draws, and so does the end card
+    trip.g.startPlatform();
+    CHECK(trip.g.render()[trip.g.py][trip.g.px].first == "@");
+    trip.g.startRide();
+    CHECK(trip.g.render()[trip.g.py][trip.g.px].first == "@");
+    trip.g.finish(Outcome::Dead, "Testi.");
+    bool card = false;
+    for (const auto& r : trip.g.render()) {
+        string line;
+        for (const auto& c : r) line += c.first;
+        if (contains(line, "KUOLIT METROSSA")) card = true;
+    }
+    CHECK(card);
 }
 
 // ---- supermarket: lure the guards away and slip in ----

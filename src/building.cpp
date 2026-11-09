@@ -1197,15 +1197,20 @@ bool Metro::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
     return false;
 }
 
-void Metro::interact(PlayerNS::Player* player, std::string& msg)
+Metro* Metro::nextOnLine() const
 {
-    // the next station on the line
     std::vector<Metro*> line;
     for (auto b : level->buildings) if (auto m = dynamic_cast<Metro*>(b)) line.push_back(m);
-    Metro* next = nullptr;
-    for (size_t i = 0; i < line.size(); ++i) if (line[i] == this) next = line[(i + 1) % line.size()];
+    for (size_t i = 0; i < line.size(); ++i) if (line[i] == this) return line[(i + 1) % line.size()];
+    return nullptr;
+}
+
+void Metro::interact(PlayerNS::Player* player, std::string& msg)
+{
+    Metro* next = nextOnLine();
     if (!next || next == this) { msg = "Juna ei tule. Se ei tule koskaan."; return; }
 
+    bool dodged = false;
     if (player->stats.money >= 60) {
         player->updateMoney(-60);
         msg = "Maksat 60 ruplaa. ";
@@ -1215,9 +1220,12 @@ void Metro::interact(PlayerNS::Player* player, std::string& msg)
         return;
     } else {
         msg = "Hyppäät porttien yli. Kukaan ei n\xC3\xA4hnyt. ";
+        dodged = true;
     }
-    msg += "Juna kolisee pimeässä... Asema " + next->station + ".";
-    player->coord = next->getSpawn();
+    msg += "Metro on vaarallinen paikka.";
+    player->metroFrom = this;
+    player->metroTrip = next;
+    player->metroDodged = dodged;
 }
 
 std::string Metro::getWalkMsg() const

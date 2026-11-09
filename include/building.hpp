@@ -247,8 +247,9 @@ private:
     Kind kind;
 };
 
-// A metro station entrance: in through the door, out at the next station. The fare is 60 roubles,
-// or you jump the turnstile and hope nobody saw.
+// A metro station entrance. The fare is 60 roubles, or you jump the turnstile and hope
+// nobody saw. Every trip to the next station is a mini-game (metro.hpp): this only takes
+// the fare and leaves the trip for the main loop to play.
 class Metro : public Building {
 public:
     explicit Metro(const std::string& station);
@@ -257,6 +258,8 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+    // the next station on the line, which runs through every station on the level and loops
+    Metro* nextOnLine() const;
     std::string station;
 };
 

@@ -379,6 +379,11 @@ static void flameAt(uint32_t x, uint32_t y, string& c, const char*& color)
 
 vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 {
+    if (scene) {
+        vector<std::pair<string, string>> cells = y < scene->size() ? (*scene)[y] : vector<std::pair<string, string>>();
+        cells.resize(viewW, std::make_pair(string(" "), string()));
+        return cells;
+    }
     uint32_t worldY = y + (uint32_t)l->cameraY;
     vector<std::pair<string, string>> cells;
     cells.reserve(viewW);
@@ -788,6 +793,7 @@ void Printer::printErr(const std::string& msg)
 
 std::string Printer::locationName(const Level* l) const
 {
+    if (scene) return sceneTitle;
     if (l && player) {
         const std::string here = l->locationAt(player->coord);
         if (!here.empty()) return withTranslation(here);

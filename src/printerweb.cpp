@@ -67,7 +67,8 @@ void PrinterWeb::print(Level* l)
                ",\"lvl\":" + jsonString(locationName(l)) +
                ",\"cam\":[" + to_string(l->cameraX) + "," + to_string(l->cameraY) + "]" +
                ",\"cols\":" + to_string(viewW) + (l->playerDead ? ",\"dead\":1" : "") +
-               ",\"ver\":" + jsonString(gameVersion());
+               ",\"ver\":" + jsonString(gameVersion()) +
+               (scene ? ",\"scene\":1,\"shake\":" + to_string(sceneShake) : "");
 
     if (player) {
         const auto& s = player->stats;
@@ -126,7 +127,7 @@ void PrinterWeb::print(Level* l)
 
     // speech bubbles: drawn by the page, translucent and fading, so people show through them
     bubblesAsOverlay = true;
-    if (common::animsEnabled) {
+    if (common::animsEnabled && !scene) {
         j += ",\"bub\":[";
         bool firstBub = true;
         for (const auto a : l->animations) {
@@ -141,7 +142,7 @@ void PrinterWeb::print(Level* l)
     }
 
     // what the player can see: one hex digit per 4 cells, so blood and vomit stay hidden out of sight
-    if (mask) {
+    if (mask && !scene) {
         static const char* HEX = "0123456789abcdef";
         j += ",\"vis\":[";
         for (uint32_t y = 0; y < viewH; ++y) {
