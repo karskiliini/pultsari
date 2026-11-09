@@ -7,6 +7,7 @@
 #include "animation.hpp"
 #include "pathmask.hpp"
 #include "vehicle.hpp"
+#include "translate.hpp"
 #include <string>
 #include <iostream>
 #include <chrono>
@@ -105,33 +106,6 @@ Direction Person::randomDirection() const
     }
 }
 
-// Speech bubbles are shown in Latin letters: Russian lines are romanised the Finnish way.
-static string latinize(const string& in)
-{
-    static const char* lower[] = {
-        "a", "b", "v", "g", "d", "e", "\xC5\xBE", "z", "i", "i", "k", "l", "m", "n", "o", "p",
-        "r", "s", "t", "u", "f", "h", "ts", "t\xC5\xA1", "\xC5\xA1", "\xC5\xA1t\xC5\xA1", "", "y", "", "e", "ju", "ja",
-    };
-    static const char* upper[] = {
-        "A", "B", "V", "G", "D", "E", "\xC5\xBD", "Z", "I", "I", "K", "L", "M", "N", "O", "P",
-        "R", "S", "T", "U", "F", "H", "Ts", "T\xC5\xA1", "\xC5\xA0", "\xC5\xA0t\xC5\xA1", "", "Y", "", "E", "Ju", "Ja",
-    };
-
-    string out;
-    for (size_t i = 0; i < in.size(); ++i) {
-        const unsigned char b0 = in[i];
-        const unsigned char b1 = i + 1 < in.size() ? (unsigned char)in[i + 1] : 0;
-        uint32_t cp = 0;
-        if (b0 == 0xD0 || b0 == 0xD1) cp = ((b0 & 0x1F) << 6) | (b1 & 0x3F);
-        if (cp >= 0x410 && cp <= 0x42F)      { out += upper[cp - 0x410]; ++i; }
-        else if (cp >= 0x430 && cp <= 0x44F) { out += lower[cp - 0x430]; ++i; }
-        else if (cp == 0x401)                { out += "Jo"; ++i; }
-        else if (cp == 0x451)                { out += "jo"; ++i; }
-        else out += in[i];
-    }
-    return out;
-}
-
 static uint32_t columns(const string& s)
 {
     uint32_t n = 0;
@@ -141,7 +115,7 @@ static uint32_t columns(const string& s)
 
 void Person::say(const std::string& raw)
 {
-    const string text = latinize(raw);
+    const string text = latinize(withTranslation(raw));
     const uint32_t half = columns(text) / 2;
     uint32_t bx = (coord.x > half) ? coord.x - half : 0;
     uint32_t by = (coord.y > 1) ? coord.y - 1 : 0;

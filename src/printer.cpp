@@ -1,4 +1,5 @@
 #include "printer.hpp"
+#include "translate.hpp"
 #include <chrono>
 #include "player.hpp"
 #include "item.hpp"
@@ -41,6 +42,7 @@ void Printer::setMessage(const std::string& message)
 
 void Printer::showMessage(std::string message, Level* level, bool waitKey)
 {
+    message = withTranslation(message);
     if (message == "") {
         printerRefresh();
         return;
@@ -772,7 +774,7 @@ std::string Printer::locationName(const Level* l) const
 {
     if (l && player) {
         const std::string here = l->locationAt(player->coord);
-        if (!here.empty()) return here;
+        if (!here.empty()) return withTranslation(here);
     }
-    return levelName;
+    return withTranslation(levelName);
 }

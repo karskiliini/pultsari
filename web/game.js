@@ -251,7 +251,7 @@
             case 'text': ui.text.hidden = false; ui.text.textContent += m.s; break;
             case 'score':
                 ui.text.hidden = false;
-                ui.text.textContent += `\n\nПРОТОКОЛ · PÖYTÄKIRJA\n\nHakatut babuškat   ${m.mummot}\nKaikki hakatut   ${m.kaikki}\nPISTEET          ${m.total}\n\nВсё идёт по плану. Kiitos pelaamisesta.`;
+                ui.text.textContent += `\n\nПРОТОКОЛ · PÖYTÄKIRJA\n\nHakatut babuškat   ${m.mummot}\nKaikki hakatut   ${m.kaikki}\nPISTEET          ${m.total}\n\nВсё идёт по плану. (Kaikki menee suunnitelman mukaan.)\nKiitos pelaamisesta.`;
                 break;
         }
     }

@@ -1,5 +1,6 @@
 
 #include "audio.hpp"
+#include "translate.hpp"
 #include "level.hpp"
 #include "player.hpp"
 #include "common.hpp"
@@ -130,7 +131,7 @@ std::string AudioSystem::formatSoundLine(const Coord& listenerPos, uint32_t maxL
         if (s.text.empty()) continue;
 
         if (count > 0) line += " | ";
-        line += s.text;
+        line += withTranslation(s.text);
         ++count;
 
         if (line.length() > maxLen - 5) break;

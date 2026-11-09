@@ -11,6 +11,10 @@
 #include "persons.hpp"
 #include "player.hpp"
 #include "printerweb.hpp"
+#include "translate.hpp"
+#include <dirent.h>
+#include <fstream>
+#include <sstream>
 #include <chrono>
 #include <cmath>
 #include <cstdio>
@@ -648,6 +652,81 @@ TEST(citizens_read_medvedevs_posts_aloud)
     Medvedev::latestPost.clear();
 }
 
+// ---- translations ----
+
+TEST(russian_in_a_message_gets_a_finnish_translation)
+{
+    World w;
+    w.printer.showMessage("ХРУЩЁВКА. Seinässä lukee jotain.", &w.level, false);
+    CHECK(w.printer.saw("ХРУЩЁВКА (HRUŠTŠOVKA"));
+    CHECK(contains(withTranslation("Myyjä: 'Спасибо. Seuraava!'"), "Спасибо (Kiitos). Seuraava"));
+    CHECK(contains(withTranslation("Vova: 'Я ДЗЮДОИСТ! Я тебя сломаю!'"), "(OLEN JUDOKA! Murskaan sinut!)"));
+    CHECK(contains(withTranslation("ОХРАНА! ОХРАНА!!"), "(VARTIJAT! VARTIJAT!!)"));
+    CHECK(contains(withTranslation("Груз 200 ei ole pivomerkki."), "Груз 200 (Lasti 200, eli kaatuneen ruumis) ei"));
+    // already translated, or no Russian: left alone
+    CHECK(withTranslation("БУТЫРКА (vankila)") == "БУТЫРКА (vankila)");
+    CHECK(withTranslation("Pelkkää suomea.") == "Pelkkää suomea.");
+}
+
+TEST(speech_bubbles_carry_the_translation_too)
+{
+    World w;
+    auto* k = w.spawn(new Kansalainen(Coord{ 52, 50 }));
+    k->say("Спасибо, брат!");
+    CHECK(w.said(k, "Spasibo, brat! (Kiitos, veli!)"));
+}
+
+// every bit of Russian in the game's own text has a dictionary entry
+TEST(all_russian_in_the_code_is_in_the_dictionary)
+{
+    std::vector<string> files;
+    for (const char* dir : { "src", "include" }) {
+        if (DIR* d = opendir(dir)) {
+            while (dirent* e = readdir(d)) {
+                const string n = e->d_name;
+                if (n == "intro.cpp") continue; // the title drips in letter by letter
+                if (contains(n, ".cpp") || contains(n, ".hpp")) files.push_back(string(dir) + "/" + n);
+            }
+            closedir(d);
+        }
+    }
+    CHECK(files.size() > 10);
+    int missing = 0;
+    for (const auto& f : files) {
+        std::ifstream in(f);
+        std::stringstream ss;
+        ss << in.rdbuf();
+        const string raw = ss.str();
+        // turn C escapes like \xD0\x9F into the bytes they stand for
+        string src;
+        for (size_t i = 0; i < raw.size(); ++i) {
+            if (raw[i] == '\\' && i + 3 < raw.size() && raw[i + 1] == 'x' && isxdigit((unsigned char)raw[i + 2]) && isxdigit((unsigned char)raw[i + 3])) {
+                src += (char)std::stoi(raw.substr(i + 2, 2), nullptr, 16);
+                i += 3;
+            } else src += raw[i];
+        }
+        for (size_t i = 0; i < src.size(); ++i) {
+            const unsigned char b = src[i];
+            if (b != 0xD0 && b != 0xD1) continue;
+            size_t j = i, end = i;
+            while (j + 1 < src.size()) {
+                const unsigned char c = src[j];
+                if (c == 0xD0 || c == 0xD1) { j += 2; end = j; }
+                else if (c == ' ' || c == ',' || c == '.' || c == '!' || c == '?' || c == '-') ++j;
+                else if (c >= '0' && c <= '9') { ++j; end = j; }
+                else break;
+            }
+            const string run = src.substr(i, end - i);
+            if (translateRussian(run).empty()) {
+                ++missing;
+                std::cerr << "  no translation in " << f << ": " << run << "\n";
+            }
+            i = end;
+        }
+    }
+    CHECK(missing == 0);
+}
+
 // ---- metro ----
 
 TEST(metro_takes_you_to_the_next_station)
@@ -1063,12 +1142,12 @@ TEST(location_follows_the_player)
 
 int main(int argc, char** argv)
 {
-    std::srand(12345);
     const string only = argc > 1 ? argv[1] : "";
     int ran = 0;
     for (const auto& t : tests()) {
         if (!only.empty() && !contains(t.name, only)) continue;
         const int before = failures;
+        std::srand(12345); // each test sees the same dice, whatever ran before it
         t.fn();
         ++ran;
         std::cout << (failures == before ? "ok   " : "FAIL ") << t.name << std::endl;

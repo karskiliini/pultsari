@@ -376,7 +376,7 @@
             },
         },
         {
-            who: 'SEKÄ', name: 'НПЗ', line: 'Palaa taas. Savu on "länsimaista propagandaa".',
+            who: 'SEKÄ', name: 'НПЗ · ÖLJYNJALOSTAMO', line: 'Palaa taas. Savu on "länsimaista propagandaa".',
             color: '#c9a96a',
             art: [
                 '     |█|      |█|',
