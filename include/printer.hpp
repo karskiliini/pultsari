@@ -34,7 +34,7 @@ struct OverlayItem {
 // the inventory overlay rows, in the order the game's inventory keys expect
 std::vector<OverlayItem> overlayItems(const Inventory* inventory);
 // viewport cells of the aiming line
-std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle);
+std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle, int maxSteps = 20);
 
 class Printer {
 public:
@@ -72,7 +72,7 @@ public:
     std::vector<std::pair<std::string, std::string>> rowCells(Level* l, uint32_t y);
     virtual void print(Level* level);
     virtual void printErr(const std::string& msg);
-    virtual void printInventoryOverlay(Inventory* inventory, int selectedRow);
+    virtual void printInventoryOverlay(Inventory* inventory, int selectedRow, bool throwMenu = false);
     virtual void printAimLine(Level* level, uint32_t px, uint32_t py, float angle);
 
     std::string msg = "";
@@ -80,6 +80,9 @@ public:
     static constexpr uint32_t MSG_FRAMES = 60;
     uint32_t msgTtl = 0;
     std::string levelName;
+    // accidental-discharge risk while aiming a pistol (0..1), or negative when not shooting
+    float aimRisk = -1.0f;
+    int aimLength = 20;     // a lowered pistol's laser only reaches a few steps
 
     PlayerNS::Player* player = nullptr;
     VisionNS::Mask* mask = nullptr;

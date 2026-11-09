@@ -683,16 +683,30 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             enum class Mode { Normal, Inventory, Aim };
             Mode mode = Mode::Normal;
             int invSelection = 0;
+            bool throwMenu = false; // the inventory was opened with F, to throw something
             constexpr int INV_ITEMS = 15;
 
             // aim state
             float aimAngle = 0.0f;
+            // the pistol: holstered, in hand (lowered, laser on the ground) or aimed
+            bool gunDrawn = false;
+            float facing = 0.0f; // direction of the last step, for raising the gun
             uint32_t aimItemNum = 0;
             uint32_t aimTick = 0;
             bool aimIsShooting = false;
 
             // inventory item-to-throw mapping
             // maps inventory overlay row to decrementInventory() index
+            // the aim angle snapped to one of the four directions
+            auto aimDirection = [&]() {
+                const float dx = cosf(aimAngle), dy = sinf(aimAngle);
+                if (fabsf(dx) > fabsf(dy)) return dx > 0 ? DirectionNS::right : DirectionNS::left;
+                return dy > 0 ? DirectionNS::down : DirectionNS::up;
+            };
+            // the longer you hold a cocked pistol, the likelier it goes off by itself
+            uint32_t aimHeldMs = 0;
+            float aimRisk = 0.0f;
+
             // overlay row -> Player::decrementInventory / Item::createItem index
             // rows: kalja jaguar vodka makkara vobla omppo banaani ketjut veitsi kivi pamppu verkkarit kranaatti
             auto invIndexToThrowNum = [](int idx) -> uint32_t {
@@ -802,13 +816,14 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     case 12: // kranaatti can only be thrown
                         startThrowAim(14);
                         break;
-                    case 13: // pistooli - go to aim mode for shooting
+                    case 13: // pistooli: raise it towards the last step and aim
                         if (inv.pistooli > 0 && inv.ammukset > 0) {
+                            gunDrawn = true;
                             aimIsShooting = true;
-                            aimAngle = -M_PI / 2.0f;
+                            aimAngle = facing;
                             aimTick = 0;
                             mode = Mode::Aim;
-                            printer->showMessage("A/D = tähtää, SPACE = ammu, ESC = peru", &level, false);
+                            printer->showMessage("T\xC3\xA4ht\xC3\xA4\xC3\xA4t. A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti ampuu, Esc laskee aseen.", &level, false);
                         } else if (inv.pistooli == 0) {
                             printer->showMessage("Ei pistoolia.", &level, false);
                         } else {
@@ -843,7 +858,31 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 's': case 'k': queuedMove = InputNS::down; break;
                                 case 'a': case 'j': queuedMove = InputNS::left; break;
                                 case 'd': case 'l': queuedMove = InputNS::right; break;
-                                case '\t': mode = Mode::Inventory; invSelection = 0; break;
+                                case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
+                                case 'f': {
+                                    // F asks what to throw: the menu opens on the first throwable thing carried
+                                    int first = -1;
+                                    for (int r = 0; r < INV_ITEMS && first < 0; ++r)
+                                        if (throwableCount(invIndexToThrowNum(r)) > 0) first = r;
+                                    if (first < 0) {
+                                        printer->showMessage("Ei mit\xC3\xA4\xC3\xA4n heitett\xC3\xA4v\xC3\xA4\xC3\xA4.", &level, false);
+                                    } else {
+                                        mode = Mode::Inventory;
+                                        throwMenu = true;
+                                        invSelection = first;
+                                    }
+                                    break;
+                                }
+                                case 27: // Esc puts a drawn pistol back in the belt
+                                    if (gunDrawn) {
+                                        gunDrawn = false;
+                                        printer->showMessage("Laitat aseen vy\xC3\xB6lle.", &level, false);
+                                    }
+                                    break;
+                                case ' ': // Space raises the pistol to aim; Space again fires
+                                    if (player.inventory.pistooli > 0) useInventoryItem(13);
+                                    else printer->showMessage("Sinulla ei ole asetta.", &level, false);
+                                    break;
                                 default: break;
                             }
                         }
@@ -859,6 +898,13 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                         if (input != InputNS::inputpending) {
                             input = applyDrunkEffects(input, player, &level, *printer);
+                            switch (input) {
+                                case InputNS::up:    facing = -M_PI / 2.0f; break;
+                                case InputNS::down:  facing = M_PI / 2.0f; break;
+                                case InputNS::left:  facing = M_PI; break;
+                                case InputNS::right: facing = 0.0f; break;
+                                default: break;
+                            }
                             processInput(input, player, &level, *printer);
                             InputNS::Input::raw();
                             level.cleanDead();
@@ -876,11 +922,15 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 's': case 'k':
                                     invSelection = (invSelection + 1) % INV_ITEMS;
                                     break;
-                                case 'q': // use (eat/drink)
-                                    useInventoryItem(invSelection);
-                                    mode = Mode::Normal;
+                                case 'e': case '\r':
+                                    if (throwMenu && c == '\r') {
+                                        startThrowAim(invIndexToThrowNum(invSelection));
+                                        break;
+                                    }
+                                    useInventoryItem(invSelection); // eat, drink or aim the pistol
+                                    if (mode == Mode::Inventory) mode = Mode::Normal;
                                     break;
-                                case 'e': // throw -> aim mode
+                                case 'f': // throw -> aim mode
                                     startThrowAim(invIndexToThrowNum(invSelection));
                                     break;
                                 case '\t': case 27: // tab or ESC closes
@@ -903,27 +953,19 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 'd': case 'l':
                                     aimAngle += 0.15f;
                                     break;
-                                case ' ': { // fire/throw/shoot
-                                    float dx = cosf(aimAngle);
-                                    float dy = sinf(aimAngle);
-                                    int idx = (fabsf(dx) > fabsf(dy))
-                                        ? (dx > 0 ? 0 : 2)
-                                        : (dy > 0 ? 1 : 3);
-                                    DirectionNS::Direction dirs[] = {
-                                        DirectionNS::right, DirectionNS::down,
-                                        DirectionNS::left, DirectionNS::up
-                                    };
+                                case ' ': // fire/throw/shoot
                                     if (aimIsShooting) {
-                                        player.shoot(dirs[idx]);
+                                        player.shoot(aimDirection());
                                         aimIsShooting = false;
                                     } else {
                                         if (player.decrementInventory(aimItemNum))
-                                            player.executeThrow(aimItemNum, dirs[idx]);
+                                            player.executeThrow(aimItemNum, aimDirection());
                                     }
                                     mode = Mode::Normal;
                                     break;
-                                }
-                                case 27: case '\t': // ESC or Tab cancels
+                                case 27: case '\t': // ESC or Tab cancels; a raised pistol is lowered, still in hand
+                                    if (aimIsShooting) printer->showMessage("Lasket aseen. Se on yh\xC3\xA4 k\xC3\xA4""dess\xC3\xA4 (Esc laittaa vy\xC3\xB6lle).", &level, false);
+                                    aimIsShooting = false;
                                     mode = Mode::Normal;
                                     break;
                             }
@@ -932,6 +974,49 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         break;
                     }
                     }
+                    }
+
+                    if (player.inventory.pistooli == 0) gunDrawn = false;
+                    // a pistol in hand, pointing at the ground, can always go off; now and
+                    // then it is pointing at your own foot
+                    float lowered = facing;
+                    if (gunDrawn && mode != Mode::Aim) {
+                        static uint32_t swayMs = 0;
+                        swayMs += FRAME_MS;
+                        lowered = facing + sinf(swayMs / 420.0f) * (0.35f + player.stats.promilles / 60.0f);
+                        const float p = 0.0006f * (1.0f + player.stats.promilles / 15.0f);
+                        if (player.inventory.ammukset > 0 && (float)(std::rand() % 100000) < p * 100000.0f) {
+                            --player.inventory.ammukset;
+                            common::sound("pistol", 1.0f);
+                            level.audio.addSound(player.coord, SoundType::Gunshot,
+                                "PAM! Pistooli laukesi!", "Pistoolinlaukaus", "...pamaus kaukaa...", 30);
+                            level.alertCops(&player, 30);
+                            if (random(35)) {
+                                const bool knee = random(25);
+                                common::hitEvent(player.coord, knee ? 8 : 4);
+                                player.damage(knee ? std::rand() % 6 + 6 : std::rand() % 4 + 2);
+                                printer->showMessage(knee ? "PAM! Ase laukesi ja ammuit itse\xC3\xA4si polveen! Kipu on sanoinkuvaamaton."
+                                                          : "PAM! Ase laukesi ja ammuit itse\xC3\xA4si jalkaan! AUTS!", &level, false);
+                            } else {
+                                printer->showMessage("PAM! Ase laukesi maahan. Korvat soivat.", &level, false);
+                            }
+                        }
+                    }
+
+                    if (mode == Mode::Aim && aimIsShooting) {
+                        aimHeldMs += FRAME_MS;
+                        // about ten seconds to the top sober, much quicker drunk
+                        const float fullMs = 10000.0f / (1.0f + player.stats.promilles / 15.0f);
+                        aimRisk = std::min(1.0f, aimHeldMs / fullMs);
+                        if ((float)(std::rand() % 10000) < aimRisk * aimRisk * 0.05f * 10000.0f) {
+                            player.shoot(aimDirection());
+                            printer->showMessage("PAM! Ase laukesi vahingossa!", &level, false);
+                            aimIsShooting = false;
+                            mode = Mode::Normal;
+                        }
+                    } else {
+                        aimHeldMs = 0;
+                        aimRisk = 0.0f;
                     }
 
                     msSinceMove += FRAME_MS;
@@ -1026,9 +1111,16 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     if (npcTick == NPC_INTERVAL - 1) level.audio.clear();
 
                     if (mode == Mode::Inventory) {
-                        printer->printInventoryOverlay(&player.inventory, invSelection);
+                        printer->printInventoryOverlay(&player.inventory, invSelection, throwMenu);
                     } else if (mode == Mode::Aim) {
+                        printer->aimRisk = aimIsShooting ? aimRisk : -1.0f;
+                        printer->aimLength = 20;
                         printer->printAimLine(&level, player.coord.x, player.coord.y, aimAngle);
+                    } else if (gunDrawn) {
+                        // laser from the lowered pistol, a few steps ahead on the ground
+                        printer->aimRisk = -1.0f;
+                        printer->aimLength = 3;
+                        printer->printAimLine(&level, player.coord.x, player.coord.y, lowered);
                     }
 
                 } catch(...) {

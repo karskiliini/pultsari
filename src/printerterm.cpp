@@ -204,7 +204,7 @@ void PrinterTerm::printHelp()
     cout << "  --all, -a          kaikki yll\xC3\xA4 olevat" << endl << endl;
     cout << "Reaaliaikatilan n\xC3\xA4pp\xC3\xA4imet:" << endl;
     cout << "  W A S D / I J K L  liiku (k\xC3\xA4vele p\xC3\xA4in = ly\xC3\xB6 / poimi / avaa)" << endl;
-    cout << "  Tab                tavarat: W/S valitse, Q k\xC3\xA4yt\xC3\xA4, E heit\xC3\xA4" << endl;
+    cout << "  Tab / F            tavarat / heit\xC3\xA4: W/S valitse, E k\xC3\xA4yt\xC3\xA4, F heit\xC3\xA4" << endl;
     cout << "  T\xC3\xA4ht\xC3\xA4ys            A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti heit\xC3\xA4/ammu, Esc peru" << endl;
     cout << "  Z                  lopeta" << endl << endl;
     cout << "Tavoite: p\xC3\xA4\xC3\xA4se Putinin viinakellariin Kremliss\xC3\xA4." << endl;

@@ -579,25 +579,25 @@ void Printer::print(Level* level)
 std::vector<OverlayItem> overlayItems(const Inventory* inventory)
 {
     return {
-        {"KALJA",     inventory->kalja,    true,  true,  "[Q] juo  "},
-        {"JAGUAR",    inventory->lonkka,   true,  true,  "[Q] juo  "},
-        {"VODKA",     inventory->vodka,    true,  true,  "[Q] juo  "},
-        {"MAKKARA",   inventory->lenkki,   true,  true,  "[Q] syö  "},
-        {"VOBLA",     inventory->kalat,    true,  true,  "[Q] syö  "},
-        {"OMPPO",     inventory->omppo,    true,  true,  "[Q] syö  "},
-        {"BANAANI",   inventory->bansku,   true,  true,  "[Q] syö  "},
+        {"KALJA",     inventory->kalja,    true,  true,  "[E] juo  "},
+        {"JAGUAR",    inventory->lonkka,   true,  true,  "[E] juo  "},
+        {"VODKA",     inventory->vodka,    true,  true,  "[E] juo  "},
+        {"MAKKARA",   inventory->lenkki,   true,  true,  "[E] syö  "},
+        {"VOBLA",     inventory->kalat,    true,  true,  "[E] syö  "},
+        {"OMPPO",     inventory->omppo,    true,  true,  "[E] syö  "},
+        {"BANAANI",   inventory->bansku,   true,  true,  "[E] syö  "},
         {"KETJUT",    inventory->ketjut,   false, true,  "         "},
         {"VEITSI",    inventory->veitset,  false, true,  "         "},
         {"KIVI",      inventory->kivet,    false, true,  "         "},
         {"PAMPPU",    inventory->pamput,   false, true,  "         "},
         {"VERKKARIT", inventory->bootsit,  false, true,  "         "},
         {"KRANAATTI", inventory->granata,  false, true,  "         "},
-        {"PISTOOLI",  inventory->pistooli, true,  false, "[Q] ammu "},
+        {"PISTOOLI",  inventory->pistooli, true,  false, "[E] ammu "},
         {"AMMUKSET",  inventory->ammukset, false, false, "         "},
     };
 }
 
-void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
+void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow, bool throwMenu)
 {
     constexpr int OVERLAY_X = 25;
     constexpr int OVERLAY_Y = 5;
@@ -624,7 +624,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
                 selected ? "\xE2\x96\xB6" : " ",
                 items[i].name, items[i].count,
                 items[i].useLabel,
-                items[i].canThrow ? "[E]" : "   ",
+                items[i].canThrow ? "[F]" : "   ",
                 frame);
         cout << buf;
     }
@@ -633,7 +633,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
     cout << buf;
     for (int i = 0; i < 30; ++i) cout << "\xE2\x95\x90";
     cout << "\xE2\x95\x9D";
-    snprintf(buf, sizeof(buf), "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 Q k\xC3\xA4yt\xC3\xA4 \xC2\xB7 E heit\xC3\xA4 \xC2\xB7 Tab sulje ",
+    snprintf(buf, sizeof(buf), "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 E k\xC3\xA4yt\xC3\xA4 \xC2\xB7 F heit\xC3\xA4 \xC2\xB7 Tab sulje ",
             OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
     cout << buf;
 
@@ -641,7 +641,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
     cout.flush();
 }
 
-std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle)
+std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle, int maxSteps)
 {
     std::vector<std::pair<int, int>> cells;
     float dx = cos(angle);
@@ -649,7 +649,7 @@ std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py
     float fx = (float)px;
     float fy = (float)py;
 
-    for (int step = 1; step < 20; ++step) {
+    for (int step = 1; step < maxSteps; ++step) {
         fx += dx;
         fy += dy;
         int ix = (int)(fx + 0.5f);
@@ -672,10 +672,19 @@ std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py
 
 void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
 {
-    for (const auto& c : aimCells(level, px, py, angle)) {
+    for (const auto& c : aimCells(level, px, py, angle, aimLength)) {
         // map starts below the message line and top border, right of the inventory column and border
         char buf[64];
         snprintf(buf, sizeof(buf), "\033[%d;%dH\033[91m*\033[0m", c.second + 3, c.first + 15);
+        cout << buf;
+    }
+    if (aimRisk >= 0.0f) {
+        const int filled = (int)(aimRisk * 10.0f + 0.5f);
+        std::string bar(filled, '#');
+        bar += std::string(10 - filled, '.');
+        char buf[96];
+        snprintf(buf, sizeof(buf), "\033[2;20H\033[1;%dm LAUKAISUHERKKYYS [%s] %3d%% \033[0m",
+                 aimRisk < 0.4f ? 92 : aimRisk < 0.75f ? 93 : 91, bar.c_str(), (int)(aimRisk * 100.0f + 0.5f));
         cout << buf;
     }
     cout.flush();

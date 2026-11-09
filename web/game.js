@@ -51,6 +51,22 @@
     const flashes = [];
     const MAX_STAINS = 4000;
     let lastTime = performance.now();
+    let mood = { b: 1, s: 1 };
+
+    // colour mood follows the promilles: near a hangover the world goes dark and
+    // grey, drunk it gets bright and vivid, very drunk the colours start to swim
+    function moodFor(prom) {
+        const stops = [[0, 0.55, 0.3], [10, 1.0, 1.0], [30, 1.25, 1.8], [50, 1.35, 2.3]];
+        if (prom <= stops[0][0]) return { b: stops[0][1], s: stops[0][2] };
+        for (let i = 1; i < stops.length; i++) {
+            const [p1, b1, s1] = stops[i], [p0, b0, s0] = stops[i - 1];
+            if (prom <= p1) {
+                const k = (prom - p0) / (p1 - p0);
+                return { b: b0 + (b1 - b0) * k, s: s0 + (s1 - s0) * k };
+            }
+        }
+        return { b: stops[3][1], s: stops[3][2] };
+    }
 
     function setup(els) {
         ui = els;
@@ -158,6 +174,14 @@
     function render(now) {
         const dt = Math.min(0.05, (now - lastTime) / 1000);
         lastTime = now;
+        if (frame && frame.hud) {
+            const prom = frame.hud[2];
+            const target = moodFor(prom);
+            mood.b += (target.b - mood.b) * Math.min(1, dt * 1.5);
+            mood.s += (target.s - mood.s) * Math.min(1, dt * 1.5);
+            const swim = prom > 30 ? Math.sin(now / 900) * Math.min(25, (prom - 30) * 1.2) : 0;
+            canvas.style.filter = `brightness(${mood.b.toFixed(3)}) saturate(${mood.s.toFixed(3)}) hue-rotate(${swim.toFixed(1)}deg)`;
+        }
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, COLS * CW, ROWS * CH);
         ctx.textBaseline = 'middle';
@@ -228,11 +252,42 @@
             ctx.fillRect(sx - f.r * 2, sy - f.r * 2, f.r * 4, f.r * 4);
         }
 
-        // aiming line
+        // aiming line, and the accidental-discharge meter while a pistol is cocked
         if (aim && now - aimAt < 250) {
-            ctx.fillStyle = '#ff4040';
-            ctx.font = FONT_BOLD;
-            for (const [x, y] of aim.cells) ctx.fillText('*', x * CW + CW / 2, y * CH + CH / 2 + 1);
+            // a laser from the player's hand along the aim, as far as the line of fire reaches
+            const steps = aim.cells.length;
+            if (aim.p) {
+                const x0 = aim.p[0] * CW + CW / 2, y0 = aim.p[1] * CH + CH / 2;
+                const len = steps + 0.5;
+                const x1 = x0 + Math.cos(aim.a) * len * CW, y1 = y0 + Math.sin(aim.a) * len * CH;
+                const alpha = aim.low ? 0.45 : 0.9;
+                ctx.lineCap = 'round';
+                ctx.strokeStyle = `rgba(255,30,30,${alpha * 0.35})`;
+                ctx.lineWidth = 4;
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+                ctx.strokeStyle = `rgba(255,70,70,${alpha})`;
+                ctx.lineWidth = 1;
+                ctx.beginPath(); ctx.moveTo(x0, y0); ctx.lineTo(x1, y1); ctx.stroke();
+                ctx.fillStyle = `rgba(255,90,90,${alpha})`;
+                ctx.beginPath(); ctx.arc(x1, y1, 2.5, 0, Math.PI * 2); ctx.fill();
+            }
+            if (aim.risk >= 0) {
+                const w = 220, h = 12, x0 = (COLS * CW - w) / 2, y0 = 10;
+                ctx.fillStyle = 'rgba(0,0,0,0.75)';
+                ctx.fillRect(x0 - 8, y0 - 6, w + 16, h + 26);
+                ctx.strokeStyle = '#888';
+                ctx.strokeRect(x0, y0 + 14, w, h);
+                const r = Math.min(1, aim.risk);
+                ctx.fillStyle = `hsl(${120 - 120 * r}, 85%, 50%)`;
+                ctx.fillRect(x0 + 1, y0 + 15, (w - 2) * r, h - 2);
+                ctx.fillStyle = '#eee';
+                ctx.font = 'bold 12px ui-monospace, Menlo, monospace';
+                ctx.textAlign = 'left';
+                ctx.fillText('LAUKAISUHERKKYYS', x0, y0 + 5);
+                ctx.textAlign = 'right';
+                ctx.fillText(Math.round(r * 100) + ' %', x0 + w, y0 + 5);
+                ctx.textAlign = 'center';
+            }
         }
         drawInvMenu(now);
         requestAnimationFrame(render);
@@ -247,9 +302,10 @@
         ui.menu.dataset.key = key;
         const rows = invMenu.items.map(([name, count, use, canThrow], i) => {
             const sel = i === invMenu.sel ? ' class="sel"' : count ? '' : ' class="none"';
-            return `<tr${sel}><td>${i === invMenu.sel ? '▶' : ''}</td><td>${name}</td><td>×${count}</td><td>${use}</td><td>${canThrow ? '[E]' : ''}</td></tr>`;
+            return `<tr${sel}><td>${i === invMenu.sel ? '▶' : ''}</td><td>${name}</td><td>×${count}</td><td>${use}</td><td>${canThrow ? '[F]' : ''}</td></tr>`;
         });
         ui.menu.querySelector('tbody').innerHTML = rows.join('');
+        ui.menu.querySelector('h3').textContent = invMenu.throw ? 'HEITÄ MITÄ?' : 'ТОВАРЫ · TAVARAT';
     }
 
     window.Game = { setup, handle };

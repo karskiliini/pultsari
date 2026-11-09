@@ -27,8 +27,10 @@ Then open http://localhost:3000.
 | W A S D or I J K L | Move. Walking into someone hits them; walking onto an item picks it up. |
 | Tab | Open the inventory |
 | W / S (inventory) | Select an item |
-| Q (inventory) | Use: drink, eat or shoot |
-| E (inventory) | Throw: starts aiming |
+| E (inventory) | Use: drink, eat or draw the pistol |
+| F (inventory) | Throw: starts aiming |
+| F | Choose something to throw |
+| Space | Aim the pistol (if you have one); Space again fires |
 | A / D (aiming) | Turn the aim |
 | Space (aiming) | Throw or shoot |
 | ESC | Cancel or close |

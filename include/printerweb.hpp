@@ -20,7 +20,7 @@ public:
     virtual void printHelp();
     virtual void printerRefresh() { }
     virtual void print(Level* level);
-    virtual void printInventoryOverlay(Inventory* inventory, int selectedRow);
+    virtual void printInventoryOverlay(Inventory* inventory, int selectedRow, bool throwMenu = false);
     virtual void printAimLine(Level* level, uint32_t px, uint32_t py, float angle);
 };
 

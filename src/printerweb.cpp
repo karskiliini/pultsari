@@ -90,9 +90,9 @@ void PrinterWeb::print(Level* l)
     webSend(j);
 }
 
-void PrinterWeb::printInventoryOverlay(Inventory* inventory, int selectedRow)
+void PrinterWeb::printInventoryOverlay(Inventory* inventory, int selectedRow, bool throwMenu)
 {
-    string j = "{\"t\":\"invmenu\",\"sel\":" + to_string(selectedRow) + ",\"items\":[";
+    string j = "{\"t\":\"invmenu\",\"sel\":" + to_string(selectedRow) + ",\"throw\":" + (throwMenu ? "1" : "0") + ",\"items\":[";
     bool first = true;
     for (const auto& item : overlayItems(inventory)) {
         string use = item.useLabel;
@@ -106,9 +106,12 @@ void PrinterWeb::printInventoryOverlay(Inventory* inventory, int selectedRow)
 
 void PrinterWeb::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
 {
-    string j = "{\"t\":\"aim\",\"cells\":[";
+    // the browser draws a laser from the player along the angle, as far as the cells reach
+    string j = "{\"t\":\"aim\",\"risk\":" + to_string(aimRisk) + ",\"low\":" + (aimLength < 20 ? "1" : "0") +
+               ",\"a\":" + to_string(angle) + ",\"p\":[" + to_string((int)px - level->cameraX) + "," +
+               to_string((int)py - level->cameraY) + "],\"cells\":[";
     bool first = true;
-    for (const auto& c : aimCells(level, px, py, angle)) {
+    for (const auto& c : aimCells(level, px, py, angle, aimLength)) {
         j += string(first ? "" : ",") + "[" + to_string(c.first) + "," + to_string(c.second) + "]";
         first = false;
     }
