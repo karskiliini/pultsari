@@ -1960,6 +1960,10 @@ void FSBAgent::npcAct()
         firstMove = false;
         return;
     }
+    if (recruiter) {
+        recruitAct();
+        return;
+    }
 
     string msg = "";
     Player* p = level->getPlayer();
@@ -2076,7 +2080,8 @@ bool FSBAgent::interact(std::string& msg, Person* source)
     if (source->type == pelaaja) {
         msg = "FSB-agentti väistää iskusi ja lyö takaisin!";
         source->damage(std::rand()%5 + 3);
-        dynamic_cast<Player*>(source)->inJail = true;
+        if (recruiter) dynamic_cast<Player*>(source)->conscripted = true;
+        else dynamic_cast<Player*>(source)->inJail = true;
     }
     return true;
 }

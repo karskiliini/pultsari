@@ -3,6 +3,7 @@
 
 #include "item.hpp"
 #include "coord.hpp"
+#include "fsb.hpp"
 #include "common.hpp"
 #include "persontype.hpp"
 #include "audio.hpp"
@@ -175,6 +176,10 @@ public:
     Robbery robbery;
     // world tick: start, run and finish bank robberies
     void robberyTick();
+    FsbPatrol fsbPatrol;
+    // world tick: the longer the player walks down the road, the likelier the FSB comes for him
+    void fsbTick();
+    bool hasVehicle(const Vehicle* v) const;
     // A bullet from `shooter` along `angle` (radians): walls stop it; each person in
     // the way is hit with `hitPercent` chance, else it flies on. Returns who was hit.
     Person* fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent);

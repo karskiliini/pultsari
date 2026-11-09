@@ -65,6 +65,8 @@ public:
 
     Inventory inventory;
     bool inJail = false;
+    // the FSB has pushed him into a black car: off to the front
+    bool conscripted = false;
 
     // weighted walking direction, steers where the player looks on foot
     VisionNS::Heading heading;

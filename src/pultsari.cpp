@@ -862,6 +862,15 @@ static InputNS::InputType applyDrunkEffects(InputNS::InputType input, PlayerNS::
 // the death certificate says something else: officially there is no epidemic
 static const char* AIDS_DEATH = "Olet kuollut. Tappajasi: AIDS. Kuolintodistukseen kirjattiin keuhkokuume, koska virallisesti Ven\xC3\xA4j\xC3\xA4ll\xC3\xA4 ei ole HIV-epidemiaa.";
 
+// pushed into a black Aurus for walking down the road: the front, or for a veteran, the end
+static const char* CONSCRIPTED_TO_WAR = "FSB pakkov\xC3\xA4rv\xC3\xA4si sinut. Mustan Auruksen takakontissa on ahdasta, ja matka rintamalle kest\xC3\xA4\xC3\xA4 kolme p\xC3\xA4iv\xC3\xA4\xC3\xA4.";
+static const char* CONSCRIPTED_DEATH = "SURUVIESTI: FSB pakkov\xC3\xA4rv\xC3\xA4si sinut toistamiseen rintamalle. Toiselta kerralta ei palata.";
+
+static bool conscriptionGoesToWar(const GameState& gs)
+{
+    return gs.phase == GamePhase::Moscow && !gs.hasBeenToWar;
+}
+
 static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, Printer* printer, const std::string& cause)
 {
     constexpr uint32_t FRAME_MS = 50;
@@ -1486,6 +1495,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         level.updateVehicles();
                         level.skyTick();
                         level.robberyTick();
+                        level.fsbTick();
                         if (level.events) level.events->update();
 
                         // ambient audio sources
@@ -1599,6 +1609,20 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     break;
                 }
 
+                if (player.conscripted) {
+                    player.conscripted = false;
+                    if (conscriptionGoesToWar(gameState)) {
+                        printer->setMessage(CONSCRIPTED_TO_WAR);
+                        printer->print(&level);
+                        common::sleep(3000);
+                        gameState.sendToWar();
+                        nextLevel = true;
+                    } else {
+                        mourn(level, mask, player, printer, CONSCRIPTED_DEATH);
+                        quit = restart = true;
+                    }
+                    break;
+                }
                 if (player.inJail) {
                     player.inJail = false;
                     if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
@@ -1657,6 +1681,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     level.updateVehicles();
                     level.skyTick();
                     level.robberyTick();
+                    level.fsbTick();
                     if (level.events) level.events->update();
 
                     // ambient audio sources
@@ -1717,6 +1742,19 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     break;
                 }
 
+                if (player.conscripted) {
+                    player.conscripted = false;
+                    printer->setMessage(conscriptionGoesToWar(gameState) ? CONSCRIPTED_TO_WAR : CONSCRIPTED_DEATH);
+                    printer->print(&level);
+                    if (conscriptionGoesToWar(gameState)) {
+                        InputNS::Input::waitKey();
+                        gameState.sendToWar();
+                        nextLevel = true;
+                    } else {
+                        quit = true;
+                    }
+                    break;
+                }
                 if (player.inJail) {
                     player.inJail = false;
                     if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {

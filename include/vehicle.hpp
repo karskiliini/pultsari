@@ -72,10 +72,13 @@ struct DriveControls {
 // A car someone takes over turns free: it drives in any of 72 directions.
 class Car : public Vehicle {
 public:
-    enum class Kind { Random, Limousine, Police, Getaway };
+    enum class Kind { Random, Limousine, Police, Getaway, Fsb };
     static constexpr int HEADINGS = 72;     // 5 degrees each; 0 = east, clockwise
     // scripted driving for a bank robbery and the police chase
-    enum class Script { None, ToBank, Smash, Parked, Reverse, Flee, Chase };
+    enum class Script { None, ToBank, Smash, Parked, Reverse, Flee, Chase,
+                        Tail,   // FSB: crawls along the street behind the player
+                        Hunt,   // FSB: drives at the player and stops beside him
+                        Leave }; // drives off the map and is gone
     Car(const Coord& pos, bool horizontal, int direction, Kind kind = Kind::Random);
     virtual void frame(uint32_t ms);
     virtual std::string name() const { return model; }
@@ -91,6 +94,8 @@ public:
     bool gone = false;            // drove off the map
     bool loot = false;            // the getaway car's glovebox, until searched
     bool nearMissed = false;      // already honked at the player on this pass
+    bool fsbCar = false;          // a black FSB Aurus with a blue light on the roof
+    bool arrived = false;         // a hunting FSB car has stopped beside the player
 
     // who sits in it and whether it goes
     bool driverInside = true;

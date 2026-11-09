@@ -2174,3 +2174,102 @@ TEST(drone_on_a_petrol_station_blows_up_the_queue)
     CHECK(w.level.events->getFires().size() >= 25);   // far more fire than an ordinary strike
     CHECK(w.printer.saw("BENSA-ASEMA"));
 }
+
+// ---- the FSB collects drunks who walk down the road ----
+
+TEST(fsb_risk_grows_with_the_road_walked)
+{
+    RoadRun run;
+    for (uint32_t i = 0; i < RoadRun::SAFE; ++i) {
+        run.step(true);
+        CHECK(run.dispatchChance() == 0.0f);   // crossing a street, or a short stretch, is safe
+    }
+    float last = 0.0f, survive = 1.0f, surviveToWarning = 1.0f;
+    for (uint32_t t = RoadRun::SAFE + 1; t <= RoadRun::CERTAIN; ++t) {
+        run.step(true);
+        const float p = run.dispatchChance();
+        CHECK(p > last);
+        last = p;
+        survive *= 1.0f - p;
+        if (t <= RoadRun::WARN) surviveToWarning *= 1.0f - p;
+    }
+    CHECK(surviveToWarning > 0.9f);  // the black car tails him before anything happens, nearly always
+    CHECK(survive < 0.1f);           // by CERTAIN tiles the FSB has almost surely come
+}
+
+TEST(fsb_risk_resets_off_the_road)
+{
+    RoadRun run;
+    for (int i = 0; i < 60; ++i) run.step(true);
+    CHECK(run.dispatchChance() > 0.0f);
+    uint32_t before = run.tiles;
+    run.step(false);
+    CHECK(run.tiles < before);       // every step on the pavement forgives a little
+    for (int i = 0; i < 20; ++i) run.step(false);
+    CHECK(run.tiles == 0);
+    CHECK(run.dispatchChance() == 0.0f);
+
+    // crossing streets all day long never adds up
+    RoadRun crossing;
+    for (int k = 0; k < 50; ++k) {
+        for (int i = 0; i < 3; ++i) crossing.step(true);
+        for (int i = 0; i < 4; ++i) crossing.step(false);
+    }
+    CHECK(crossing.dispatchChance() == 0.0f);
+}
+
+static bool hasFsbCar(const World& w)
+{
+    for (auto v : w.level.vehicles) if (auto c = dynamic_cast<const Car*>(v)) if (c->fsbCar) return true;
+    return false;
+}
+
+TEST(fsb_black_car_tails_and_leaves_when_player_steps_off)
+{
+    World w(Coord{ 60, 112 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    w.level.fsbTick();
+    w.level.fsbPatrol.run.tiles = RoadRun::WARN - 1;
+    w.player.coord.x += 1;
+    w.level.fsbTick();
+    CHECK(w.level.fsbPatrol.stage == FsbPatrol::Stage::Tailing);
+    CHECK(hasFsbCar(w));
+    CHECK(w.printer.saw("Musta Aurus hidastaa"));
+
+    // off the road onto the pavement: the car gives up
+    for (int i = 0; i < 6; ++i) {
+        w.player.coord.y -= 1;
+        w.level.fsbTick();
+    }
+    CHECK(w.level.fsbPatrol.stage == FsbPatrol::Stage::Idle);
+    CHECK(w.level.fsbPatrol.run.tiles == 0);
+    CHECK(w.printer.saw("kiihdytt"));
+}
+
+TEST(fsb_conscripts_player_who_runs_down_the_road)
+{
+    World w(Coord{ 40, 112 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    w.level.fsbTick();
+    // stroll east down Tverskaja until the FSB decides
+    int walked = 0;
+    while (w.level.fsbPatrol.stage != FsbPatrol::Stage::Dispatched && walked < 300) {
+        w.player.coord.x = (w.player.coord.x + 1) % common::SIZEX;
+        w.level.fsbTick();
+        w.level.vehicleFrame(100);
+        ++walked;
+    }
+    CHECK(w.level.fsbPatrol.stage == FsbPatrol::Stage::Dispatched);
+    CHECK(walked > (int)RoadRun::WARN / 2);   // never at once
+    CHECK(w.printer.saw("Musta Aurus hidastaa"));  // warned first
+    CHECK(w.printer.saw("vapaaehtoinen"));
+
+    // he stops; the cars pull up and the men jump out and grab him
+    for (int frame = 0; frame < 2000 && !w.player.conscripted; ++frame) {
+        w.level.vehicleFrame(50);
+        w.level.npcFrame(50);
+        if (frame % 8 == 0) w.level.fsbTick();
+    }
+    CHECK(w.printer.saw("Stoi! FSB!"));
+    CHECK(w.player.conscripted);
+}

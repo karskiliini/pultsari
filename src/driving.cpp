@@ -774,5 +774,7 @@ const char* Car::colorAt(uint32_t i) const
         return paint;
     }
     if (limousine) return (i > 1 && i + 2 < length && i % 2 == 0) || i == 0 ? "1;38;5;250" : "38;5;16";
+    // black, headlights at the front and the blue migalka on the roof
+    if (fsbCar) return i == 0 ? "1;38;5;250" : i == 1 ? "1;94" : "38;5;16";
     return paint;
 }

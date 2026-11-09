@@ -273,6 +273,10 @@ public:
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "F"; };
     bool firstMove = true;
+    // jumped out of a black car to grab the player for the front; gives up after `patience` acts
+    bool recruiter = false;
+    uint32_t patience = 0;
+    void recruitAct();
     bool hasTarget = false;
     Coord defenTarget = { 0, 0 };
     uint32_t defenCooldown = 0;

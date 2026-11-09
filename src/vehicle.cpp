@@ -279,6 +279,8 @@ Car::Car(const Coord& pos, bool horiz, int dir, Kind kind)
     if (kind == Kind::Getaway) m = { "Ry\xC3\xB6st\xC3\xA4jien Lada", "1;38;5;130", 60, 3 };
     loot = kind == Kind::Getaway;
     if (kind == Kind::Limousine) m = { "Vovan limusiini", "38;5;16", 55, 10 };
+    if (kind == Kind::Fsb) m = { "Musta Aurus", "38;5;16", 90, 4 };
+    fsbCar = kind == Kind::Fsb;
     limousine = kind == Kind::Limousine;
     armoured = limousine;
     police = kind == Kind::Police;
@@ -326,6 +328,27 @@ void Car::frame(uint32_t ms)
     if ((script == Script::Flee || script == Script::Chase) && horizontal && coord.x == 0) {
         gone = true;
         return;
+    }
+    if (script == Script::Leave) {
+        const uint32_t at = horizontal ? coord.x : coord.y;
+        const uint32_t edge = (horizontal ? common::SIZEX : common::SIZEY) - 1;
+        if ((direction < 0 && at == 0) || (direction > 0 && at == edge)) {
+            gone = true;
+            return;
+        }
+    }
+    // the FSB stops right beside the player, unless he has got well away from the street
+    if (script == Script::Hunt) {
+        const PlayerNS::Player* p = level->getPlayer();
+        if (p && !level->playerDead) {
+            const int along = horizontal ? (int)p->coord.x - (int)coord.x : (int)p->coord.y - (int)coord.y;
+            const int across = horizontal ? (int)p->coord.y - (int)coord.y : (int)p->coord.x - (int)coord.x;
+            if (std::abs(along) <= 3 && std::abs(across) <= 14) {
+                script = Script::Parked;
+                arrived = true;
+                return;
+            }
+        }
     }
 
     Coord next = coord;
@@ -387,7 +410,7 @@ void Car::frame(uint32_t ms)
     waiting = 0;
     coord = next;
     msSinceMoved = 0;
-    checkNearMiss();
+    if (!fsbCar) checkNearMiss();
 
     // old Ladas leave a cloud right behind them
     if ((model == "Lada" || model == "UAZ") && common::random(40)) {
