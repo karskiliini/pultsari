@@ -87,6 +87,9 @@ public:
     uint32_t viewH = 28;
     int aimLength = 20;     // a lowered pistol's laser only reaches a few steps
 
+    // the browser draws speech bubbles itself, translucent, over the map
+    bool bubblesAsOverlay = false;
+
     PlayerNS::Player* player = nullptr;
     VisionNS::Mask* mask = nullptr;
     PathNS::PathMask* pathmask = nullptr;

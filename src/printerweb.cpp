@@ -1,5 +1,6 @@
 #include "printerweb.hpp"
 #include "mask.hpp"
+#include "animation.hpp"
 #include "level.hpp"
 #include "building.hpp"
 #include "player.hpp"
@@ -111,6 +112,22 @@ void PrinterWeb::print(Level* l)
         j += "]";
     }
     j += "]";
+
+    // speech bubbles: drawn by the page, translucent and fading, so people show through them
+    bubblesAsOverlay = true;
+    if (common::animsEnabled) {
+        j += ",\"bub\":[";
+        bool firstBub = true;
+        for (const auto a : l->animations) {
+            if (!a->isBubble || (mask && !mask->visible(a->source))) continue;
+            const int bx = (int)a->coord.x - l->cameraX, by = (int)a->coord.y - l->cameraY;
+            if (by < 0 || by >= (int)viewH) continue;
+            const uint32_t left = a->frames ? a->ttl * 100 / a->frames : 0;
+            j += string(firstBub ? "" : ",") + "[" + to_string(bx) + "," + to_string(by) + "," + jsonString(a->text) + "," + to_string(left) + "]";
+            firstBub = false;
+        }
+        j += "]";
+    }
 
     // what the player can see: one hex digit per 4 cells, so blood and vomit stay hidden out of sight
     if (mask) {

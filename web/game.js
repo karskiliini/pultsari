@@ -352,6 +352,28 @@
                 }
             });
             ctx.globalAlpha = 1;
+
+            // speech bubbles: 70 % opaque when said, fading out fast so whoever is behind shows through
+            if (frame.bub) {
+                ctx.font = cw === CW ? FONT_BOLD : 'bold ' + font;
+                for (const [bx, by, text, left] of frame.bub) {
+                    const k = Math.max(0, Math.min(1, left / 100));
+                    const alpha = 0.7 * k * k;
+                    if (alpha < 0.02) continue;
+                    ctx.globalAlpha = alpha;
+                    let x = bx;
+                    for (const g of text) {
+                        if (g !== ' ') {
+                            ctx.fillStyle = '#000';
+                            ctx.fillText(g, x * cw + cw / 2 + 1, by * ch + ch / 2 + 2);
+                            ctx.fillStyle = '#fff';
+                            ctx.fillText(g, x * cw + cw / 2, by * ch + ch / 2 + 1);
+                        }
+                        x++;
+                    }
+                }
+                ctx.globalAlpha = 1;
+            }
         }
 
         // flying droplets and debris; blood that lands becomes a stain

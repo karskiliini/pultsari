@@ -369,6 +369,7 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
     if (common::animsEnabled) {
         for (const auto a : l->animations) {
             if (a->coord.y != worldY) continue;
+            if (a->isBubble && bubblesAsOverlay) continue;
             if (!mask->visible(a->source)) continue;
             // speech bubbles fade from white to dark grey as they expire
             const char* color = "1;91";
