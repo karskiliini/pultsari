@@ -191,6 +191,8 @@ void Mummo::npcAct()
             "Kaikki oli paremmin ennen.",
         };
         say(mummo_lines[std::rand()%3]);
+        level->audio.addSound(coord, SoundType::Voice,
+            "Mummo mutisee", "Mutinaa", "...mutinaa...", 8);
     }
 }
 
@@ -313,6 +315,8 @@ void Cop::npcAct()
             Direction d = randomDirection();
             move(d, msg);
         }
+        if (random(15)) level->audio.addSound(coord, SoundType::Voice,
+            "Humalainen miliisi laulaa", "Laulua jostain", "...laulua...", 18);
         printer->showMessage(msg, level);
         return;
     }
@@ -417,6 +421,13 @@ void Cop::npcAct()
             Direction d = randomDirection();
             move(d, msg);
         }
+    }
+    if (alerted) {
+        level->audio.addSound(coord, SoundType::Siren,
+            "Miliisi huutaa: STOI!", "Miliisin huutoa", "...huutoa kaukaa...", 25);
+    } else if (random(8)) {
+        level->audio.addSound(coord, SoundType::WalkieTalkie,
+            "Radiopuhelin rahinaa", "Radion rahinaa", "...rahinaa...", 15);
     }
     printer->showMessage(msg, level);
 }
@@ -1626,6 +1637,8 @@ void Juoppo::npcAct()
             Direction d = randomDirection();
             move(d, msg);
         }
+        if (random(10)) level->audio.addSound(coord, SoundType::Voice,
+            "Juhliva juoppo huutaa", "Juhlintaa", "...juhlintaa kaukaa...", 20);
         printer->showMessage(msg, level);
         return;
     }
@@ -1658,6 +1671,11 @@ void Juoppo::npcAct()
     if (stumbleCount > 10 && random(5)) {
         say("*YÖÖK*");
         stumbleCount = 0;
+        level->audio.addSound(coord, SoundType::Vomit,
+            "Joku oksentaa vieress\xC3\xA4", "Oksennuksen \xC3\xA4\xC3\xA4ni\xC3\xA4", "...yy\xC3\xB6kkimist\xC3\xA4...", 15);
+    } else if (random(6)) {
+        level->audio.addSound(coord, SoundType::Voice,
+            "Juoppo \xC3\xB6risee", "Sammaltavaa puhetta", "...\xC3\xB6rin\xC3\xA4\xC3\xA4...", 10);
     }
 }
 
@@ -1749,6 +1767,8 @@ void FSBAgent::npcAct()
                 say("За Путина!");
             }
         }
+        level->audio.addSound(coord, SoundType::Voice,
+            "FSB-agentti raivostuu!", "Raivoisaa huutoa", "...raivokasta huutoa...", 30);
         printer->showMessage(msg, level);
         return;
     }
@@ -1767,6 +1787,8 @@ void FSBAgent::npcAct()
             Direction d = randomDirection();
             move(d, msg);
         }
+        if (random(10)) level->audio.addSound(coord, SoundType::Voice,
+            "FSB-agentti panikoi", "Paniikin \xC3\xA4\xC3\xA4ni\xC3\xA4", "...paniikin \xC3\xA4\xC3\xA4ni\xC3\xA4...", 15);
         printer->showMessage(msg, level);
         return;
     }
@@ -1823,6 +1845,10 @@ void FSBAgent::npcAct()
             };
             say(fsb_lines[std::rand()%4]);
         }
+    }
+    if (random(7)) {
+        level->audio.addSound(coord, SoundType::WalkieTalkie,
+            "FSB:n radiopuhelin p\xC3\xA4risee", "Radiopuhelimen p\xC3\xA4rin\xC3\xA4\xC3\xA4", "...p\xC3\xA4rin\xC3\xA4\xC3\xA4...", 18);
     }
 
     printer->showMessage(msg, level);
@@ -1915,11 +1941,15 @@ void Sotilas::npcAct()
                     p->damage(std::rand()%4 + 3);
                     say("Огонь!");
                 }
+                level->audio.addSound(coord, SoundType::Gunshot,
+                    "LAUKAUS! Sotilas ampuu!", "Laukauksen kaiku", "...laukaus kaukaa...", 35);
             } else {
                 Direction d = getMoveDirection(p->coord);
                 move(d, msg);
             }
         }
+        level->audio.addSound(coord, SoundType::Voice,
+            "Sotilaat huutavat komentoja", "Komentohuutoja", "...komentoja kaukaa...", 25);
         printer->showMessage(msg, level);
         return;
     }
@@ -1959,6 +1989,8 @@ void Sotilas::npcAct()
                 msg = "Sotilas ampuu mutta menee ohi!";
             }
             level->alertCops(this);
+            level->audio.addSound(coord, SoundType::Gunshot,
+                "LAUKAUS vierest\xC3\xA4!", "Laukauksen kaiku", "...laukaus kaukaa...", 35);
         } else {
             Direction d = getMoveDirection(p->coord);
             move(d, msg);
@@ -1977,6 +2009,10 @@ void Sotilas::npcAct()
             };
             say(lines[std::rand()%4]);
         }
+    }
+    if (random(8)) {
+        level->audio.addSound(coord, SoundType::Footsteps,
+            "Sotilassaappaiden marssia", "Marssin askeleita", "...askeleita...", 15);
     }
 
     printer->showMessage(msg, level);
@@ -2104,6 +2140,8 @@ void Vartija::npcAct()
         if (!level->hit(next) && coord.distance(homePos) < 15) {
             coord = next;
         }
+        if (random(10)) level->audio.addSound(coord, SoundType::Voice,
+            "Vartija huutaa paniikissa", "Paniikin huutoa", "...huutoa...", 18);
         return;
     }
 
@@ -2180,6 +2218,13 @@ void Vartija::npcAct()
             if (!level->hit(next) && next.distance(homePos) <= 4) coord = next;
         }
     }
+    if (dist <= 6 && canSeeTarget(p->coord)) {
+        level->audio.addSound(coord, SoundType::Voice,
+            "Vartija huutaa: H\xC3\x84IVY!", "Vartijan huutoa", "...huutoa...", 20);
+    } else if (random(6)) {
+        level->audio.addSound(coord, SoundType::WalkieTalkie,
+            "Vartijan radiopuhelin", "Radion rahinaa", "...rahinaa...", 12);
+    }
 }
 
 bool Vartija::interact(std::string& msg, Person* source)
@@ -2231,6 +2276,8 @@ void Putin::npcAct()
                 coord = next;
             }
         }
+        level->audio.addSound(coord, SoundType::Voice,
+            "Joku nyyhkii ja itkee", "Itkua", "...itkua kaukaa...", 12);
         return;
     }
 
@@ -2265,6 +2312,8 @@ void Putin::npcAct()
                 coord = next;
             }
         }
+        level->audio.addSound(coord, SoundType::Voice,
+            "Raivokas huuto Kremlist\xC3\xA4!", "Raivokasta huutoa", "...huutoa Kremlist\xC3\xA4...", 30);
         return;
     }
 
@@ -2294,6 +2343,10 @@ void Putin::npcAct()
         if (!level->hitBuilding(next) && !level->hitPerson(next) && !level->hitItem(next)) {
             coord = next;
         }
+    }
+    if (common::random(8)) {
+        level->audio.addSound(coord, SoundType::Voice,
+            "Mutinaa Kremlin sis\xC3\xA4lt\xC3\xA4", "Mutinaa jostain", "...mutinaa...", 10);
     }
 }
 

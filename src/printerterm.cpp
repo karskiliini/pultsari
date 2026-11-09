@@ -96,7 +96,15 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
     cout << "  VOIMA: "    << moneyAligned(stats->health);
     cout << "  PROMILLE: " << promilleAligned(stats->promilles);
     cout << "  NÄLKÄ: " << moneyAligned(stats->hunger);
-    cout << endl << endl;
+    cout << endl;
+
+    if (player) {
+        std::string audioLine = l->audio.formatSoundLine(player->coord);
+        if (!audioLine.empty()) {
+            cout << audioLine;
+        }
+    }
+    cout << endl;
 }
 
 void PrinterTerm::printChar(string c)

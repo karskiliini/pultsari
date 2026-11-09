@@ -5,6 +5,7 @@
 #include "coord.hpp"
 #include "common.hpp"
 #include "persontype.hpp"
+#include "audio.hpp"
 #include <cstdint>
 #include <vector>
 
@@ -95,6 +96,8 @@ public:
     bool isBolshoi = false;
     bool putinDead = false;
     bool celebrating = false;
+
+    AudioSystem audio;
 };
 
 

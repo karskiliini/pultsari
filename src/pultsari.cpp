@@ -438,6 +438,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         printer->mask = &mask;
 
         level.printer = printer;
+        level.audio.setLevel(&level);
 
         printer->player = &player;
 
@@ -683,10 +684,31 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     ++npcTick;
                     if (npcTick >= NPC_INTERVAL) {
                         npcTick = 0;
+                        level.audio.clear();
                         level.buildingTurn();
                         level.npcTurn();
                         level.updateVehicles();
                         if (level.events) level.events->update();
+
+                        // ambient audio sources
+                        for (auto& v : level.vehicles) {
+                            Bus* bus = dynamic_cast<Bus*>(v);
+                            if (bus) {
+                                level.audio.addSound(bus->coord, SoundType::Engine,
+                                    "Bussin moottori jyrisee", "Bussin \xC3\xA4\xC3\xA4nt\xC3\xA4", "...moottoria kaukaa...", 20);
+                            }
+                        }
+                        for (auto& b : level.buildings) {
+                            if (b->type == EHypermarket) {
+                                Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
+                                if (hm && hm->onFire) {
+                                    Coord fc { (b->wallLeft + b->wallRight) / 2, (b->wallTop + b->wallBot) / 2 };
+                                    level.audio.addSound(fc, SoundType::Fire,
+                                        "Tulipalo raivoaa! R\xC3\xA4iskyy ja paukkuu!", "Liekkien \xC3\xA4\xC3\xA4ni\xC3\xA4", "...palon huminaa...", 30);
+                                }
+                            }
+                        }
+
                         level.cleanDead();
                         level.cleanDiscardedItems();
                         player.updateTurn();
@@ -809,10 +831,31 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                     printer->print(&level);
 
+                    level.audio.clear();
                     level.buildingTurn();
                     level.npcTurn();
                     level.updateVehicles();
                     if (level.events) level.events->update();
+
+                    // ambient audio sources
+                    for (auto& v : level.vehicles) {
+                        Bus* bus = dynamic_cast<Bus*>(v);
+                        if (bus) {
+                            level.audio.addSound(bus->coord, SoundType::Engine,
+                                "Bussin moottori jyrisee", "Bussin \xC3\xA4\xC3\xA4nt\xC3\xA4", "...moottoria kaukaa...", 20);
+                        }
+                    }
+                    for (auto& b : level.buildings) {
+                        if (b->type == EHypermarket) {
+                            Hypermarket* hm = dynamic_cast<Hypermarket*>(b);
+                            if (hm && hm->onFire) {
+                                Coord fc { (b->wallLeft + b->wallRight) / 2, (b->wallTop + b->wallBot) / 2 };
+                                level.audio.addSound(fc, SoundType::Fire,
+                                    "Tulipalo raivoaa! R\xC3\xA4iskyy ja paukkuu!", "Liekkien \xC3\xA4\xC3\xA4ni\xC3\xA4", "...palon huminaa...", 30);
+                            }
+                        }
+                    }
+
                     level.cleanDead();
                     level.cleanDiscardedItems();
 
