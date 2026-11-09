@@ -6,7 +6,7 @@
     let muted = false;
     const lastPlayed = {};
     // continuous sources are re-announced every NPC tick; play them sparingly
-    const minGapMs = { splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380 };
+    const minGapMs = { splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380, horn: 1200 };
 
     // Recorded sounds from Pixabay (web/sounds/CREDITS.md), decoded once the context exists.
     const sampleFiles = {
@@ -188,6 +188,29 @@
             o.connect(f).connect(g).connect(master);
             o.start(t);
             o.stop(t + 1.6);
+        },
+        // a car horn leaned on: two short blasts and a long angry one
+        horn(t, v) {
+            const blasts = [[0, 0.16], [0.24, 0.16], [0.48, 0.9]];
+            for (const [at, dur] of blasts) {
+                const f = ctx.createBiquadFilter();
+                f.type = 'lowpass';
+                f.frequency.value = 1800;
+                const g = ctx.createGain();
+                g.gain.setValueAtTime(0.0001, t + at);
+                g.gain.linearRampToValueAtTime(level(0.14 * v), t + at + 0.015);
+                g.gain.setValueAtTime(level(0.14 * v), t + at + dur);
+                g.gain.exponentialRampToValueAtTime(0.0001, t + at + dur + 0.04);
+                g.connect(f).connect(master);
+                for (const hz of [415, 523]) {
+                    const o = ctx.createOscillator();
+                    o.type = 'square';
+                    o.frequency.value = hz;
+                    o.connect(g);
+                    o.start(t + at);
+                    o.stop(t + at + dur + 0.06);
+                }
+            }
         },
         radio(t, v) {
             for (let i = 0; i < 5; i++) {

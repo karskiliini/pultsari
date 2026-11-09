@@ -5,6 +5,7 @@
 #include "common.hpp"
 #include "input.hpp"
 #include "persons.hpp"
+#include "animation.hpp"
 #include "building.hpp"
 #include <cmath>
 #include <iostream>
@@ -388,6 +389,7 @@ void Car::frame(uint32_t ms)
     }
     waiting = 0;
     coord = next;
+    checkNearMiss();
 
     // old Ladas leave a cloud right behind them
     if ((model == "Lada" || model == "UAZ") && common::random(40)) {
@@ -398,4 +400,60 @@ void Car::frame(uint32_t ms)
             level->addGas(behind, false);
         }
     }
+}
+
+// A car that passes right beside the player leans on the horn and the driver
+// yells abuse out of the window, once per pass.
+void Car::checkNearMiss()
+{
+    const PlayerNS::Player* p = level->getPlayer();
+    if (!p || level->playerDead) return;
+
+    bool beside = false, near = false;
+    for (const auto& c : cells()) {
+        const int dx = (int)p->coord.x - (int)c.x;
+        const int dy = (int)p->coord.y - (int)c.y;
+        const int along = horizontal ? dx : dy;
+        const int across = horizontal ? dy : dx;
+        if (along == 0 && (across == 1 || across == -1)) beside = true;
+        if (std::abs(dx) <= 4 && std::abs(dy) <= 4) near = true;
+    }
+    if (!near) nearMissed = false;
+    if (!beside || nearMissed) return;
+    nearMissed = true;
+
+    static const char* insults[] = {
+        "Pois tielt\xC3\xA4, saatanan pultsari!",
+        "Idi nahui, juoppo!",
+        "Blyat! Seuraavalla kerralla ajan yli!",
+        "Katso eteesi, sika!",
+        "Durak! Tie on autoille!",
+        "Suka! Opettele k\xC3\xA4velem\xC3\xA4\xC3\xA4n!",
+        "Mene kotiin, alkoholik!",
+        "Haista paska, rappioalkkis!",
+        "Pjanitsa! Melkein naarmutit maalit!",
+        "Jop tvoju mat! Sokea vai humalassa?!",
+        "Mudak! Kadulla ei nukuta!",
+        "Kuole pois, laitapuolen kulkija!",
+    };
+    const string insult = insults[std::rand() % (sizeof(insults) / sizeof(insults[0]))];
+
+    level->audio.addSound(coord, SoundType::Engine,
+        "T\xC3\x96\xC3\x96T T\xC3\x96\xC3\x96\xC3\x96\xC3\x96\xC3\x96T! " + model + " t\xC3\xB6\xC3\xB6tt\xC3\xA4\xC3\xA4 vimmatusti ja kuski huutaa: \"" + insult + "\"",
+        "Autontorvi ja huutoa", "...t\xC3\xB6\xC3\xB6ttely\xC3\xA4...", 18);
+
+    // the driver's yell hangs over the car like anybody's speech bubble
+    uint32_t cols = 0;
+    for (unsigned char ch : insult) if ((ch & 0xC0) != 0x80) ++cols;
+    const uint32_t half = cols / 2;
+    const Coord at { coord.x > half ? coord.x - half : 0, coord.y > 1 ? coord.y - 1 : 0 };
+    Animation* anim = new Animation(at, insult, common::realtimeEnabled ? 50 : 4);
+    anim->isBubble = true;
+    anim->owner = this;
+    anim->source = coord;
+    for (auto it = level->animations.begin(); it != level->animations.end();) {
+        if ((*it)->owner == this) { delete *it; it = level->animations.erase(it); }
+        else ++it;
+    }
+    level->addAnimation(anim, false);
 }

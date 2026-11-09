@@ -75,7 +75,9 @@ public:
     bool reckless = false;        // runs people over instead of honking
     bool gone = false;            // drove off the map
     bool loot = false;            // the getaway car's glovebox, until searched
+    bool nearMissed = false;      // already honked at the player on this pass
 private:
+    void checkNearMiss();
     bool limousine = false;
     uint32_t energy = 0;
     uint32_t waiting = 0;
