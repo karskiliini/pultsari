@@ -62,7 +62,8 @@
         const cyr = textMask(cyrText, cyrX, cyrY);
         const filled = new Uint8Array(FW * FH);
         let filledCount = 0;
-        const floorCell = Math.floor(floorY / CELL);
+        // the vomit runs all the way down and pools against the bottom edge of the screen
+        const floorCell = FH - 2;
 
         // ---- fluid: particles with gravity, pressure, cohesion and viscosity ----
         const MAX = 1600;
