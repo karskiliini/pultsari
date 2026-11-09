@@ -233,6 +233,10 @@
                 cw = W / cols;
                 ch = H / rows;
                 updateUi(m);
+                if (m.ver) {
+                    const v = document.getElementById('version');
+                    if (v && v.textContent !== m.ver) v.textContent = m.ver;
+                }
                 if (!m.dead) ui.death.hidden = true;
                 break;
             case 'death':

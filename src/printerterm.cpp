@@ -5,6 +5,7 @@
 #include "scoreboard.hpp"
 #include "common.hpp"
 #include "inventory.hpp"
+#include "version.hpp"
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -101,7 +102,12 @@ void PrinterTerm::printBorder(Level* l, bool top)
         if (right.empty()) cout << HORIZONTAL << HORIZONTAL;
         cout << HORIZONTAL << HORIZONTAL;
     } else {
-        for (uint32_t x = 0; x < common::VIEWPORT_W; ++x) cout << HORIZONTAL;
+        // the version sits in the bottom-right corner
+        const string ver = string(" ") + gameVersion() + " ";
+        const uint32_t verW = columns(ver);
+        const uint32_t line = common::VIEWPORT_W > verW + 2 ? common::VIEWPORT_W - verW - 2 : 0;
+        for (uint32_t x = 0; x < line; ++x) cout << HORIZONTAL;
+        cout << "\033[2;37m" << ver << FRAME << HORIZONTAL << HORIZONTAL;
     }
 
     cout << (top ? TOP_RIGHT : BOT_RIGHT) << RESET << "\033[K" << endl;

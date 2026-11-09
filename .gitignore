@@ -8,3 +8,4 @@ tests/unit_tests
 tests/*.o
 tests/*.d
 __pycache__/
+include/version_gen.hpp

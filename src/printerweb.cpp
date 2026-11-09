@@ -9,6 +9,7 @@
 #include "scoreboard.hpp"
 #include "inventory.hpp"
 #include "common.hpp"
+#include "version.hpp"
 #include <string>
 
 using std::string;
@@ -65,7 +66,8 @@ void PrinterWeb::print(Level* l)
     string j = "{\"t\":\"frame\",\"msg\":" + jsonString(msg) +
                ",\"lvl\":" + jsonString(locationName(l)) +
                ",\"cam\":[" + to_string(l->cameraX) + "," + to_string(l->cameraY) + "]" +
-               ",\"cols\":" + to_string(viewW) + (l->playerDead ? ",\"dead\":1" : "");
+               ",\"cols\":" + to_string(viewW) + (l->playerDead ? ",\"dead\":1" : "") +
+               ",\"ver\":" + jsonString(gameVersion());
 
     if (player) {
         const auto& s = player->stats;
