@@ -129,7 +129,7 @@ void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
 
 void PrinterTerm::printHelp()
 {
-    cout << "P\xD0\x9F""LTSARI 2 - The Special Drunken Operation          " << endl;
+    cout << "P\xD0\x9F""LTSARI 2 - \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80          " << endl;
     cout << "--los          : line of sight                        " << endl;
     cout << "--anims        : animaatiot                           " << endl;
     cout << "--path         : reitinhaku                           " << endl;
