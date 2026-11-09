@@ -68,17 +68,19 @@
         const MAX = 1600;
         const px = new Float32Array(MAX), py = new Float32Array(MAX);
         const vx = new Float32Array(MAX), vy = new Float32Array(MAX);
+        // 0 = watery, 1 = thick slime: every splash is half water, the rest stays thick
+        const thick = new Float32Array(MAX);
         let n = 0;
-        const G = 0.03, R0 = 1.15, H_ = 2.3, K = 0.09, COH = 0.006, VISC = 0.09;
+        const G = 0.03, R0 = 1.15, H_ = 2.3, K = 0.09, COH = 0.009, VISC = 0.13;
         const grid = new Map();
 
-        function emit(x, y, ux, uy) {
+        function emit(x, y, ux, uy, th = 1) {
             if (n >= MAX) return;
-            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; n++;
+            px[n] = x; py[n] = y; vx[n] = ux; vy[n] = uy; thick[n] = th; n++;
         }
         function remove(i) {
             n--;
-            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n];
+            px[i] = px[n]; py[i] = py[n]; vx[i] = vx[n]; vy[i] = vy[n]; thick[i] = thick[n];
         }
         const at = (mask, x, y) => {
             const cx = x | 0, cy = y | 0;
@@ -105,17 +107,24 @@
                         const d2 = dx * dx + dy * dy;
                         if (d2 > H_ * H_ || d2 < 1e-6) continue;
                         const d = Math.sqrt(d2);
-                        const f = d < R0 ? -K * (R0 - d) : COH * (1 - d / H_);
+                        // slime clings together and drags; water barely does
+                        const th = (thick[i] + thick[j]) * 0.5;
+                        const f = d < R0 ? -K * (R0 - d) : COH * (0.3 + 1.7 * th) * (1 - d / H_);
                         ax += f * dx / d; ay += f * dy / d;
-                        const w = VISC * (1 - d / H_);
+                        const w = VISC * (0.25 + 1.75 * th) * (1 - d / H_);
                         ax += (vx[j] - vx[i]) * w; ay += (vy[j] - vy[i]) * w;
                     }
                 }
                 vx[i] += ax; vy[i] += ay;
-                // the vomit sticks to the letters and oozes slowly off their bottoms
-                if (at(latin.mask, px[i], py[i]) || at(latin.mask, px[i], py[i] + 1)) { vx[i] *= 0.82; vy[i] *= 0.86; }
-                const sp = Math.hypot(vx[i], vy[i]);
-                if (sp > 1.4) { vx[i] *= 1.4 / sp; vy[i] *= 1.4 / sp; }
+                const t = thick[i];
+                // the vomit sticks to the letters and oozes off their bottoms: slime slowly, water quickly
+                if (at(latin.mask, px[i], py[i]) || at(latin.mask, px[i], py[i] + 1)) {
+                    vx[i] *= 0.93 - 0.23 * t; vy[i] *= 0.95 - 0.2 * t;
+                }
+                // thick slime drags on everything
+                vx[i] *= 1 - 0.05 * t; vy[i] *= 1 - 0.035 * t;
+                const sp = Math.hypot(vx[i], vy[i]), top = 1.7 - 0.9 * t;
+                if (sp > top) { vx[i] *= top / sp; vy[i] *= top / sp; }
             }
             for (let i = n - 1; i >= 0; i--) {
                 px[i] += vx[i]; py[i] += vy[i];
@@ -141,7 +150,7 @@
                 if (filled[h]) continue;
                 const hx = h % FW;
                 const sx = latin.minX + (hx - cyr.minX) * (latin.maxX - latin.minX) / Math.max(1, cyr.maxX - cyr.minX);
-                emit(sx + Math.random() - 0.5, latin.maxY + Math.random(), 0, 0.05);
+                emit(sx + Math.random() - 0.5, latin.maxY + Math.random(), 0, 0.05, 0.85);
             }
         }
 
@@ -157,6 +166,7 @@
         const fctx = fluidCanvas.getContext('2d');
         const img = fctx.createImageData(FW, FH);
         const density = new Float32Array(FW * FH);
+        const thickness = new Float32Array(FW * FH);
 
         // the poured word: a green gradient from bright bile at the top to dark at the bottom
         function wordColor(cy, cx) {
@@ -167,12 +177,15 @@
 
         function drawFluid() {
             density.fill(0);
+            thickness.fill(0);
             for (let i = 0; i < n; i++) {
                 const cx = px[i] | 0, cy = py[i] | 0;
                 for (let oy = -1; oy <= 1; oy++) for (let ox = -1; ox <= 1; ox++) {
                     const x = cx + ox, y = cy + oy;
                     if (x < 0 || y < 0 || x >= FW || y >= FH) continue;
-                    density[y * FW + x] += (ox === 0 && oy === 0) ? 1 : (ox === 0 || oy === 0) ? 0.55 : 0.3;
+                    const w = (ox === 0 && oy === 0) ? 1 : (ox === 0 || oy === 0) ? 0.55 : 0.3;
+                    density[y * FW + x] += w;
+                    thickness[y * FW + x] += w * thick[i];
                 }
             }
             const d = img.data;
@@ -182,9 +195,13 @@
                     const [r, g, b] = wordColor((i / FW) | 0, i % FW);
                     d[o] = r; d[o + 1] = g; d[o + 2] = b; d[o + 3] = 255;
                 } else if (density[i] > 0.85) {
-                    // thicker fluid is darker green, thin edges catch the light
+                    // slime is dark and deep green, water a pale watery yellow-green; deeper is darker
                     const t = Math.min(1, (density[i] - 0.85) / 2.5);
-                    d[o] = Math.round(175 - 120 * t); d[o + 1] = Math.round(225 - 100 * t); d[o + 2] = Math.round(70 - 55 * t); d[o + 3] = 255;
+                    const s = thickness[i] / density[i];
+                    const r = 205 - 60 * s, g = 220 - 20 * s, b = 140 - 110 * s;
+                    const shade = 1 - (0.25 + 0.4 * s) * t;
+                    d[o] = Math.round(r * shade); d[o + 1] = Math.round(g * shade); d[o + 2] = Math.round(b * shade);
+                    d[o + 3] = Math.round(255 * (0.55 + 0.45 * s));
                 } else {
                     d[o + 3] = 0;
                 }
@@ -217,7 +234,9 @@
         function splash(count) {
             for (let k = 0; k < count; k++) {
                 const x = latin.minX + Math.random() * (latin.maxX - latin.minX);
-                emit(x, latin.minY - 4 - Math.random() * 10, (Math.random() - 0.5) * 0.4, 0.3 + Math.random() * 0.4);
+                // the freshest splash is always half water
+                emit(x, latin.minY - 4 - Math.random() * 10, (Math.random() - 0.5) * 0.4, 0.3 + Math.random() * 0.4,
+                     k % 2 ? 0 : 1);
             }
         }
 
