@@ -601,18 +601,42 @@ bool Kremlin::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 
 bool Kremlin::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Näet käytävän joka johtaa alaspäin... Viinakellariin!";
+    msg = "Edess\xC3\xA4si avautuu suuri juhlasali. Putinin p\xC3\xB6yt\xC3\xA4 odottaa. Istuutko? (K/E)";
     return true;
 }
 
 void Kremlin::interact(PlayerNS::Player* player, std::string& msg)
 {
-    auto enter = Input::getInputPutka();
-    if (enter) {
-        player->wonGame = true;
-        msg = "";
+    auto choice = Input::getInputPutka();
+
+    int roll = std::rand() % 100;
+    if (choice) {
+        if (roll < 40) {
+            msg = "Putin ny\xC3\xB6kk\xC3\xA4\xC3\xA4: 'Istu, tovarish.' Juot Ch\xC3\xA2teau P\xC3\xA9trus -viini\xC3\xA4...\n";
+            msg += "Mutta vodkaan on lis\xC3\xA4tty Novitshokia! N\xC3\xA4k\xC3\xB6si sumenee...";
+            player->damage(std::rand()%5 + 3);
+            player->updatepromilles(10);
+            if (std::rand() % 100 < 50) {
+                msg += "\nPutin: 'Tarvitsen lis\xC3\xA4\xC3\xA4 miehi\xC3\xA4 rintamalle.'";
+                player->inJail = true;
+            } else {
+                msg += "\nOnnistut hoippumaan viinakellariin...";
+                player->wonGame = true;
+            }
+        } else {
+            msg = "Putin: 'Hyv\xC3\xA4 mies. Juo!' Maistelet viinej\xC3\xA4...\n";
+            msg += "Putin sammuu p\xC3\xB6yt\xC3\xA4\xC3\xA4n! Nyt on tilaisuutesi!";
+            player->wonGame = true;
+        }
     } else {
-        msg = "Pyörähdät ympäri ja kävelet pois.";
+        if (roll < 30) {
+            msg = "Putin: 'Miksi et istu? Vartijat!'";
+            player->damage(std::rand()%3 + 2);
+            player->inJail = true;
+        } else {
+            msg = "Livahtadit juhlap\xC3\xB6yd\xC3\xA4n ohi kohti viinakellaria...";
+            player->wonGame = true;
+        }
     }
 }
 
