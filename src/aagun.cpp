@@ -468,7 +468,11 @@ void antiDroneFire(Level& level)
     for (size_t pi = 0; pi < level.persons.size() && !level.drones.empty(); ++pi) {
         Person* p = level.persons[pi];
         if (p->stats.health == 0) continue;
-        if (p->type != sotilas && p->type != ilmatorjunta) continue;
+        // soldiers, air defence, and the Kremlin guards (the ones with radios)
+        const bool kremlinGuard = p->type == vartija && p->hasRadio;
+        if (p->type != sotilas && p->type != ilmatorjunta && !kremlinGuard) continue;
+        // only those out under the open sky can see a drone
+        if (const Building* b = level.buildingAt(p->coord)) if (!b->hitWall(p->coord)) continue;
         if (const ITMies* m = dynamic_cast<const ITMies*>(p)) {
             if (m->asleep() || (m->gun && !m->gun->wrecked)) continue;   // the gun does the shooting
         }
@@ -482,7 +486,8 @@ void antiDroneFire(Level& level)
         if (target == level.drones.size() || !common::random(70)) continue;
 
         const Drone& d = level.drones[target];
-        if (common::random(15)) p->say(common::random(50) ? "Drooni! Ampukaa se alas!" : "Bespilotnik! OGON!");
+        if (kremlinGuard && common::random(25)) p->say("*r\xC3\xA4tin\xC3\xA4* Drooni Kremlin yll\xC3\xA4! Avatkaa tuli!");
+        else if (common::random(15)) p->say(common::random(50) ? "Drooni! Ampukaa se alas!" : "Bespilotnik! OGON!");
         level.audio.addSound(p->coord, SoundType::Gunshot,
             "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Sotilaat ampuvat droonia!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
         if (common::random(15)) {

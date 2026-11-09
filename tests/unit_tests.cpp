@@ -2273,3 +2273,30 @@ TEST(fsb_conscripts_player_who_runs_down_the_road)
     CHECK(w.printer.saw("Stoi! FSB!"));
     CHECK(w.player.conscripted);
 }
+
+TEST(kremlin_guards_open_fire_on_a_drone_they_see)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.add(new Kremlin(), 250, 20);
+    auto* outside = new Vartija(Coord{ 272, 43 });   // at the gate, under the open sky
+    outside->hasRadio = true;
+    w.spawn(outside);
+    w.level.drones.push_back(Drone{ 280.0f, 38.0f, 0.0f, 0.0f });
+    for (int i = 0; i < 300 && !w.level.drones.empty(); ++i) antiDroneFire(w.level);
+    CHECK(w.level.drones.empty());
+}
+
+TEST(guards_indoors_or_without_radio_hold_fire)
+{
+    World w(Coord{ 20, 20 });
+    w.add(new Kremlin(), 250, 20);
+    auto* inside = new Vartija(Coord{ 270, 38 });    // in the Kremlin halls: no sky to see
+    inside->hasRadio = true;
+    w.spawn(inside);
+    w.spawn(new Vartija(Coord{ 100, 100 }));         // a hypermarket guard: not his business
+    w.level.drones.push_back(Drone{ 272.0f, 36.0f, 0.0f, 0.0f });
+    w.level.drones.push_back(Drone{ 104.0f, 98.0f, 0.0f, 0.0f });
+    for (int i = 0; i < 100; ++i) antiDroneFire(w.level);
+    CHECK(w.level.drones.size() == 2);
+}
