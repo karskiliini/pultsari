@@ -49,6 +49,11 @@ public:
     bool decrementInventory(uint32_t index);
     bool executeThrow(uint32_t itemNum, DirectionNS::Direction dir);
     bool shoot(DirectionNS::Direction dir);
+
+    bool sentToWar = false;
+    uint32_t warLevelsCompleted = 0;
+    bool hasKremlinPass = false;
+    bool wonGame = false;
 };
 
 }

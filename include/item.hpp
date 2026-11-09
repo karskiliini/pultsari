@@ -29,7 +29,11 @@ enum ItemType {
     EPensas,
     ERoskis,
     EBusStop,
-    EPistooli
+    EPistooli,
+    EPropusk,
+    EGranata,
+    EVodka,
+    EViinaKellari
 };
 
 class Level;

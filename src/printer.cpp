@@ -8,6 +8,7 @@
 #include "pathmask.hpp"
 #include "level.hpp"
 #include "vehicle.hpp"
+#include "events.hpp"
 #include <vector>
 #include <iostream>
 #include <string>
@@ -278,6 +279,13 @@ void Printer::printLine(Level* l, uint32_t y, const VisionNS::Mask* mask, PathNS
                     found = true;
                     break;
                 }
+            }
+        }
+
+        if (!found && l->events) {
+            if (l->events->hasFire(coord)) {
+                c = "~";
+                found = true;
             }
         }
 

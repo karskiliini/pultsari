@@ -114,7 +114,7 @@ void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
     cout << "Kaikki hakatut oliot : " << scoreBoard->kaikki << "              " << endl;
     cout << "------------------------------" <<  "              " << endl;
     cout << "Yhteispistetilanteesi: " << scoreBoard->mummot + scoreBoard->kaikki <<  "              " << endl;
-    cout << "Kiitos Pultsarin pelaamisesta!" <<  "              " << endl;
+    cout << "Kiitos P\xD0\x9F""LTSARI:n pelaamisesta!" <<  "              " << endl;
     cout << "                                                                " << endl;
     cout << "                                                                " << endl;
     cout << "                                                                " << endl;
@@ -122,12 +122,13 @@ void PrinterTerm::printScore(const ScoreBoard* scoreBoard)
 
 void PrinterTerm::printHelp()
 {
-    cout << "Pultsari help:                                        " << endl;
-    cout << "--los          : to enable line of sight mode         " << endl;
-    cout << "--anims        : to enable animations support         " << endl;
-    cout << "--path         : to enable advanced path finding      " << endl;
-    cout << "--realtime|--rt: real-time mode (NPCs move on timer)  " << endl;
-    cout << "--all | -a     : enable all features (except realtime)" << endl;
+    cout << "P\xD0\x9F""LTSARI - Moskovan kadut                           " << endl;
+    cout << "--los          : line of sight                        " << endl;
+    cout << "--anims        : animaatiot                           " << endl;
+    cout << "--path         : reitinhaku                           " << endl;
+    cout << "--realtime|--rt: reaaliaikamoodi                      " << endl;
+    cout << "--all | -a     : kaikki ominaisuudet                  " << endl;
+    cout << "Tavoite: Paase Kremlin viinakellariin!                " << endl;
 }
 
 void PrinterTerm::emptyLine(uint32_t textLen)

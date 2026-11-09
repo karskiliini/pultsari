@@ -157,6 +157,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case diileri:
                 p = new Diileri(coord);
                 break;
+            case veteraani:
+                p = new Veteraani(coord);
+                break;
             default:
                 break;
         }

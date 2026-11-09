@@ -12,6 +12,8 @@
 #include "mask.hpp"
 #include "scoreboard.hpp"
 #include "vehicle.hpp"
+#include "events.hpp"
+#include "gamestate.hpp"
 #include <iostream>
 #include <exception>
 #include <cmath>
@@ -163,6 +165,14 @@ static void populatePersons(Level& level)
         level.createPerson(level.freePosition(), diileri);
     }
 
+    // veteraani (SMO veteran) - appears from stage 3
+    if (level.stage > 2 && random(35)) {
+        level.createPerson(level.freePosition(), veteraani);
+    }
+    if (level.stage > 5 && random(25)) {
+        level.createPerson(level.freePosition(), veteraani);
+    }
+
 }
 
 static void populateVehicles(Level& level)
@@ -271,11 +281,15 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
     PlayerNS::Player player;
     player.printer = printer;
 
+    GameState gameState;
+    gameState.moscowStage = stage;
+
     bool quit = false;
     bool skipWaitKey = false;
 
-    while (!quit) {
+    while (!quit && gameState.phase != GamePhase::Victory) {
         player.resetPosition();
+        stage = gameState.getEffectiveStage();
         Level level(stage);
         level.pathFinding = pathFinding;
 
@@ -301,9 +315,32 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         populateItems(level);
         populateVehicles(level);
 
+        EnvironmentEvents envEvents(&level);
+        if (level.stage > 2) {
+            level.events = &envEvents;
+        }
+
+        EnvironmentEvents* envEvents = nullptr;
+        if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
+            envEvents = new EnvironmentEvents(&level);
+        }
+
+        // Veteraanit - appear from stage 2, more in later stages
+        if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
+            int vetCount = 1 + std::rand() % (gameState.moscowStage / 2 + 1);
+            for (int i = 0; i < vetCount && i < 4; ++i) {
+                if (random(35 + gameState.moscowStage * 5)) {
+                    level.createPerson(level.freePosition(), veteraani);
+                }
+            }
+        }
+
         if (welcome) {
             welcome = false;
-            printer->showMessage("Tervetuloa Pultsariin!", &level, false);
+            std::string welcomeMsg = "Tervetuloa P\xD0\x9F""LTSARIIN! " + gameState.getLevelName();
+            printer->showMessage(welcomeMsg, &level, false);
+        } else {
+            printer->showMessage(gameState.getLevelName(), &level, false);
         }
 
         mask.init();
@@ -522,6 +559,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         level.buildingTurn();
                         level.npcTurn();
                         level.updateVehicles();
+                        if (level.events) level.events->update();
                         level.cleanDead();
                         level.cleanDiscardedItems();
                         player.updateTurn();
@@ -620,6 +658,7 @@ void mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     level.buildingTurn();
                     level.npcTurn();
                     level.updateVehicles();
+                    if (level.events) level.events->update();
                     level.cleanDead();
                     level.cleanDiscardedItems();
 

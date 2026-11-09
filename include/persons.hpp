@@ -176,4 +176,21 @@ public:
     bool offered = false;
 };
 
+class Veteraani : public Person {
+public:
+    Veteraani(const Coord& pos);
+    virtual ~Veteraani() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const;
+    bool firstMove = true;
+    bool aggressive = false;
+    uint32_t rageCooldown = 0;
+    uint32_t grenades = 2;
+    uint32_t ammo = 6;
+};
+
 #endif

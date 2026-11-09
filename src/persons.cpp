@@ -1259,3 +1259,186 @@ bool Diileri::interactThrow(Item* item, Person* source, std::string& msg)
         ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
     return true;
 }
+
+// VETERAANI (SMO Veteran)
+Veteraani::Veteraani(const Coord& pos) : Person(veteraani, pos)
+{
+    stats.health = 12;
+    visionRange = 10;
+}
+
+std::string Veteraani::typeToChar() const
+{
+    return aggressive ? "W" : "Z";
+}
+
+bool Veteraani::move(Direction d, std::string& msg)
+{
+    Coord check {coord.x, coord.y};
+    switch(d)
+    {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+
+    if (!level->hit(check))
+    {
+        coord = check;
+    } else {
+        auto p = level->getPerson(check);
+        if (p && aggressive)
+        {
+            if (p->type == pelaaja) {
+                msg = "Veteraani ampuu sinua!";
+                p->damage(std::rand()%5 + 3);
+            } else if (p->type != veteraani) {
+                msg = "Veteraani raivostuu ja hyökkää!";
+                p->damage(std::rand()%6 + 2);
+            }
+        }
+    }
+    common::checkBounds(coord);
+    return true;
+}
+
+void Veteraani::npcAct()
+{
+    if (firstMove)
+    {
+        firstMove = false;
+        return;
+    }
+
+    string msg = "";
+    Player* p = level->getPlayer();
+    bool seesPlayer = canSeeTarget(p->coord);
+
+    // PTSD trigger: random chance to become aggressive each turn
+    if (!aggressive) {
+        bool trigger = false;
+        // loud noises nearby (thrown items, fights) can trigger
+        if (level->attack && coord.distance(level->attack->coord) < 6) {
+            trigger = random(60);
+        }
+        // small random chance
+        if (!trigger) trigger = random(3);
+
+        if (trigger) {
+            aggressive = true;
+            rageCooldown = 15 + std::rand()%10;
+            msg = "Veteraani saa PTSD-kohtauksen ja raivostuu!!";
+
+            // nearby NPCs flee
+            for (auto& person : level->persons) {
+                if (person != this && person->type != pelaaja &&
+                    person->stats.health > 0 &&
+                    coord.distance(person->coord) < 8) {
+                    person->alerted = true;
+                    person->lastKnownPos = coord;
+                    person->alertCooldown = 10;
+                }
+            }
+        }
+    }
+
+    if (aggressive) {
+        if (rageCooldown > 0) --rageCooldown;
+        else {
+            aggressive = false;
+            msg = "Veteraani rauhoittuu...";
+            printer->showMessage(msg, level);
+            return;
+        }
+
+        // grenade: rare, area damage
+        if (grenades > 0 && random(8)) {
+            --grenades;
+            msg = "Veteraani heittää KRANAATIN!!";
+            // damage everyone within radius 3
+            for (auto& person : level->persons) {
+                if (person != this && person->stats.health > 0 &&
+                    coord.distance(person->coord) <= 3) {
+                    uint32_t dmg = std::rand()%8 + 4;
+                    person->damage(dmg);
+                }
+            }
+            Animation* anim = new Animation(coord, "***BOOM***", 8);
+            level->addAnimation(anim);
+        }
+        // shoot at nearest visible target
+        else if (ammo > 0 && seesPlayer && coord.distance(p->coord) <= 8) {
+            --ammo;
+            if (random(60)) {
+                msg = "Veteraani ampuu sinua!";
+                p->damage(std::rand()%4 + 2);
+            } else {
+                msg = "Veteraani ampuu mutta menee ohi!";
+            }
+        }
+        // chase nearest person
+        else if (seesPlayer && coord.distance(p->coord) <= visionRange) {
+            Direction d = getMoveDirection(p->coord);
+            move(d, msg);
+        } else {
+            // wander aggressively
+            if (random(50)) {
+                Direction d = randomDirection();
+                move(d, msg);
+            }
+        }
+    } else {
+        // peaceful mode: wander slowly
+        if (random(15)) {
+            Direction d = randomDirection();
+            move(d, msg);
+        }
+    }
+    printer->showMessage(msg, level);
+}
+
+bool Veteraani::interact(std::string& msg, Person* source)
+{
+    if (source->type == pelaaja) {
+        if (!aggressive) {
+            // attacking a peaceful veteran triggers rage
+            aggressive = true;
+            rageCooldown = 20;
+            msg = "Veteraani raivostuu hyökkäyksestä!!";
+            source->damage(std::rand()%3 + 1);
+            level->alertCops(source);
+
+            for (auto& person : level->persons) {
+                if (person != this && person->type != pelaaja &&
+                    person->stats.health > 0 &&
+                    coord.distance(person->coord) < 8) {
+                    person->alerted = true;
+                    person->lastKnownPos = coord;
+                    person->alertCooldown = 10;
+                }
+            }
+        } else {
+            msg = "Veteraani murskaa sinut!";
+            source->damage(std::rand()%6 + 3);
+        }
+        ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    }
+    return true;
+}
+
+bool Veteraani::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    if (!aggressive) {
+        aggressive = true;
+        rageCooldown = 20;
+        msg = "Veteraani raivostuu heitosta!!";
+    } else {
+        msg = "Veteraani ei edes huomaa.";
+    }
+    damage(1);
+    if (source->type == pelaaja)
+        ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    return true;
+}

@@ -9,6 +9,7 @@
 #include <vector>
 
 class Vehicle;
+class EnvironmentEvents;
 
 class Person;
 class Building;
@@ -83,9 +84,11 @@ public:
 
     Person* attack = nullptr;
     Printer* printer = nullptr;
+    EnvironmentEvents* events = nullptr;
 
     uint32_t stage = 1;
     bool pathFinding = false;
+    bool isWarLevel = false;
 };
 
 

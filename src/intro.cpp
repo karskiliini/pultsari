@@ -21,17 +21,23 @@ Intro::~Intro()
 
 void Intro::show()
 {
-    const string pulsu = "PULTSARI";
-    const string anykey = "Press any key to continue";
+    const string title = "P" "\xD0\x9F" "LTSARI";
+    const string subtitle = "- Moskovan kadut -";
+    const string anykey = "Paina nappia jatkaaksesi";
 
     printer->cursorHome();
 
-    printer->emptyTitleLine(pulsu.length() / 2);
-    printer->printChar(pulsu);
-    printer->emptyTitleLine(pulsu.length() / 2);
+    printer->emptyTitleLine(title.length() / 2);
+    printer->printChar(title);
+    printer->emptyTitleLine(title.length() / 2);
     printer->printChar("\n");
 
-    for (uint32_t i = 0; i < 7 ; ++i) {
+    printer->emptyTitleLine(subtitle.length() / 2);
+    printer->printChar(subtitle);
+    printer->emptyTitleLine(subtitle.length() / 2);
+    printer->printChar("\n");
+
+    for (uint32_t i = 0; i < 6 ; ++i) {
         printer->emptyLine();
     }
 
@@ -48,11 +54,13 @@ void Intro::show()
     printer->printChar(anykey);
     printer->emptyLine(anykey.length());
 
-    for (uint32_t i = 0; i < 6; ++i) {
+    for (uint32_t i = 0; i < 4; ++i) {
         printer->emptyLine();
     }
 
-    printer->printChar("28.12.1991 - 14.1.1992 (Välillä paussi)");
+    printer->printChar("28.12.1991 - 14.1.1992 (Valissakin paussi)");
+    printer->emptyLine();
+    printer->printChar("Moskovan versio 2024 - Tavoite: Putinin viinakellariin!");
     printer->emptyLine();
 
     printer->printerRefresh();
