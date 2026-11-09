@@ -44,7 +44,7 @@ void Intro::show()
 
     // typewrite the title letter by letter
     char posBuf[64];
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y, CENTER_X);
+    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y, CENTER_X);
     cout << posBuf;
 
     // "PПLTSARI 2: " appears letter by letter in bold white
@@ -56,7 +56,7 @@ void Intro::show()
     const int SUB_X = CENTER_X + 12;
     const int CYR_Y = TITLE_Y + 7;
     auto at = [&](int y, int x) {
-        sprintf(posBuf, "\033[%d;%dH", y, x);
+        snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", y, x);
         cout << posBuf;
     };
 
@@ -125,7 +125,7 @@ void Intro::show()
     common::sleep(500);
 
     // balalaika sounds
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 13, CENTER_X - 5);
+    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 13, CENTER_X - 5);
     cout << posBuf;
     cout << "\033[2;37m\xE2\x99\xAA \xD0\x91\xD0\xB0\xD0\xBB\xD0\xB0\xD0\xBB\xD0\xB0\xD0\xB9\xD0\xBA\xD0\xB0 \xE2\x99\xAA"
             "  tiling-tiling-tiling...  "
@@ -134,21 +134,21 @@ void Intro::show()
     common::sleep(1500);
 
     // credits
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 16, 5);
+    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 16, 5);
     cout << posBuf;
     cout << name1;
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 17, 5);
+    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 17, 5);
     cout << posBuf;
     cout << name2;
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 18, 5);
+    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 18, 5);
     cout << posBuf;
     cout << name3;
 
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 20, 5);
+    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 20, 5);
     cout << posBuf;
     cout << "Moskova 2025";
 
-    sprintf(posBuf, "\033[%d;%dH", TITLE_Y + 24, CENTER_X);
+    snprintf(posBuf, sizeof(posBuf), "\033[%d;%dH", TITLE_Y + 24, CENTER_X);
     cout << posBuf;
     cout << anykey;
 

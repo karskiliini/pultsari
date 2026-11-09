@@ -16,6 +16,20 @@ const STATIC = {
     '/xterm.css': [path.join(ROOT, 'node_modules/@xterm/xterm/css/xterm.css'), 'text/css'],
 };
 
+// node-pty's macOS prebuild ships spawn-helper without the execute bit when npm
+// skips its install script; without it every spawn fails with "posix_spawnp failed"
+function ensureSpawnHelperExecutable() {
+    const base = path.dirname(require.resolve('node-pty/package.json'));
+    const candidates = [
+        path.join(base, 'prebuilds', `${process.platform}-${process.arch}`, 'spawn-helper'),
+        path.join(base, 'build', 'Release', 'spawn-helper'),
+    ];
+    for (const file of candidates) {
+        try { fs.chmodSync(file, 0o755); } catch (e) { /* not present on this platform */ }
+    }
+}
+ensureSpawnHelperExecutable();
+
 const MAX_GAMES = Number(process.env.MAX_GAMES || 20);
 const MAX_GAMES_PER_IP = Number(process.env.MAX_GAMES_PER_IP || 3);
 let running = 0;
@@ -28,13 +42,19 @@ function clientIp(req) {
 // returns null when the server or this client already runs too many games
 function spawnGame(ip) {
     if (running >= MAX_GAMES || (perIp.get(ip) || 0) >= MAX_GAMES_PER_IP) return null;
-    const game = pty.spawn(GAME, GAME_ARGS, {
-        name: 'xterm-256color',
-        cols: 100,
-        rows: 35,
-        cwd: ROOT,
-        env: { ...process.env, TERM: 'xterm-256color', LANG: 'C.UTF-8' },
-    });
+    let game;
+    try {
+        game = pty.spawn(GAME, GAME_ARGS, {
+            name: 'xterm-256color',
+            cols: 100,
+            rows: 35,
+            cwd: ROOT,
+            env: { ...process.env, TERM: 'xterm-256color', LANG: 'C.UTF-8' },
+        });
+    } catch (e) {
+        console.error('Pelin käynnistys epäonnistui:', e.message);
+        return null;
+    }
     running++;
     perIp.set(ip, (perIp.get(ip) || 0) + 1);
     game.onExit(() => {

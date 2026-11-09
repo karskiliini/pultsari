@@ -187,7 +187,7 @@ std::string Raha::getMsg() const {
     string raha;
     {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         raha = string(str);
     }
     return "Kukkarosi lihavoituu " + raha + " ruplalla. Inflaatio laihduttaa sen huomenna.";

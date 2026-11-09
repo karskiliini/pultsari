@@ -146,7 +146,7 @@ BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
         if (ticks % TICKS_PER_STOP == 0) {
             ++stopsReached;
             char buf[80];
-            sprintf(buf, "Pysäkki %d/%d. A/D=tasapaino, Z=poistu", stopsReached, MAX_STOPS);
+            snprintf(buf, sizeof(buf), "Pysäkki %d/%d. A/D=tasapaino, Z=poistu", stopsReached, MAX_STOPS);
             printer->showMessage(string(buf), level, false);
             printer->print(level);
 
@@ -174,7 +174,7 @@ BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
             if (pos < 0) pos = 0;
             if (pos > 20) pos = 20;
             bar[pos] = '@';
-            sprintf(buf, "TASAPAINO [%s] Pysäkit:%d/%d", bar, stopsReached, MAX_STOPS);
+            snprintf(buf, sizeof(buf), "TASAPAINO [%s] Pysäkit:%d/%d", bar, stopsReached, MAX_STOPS);
             printer->showMessage(string(buf), level, false);
         }
 
@@ -196,11 +196,11 @@ BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
 
     if (result.levelChange > 0) {
         char buf[80];
-        sprintf(buf, "Matkustit %d pysäkin verran eteenpäin!", result.levelChange);
+        snprintf(buf, sizeof(buf), "Matkustit %d pysäkin verran eteenpäin!", result.levelChange);
         printer->showMessage(string(buf), level, false);
     } else if (result.levelChange < 0) {
         char buf[80];
-        sprintf(buf, "Lennit %d kenttää taaksepäin!", -result.levelChange);
+        snprintf(buf, sizeof(buf), "Lennit %d kenttää taaksepäin!", -result.levelChange);
         printer->showMessage(string(buf), level, false);
     } else {
         printer->showMessage("Et päässyt yhtään eteenpäin.", level, false);

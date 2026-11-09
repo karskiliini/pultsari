@@ -125,11 +125,11 @@ string Printer::inventoryAligned(uint32_t value) const
 {
     if (value < 10) {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         return string(str) + "  ";
     } else if (value < 100) {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         return string(str) + " ";
     } else {
         return ".. ";
@@ -140,23 +140,23 @@ string Printer::moneyAligned(uint32_t value) const
 {
     if (value < 10) {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         return string(str) + "    ";
     } else if (value < 100) {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         return string(str) + "   ";
     } else if (value < 1000) {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         return string(str) + "  ";
     } else if (value < 10000) {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         return string(str) + " ";
     } else if (value < 100000) {
         char str[10];
-        sprintf(str, "%d", value);
+        snprintf(str, sizeof(str), "%d", value);
         return string(str) + "";
     } else {
         return " oo  ";
@@ -173,18 +173,18 @@ string Printer::promilleAligned(uint32_t value) const
     } else if (full < 10)
     {
         char str[10];
-        sprintf(str, "%d", full);
+        snprintf(str, sizeof(str), "%d", full);
         ret = " " + string(str) + ".";
     } else if (full < 100) {
         char str[10];
-        sprintf(str, "%d", full);
+        snprintf(str, sizeof(str), "%d", full);
         ret = "" + string(str) + ".";
     } else return "KÄNNI";
 
     uint32_t parts = value % 10;
     {
         char str[10];
-        sprintf(str, "%d", parts);
+        snprintf(str, sizeof(str), "%d", parts);
         ret += string(str);
     }
     return ret;
@@ -473,7 +473,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
     char buf[256];
 
     // all rows are 32 columns wide; box-drawing chars are 3 bytes but 1 column
-    sprintf(buf, "\033[%d;%dH%s\xE2\x95\x94\xE2\x95\x90\xE2\x95\x90 \xD0\xA2\xD0\x9E\xD0\x92\xD0\x90\xD0\xA0\xD0\xAB \xC2\xB7 TAVARAT "
+    snprintf(buf, sizeof(buf), "\033[%d;%dH%s\xE2\x95\x94\xE2\x95\x90\xE2\x95\x90 \xD0\xA2\xD0\x9E\xD0\x92\xD0\x90\xD0\xA0\xD0\xAB \xC2\xB7 TAVARAT "
                  "\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90"
                  "\xE2\x95\x90\xE2\x95\x90\xE2\x95\x97",
             OVERLAY_Y, OVERLAY_X, frame);
@@ -483,7 +483,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
         bool selected = (i == selectedRow);
         const char* row = selected ? "\033[0;1;30;107m" : items[i].count ? "\033[0;41;97m" : "\033[0;41;2;37m";
 
-        sprintf(buf, "\033[%d;%dH%s\xE2\x95\x91%s%s %-9s x%-3u %s %s%s\xE2\x95\x91",
+        snprintf(buf, sizeof(buf), "\033[%d;%dH%s\xE2\x95\x91%s%s %-9s x%-3u %s %s%s\xE2\x95\x91",
                 OVERLAY_Y + 1 + i, OVERLAY_X, frame, row,
                 selected ? "\xE2\x96\xB6" : " ",
                 items[i].name, items[i].count,
@@ -493,11 +493,11 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow)
         cout << buf;
     }
 
-    sprintf(buf, "\033[%d;%dH%s\xE2\x95\x9A", OVERLAY_Y + NUM_ITEMS + 1, OVERLAY_X, frame);
+    snprintf(buf, sizeof(buf), "\033[%d;%dH%s\xE2\x95\x9A", OVERLAY_Y + NUM_ITEMS + 1, OVERLAY_X, frame);
     cout << buf;
     for (int i = 0; i < 30; ++i) cout << "\xE2\x95\x90";
     cout << "\xE2\x95\x9D";
-    sprintf(buf, "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 Q k\xC3\xA4yt\xC3\xA4 \xC2\xB7 E heit\xC3\xA4 \xC2\xB7 Tab sulje ",
+    snprintf(buf, sizeof(buf), "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 Q k\xC3\xA4yt\xC3\xA4 \xC2\xB7 E heit\xC3\xA4 \xC2\xB7 Tab sulje ",
             OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);
     cout << buf;
 
@@ -534,7 +534,7 @@ void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
         int termY = vy + 3;
 
         char buf[64];
-        sprintf(buf, "\033[%d;%dH\033[91m*\033[0m", termY, termX);
+        snprintf(buf, sizeof(buf), "\033[%d;%dH\033[91m*\033[0m", termY, termX);
         cout << buf;
     }
     cout.flush();
