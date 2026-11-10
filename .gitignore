@@ -9,3 +9,6 @@ tests/*.o
 tests/*.d
 __pycache__/
 include/version_gen.hpp
+
+# Claude Code local permissions (may contain secrets)
+**/.claude/settings.local.json
