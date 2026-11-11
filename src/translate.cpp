@@ -10,6 +10,30 @@ using std::string;
 static const std::map<string, string>& dictionary()
 {
     static const std::map<string, string> d = {
+        // the metro
+        { "СТАНЦИЯ", "asema" },
+        { "ВЫХОД", "uloskäynti" },
+        { "ОСТОРОЖНО, ДВЕРИ ЗАКРЫВАЮТСЯ", "varokaa, ovet sulkeutuvat" },
+        { "ТЫ ЧЁ, ОХРЕНЕЛ?! ПАЦАНЫ", "oletko sekaisin?! Pojat" },
+        { "НУ ВСЁ, ТЕБЕ КОНЕЦ", "no niin, nyt sinä kuolet" },
+        { "ОЙ! ХУЛИГАН! МИЛИЦИЯ", "voi! Huligaani! Miliisi" },
+        { "БРАТАН, ЕСТЬ СОТКА", "veli, onko satasta" },
+        { "ЕСТЬ КОЕ-ЧТО. ХОЧЕШЬ", "minulla on jotain. Haluatko" },
+        { "БУДЕШЬ", "otatko" },
+        { "БИЛЕТ", "lippu" },
+        { "МУЖИК, ХОЧЕШЬ ЗАРАБОТАТЬ? КОНТРАКТ", "hei mies, haluatko tienata? Sopimus" },
+        { "ПОДПИШИ. СЕЙЧАС", "allekirjoita. Nyt" },
+        { "НОРМАЛЬНО", "ihan ok" },
+        { "НУ ЛАДНО", "no okei" },
+        { "ВРЁШЬ", "valehtelet" },
+        { "КАК ХОЧЕШЬ", "kuten haluat" },
+        { "БЕЗ ДЕНЕГ - БЕЗ ТОВАРА", "ei rahaa, ei kamaa" },
+        { "ТЫ МЕНЯ НЕ УВАЖАЕШЬ", "etkö sinä kunnioita minua" },
+        { "ПРОХОДИ", "jatka matkaa" },
+        { "МОЛОДЕЦ", "hyvä poika" },
+        { "ПОДУМАЙ", "mieti sitä" },
+        { "ЧЁ УСТАВИЛСЯ", "mitä tuijotat" },
+        { "ТЫ ЧЁ ТОЛКАЕШЬСЯ", "mitä sinä tönit" },
         // signs and buildings
         { "ХРУЩЁВКА", "hruštšovka, 60-luvun elementtikerrostalo" },
         { "ПАНЕЛЬКА", "elementtitalo" },

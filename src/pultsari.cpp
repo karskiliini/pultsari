@@ -6,6 +6,7 @@
 #include "building.hpp"
 #include "level.hpp"
 #include "aagun.hpp"
+#include "patrol.hpp"
 #include "player.hpp"
 #include "printer.hpp"
 #include "coord.hpp"
@@ -15,6 +16,7 @@
 #include "vehicle.hpp"
 #include "events.hpp"
 #include "gamestate.hpp"
+#include "metro.hpp"
 #include <iostream>
 #include <exception>
 #include <cmath>
@@ -417,6 +419,15 @@ static void populatePersons(Level& level, const GameState& gs)
         for (int i = 0; i < (int)gs.warStage; ++i) {
             if (random(50)) spawnVeteran(level);
         }
+        // comrades in the trenches around the player: they shoot at the FPV drones, and the drones hunt them
+        for (int i = 0; i < 4 + (int)gs.warStage * 2; ++i) {
+            Coord c = level.freePosition();
+            for (int tries = 0; tries < 30; ++tries) {
+                const Coord near { common::PLAYER_START_X + std::rand() % 41 - 20, common::PLAYER_START_Y + std::rand() % 17 - 8 };
+                if (near.x < common::SIZEX && near.y < common::SIZEY && !level.hit(near)) { c = near; break; }
+            }
+            level.createPerson(c, sotilas);
+        }
         return;
     }
 
@@ -451,15 +462,8 @@ static void populatePersons(Level& level, const GameState& gs)
         }
     }
 
-    // MILIISIT - more near Kremlin
-    {
-        int copCount = (int)(2 + kremlinProximity * 6) + std::rand()%3;
-        for (int i = 0; i < copCount; ++i) {
-            if (random(60 + (int)(kremlinProximity * 30))) {
-                level.createPerson(level.freePosition(), poliisi);
-            }
-        }
-    }
+    // MILIISIT - on every pavement and in the alleys, more towards the Kremlin
+    Patrol::populateCops(level, gs.moscowStage);
 
     // varas
     if (random(60)) {
@@ -768,6 +772,8 @@ struct RestartGame {};
 static bool restartedByZ = false;
 // --car: a car with the keys in waits right next to where you wake up (for trying out driving)
 static bool startByCar = false;
+// --front: start at the front, for trying out the war levels
+static bool startAtFront = false;
 
 static void parkCarByPlayer(Level& level, const Coord& at)
 {
@@ -972,6 +978,46 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
     }
 }
 
+// Through the metro's doors: the trip is a mini-game (metro.hpp), and how it went
+// decides where, and whether, the player comes out. True when the player died on the way.
+static bool rideMetro(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, Printer* printer,
+                      GameState& gameState, bool& nextLevel)
+{
+    Metro* from = player.metroFrom;
+    Metro* to = player.metroTrip;
+    player.metroFrom = player.metroTrip = nullptr;
+    if (!from || !to) return false;
+    Metro* after = to->nextOnLine();
+    if (!after) after = to;
+
+    const auto r = MetroNS::runMetroMinigame(&player, &level, from->station, to->station, after->station, player.metroDodged);
+    switch (r.outcome) {
+        case MetroNS::Outcome::Arrived:  player.coord = to->getSpawn(); break;
+        case MetroNS::Outcome::Overshot: player.coord = after->getSpawn(); break;
+        case MetroNS::Outcome::Arrested: player.inJail = true; break;   // the court sends you on
+        case MetroNS::Outcome::Recruited:
+            if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
+                printer->setMessage("FSB:n mies saattaa sinut suoraan kutsuntatoimistoon. Rintamalle!");
+                printer->print(&level);
+                common::sleep(2000);
+                gameState.sendToWar();
+                nextLevel = true;
+                return false;
+            }
+            player.inJail = true;
+            break;
+        case MetroNS::Outcome::Dead:
+            player.stats.health = 0;
+            mourn(level, mask, player, printer, "SURUVIESTI: " + r.cause);
+            return true;
+        default: break;
+    }
+    level.updateCamera();
+    mask.init();
+    printer->showMessage(r.summary, &level, false);
+    return false;
+}
+
 bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabled, bool pathFinding)
 {
     bool restart = false;
@@ -985,6 +1031,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
     GameState gameState;
     gameState.moscowStage = stage;
+    if (startAtFront) gameState.sendToWar();
 
     bool quit = false;
     bool skipWaitKey = false;
@@ -997,6 +1044,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         level.pathFinding = pathFinding;
 
         VisionNS::Mask mask(&level);
+        // the field of vision turns gradually, per frame in real time, per turn otherwise
+        mask.maxTurn = common::realtimeEnabled ? VisionNS::TURN_PER_FRAME : VisionNS::TURN_PER_STEP;
 #ifdef LOS_ENABLED
         if (losEnabled)
             mask.enable();
@@ -1474,6 +1523,15 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         aimRisk = 0.0f;
                     }
 
+                    if (player.metroTrip) {
+                        if (rideMetro(level, mask, player, printer, gameState, nextLevel)) {
+                            quit = restart = true;
+                            break;
+                        }
+                        InputNS::Input::raw();
+                        if (nextLevel) break;
+                    }
+
                     msSinceMove += FRAME_MS;
                     if (Car* car = player.driving) {
                         car->controls.brake = brakeMs > 0;
@@ -1667,6 +1725,12 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     InputNS::InputType input = InputNS::Input::getInput();
                     input = applyDrunkEffects(input, player, &level, *printer);
                     bool turn = processInput(input, player, &level, *printer);
+                    if (player.metroTrip) {
+                        const bool died = rideMetro(level, mask, player, printer, gameState, nextLevel);
+                        InputNS::Input::noraw();
+                        if (died) { quit = restart = true; break; }
+                        if (nextLevel) break;
+                    }
                     level.updateCamera();
                     mask.init();
                     level.cleanDead();
@@ -1854,6 +1918,8 @@ int init(int argc, char *argv[], Printer* printer)
             return 0;
         } else if (a == "--car") {
             startByCar = true;
+        } else if (a == "--front") {
+            startAtFront = true;
         } else if (a == "--path") {
             pathFinding = true;
         } else if ((a == "--realtime") || (a == "--rt")) {

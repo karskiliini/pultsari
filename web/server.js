@@ -2,7 +2,7 @@ const http = require('http');
 const fs = require('fs');
 const path = require('path');
 const crypto = require('crypto');
-const { spawn } = require('child_process');
+const { spawn, execFile } = require('child_process');
 const WebSocket = require('ws');
 
 // always port 3000, whatever PORT says: one game, one address
@@ -124,6 +124,14 @@ const server = http.createServer((req, res) => {
     const url = new URL(req.url, 'http://x');
     const p = url.pathname.replace(/^.*\/(api\/)/, '/$1');
 
+    // the version of the game binary on disk, shown in the corner before a game starts
+    if (p === '/api/version') {
+        execFile(GAME, ['--version'], { timeout: 2000 }, (err, out) => {
+            res.writeHead(200, { 'Content-Type': 'text/plain; charset=utf-8', 'Cache-Control': 'no-store' });
+            res.end(err ? '' : out.trim());
+        });
+        return;
+    }
     if (p === '/api/new' && req.method === 'POST') {
         const id = newSession(clientIp(req));
         if (!id) { res.writeHead(503); res.end(); return; }

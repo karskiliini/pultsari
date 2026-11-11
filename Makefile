@@ -14,6 +14,18 @@ DEPS := $(OBJS:.o=.d) tests/unit_tests.d
 
 all: $(TARGET)
 
+# the version shown in the game's corner: package.json version + git commit
+PKG_VERSION := $(shell sed -n 's/.*"version": *"\([^"]*\)".*/\1/p' package.json)
+GIT_REV := $(shell git describe --always --dirty 2>/dev/null || echo unknown)
+VERSION_STR := v$(PKG_VERSION) \xC2\xB7 $(GIT_REV)
+
+# rewritten only when the version changes, so nothing rebuilds needlessly
+include/version_gen.hpp: FORCE
+	@echo '#define GAME_VERSION "$(VERSION_STR)"' > $@.tmp
+	@cmp -s $@.tmp $@ && rm -f $@.tmp || mv $@.tmp $@
+src/version.o: include/version_gen.hpp
+FORCE:
+
 $(TARGET): $(OBJS)
 	$(CC) $(CFLAGS) -o $@ $^ $(CURSESLIB)
 
@@ -36,8 +48,8 @@ test: $(TARGET) $(TEST_BIN)
 	python3 tests/test_game.py
 
 clean:
-	rm -f $(TARGET) $(TEST_BIN) src/*.o src/*.d tests/*.o tests/*.d
+	rm -f $(TARGET) $(TEST_BIN) include/version_gen.hpp src/*.o src/*.d tests/*.o tests/*.d
 
 -include $(DEPS)
 
-.PHONY: all clean test
+.PHONY: all clean test FORCE

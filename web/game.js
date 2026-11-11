@@ -233,6 +233,10 @@
                 cw = W / cols;
                 ch = H / rows;
                 updateUi(m);
+                if (m.ver) {
+                    const v = document.getElementById('version');
+                    if (v && v.textContent !== m.ver) v.textContent = m.ver;
+                }
                 if (!m.dead) ui.death.hidden = true;
                 break;
             case 'death':
@@ -336,6 +340,12 @@
         }
         ctx.fillStyle = '#000';
         ctx.fillRect(0, 0, W, H);
+        ctx.save();
+        // a train thundering past shakes the picture
+        if (frame && frame.scene && frame.shake > 0) {
+            const k = Math.min(1, frame.shake / 400) * 3;
+            ctx.translate((Math.random() - 0.5) * k, (Math.random() - 0.5) * k);
+        }
         const scale = cw / CW;         // effects shrink with the zoom
         const tiny = cw < 5;           // too small for letters: draw each glyph as a pixel block
         const font = `${Math.max(4, Math.round(ch * 0.83))}px ui-monospace, "Cascadia Code", Menlo, Consolas, monospace`;
@@ -353,8 +363,8 @@
                     x += n;
                 }
             });
-            // stains lie on the ground under everyone
-            for (const s of stains) {
+            // stains lie on the ground under everyone (a mini-game's scene has no ground of the city)
+            for (const s of (frame.scene ? [] : stains)) {
                 if (!seen(s.wx - 0.5 + s.ox / CW, s.wy - 0.5 + s.oy / CH)) continue;
                 const [sx, sy] = toScreen(s.wx - 0.5, s.wy - 0.5);
                 const px = sx + s.ox * scale, py = sy + s.oy * scale;
@@ -514,6 +524,7 @@
                 ctx.textAlign = 'center';
             }
         }
+        ctx.restore();
         drawInvMenu(now);
         if (mapOpen && cityMap) drawCityMap(now);
         requestAnimationFrame(render);

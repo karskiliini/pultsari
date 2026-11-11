@@ -5,6 +5,7 @@
 #include "scoreboard.hpp"
 #include "common.hpp"
 #include "inventory.hpp"
+#include "version.hpp"
 #include <cstdio>
 #include <iostream>
 #include <string>
@@ -101,7 +102,12 @@ void PrinterTerm::printBorder(Level* l, bool top)
         if (right.empty()) cout << HORIZONTAL << HORIZONTAL;
         cout << HORIZONTAL << HORIZONTAL;
     } else {
-        for (uint32_t x = 0; x < common::VIEWPORT_W; ++x) cout << HORIZONTAL;
+        // the version sits in the bottom-right corner
+        const string ver = string(" ") + gameVersion() + " ";
+        const uint32_t verW = columns(ver);
+        const uint32_t line = common::VIEWPORT_W > verW + 2 ? common::VIEWPORT_W - verW - 2 : 0;
+        for (uint32_t x = 0; x < line; ++x) cout << HORIZONTAL;
+        cout << "\033[2;37m" << ver << FRAME << HORIZONTAL << HORIZONTAL;
     }
 
     cout << (top ? TOP_RIGHT : BOT_RIGHT) << RESET << "\033[K" << endl;
@@ -210,6 +216,8 @@ void PrinterTerm::printHelp()
     cout << "  --anims            animaatiot" << endl;
     cout << "  --path             NPC:iden reitinhaku" << endl;
     cout << "  --car              auto avaimineen heti vieress\xC3\xA4 (ajamisen kokeiluun)" << endl;
+    cout << "  --front            aloita suoraan rintamalta (FPV-droonien kokeiluun)" << endl;
+    cout << "  --version          pelin versio" << endl;
     cout << "  --all, -a          kaikki yll\xC3\xA4 olevat" << endl << endl;
     cout << "Reaaliaikatilan n\xC3\xA4pp\xC3\xA4imet:" << endl;
     cout << "  W A S D / I J K L  liiku (k\xC3\xA4vele p\xC3\xA4in = ly\xC3\xB6 / poimi / avaa)" << endl;

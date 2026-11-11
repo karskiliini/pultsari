@@ -89,7 +89,7 @@ std::string aaExplosion(Level& level, const Coord& at, Person* source);
 // Anti-aircraft guns with their crews: around the Kremlin, and by the refineries later on.
 void populateAAGuns(Level& level, uint32_t moscowStage);
 
-// Soldiers and air-defence men open fire on any drone flying close by. A hit brings it
+// Soldiers, air-defence men and the Kremlin guards out under the open sky open fire on any drone flying close by. A hit brings it
 // down in flames; a miss flies on and may hit whoever stands in the way, the player too.
 // Called every world tick.
 void antiDroneFire(Level& level);

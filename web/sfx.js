@@ -6,7 +6,7 @@
     let muted = false;
     const lastPlayed = {};
     // continuous sources are re-announced every NPC tick; play them sparingly
-    const minGapMs = { grind: 250, crash: 300, starter: 700, splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380, horn: 1200 };
+    const minGapMs = { grind: 250, crash: 300, starter: 700, splat: 140, splatter: 90, siren: 1600, radio: 900, fire: 2500, vomit: 900, glug: 450, explosion: 250, drone: 380, fpv: 300, horn: 1200 };
 
     // Recorded sounds from Pixabay (web/sounds/CREDITS.md), decoded once the context exists.
     const sampleFiles = {
@@ -246,6 +246,36 @@
             o.start(t); wob.start(t);
             o.stop(t + 0.5); wob.stop(t + 0.5);
         },
+        // an FPV quadcopter: four tiny props screaming high, the pitch hunting up and down
+        fpv(t, v) {
+            const base = 420 + Math.random() * 60;
+            const g = ctx.createGain();
+            g.gain.setValueAtTime(0.0001, t);
+            g.gain.exponentialRampToValueAtTime(level(0.12 * v), t + 0.05);
+            g.gain.setValueAtTime(level(0.12 * v), t + 0.28);
+            g.gain.exponentialRampToValueAtTime(0.0001, t + 0.38);
+            const f = ctx.createBiquadFilter();
+            f.type = 'bandpass';
+            f.frequency.value = 1400;
+            f.Q.value = 0.8;
+            f.connect(g).connect(master);
+            const oscs = [];
+            for (let i = 0; i < 2; i++) {
+                const o = ctx.createOscillator();
+                o.type = 'sawtooth';
+                o.frequency.setValueAtTime(base * (1 + i * 0.013), t);
+                o.frequency.linearRampToValueAtTime(base * (1.12 + i * 0.013), t + 0.2);
+                o.frequency.linearRampToValueAtTime(base * (1.03 + i * 0.013), t + 0.38);
+                const wob = ctx.createOscillator();
+                wob.frequency.value = 37 + i * 4;
+                const wobGain = ctx.createGain();
+                wobGain.gain.value = 9;
+                wob.connect(wobGain).connect(o.frequency);
+                o.connect(f);
+                oscs.push(o, wob);
+            }
+            for (const o of oscs) { o.start(t); o.stop(t + 0.4); }
+        },
         glass(t, v) {
             for (let i = 0; i < 9; i++) {
                 burst(t + Math.random() * 0.35, v * 0.5, { type: 'bandpass', freq: 3000 + Math.random() * 4000, q: 6, decay: 0.08, dur: 0.1 });
@@ -295,6 +325,20 @@
         },
         door(t, v) { thump(t, v * 0.7, 160, 0.1); burst(t, v * 0.3, { type: 'bandpass', freq: 1500, q: 2, decay: 0.04, dur: 0.05 }); },
         vomit(t, v) { gurgle(t, v, 1.0, 500); },
+        // metro: a train thundering through the tunnel, the live rail, the door chime
+        train(t, v) {
+            burst(t, v * 0.8, { type: 'lowpass', freq: 160, q: 0.8, decay: 2.2, dur: 2.4, peak: 1.1 });
+            for (let i = 0; i < 8; i++) thump(t + 0.15 + i * 0.27, v * 0.35, 70, 0.1);   // wheels over the joints
+            burst(t + 0.3, v * 0.25, { type: 'bandpass', freq: 2600, q: 8, decay: 1.4, dur: 1.5 });  // rails singing
+        },
+        zap(t, v) {
+            tone(t, v * 0.7, { type: 'sawtooth', f0: 120, f1: 90, dur: 0.6, peak: 0.6 });
+            burst(t, v * 0.6, { type: 'bandpass', freq: 3500, q: 1.5, decay: 0.5, dur: 0.55 });
+        },
+        chime(t, v) {
+            tone(t, v, { type: 'sine', f0: 660, dur: 0.35, peak: 0.45 });
+            tone(t + 0.32, v, { type: 'sine', f0: 523, dur: 0.6, peak: 0.45 });
+        },
         vomit2(t, v) { gurgle(t, v, 1.3, 380); },
         // a wet slap: a low, short burst of mush with a few lumps after it
         splat(t, v) {

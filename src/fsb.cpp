@@ -10,6 +10,8 @@
 #include <algorithm>
 #include <cstdlib>
 #include <string>
+#include <vector>
+#include <utility>
 
 using std::string;
 
@@ -30,6 +32,15 @@ float RoadRun::dispatchChance() const
 bool Level::hasVehicle(const Vehicle* v) const
 {
     return v && std::find(vehicles.begin(), vehicles.end(), v) != vehicles.end();
+}
+
+FSBAgent* Level::fsbHolder() const
+{
+    for (auto p : persons) {
+        FSBAgent* a = dynamic_cast<FSBAgent*>(p);
+        if (a && a->recruiter && a->holding && a->stats.health > 0) return a;
+    }
+    return nullptr;
 }
 
 namespace {
@@ -104,7 +115,8 @@ void jumpOut(Level& level, Car* car)
             if (!a) continue;
             a->recruiter = true;
             a->firstMove = false;
-            a->patience = 45;
+            a->patience = 80;
+            a->lastHealth = a->stats.health;
             a->speed = 60 + std::rand() % 15;   // they sprint; a drunk can't outrun them for long
             ++placed;
         }
@@ -234,8 +246,9 @@ void Level::fsbTick()
         bool chasing = false;
         for (auto p : persons) {
             const FSBAgent* a = dynamic_cast<const FSBAgent*>(p);
-            if (a && a->recruiter && a->stats.health > 0) chasing = true;
+            if (a && a->recruiter && !a->gaveUp && a->stats.health > 0) chasing = true;
         }
+        if (chasing && fsbHolder()) break;   // nobody gives up with the man in hand
         if (!chasing || f.timer == 0 || --f.timer == 0) {
             printer->showMessage("FSB:n miehet palaavat autoihin kiroillen. Aurukset kaasuttavat pois.", this, false);
             standDown(*this, f, 120);
@@ -245,17 +258,74 @@ void Level::fsbTick()
     }
 }
 
+namespace {
+
+// the parked FSB car nearest to `c`, or null once they have driven off
+Car* nearestFsbCar(Level& level, const Coord& c)
+{
+    Car* best = nullptr;
+    uint32_t bestDist = ~0u;
+    for (auto car : level.fsbPatrol.cars) {
+        if (!level.hasVehicle(car) || car->script != Car::Script::Parked) continue;
+        for (const auto& cell : car->cells()) {
+            const uint32_t d = cell.distance(c);
+            if (d < bestDist) { bestDist = d; best = car; }
+        }
+    }
+    return best;
+}
+
+bool atCarDoor(const Car* car, const Coord& c)
+{
+    for (const auto& cell : car->cells()) {
+        if (std::abs((int)cell.x - (int)c.x) <= 1 && std::abs((int)cell.y - (int)c.y) <= 1) return true;
+    }
+    return false;
+}
+
+} // namespace
+
 void FSBAgent::recruitAct()
 {
     PlayerNS::Player* p = level->getPlayer();
-    if (!p || level->playerDead || p->conscripted) return;
+    if (!p || level->playerDead || p->conscripted || gaveUp) return;
+
+    // a punch or a bullet loosens the grip
+    if (stats.health < lastHealth && holding && (lastHealth - stats.health >= 4 || common::random(50))) {
+        holding = false;
+        stun = std::max<uint32_t>(stun, 3);
+        say("Aah! Blyat!");
+        level->printer->showMessage("FSB-agentin ote irtoaa!", level, false);
+    }
+    lastHealth = stats.health;
+    if (stun > 0) {
+        --stun;
+        return;
+    }
+
+    Car* car = nearestFsbCar(*level, coord);
+    if (!car) {
+        // the cars have gone: nothing to put him in
+        holding = false;
+        gaveUp = true;
+        return;
+    }
+    if (holding) {
+        if (coord.distance(p->coord) <= 1) {
+            drag(car);
+            return;
+        }
+        holding = false;   // he got away somehow
+    }
     if (coord.distance(p->coord) <= 1) {
+        if (level->fsbHolder()) return;   // a colleague already has him; stand by
+        holding = true;
         say("Rintamalle, svinya!");
-        p->conscripted = true;
+        level->printer->showMessage("FSB-agentti tarttuu sinua niskasta ja raahaa kohti mustaa autoa! Riuhdo, ly\xC3\xB6 tai ammu!", level, false);
         return;
     }
     if (patience == 0) {
-        recruiter = false;
+        gaveUp = true;
         say("Kuda on delsja? (Minne se katosi?)");
         return;
     }
@@ -273,4 +343,81 @@ void FSBAgent::recruitAct()
     string msg;
     move(getMoveDirection(p->coord), msg);
     report(msg);
+}
+
+void FSBAgent::drag(Car* car)
+{
+    PlayerNS::Player* p = level->getPlayer();
+    if (atCarDoor(car, p->coord)) {
+        p->conscripted = true;
+        say("Sis\xC3\xA4\xC3\xA4n!");
+        level->printer->showMessage("Sinut tungetaan mustan Auruksen takapenkille. Ovi paukahtaa kiinni.", level, false);
+        return;
+    }
+    // he kicks and digs his heels in: not every pull moves him
+    if (!common::random(35)) {
+        if (common::random(30)) say("Lakkaa rimpuilemasta!");
+        return;
+    }
+    // towards the nearest cell of the car
+    Coord target = car->coord;
+    uint32_t best = ~0u;
+    for (const auto& cell : car->cells()) {
+        const uint32_t d = cell.distance(p->coord);
+        if (d < best) { best = d; target = cell; }
+    }
+    // the free neighbouring cell that gets him closest to the car; a colleague in the way steps aside
+    auto distTo = [&](int x, int y) {
+        return std::max(std::abs(x - (int)target.x), std::abs(y - (int)target.y)) * 10
+             + std::abs(x - (int)target.x) + std::abs(y - (int)target.y);
+    };
+    const int here = distTo((int)p->coord.x, (int)p->coord.y);
+    std::vector<std::pair<int, Coord>> options;
+    for (int sy = -1; sy <= 1; ++sy) for (int sx = -1; sx <= 1; ++sx) {
+        const int nx = (int)p->coord.x + sx, ny = (int)p->coord.y + sy;
+        if ((sx == 0 && sy == 0) || nx < 0 || ny < 0 || nx >= (int)common::SIZEX || ny >= (int)common::SIZEY) continue;
+        const int d = distTo(nx, ny);
+        if (d < here) options.push_back({ d, Coord{ (uint32_t)nx, (uint32_t)ny } });
+    }
+    std::sort(options.begin(), options.end(), [](const std::pair<int, Coord>& a, const std::pair<int, Coord>& b) { return a.first < b.first; });
+    for (const auto& o : options) {
+        const Coord next = o.second;
+        if (next == coord || level->getVehicleAt(next)) continue;
+        if (FSBAgent* mate = dynamic_cast<FSBAgent*>(level->getPerson(next))) {
+            for (int sy = -1; sy <= 1 && mate->coord == next; ++sy) for (int sx = -1; sx <= 1; ++sx) {
+                const int mx = (int)next.x + sx, my = (int)next.y + sy;
+                if (mx < 0 || my < 0) continue;
+                const Coord aside { (uint32_t)mx, (uint32_t)my };
+                if (aside == p->coord || level->hit(aside) || level->getVehicleAt(aside)) continue;
+                mate->coord = aside;
+                break;
+            }
+        }
+        if (level->hit(next)) continue;
+        const Coord old = p->coord;
+        p->coord = next;
+        coord = old;      // he follows, still holding on
+        return;
+    }
+}
+
+bool FSBAgent::recruiterHit(std::string& msg, Person* source)
+{
+    damage(std::rand() % 3 + 2);
+    if (stats.health == 0) {
+        msg = "FSB-agentti kaatuu maahan!";
+        holding = false;
+        return true;
+    }
+    msg = "Ly\xC3\xB6t FSB-agenttia!";
+    if (holding && common::random(40)) {
+        holding = false;
+        stun = 4;
+        lastHealth = stats.health;
+        msg = "Ly\xC3\xB6t FSB-agenttia naamaan! Ote irtoaa.";
+    } else if (common::random(30)) {
+        source->damage(std::rand() % 2 + 1);
+        msg += " H\xC3\xA4n ly\xC3\xB6 takaisin.";
+    }
+    return true;
 }

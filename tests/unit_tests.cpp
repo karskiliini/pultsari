@@ -1,16 +1,19 @@
 // Unit tests for game logic: shops, break-ins, drones, exhaust, vision.
 // Build and run with `make test`.
 #include "aagun.hpp"
+#include "patrol.hpp"
 #include "animation.hpp"
 #include "building.hpp"
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
+#include "fpv.hpp"
 #include "gaze.hpp"
 #include "disease.hpp"
 #include "item.hpp"
 #include "level.hpp"
 #include "mask.hpp"
+#include "metro.hpp"
 #include "persons.hpp"
 #include "player.hpp"
 #include "printerweb.hpp"
@@ -537,6 +540,41 @@ TEST(vision_reaches_far_ahead_and_short_behind)
     CHECK(!w.mask.visible(Coord{ 62, 50 }));
 }
 
+TEST(turning_is_limited_per_update)
+{
+    using VisionNS::Vec;
+    // right to left, at most 60 degrees at a time: up-right, up-left, left
+    Vec v { 1.f, 0.f };
+    const Vec left { -1.f, 0.f };
+    v = VisionNS::turnTowards(v, left, 60.f);
+    CHECK(std::fabs(VisionNS::angleBetween(v, Vec{ 1.f, 0.f }) - 60.f) < 0.5f);
+    CHECK(v.y < 0.f);                           // an about-turn goes counter-clockwise: up first
+    v = VisionNS::turnTowards(v, left, 60.f);
+    CHECK(std::fabs(VisionNS::angleBetween(v, left) - 60.f) < 0.5f);
+    v = VisionNS::turnTowards(v, left, 60.f);
+    CHECK(VisionNS::angleBetween(v, left) < 0.5f);
+    // a small turn is done at once, the shorter way round
+    v = VisionNS::turnTowards(Vec{ 1.f, 0.f }, Vec{ 1.f, 1.f }, 60.f);
+    CHECK(VisionNS::angleBetween(v, Vec{ 1.f, 1.f }) < 0.5f);
+}
+
+TEST(field_of_vision_turns_around_gradually)
+{
+    World w(Coord{ 50, 50 });
+    w.mask.enable();
+    w.mask.maxTurn = VisionNS::TURN_PER_STEP;
+    w.level.updateCamera();
+    w.mask.init();                              // facing right
+    CHECK(w.mask.visible(Coord{ 62, 50 }));
+    for (int i = 0; i < 8; ++i) w.player.heading.step(-1, 0);
+    w.mask.init();                              // turned a little: still not seeing far behind
+    CHECK(!w.mask.visible(Coord{ 42, 50 }));
+    w.mask.init();
+    w.mask.init();                              // 3 x 60 degrees: now facing left
+    CHECK(w.mask.visible(Coord{ 42, 50 }));
+    CHECK(!w.mask.visible(Coord{ 62, 50 }));
+}
+
 TEST(vision_stares_at_nearest_person_in_front)
 {
     World w(Coord{ 50, 50 });
@@ -808,12 +846,17 @@ TEST(metro_takes_you_to_the_next_station)
     string msg;
     CHECK(a->getEnterMsg(&w.player, msg));
     a->interact(&w.player, msg);
-    CHECK(w.player.coord == b->getSpawn());
+    // the station only takes the fare: the trip itself is the mini-game, played by the main loop
+    CHECK(w.player.metroFrom == a);
+    CHECK(w.player.metroTrip == b);
+    CHECK(!w.player.metroDodged);
     CHECK(w.player.stats.money == 40);
-    CHECK(contains(msg, "B"));
-    w.player.stats.money = 100;               // pay this time too, no fare-dodging luck involved
-    b->interact(&w.player, msg);              // and the line loops back round
-    CHECK(w.player.coord == a->getSpawn());
+    CHECK(w.player.coord == (Coord{ 30, 30 }));
+    CHECK(a->nextOnLine() == b);
+    CHECK(b->nextOnLine() == a);               // and the line loops back round
+    w.player.stats.money = 100;
+    b->interact(&w.player, msg);
+    CHECK(w.player.metroTrip == a);
 }
 
 TEST(metro_fare_dodgers_sometimes_get_caught)
@@ -826,10 +869,471 @@ TEST(metro_fare_dodgers_sometimes_get_caught)
         w.player.stats.money = 0;
         string msg;
         a->interact(&w.player, msg);
-        if (w.player.coord == b->getSpawn()) ++rode; else ++caught;
+        if (w.player.metroTrip == b) { ++rode; CHECK(w.player.metroDodged); } else ++caught;
     }
     CHECK(rode > 100);
     CHECK(caught > 20);
+}
+
+// ---- the metro mini-game ----
+
+using MetroNS::MetroGame;
+using MetroNS::Kind;
+using MetroNS::Outcome;
+using MetroNS::Phase;
+
+static MetroNS::Npc metroNpc(Kind k, int x, int y, int waitMs = -1)
+{
+    MetroNS::Npc n;
+    n.kind = k;
+    n.x = x;
+    n.y = y;
+    n.glyph = "?";
+    n.waitMs = waitMs;
+    return n;
+}
+
+// a trip from A to B (C after that), sober, with full health and some money
+struct Trip {
+    World w;
+    MetroGame g;
+    explicit Trip(bool dodged = false) : w(), g((w.player.stats.promilles = 0, w.player.stats.health = 10, w.player.stats.money = 500, &w.player), "A", "B", "C", dodged) { }
+    // let time pass until the trip ends or `ms` is up
+    void run(int ms) { for (int t = 0; t < ms && !g.over() && !g.prompt.id; t += 50) g.tick(50); }
+};
+
+TEST(metro_trip_starts_in_the_tunnel_and_the_tunnel_leads_to_the_platform)
+{
+    Trip trip;
+    auto& g = trip.g;
+    CHECK(g.phase == Phase::Tunnel);
+    CHECK(g.px == 1);
+    // the far end of the upper walkway is the way up to the platform
+    g.px = MetroGame::W - 2;
+    g.py = 6;
+    CHECK(g.tiles[6][MetroGame::W - 1] == MetroNS::TExit);
+    g.step(1, 0);
+    CHECK(g.phase == Phase::Platform);
+}
+
+TEST(metro_turning_back_in_the_tunnel_returns_you_to_the_street)
+{
+    Trip trip;
+    trip.g.step(-1, 0);
+    trip.g.step(-1, 0);
+    CHECK(trip.g.outcome == Outcome::TurnedBack);
+}
+
+TEST(metro_train_in_the_tunnel_kills)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 9;                                  // on the upper track
+    g.trains[0].active = true;
+    g.trains[0].x = 42;                        // coming from the right
+    g.tick(50);
+    CHECK(g.outcome == Outcome::Dead);
+    CHECK(trip.w.player.stats.health > 0);    // the main loop does the dying
+    CHECK(contains(g.cause, "Juna"));
+}
+
+TEST(metro_gravel_between_the_tracks_is_safe)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 11;
+    if (g.tiles[11][40] != MetroNS::TGravel) g.px = 41;
+    g.trains[0].active = true;
+    g.trains[0].x = 30;
+    g.trains[1].active = true;
+    g.trains[1].x = 30;
+    g.tick(50);
+    CHECK(g.outcome == Outcome::None);
+}
+
+TEST(metro_live_rail_shocks_but_the_boards_are_safe)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.npcs.clear();
+    g.trains[0].nextMs = g.trains[1].nextMs = 100000;
+    int live = -1, cover = -1;
+    for (int x = 1; x < MetroGame::W - 1; ++x) {
+        if (g.tiles[7][x] == MetroNS::TLive && g.tiles[6][x] == MetroNS::TWalk && live < 0) live = x;
+        if (g.tiles[7][x] == MetroNS::TCover && g.tiles[6][x] == MetroNS::TWalk && cover < 0) cover = x;
+    }
+    CHECK(live >= 0 && cover >= 0);
+
+    g.px = cover;
+    g.py = 6;
+    g.step(0, 1);
+    CHECK(g.py == 7);
+    CHECK(trip.w.player.stats.health == 10);
+
+    g.px = live;
+    g.py = 6;
+    g.step(0, 1);
+    CHECK(trip.w.player.stats.health == 6);
+    CHECK(g.stunMs > 0);
+    CHECK(contains(g.msg, "virtakisko"));
+    // and it keeps on biting until you get off it, once the legs obey again
+    g.stunMs = 0;
+    g.tick(50);
+    CHECK(trip.w.player.stats.health == 6);
+    g.sinceShock = 5000;
+    g.tick(50);
+    CHECK(trip.w.player.stats.health == 2);
+}
+
+TEST(metro_walking_into_people_on_the_platform_is_a_punch_and_the_cop_comes)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 15;
+    g.npcs.push_back(metroNpc(Kind::Babushka, 40, 14));
+    g.npcs.push_back(metroNpc(Kind::Cop, 44, 15));
+    const uint32_t mummot = trip.w.player.scoreBoard.mummot;
+    g.step(0, -1);
+    CHECK(g.hits == 1);
+    CHECK(g.py == 15);                                       // a punch, not a step
+    CHECK(trip.w.player.scoreBoard.mummot == mummot + 1);
+    CHECK(g.npcs[1].chasing);
+    trip.run(5000);
+    CHECK(g.outcome == Outcome::Arrested);
+}
+
+TEST(metro_the_third_punch_gets_returned)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.npcs.push_back(metroNpc(Kind::Citizen, g.px + 1, g.py));
+    g.step(1, 0);
+    g.step(1, 0);
+    CHECK(g.npcs[0].angryMs == 0);
+    g.step(1, 0);
+    CHECK(g.hits == 3);
+    CHECK(g.npcs[0].angryMs > 0);
+    const uint32_t hp = trip.w.player.stats.health;
+    trip.run(1500);
+    CHECK(trip.w.player.stats.health < hp);
+}
+
+TEST(metro_punching_a_cop_or_the_fsb_ends_the_trip)
+{
+    {
+        Trip trip;
+        trip.g.startRide();
+        trip.g.npcs.clear();
+        trip.g.npcs.push_back(metroNpc(Kind::Cop, trip.g.px + 1, trip.g.py));
+        trip.g.step(1, 0);
+        CHECK(trip.g.outcome == Outcome::Arrested);
+    }
+    {
+        Trip trip;
+        trip.g.startRide();
+        trip.g.npcs.clear();
+        trip.g.npcs.push_back(metroNpc(Kind::Fsb, trip.g.px + 1, trip.g.py));
+        trip.g.step(1, 0);
+        CHECK(trip.g.outcome == Outcome::Recruited);
+    }
+}
+
+TEST(metro_open_doors_let_you_on_the_train_closed_ones_do_not)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.px = 10;                                 // under the first carriage's door
+    g.py = 6;
+    g.step(0, -1);                             // no train: down onto the track
+    CHECK(g.phase == Phase::Platform);
+    CHECK(g.py == 5);
+
+    g.py = 6;
+    g.stop = MetroGame::Stop::Boarding;
+    g.trains[0].active = true;
+    g.step(0, -1);
+    CHECK(g.phase == Phase::Ride);
+}
+
+TEST(metro_falling_onto_the_track_as_the_train_comes_kills)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.px = 40;
+    g.py = 5;
+    g.stop = MetroGame::Stop::Arriving;
+    g.stopMs = 2400;                           // the train is all but in
+    g.trains[0].active = true;
+    g.tick(50);
+    CHECK(g.outcome == Outcome::Dead);
+}
+
+TEST(metro_fsb_recruiter_signs_you_up)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Fsb, g.px + 1, g.py, 0));
+    g.tick(50);
+    CHECK(g.prompt.id == 6);
+    g.key('1');
+    CHECK(g.outcome == Outcome::Recruited);
+}
+
+TEST(metro_fsb_recruiter_takes_no_for_an_answer_only_twice)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Fsb, g.px + 1, g.py, 0));
+    for (int round = 0; round < 2; ++round) {
+        g.tick(50);
+        CHECK(g.prompt.id == 6);
+        g.key('2');
+        CHECK(g.outcome == Outcome::None);
+        CHECK(g.npcs[0].refusals == round + 1);
+        g.npcs[0].stunMs = 0;                  // he's back
+        g.npcs[0].x = g.px + 1;
+        g.npcs[0].y = g.py;
+    }
+    g.tick(50);
+    CHECK(g.prompt.id == 7);                   // he grabs your arm
+    g.key('2');                                // no cop about: you tear free
+    CHECK(g.outcome == Outcome::None);
+    CHECK(g.npcs[0].talked);
+}
+
+TEST(metro_buying_from_the_dealer_next_to_a_cop_gets_you_arrested)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Dealer, g.px - 1, g.py, 0));
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 5, g.py - 2));
+    g.tick(50);
+    CHECK(g.prompt.id == 2);
+    g.key('1');
+    CHECK(trip.w.player.stats.money == 350);
+    CHECK(g.outcome == Outcome::Arrested);
+}
+
+TEST(metro_gopniks_want_a_hundred)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Gopnik, g.px + 1, g.py));
+    g.npcs.push_back(metroNpc(Kind::Gopnik, g.px + 6, g.py - 3));
+    g.tick(50);
+    CHECK(g.prompt.id == 1);
+    g.key('1');
+    CHECK(trip.w.player.stats.money == 400);
+    CHECK(g.npcs[0].talked && g.npcs[1].talked);
+    CHECK(g.npcs[0].angryMs == 0);
+    // saying no to a gopnik with no money is another matter
+    trip.w.player.stats.money = 50;
+    g.npcs[0].talked = false;
+    g.prompt = MetroNS::Prompt();
+    g.npcs[0].waitMs = 0;
+    g.tick(50);
+    CHECK(g.prompt.id == 1);
+    g.key('1');
+    CHECK(g.npcs[0].angryMs > 0);
+}
+
+TEST(metro_ticket_check_catches_fare_dodgers)
+{
+    Trip trip(true);
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 1, g.py, 0));
+    trip.w.player.stats.money = 50;
+    g.tick(50);
+    CHECK(g.prompt.id == 4);
+    g.key('1');                                // the fine is 300 and you have 50
+    CHECK(g.outcome == Outcome::Arrested);
+}
+
+TEST(metro_running_from_the_ticket_check_gets_a_head_start_and_he_tires)
+{
+    Trip trip(true);
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 1, g.py, 0));
+    g.tick(50);
+    CHECK(g.prompt.id == 4);
+    g.key('3');
+    CHECK(g.npcs[0].chasing);
+    g.tick(50);
+    CHECK(g.outcome == Outcome::None);        // not caught on the spot
+    // he gives up in the end, if you keep away
+    g.npcs[0].x = 70;
+    g.npcs[0].y = 7;
+    g.px = 2;
+    g.py = 13;
+    g.npcs[0].chaseMs = 100;
+    trip.run(300);
+    CHECK(!g.npcs[0].chasing);
+    CHECK(g.outcome == Outcome::None);
+}
+
+TEST(metro_paying_passengers_pass_the_ticket_check_sober)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Cop, g.px + 1, g.py, 0));
+    g.tick(50);
+    CHECK(g.prompt.id == 0);
+    CHECK(g.npcs[0].talked);
+    CHECK(g.outcome == Outcome::None);
+}
+
+TEST(metro_pickpocket_lifts_money_and_a_punch_gets_it_back)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.npcs.push_back(metroNpc(Kind::Pickpocket, g.px + 1, g.py, 0));
+    for (int i = 0; i < 30 && g.npcs[0].stolen == 0; ++i) g.tick(50);
+    CHECK(g.npcs[0].stolen > 0);
+    CHECK(trip.w.player.stats.money < 500);
+    g.npcs[0].x = g.px + 1;
+    g.npcs[0].y = g.py;
+    g.step(1, 0);
+    CHECK(trip.w.player.stats.money == 500);
+}
+
+TEST(metro_getting_off_at_the_station)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.rideLeft = 50;
+    g.tick(50);
+    CHECK(g.doorsOpen());
+    g.px = 9;
+    g.py = 14;
+    g.step(0, 1);
+    CHECK(g.outcome == Outcome::Arrived);
+    CHECK(contains(MetroNS::summarize(g), "B"));
+}
+
+TEST(metro_missing_the_stop_takes_you_one_further)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.rideLeft = 50;
+    g.tick(50);
+    CHECK(g.doorsOpen());
+    trip.run(MetroGame::DOORS_MS + 100);
+    CHECK(!g.doorsOpen());
+    CHECK(g.overshot);
+    CHECK(g.outcome == Outcome::None);
+    trip.run(16000 + MetroGame::DOORS_MS + 200);
+    CHECK(g.outcome == Outcome::Overshot);
+    CHECK(contains(g.cause, "C"));
+}
+
+TEST(metro_drunk_legs_go_their_own_way)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startPlatform();
+    g.npcs.clear();
+    g.stop = MetroGame::Stop::Waiting;
+    g.stopMs = -1000000;                       // no train for a good while
+    trip.w.player.stats.promilles = 5;         // sober enough: straight steps
+    for (int i = 0; i < 100; ++i) {
+        g.px = 40;
+        g.py = 14;
+        g.queued = 'a';
+        g.sinceStep = 10000;
+        g.tick(50);
+        CHECK(g.py == 14);
+    }
+    trip.w.player.stats.promilles = 40;
+    int astray = 0;
+    for (int i = 0; i < 100; ++i) {
+        g.px = 40;
+        g.py = 14;
+        g.queued = 'a';
+        g.sinceStep = 10000;
+        g.tick(50);
+        if (g.py != 14) ++astray;
+    }
+    CHECK(astray > 15);
+    CHECK(astray < 70);
+}
+
+TEST(metro_hothead_does_not_like_being_stared_at)
+{
+    Trip trip;
+    auto& g = trip.g;
+    g.startRide();
+    g.npcs.clear();
+    g.joltMs = 1000000;
+    g.npcs.push_back(metroNpc(Kind::Hothead, g.px + 2, g.py));
+    for (int i = 0; i < 60 && g.npcs[0].angryMs == 0; ++i) g.tick(50);
+    CHECK(g.npcs[0].angryMs > 0);
+    const uint32_t hp = trip.w.player.stats.health;
+    trip.run(3000);
+    CHECK(trip.w.player.stats.health < hp);
+}
+
+TEST(metro_scene_is_drawn_where_the_map_usually_is)
+{
+    Trip trip;
+    const MetroNS::Rows rows = trip.g.render();
+    CHECK(rows.size() == (size_t)MetroGame::H);
+    for (const auto& r : rows) CHECK(r.size() == (size_t)MetroGame::W);
+    trip.w.printer.scene = &rows;
+    trip.w.printer.sceneTitle = trip.g.title();
+    const auto cells = trip.w.printer.rowCells(&trip.w.level, trip.g.py);
+    CHECK(cells.size() == trip.w.printer.viewW);
+    CHECK(cells[trip.g.px].first == "@");
+    CHECK(contains(trip.w.printer.locationName(&trip.w.level), "METRO"));
+    trip.w.printer.scene = nullptr;
+    // every part draws, and so does the end card
+    trip.g.startPlatform();
+    CHECK(trip.g.render()[trip.g.py][trip.g.px].first == "@");
+    trip.g.startRide();
+    CHECK(trip.g.render()[trip.g.py][trip.g.px].first == "@");
+    trip.g.finish(Outcome::Dead, "Testi.");
+    bool card = false;
+    for (const auto& r : trip.g.render()) {
+        string line;
+        for (const auto& c : r) line += c.first;
+        if (contains(line, "KUOLIT METROSSA")) card = true;
+    }
+    CHECK(card);
 }
 
 // ---- supermarket: lure the guards away and slip in ----
@@ -2272,4 +2776,319 @@ TEST(fsb_conscripts_player_who_runs_down_the_road)
     }
     CHECK(w.printer.saw("Stoi! FSB!"));
     CHECK(w.player.conscripted);
+}
+
+TEST(kremlin_guards_open_fire_on_a_drone_they_see)
+{
+    World w(Coord{ 20, 20 });
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.add(new Kremlin(), 250, 20);
+    auto* outside = new Vartija(Coord{ 272, 43 });   // at the gate, under the open sky
+    outside->hasRadio = true;
+    w.spawn(outside);
+    w.level.drones.push_back(Drone{ 280.0f, 38.0f, 0.0f, 0.0f });
+    for (int i = 0; i < 300 && !w.level.drones.empty(); ++i) antiDroneFire(w.level);
+    CHECK(w.level.drones.empty());
+}
+
+TEST(guards_indoors_or_without_radio_hold_fire)
+{
+    World w(Coord{ 20, 20 });
+    w.add(new Kremlin(), 250, 20);
+    auto* inside = new Vartija(Coord{ 270, 38 });    // in the Kremlin halls: no sky to see
+    inside->hasRadio = true;
+    w.spawn(inside);
+    w.spawn(new Vartija(Coord{ 100, 100 }));         // a hypermarket guard: not his business
+    w.level.drones.push_back(Drone{ 272.0f, 36.0f, 0.0f, 0.0f });
+    w.level.drones.push_back(Drone{ 104.0f, 98.0f, 0.0f, 0.0f });
+    for (int i = 0; i < 100; ++i) antiDroneFire(w.level);
+    CHECK(w.level.drones.size() == 2);
+}
+
+// a parked black car at (x, y) and an FSB man come to grab the player
+static Car* parkFsbCar(World& w, uint32_t x, uint32_t y)
+{
+    auto* car = new Car(Coord{ x, y }, true, -1, Car::Kind::Fsb);
+    car->script = Car::Script::Parked;
+    w.level.addVehicle(car);
+    w.level.fsbPatrol.cars.push_back(car);
+    w.level.fsbPatrol.stage = FsbPatrol::Stage::Grabbing;
+    return car;
+}
+
+static FSBAgent* recruiterAt(World& w, Coord c)
+{
+    auto* a = dynamic_cast<FSBAgent*>(w.level.createPerson(c, fsb));
+    a->recruiter = true;
+    a->firstMove = false;
+    a->patience = 80;
+    a->lastHealth = a->stats.health;
+    return a;
+}
+
+static bool nextToCar(const Car* car, const Coord& c)
+{
+    for (const auto& cell : car->cells())
+        if (std::abs((int)cell.x - (int)c.x) <= 1 && std::abs((int)cell.y - (int)c.y) <= 1) return true;
+    return false;
+}
+
+TEST(fsb_drags_player_to_the_car_door_before_conscripting)
+{
+    World w(Coord{ 60, 120 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    auto* car = parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 120 });
+
+    agent->npcAct();
+    CHECK(agent->holding);               // grabbed, not yet conscripted
+    CHECK(!w.player.conscripted);
+    CHECK(w.printer.saw("tarttuu sinua niskasta"));
+
+    bool conscriptedAway = false;
+    for (int i = 0; i < 200 && !w.player.conscripted; ++i) {
+        const Coord before = w.player.coord;
+        agent->npcAct();
+        if (w.player.conscripted && !nextToCar(car, before)) conscriptedAway = true;
+    }
+    CHECK(w.player.conscripted);
+    CHECK(!conscriptedAway);             // only ever at the car door
+    CHECK(nextToCar(car, w.player.coord));
+    CHECK(w.printer.saw("takapenkille"));
+}
+
+TEST(fsb_grip_breaks_when_player_fights_back)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    agent->npcAct();
+    CHECK(agent->holding);
+
+    string msg;
+    for (int i = 0; i < 20 && agent->holding && agent->stats.health > 0; ++i) agent->interact(msg, &w.player);
+    CHECK(!agent->holding);
+    CHECK(!w.player.conscripted);
+}
+
+TEST(fsb_grip_breaks_when_shot)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    agent->npcAct();
+    CHECK(agent->holding);
+    agent->damage(5);                    // a pistol round
+    const Coord at = w.player.coord;
+    agent->npcAct();
+    CHECK(!agent->holding);
+    CHECK(w.player.coord == at);         // not dragged this time
+    CHECK(w.printer.saw("ote irtoaa"));
+}
+
+TEST(fsb_grip_can_be_wriggled_out_of)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    agent->npcAct();
+    CHECK(agent->holding);
+    w.player.move(DirectionNS::left, &w.level);
+    int tries = 1;
+    while (agent->holding && tries < 60) { w.player.move(DirectionNS::left, &w.level); ++tries; }
+    CHECK(!agent->holding);
+    CHECK(tries > 1 || w.printer.saw("Riuhtaiset"));
+    CHECK(w.printer.saw("pit\xC3\xA4\xC3\xA4 sinusta kiinni") || tries == 1);
+}
+
+TEST(fsb_drives_off_when_player_wins_the_fight)
+{
+    World w(Coord{ 60, 125 });
+    w.level.roads = { { true, 112, "TVERSKAJA UL." } };
+    parkFsbCar(w, 62, 113);
+    auto* agent = recruiterAt(w, Coord{ 61, 125 });
+    auto* quitter = recruiterAt(w, Coord{ 90, 125 });
+    quitter->patience = 0;
+    quitter->npcAct();                   // lost him: waits by the car, arrests nobody
+    CHECK(quitter->gaveUp);
+
+    string msg;
+    for (int i = 0; i < 40 && agent->stats.health > 0; ++i) agent->interact(msg, &w.player);
+    CHECK(agent->stats.health == 0);
+    w.level.cleanDead();
+    w.level.fsbTick();
+    CHECK(w.level.fsbPatrol.stage == FsbPatrol::Stage::Idle);
+    CHECK(w.printer.saw("palaavat autoihin"));
+    CHECK(w.count(fsb) == 0);            // the quitter got back in the car too
+    CHECK(!w.player.conscripted);
+    CHECK(!w.player.inJail);
+}
+
+// ---- militsija on the streets ----
+
+// a street with a row of shops along it, a narrow alley between each pair
+static void buildStreet(World& w)
+{
+    w.level.roads.push_back(Road{ true, 100, "TESTSKAJA" });
+    w.level.roads.push_back(Road{ false, 200, "TESTOVKA" });
+    for (uint32_t x = 20; x < 180; x += 17) w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), x, 92);
+}
+
+TEST(cop_spots_are_on_pavements_and_in_alleys)
+{
+    World w(Coord{ 20, 20 });
+    buildStreet(w);
+    for (int i = 0; i < 20; ++i) {
+        const Coord c = Patrol::pavementSpot(w.level);
+        CHECK(!(c.x == 0 && c.y == 0));
+        const Road* h = nullptr; const Road* v = nullptr;
+        w.level.roadsAt(c, h, v);
+        CHECK(!h && !v);                                       // not out in the traffic
+        CHECK(c.y == 99 || c.y == 103 || c.x == 199 || c.x == 203);   // right beside the kerb
+        CHECK(!w.level.hit(c));
+    }
+    for (int i = 0; i < 20; ++i) {
+        const Coord a = Patrol::alleySpot(w.level);
+        CHECK(Patrol::inAlley(w.level, a));
+        CHECK(!w.level.hit(a));
+        CHECK(a.y >= 90 && a.y <= 98);                         // between the shops
+    }
+    CHECK(!Patrol::inAlley(w.level, Coord{ 300, 30 }));        // open ground is no alley
+}
+
+TEST(streets_are_full_of_cops)
+{
+    World w(Coord{ 20, 20 });
+    buildStreet(w);
+    Patrol::populateCops(w.level, 1);
+    const size_t cops = w.count(poliisi);
+    CHECK(cops >= Patrol::wantedCops(1));
+    CHECK(Patrol::wantedCops(1) >= 12);                        // far more than the old two to five
+    CHECK(Patrol::wantedCops(8) > Patrol::wantedCops(1));      // and more towards the Kremlin
+    size_t street = 0;
+    for (auto p : w.level.persons)
+        if (p->type == poliisi && (Patrol::onPavement(w.level, p->coord) || Patrol::inAlley(w.level, p->coord))) ++street;
+    CHECK(street * 10 >= cops * 9);                             // nearly all on the streets and in the alleys
+}
+
+TEST(new_patrols_walk_in_out_of_sight)
+{
+    World w(Coord{ 100, 104 });
+    buildStreet(w);
+    for (int i = 0; i < 2000 && w.count(poliisi) < Patrol::wantedCops(1); ++i) Patrol::patrolTick(w.level);
+    CHECK(w.count(poliisi) == Patrol::wantedCops(1));           // topped up, then no more
+    for (int i = 0; i < 200; ++i) Patrol::patrolTick(w.level);
+    CHECK(w.count(poliisi) == Patrol::wantedCops(1));
+    for (auto p : w.level.persons) {
+        if (p->type != poliisi) continue;
+        const int dx = std::abs((int)p->coord.x - 100), dy = std::abs((int)p->coord.y - 104);
+        CHECK(dx >= 44 || dy >= 18);                            // none popped up on screen
+    }
+    w.level.isWarLevel = true;                                  // no militsija at the front
+    for (auto p : w.level.persons) if (p->type == poliisi) p->stats.health = 0;
+    w.level.cleanDead();
+    for (int i = 0; i < 500; ++i) Patrol::patrolTick(w.level);
+    CHECK(w.count(poliisi) == 0);
+}
+
+// ---- FPV suicide drones at the front ----
+
+static size_t fpvCount(const Level& l) { size_t n = 0; for (const auto& d : l.drones) if (d.fpv) ++n; return n; }
+
+TEST(fpv_drone_goes_for_a_russian_soldier_not_a_prisoner)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    auto* pow = w.spawn(new Vanki(Coord{ 105, 100 }));           // close by, but a prisoner
+    auto* soldier = w.spawn(new Sotilas(Coord{ 120, 100 }));
+    CHECK(!isRussianSoldier(w.level, pow));
+    CHECK(isRussianSoldier(w.level, soldier));
+    CHECK(fpvPickPrey(w.level, 100.0f, 100.0f) == soldier);
+    // the conscripted player at the front is fair game, and the nearest one goes first
+    CHECK(isRussianSoldier(w.level, &w.player));
+    CHECK(fpvPickPrey(w.level, 22.0f, 22.0f) == &w.player);
+}
+
+TEST(fpv_drone_leaves_a_civilian_drunk_alone_in_moscow)
+{
+    World w(Coord{ 20, 20 });
+    CHECK(!isRussianSoldier(w.level, &w.player));       // not called up: just a drunk
+    w.player.conscripted = true;
+    CHECK(isRussianSoldier(w.level, &w.player));        // the FSB took him: now he is a soldier
+}
+
+TEST(fpv_drone_hunts_its_target_and_dives_in)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* soldier = w.spawn(new Sotilas(Coord{ 150, 100 }));
+    soldier->stats.health = 15;
+    launchFpv(w.level, 110.0f, 80.0f, soldier);
+    CHECK(fpvCount(w.level) == 1);
+    CHECK(w.level.drones[0].prey == soldier);
+    bool dived = false;
+    for (int f = 0; f < 20 * 30 && !w.level.drones.empty(); ++f) {
+        if (f % 8 == 0 && soldier->stats.health > 0) soldier->coord.y += (f / 8) % 2 ? 1 : -1;   // he shuffles about
+        w.level.vehicleFrame(50);
+        if (!w.level.drones.empty() && w.level.drones[0].diving) dived = true;
+    }
+    CHECK(dived);
+    CHECK(w.level.drones.empty());          // it blew itself up
+    CHECK(soldier->stats.health < 15);      // on him
+}
+
+TEST(fpv_blast_kills_at_the_point_and_spares_those_far_away)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    auto* target = w.spawn(new Skinhead(Coord{ 100, 100 }));
+    auto* far = w.spawn(new Skinhead(Coord{ 110, 100 }));
+    fpvBlast(w.level, Coord{ 100, 100 });
+    CHECK(target->stats.health == 0);
+    CHECK(far->stats.health == 7);
+}
+
+TEST(fpv_drones_swarm_the_front_but_not_moscow)
+{
+    World front(Coord{ 100, 100 });
+    front.level.isWarLevel = true;
+    front.spawn(new Sotilas(Coord{ 130, 110 }));
+    for (int i = 0; i < 200; ++i) fpvTick(front.level);
+    CHECK(fpvCount(front.level) >= 3);
+    CHECK(fpvCount(front.level) <= FPV_MAX);
+
+    World moscow(Coord{ 100, 100 });
+    moscow.spawn(new Sotilas(Coord{ 130, 110 }));
+    for (int i = 0; i < 200; ++i) fpvTick(moscow.level);
+    CHECK(fpvCount(moscow.level) == 0);
+}
+
+TEST(soldiers_at_the_front_shoot_fpv_drones_down)
+{
+    World w(Coord{ 20, 20 });
+    w.level.isWarLevel = true;
+    w.level.events = new EnvironmentEvents(&w.level, true);
+    w.spawn(new Sotilas(Coord{ 100, 100 }));
+    w.spawn(new Sotilas(Coord{ 104, 102 }));
+    launchFpv(w.level, 110.0f, 95.0f, nullptr);
+    w.level.drones[0].vx = w.level.drones[0].vy = 0;
+    for (int i = 0; i < 400 && fpvCount(w.level) > 0; ++i) antiDroneFire(w.level);
+    CHECK(fpvCount(w.level) == 0);
+}
+
+TEST(comrades_at_the_front_do_not_send_the_player_to_the_front)
+{
+    World w(Coord{ 100, 100 });
+    w.level.isWarLevel = true;
+    auto* s = w.spawn(new Sotilas(Coord{ 101, 100 }));
+    s->firstMove = false;
+    const uint32_t hp = w.player.stats.health;
+    for (int i = 0; i < 50; ++i) s->npcAct();
+    CHECK(!w.player.inJail);
+    CHECK(w.player.stats.health == hp);
 }
