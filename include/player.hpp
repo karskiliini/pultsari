@@ -56,6 +56,12 @@ public:
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
 
     virtual bool drink(Level* level);
+    // the drink in hand a plain "q" goes for: a vodka with something left, then the left, then the right
+    Held* drinkTarget();
+    // one sip, one go: whatever the hand holds is drunk (the shared path of "q" and the inventory overlay)
+    void drinkHeld(Held& h, Level* level);
+    // which hand a throw or use is meant for: the only full hand, or ask (v/o) when both are; null = none/cancel
+    Held* chooseHand(Level* level);
     virtual bool eat(Level* level);
     virtual bool puke(DirectionNS::Direction d, Level* level);
     virtual bool throwItem();

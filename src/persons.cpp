@@ -1,3 +1,4 @@
+#include "quips.hpp"
 #include "persons.hpp"
 #include "player.hpp"
 #include "level.hpp"
@@ -1790,7 +1791,7 @@ bool Juoppo::interact(std::string& msg, Person* source)
         constexpr uint32_t PRICE = 15;
         if (player->stats.money >= PRICE && random(40)) {
             if (!player->inventory.fits(Thing::Vodka)) {
-                msg = HANDS_FULL_MSG;   // no free hand: no sale, the money stays
+                msg = HINT_HANDS_FULL;   // no free hand: no sale, the money stays
                 return true;
             }
             // half of the bottles sold on the street are piss; you find out when you drink

@@ -22,9 +22,6 @@ bool isDrink(Thing t);  // Kalja, Lonkka, Vodka
 bool isWeapon(Thing t); // Pistooli, Rynkky
 const char* thingName(Thing t);
 
-// what a full-handed player is told when something does not fit
-constexpr const char* HANDS_FULL_MSG = "K\xC3\xA4""det ovat t\xC3\xA4ynn\xC3\xA4. Juo tai heit\xC3\xA4 jotain pois.";
-
 // the throw numbers of Player::decrementInventory / Item::createItem: 1 Kalja, 2 Lonkka, 3 Lenkki,
 // 4 Ketjut, 5 Veitsi, 6 Kivi, 7 Pamppu, 8 Bootsit, 9 Kala, 10 Omppo, 11 Bansku, 13 Vodka,
 // 14 Granata, 15 Tyhja (an empty bottle); anything else is Thing::None

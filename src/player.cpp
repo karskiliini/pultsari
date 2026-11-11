@@ -1,4 +1,5 @@
 
+#include "quips.hpp"
 #include "player.hpp"
 #include "level.hpp"
 #include "persons.hpp"
@@ -231,45 +232,79 @@ void Player::resetPosition()
     heading.reset();
 }
 
+Held* Player::drinkTarget()
+{
+    for (Held* h : { &inventory.left, &inventory.right })
+        if (h->what == Thing::Vodka && h->fill > 0) return h;
+    for (Held* h : { &inventory.left, &inventory.right })
+        if (isDrink(h->what)) return h;
+    return nullptr;
+}
+
+void Player::drinkHeld(Held& h, Level* level)
+{
+    switch (h.what) {
+        case Thing::Vodka: {
+            if (!h.pissSeller.empty()) {
+                // half of the bottles sold on the street are piss; you find out on the first sip
+                const std::string seller = h.pissSeller;
+                h = Inventory::heldOf(Thing::Tyhja);
+                printer->showMessage(seller + " myi sinulle n\xC3\xA4k\xC3\xB6j\xC3\xA4\xC3\xA4n kusta pullossa, hyi! Oksennat.", level, false);
+                level->audio.addSound(coord, SoundType::Vomit,
+                    "BL\xC3\x84\xC3\x84\xC3\x84RGH! Oksennat kaaressa!", "Joku oksentaa", "...ykin\xC3\xA4\xC3\xA4...", 15);
+                HurtBy who(level, seller + " (kusipullo)");
+                damage(2);
+                level->addItem(new Oksennus(coord));
+                break;
+            }
+            if (h.fill > 0) --h.fill;
+            const uint8_t fill = h.fill > 5 ? 5 : h.fill;
+            if (h.fill == 0) h = Inventory::heldOf(Thing::Tyhja);
+            printer->showMessage(VODKA_SIP_LINES[fill], level, false);
+            common::sound("glug");
+            updatepromilles(1);
+            feedHunger(1);
+            break;
+        }
+        case Thing::Kalja:
+            h = Inventory::heldOf(Thing::Tyhja);
+            printer->showMessage(pickQuip(BEER_LINES), level, false);
+            common::sound("glug");
+            updatepromilles(2);
+            feedHunger(2);
+            break;
+        case Thing::Lonkka:
+            h = Held();
+            printer->showMessage("Jaguar! Kofeiinia ja viinaa. Syd\xC3\xA4n hakkaa.", level, false);
+            common::sound("glug");
+            updatepromilles(4);
+            feedHunger(1);
+            break;
+        default: break;
+    }
+}
+
 bool Player::drink(Level* level)
 {
-    const bool kalja = inventory.count(Thing::Kalja) > 0, lonkka = inventory.count(Thing::Lonkka) > 0;
-    if (kalja && lonkka)
-    {
-        printer->showMessage("Kumpaakos horaat, pivoa vai Jaguaria (1,2)?", level);
-        auto type = InputNS::Input::getDrink();
-        switch(type)
-        {
-            case InputNS::kalja:
-                inventory.drain(Thing::Kalja);
-                printer->showMessage("Glub glub glub glub ..... Burb !!!", level, false);
-                updatepromilles(2);
-                break;
-            case InputNS::lonkka:
-                inventory.drain(Thing::Lonkka);
-                printer->showMessage("Glub glub glub glub ..... Burb !!!", level, false);
-                updatepromilles(4);
-                break;
-            default:
-                printer->showMessage("Päätit olla juomatta mitään.", level, false);
-                return false;
-        }
-    }
-    else if (lonkka) {
-        printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", level);
-        inventory.drain(Thing::Lonkka);
-        updatepromilles(4);
-    }
-    else if (kalja) {
-        printer->showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", level);
-        inventory.drain(Thing::Kalja);
-        updatepromilles(3);
-    } else {
+    Held* h = drinkTarget();
+    if (!h) {
         printer->showMessage("Ei oo ehtaa tavaraa.", level);
         return false;
     }
-
+    drinkHeld(*h, level);
     return true;
+}
+
+Held* Player::chooseHand(Level* level)
+{
+    Held* l = &inventory.left;
+    Held* r = &inventory.right;
+    if (l->empty() && r->empty()) return nullptr;
+    if (l->empty()) return r;
+    if (r->empty()) return l;
+    printer->showMessage("Kummalla k\xC3\xA4""dell\xC3\xA4? (v/o)", level, false);
+    const char c = InputNS::Input::getHand();
+    return c == 'v' ? l : c == 'o' ? r : nullptr;
 }
 
 bool Player::eat(Level* level)
@@ -528,12 +563,17 @@ static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
 
 bool Player::throwItem()
 {
-    printer->showMessage("ANNA NUMERO ..", level, false);
-    auto number = InputNS::Input::getThrow();
-    if (!decrementInventory(number))
-    {
+    Held* hand = chooseHand(level);
+    if (!hand) {
+        printer->showMessage(inventory.freeHands() == 2 ? "Ei mit\xC3\xA4n heitett\xC3\xA4v\xC3\xA4\xC3\xA4." : "Et heit\xC3\xA4 mit\xC3\xA4\xC3\xA4n.", level, false);
         return false;
     }
+    const uint32_t number = thingToThrowNum(hand->what);
+    if (number == 0) {
+        printer->showMessage("T\xC3\xA4t\xC3\xA4 ei voi heitt\xC3\xA4\xC3\xA4.", level, false);
+        return false;
+    }
+    *hand = Held();
 
     auto dir = getDirection(level, printer);
     return executeThrow(number, dir);
@@ -772,7 +812,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             if (common::random(40)) { fits &= receive(Thing::Granata); msg += ", kranaatti"; }
             if (common::random(25)) { fits &= receive(Thing::Rynkky); msg += ", RYNKKY"; }
             msg += "!";
-            if (!fits) msg += string(" ") + HANDS_FULL_MSG;
+            if (!fits) msg += string(" ") + HINT_HANDS_FULL;
             printer->showMessage(msg, level, false);
             blocked = true;
         } else if (AAGun* gun = dynamic_cast<AAGun*>(level->getVehicleAt(check))) {

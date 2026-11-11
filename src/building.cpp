@@ -1,4 +1,5 @@
 
+#include "quips.hpp"
 #include "building.hpp"
 #include "persons.hpp"
 #include "player.hpp"
@@ -285,13 +286,13 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
     switch(purchase)
     {
         case InputNS::ostakalja:
-            if (!player->inventory.give(Thing::Kalja)) { msg = HANDS_FULL_MSG; break; }
+            if (!player->inventory.give(Thing::Kalja)) { msg = HINT_HANDS_FULL; break; }
             msg = "Myyjä: 'Спасибо. Seuraava!'";
             player->updateMoney(-10);
             break;
         case InputNS::ostalonkka:
             if (player->stats.money < 15) { msg = "Myyj\xC3\xA4: 'Jaguar maksaa viisitoista. Ota Baltika.'"; break; }
-            if (!player->inventory.give(Thing::Lonkka)) { msg = HANDS_FULL_MSG; break; }
+            if (!player->inventory.give(Thing::Lonkka)) { msg = HINT_HANDS_FULL; break; }
             player->updateMoney(-15);
             msg = "Myyjä: 'Jaguar on kielletty. Se maksaa siksi vähän enemmän.'";
             break;
@@ -851,7 +852,7 @@ void Hypermarket::interact(PlayerNS::Player* player, std::string& msg)
         }
     }
     msg.back() = '!';
-    if (!fits) msg += std::string(" ") + HANDS_FULL_MSG;
+    if (!fits) msg += std::string(" ") + HINT_HANDS_FULL;
     // the theft alarm beeps: guards who hear it come running
     msg += " Hälytin piippaa: VARAS!";
     if (level) {
@@ -1005,7 +1006,7 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
     static const Thing kiosk[] = { Thing::Kalja, Thing::Bansku, Thing::Lonkka, Thing::Vodka };
     const Thing bought = kind == Kind::Produkty ? food[k] : kind == Kind::Oruzhie ? guns[k] : kiosk[k];
     if (!player->inventory.fits(bought)) {
-        msg = HANDS_FULL_MSG;   // no room, no sale: the money stays
+        msg = HINT_HANDS_FULL;   // no room, no sale: the money stays
         return;
     }
     if ((int)player->stats.money < price) {
@@ -1094,7 +1095,7 @@ void SuljettuLiike::interact(PlayerNS::Player* player, std::string& msg)
     }
     // the vodka needs a free hand; the other two are used on the spot
     if ((c == '1' || c == '2') && !player->inventory.fits(Thing::Vodka)) {
-        msg = HANDS_FULL_MSG;
+        msg = HINT_HANDS_FULL;
         return;
     }
     player->updateMoney(-price);
@@ -1282,7 +1283,7 @@ void Bensa::interact(PlayerNS::Player* player, std::string& msg)
         const int price = c == '1' ? 6 : 12;
         if ((int)player->stats.money < price) { msg = "Kassa: 'Rahat ensin. Hinnat nousivat juuri.'"; return; }
         const Thing bought = c == '1' ? Thing::Lenkki : Thing::Kalja;
-        if (!player->inventory.give(bought)) { msg = HANDS_FULL_MSG; return; }
+        if (!player->inventory.give(bought)) { msg = HINT_HANDS_FULL; return; }
         player->updateMoney(-price);
         if (c == '1') { msg = "Hot dog on ollut grillissä viikon. Se on nyt osa grilliä."; }
         else { msg = "Baltika maksaa enemmän kuin eilen. Kassa ei tiedä miksi."; }

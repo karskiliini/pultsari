@@ -1,5 +1,6 @@
 // Unit tests for game logic: shops, break-ins, drones, exhaust, vision.
 // Build and run with `make test`.
+#include "quips.hpp"
 #include "aagun.hpp"
 #include "patrol.hpp"
 #include "animation.hpp"
@@ -3260,7 +3261,7 @@ TEST(pickup_with_full_hands_leaves_item_on_map)
     w.player.move(DirectionNS::right, &w.level);
     CHECK(itemAt(w.level, EKalja));
     CHECK(w.player.inventory.count(Thing::Kalja) == 1);
-    CHECK(w.printer.saw(HANDS_FULL_MSG));
+    CHECK(w.printer.saw(HINT_HANDS_FULL));
 
     // a free hand picks it up
     w.player.inventory.right = Held();
@@ -3280,7 +3281,7 @@ TEST(shop_refuses_and_keeps_money_when_hands_full)
     k->interact(&w.player, msg);
     CHECK(w.player.stats.money == 20);
     CHECK(w.player.inventory.count(Thing::Lenkki) == 1);
-    CHECK(contains(msg, HANDS_FULL_MSG));
+    CHECK(contains(msg, HINT_HANDS_FULL));
 }
 
 TEST(robber_loot_that_does_not_fit_drops_to_ground)
@@ -3296,4 +3297,113 @@ TEST(robber_loot_that_does_not_fit_drops_to_ground)
     CHECK(itemAt(w.level, EPistooli));
     CHECK(itemAt(w.level, ELipas));
     for (auto i : w.level.items) CHECK(i->coord.distance(w.player.coord) <= 1);
+}
+
+// ---- drinking, eating, throwing from the hands ----
+
+TEST(vodka_sip_lowers_fill_by_one_and_adds_promille)
+{
+    World w;
+    hold(w.player.inventory, Thing::Vodka, Thing::None);
+    const int p0 = w.player.stats.promilles;
+    CHECK(w.player.drink(&w.level));
+    CHECK(w.player.inventory.left.what == Thing::Vodka);
+    CHECK(w.player.inventory.left.fill == 5);
+    CHECK(w.player.stats.promilles == p0 + 1);
+    CHECK(w.printer.saw(VODKA_SIP_LINES[5]));
+}
+
+TEST(six_sips_leave_empty_bottle_in_hand)
+{
+    World w;
+    hold(w.player.inventory, Thing::Vodka, Thing::None);
+    for (int i = 0; i < 6; ++i) w.player.drink(&w.level);
+    CHECK(w.player.inventory.left.what == Thing::Tyhja);
+    CHECK(w.player.inventory.left.pissSeller.empty());
+    CHECK(w.printer.saw(VODKA_SIP_LINES[0]));
+}
+
+TEST(beer_is_drunk_in_one_go)
+{
+    World w;
+    hold(w.player.inventory, Thing::Kalja, Thing::None);
+    const int p0 = w.player.stats.promilles;
+    CHECK(w.player.drink(&w.level));
+    CHECK(w.player.inventory.left.what == Thing::Tyhja);
+    CHECK(w.player.stats.promilles == p0 + 2);
+    bool one = false;
+    for (const auto& l : BEER_LINES) if (w.printer.saw(l)) one = true;
+    CHECK(one);
+}
+
+TEST(piss_vodka_reveals_on_first_sip)
+{
+    World w;
+    hold(w.player.inventory, Thing::Vodka, Thing::None);
+    w.player.inventory.left.pissSeller = "Vasja";
+    common::realtimeEnabled = false;   // no breather after an earlier test's hit
+    const int hp = w.player.stats.health;
+    CHECK(w.player.drink(&w.level));
+    CHECK(w.player.stats.health == hp - 2);
+    CHECK(w.player.inventory.left.what == Thing::Tyhja);
+    CHECK(w.printer.saw("Vasja"));
+}
+
+TEST(drink_with_no_drink_says_nothing_to_drink)
+{
+    World w;
+    hold(w.player.inventory, Thing::Lenkki, Thing::None);
+    CHECK(!w.player.drink(&w.level));
+    CHECK(w.printer.saw("Ei oo ehtaa tavaraa"));
+}
+
+TEST(drink_target_prefers_vodka_then_left_then_right)
+{
+    World w;
+    hold(w.player.inventory, Thing::Kalja, Thing::Vodka);
+    CHECK(w.player.drinkTarget() == &w.player.inventory.right);
+    hold(w.player.inventory, Thing::Lonkka, Thing::Kalja);
+    CHECK(w.player.drinkTarget() == &w.player.inventory.left);
+    hold(w.player.inventory, Thing::Lenkki, Thing::Kalja);
+    CHECK(w.player.drinkTarget() == &w.player.inventory.right);
+    hold(w.player.inventory, Thing::Lenkki, Thing::None);
+    CHECK(w.player.drinkTarget() == nullptr);
+}
+
+TEST(eat_uses_food_in_hand)
+{
+    World w;
+    hold(w.player.inventory, Thing::Kalja, Thing::Lenkki);
+    CHECK(w.player.eat(&w.level));
+    CHECK(w.player.inventory.right.empty());
+    CHECK(w.player.inventory.left.what == Thing::Kalja);
+}
+
+TEST(throw_asks_which_hand_only_when_both_are_full)
+{
+    World w;
+    hold(w.player.inventory, Thing::Kalja, Thing::Lenkki);
+    feedKeys("o");
+    DirectionNS::Direction dir = DirectionNS::right;
+    (void)dir;
+    Held* h = w.player.chooseHand(&w.level);
+    CHECK(h == &w.player.inventory.right);
+    hold(w.player.inventory, Thing::Kalja, Thing::Lenkki);
+    feedKeys("x");
+    CHECK(w.player.chooseHand(&w.level) == nullptr);
+    hold(w.player.inventory, Thing::None, Thing::Lenkki);
+    CHECK(w.player.chooseHand(&w.level) == &w.player.inventory.right);   // no key needed
+}
+
+TEST(full_hands_kick_bona_and_it_counts)
+{
+    World w;
+    hold(w.player.inventory, Thing::Kalja, Thing::Lenkki);
+    w.player.inventory.pocket = Inventory::heldOf(Thing::Lipas);
+    Bona* b = new Bona(Coord{ 51, 50 });
+    w.level.addItem(b);
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(!itemAt(w.level, EBona));
+    CHECK(w.player.inventory.count(Thing::Tyhja) == 0);
+    CHECK(w.printer.saw("potkaiset pullon rikki"));
 }

@@ -211,6 +211,14 @@ uint32_t Input::getInputDivari()
     return sel;
 }
 
+char Input::getHand()
+{
+    Input::raw();
+    const int c = getchar();
+    Input::noraw();
+    return c == 'v' || c == 'V' ? 'v' : c == 'o' || c == 'O' ? 'o' : 0;
+}
+
 DrinkType Input::getDrink()
 {
     Input::raw();

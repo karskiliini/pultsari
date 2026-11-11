@@ -1158,6 +1158,14 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 }
             };
 
+            // the slot an overlay row stands for (rows: left, right, pocket, [belt], back)
+            auto rowSlot = [&](int idx) -> Held* {
+                auto& inv = player.inventory;
+                std::vector<Held*> slots = { &inv.left, &inv.right, &inv.pocket };
+                if (inv.hasBelt) slots.push_back(&inv.belt);
+                slots.push_back(&inv.back);
+                return idx >= 0 && idx < (int)slots.size() ? slots[idx] : nullptr;
+            };
             // what the overlay row's slot holds
             auto rowThing = [&](int idx) -> Thing {
                 const auto rows = overlayItems(&player.inventory);
@@ -1188,41 +1196,14 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             };
 
             // eat, drink or raise a gun: the thing in a slot
-            auto useInventoryItem = [&](Thing what) {
+            auto useInventoryItem = [&](Thing what, Held* slot = nullptr) {
                 auto& inv = player.inventory;
                 switch(what) {
                     case Thing::Kalja:
-                        inv.drain(Thing::Kalja);   // the empty bottle stays in the hand
-                        printer->showMessage("Glub glub glub ..... Burb !!! Tyhj\xC3\xA4 pullo talteen.", &level, false);
-                        common::sound("glug");
-                        player.updatepromilles(2);
-                        feedHunger(2);
-                        break;
                     case Thing::Lonkka:
-                        inv.drain(Thing::Lonkka);
-                        printer->showMessage("Jaguar! Kofeiinia ja viinaa. Syd\xC3\xA4n hakkaa.", &level, false);
-                        common::sound("glug");
-                        player.updatepromilles(4);
-                        feedHunger(1);
-                        break;
                     case Thing::Vodka: {
-                        Held* bottle = inv.find(Thing::Vodka);
-                        if (!bottle) break;
-                        const std::string seller = bottle->pissSeller;
-                        *bottle = Inventory::heldOf(Thing::Tyhja); // whatever was in it, the bottle is worth 20 kopecks
-                        if (!seller.empty()) {
-                            printer->showMessage(seller + " myi sinulle n\xC3\xA4k\xC3\xB6j\xC3\xA4\xC3\xA4n kusta pullossa, hyi! Oksennat.", &level, false);
-                            level.audio.addSound(player.coord, SoundType::Vomit,
-                                "BL\xC3\x84\xC3\x84\xC3\x84RGH! Oksennat kaaressa!", "Joku oksentaa", "...ykin\xC3\xA4\xC3\xA4...", 15);
-                            HurtBy who(&level, seller + " (kusipullo)");
-                            player.damage(2);
-                            level.addItem(new Oksennus(player.coord));
-                        } else {
-                            printer->showMessage("Na zdorovje! Vodka polttaa kurkkua.", &level, false);
-                            common::sound("glug");
-                            player.updatepromilles(6);
-                            feedHunger(1);
-                        }
+                        Held* h = slot && slot->what == what ? slot : inv.find(what);
+                        if (h) player.drinkHeld(*h, &level);
                         break;
                     }
                     case Thing::Lenkki:
@@ -1395,7 +1376,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         startThrowAim(invIndexToThrowNum(invSelection));
                                         break;
                                     }
-                                    useInventoryItem(rowThing(invSelection)); // eat, drink or aim the pistol
+                                    useInventoryItem(rowThing(invSelection), rowSlot(invSelection)); // eat, drink or aim the pistol
                                     if (mode == Mode::Inventory) mode = Mode::Normal;
                                     break;
                                 case 'f': // throw -> aim mode

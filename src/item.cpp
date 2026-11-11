@@ -1,3 +1,4 @@
+#include "quips.hpp"
 #include "item.hpp"
 #include "common.hpp"
 #include <algorithm>
@@ -64,7 +65,7 @@ Item* Item::createThing(Thing t, Coord coord)
 static bool pickUp(PlayerNS::Player* player, Thing t)
 {
     if (player->inventory.give(t)) return true;
-    if (player->printer) player->printer->showMessage(HANDS_FULL_MSG, player->level, false);
+    if (player->printer) player->printer->showMessage(HINT_HANDS_FULL, player->level, false);
     return false;
 }
 
@@ -76,7 +77,10 @@ std::string Bona::getMsg() const {
 }
 bool Bona::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Tyhja);
+    if (player->inventory.give(Thing::Tyhja)) return true;
+    // the exit wants every bottle collected, so one with no room in the hands still counts
+    if (player->printer) player->printer->showMessage(KICK_BONA_MSG, player->level, false);
+    return true;
 }
 
 // kalja

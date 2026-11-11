@@ -57,6 +57,8 @@ public:
     static InputType getInputNonBlocking();
     static char getRawCharNonBlocking();
     static DrinkType getDrink();
+    // v = left hand, o = right hand, anything else (0) cancels
+    static char getHand();
     static FoodType getFood();
     static uint32_t getThrow();
     static InputAlkoType getInputAlko();

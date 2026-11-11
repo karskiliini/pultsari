@@ -21,7 +21,7 @@ const char* thingName(Thing t)
         case Thing::Kalja: return "PIVO";
         case Thing::Lonkka: return "JAGUAR";
         case Thing::Vodka: return "VODKA";
-        case Thing::Tyhja: return "TYH\xC3\x84 PULLO";
+        case Thing::Tyhja: return "TYHJ\xC3\x84 PULLO";
         case Thing::Lenkki: return "MAKKARA";
         case Thing::Kala: return "VOBLA";
         case Thing::Omppo: return "ANTONOVKA";
