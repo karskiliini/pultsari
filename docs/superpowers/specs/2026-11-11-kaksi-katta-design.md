@@ -104,6 +104,16 @@ Yksi tavara tarkoittaa yhtä kappaletta: yksi pullo, yksi kivi, yksi makkara.
 - Kaupat ja myyjät: ostos vaatii vapaan paikan. Muuten myyjä kieltäytyy ja rahat jäävät.
 - Pullovarkaat ja muut, jotka nyt vievät tavaraa `stealable()`-listan kautta, vievät sen kädestä.
 
+## Varastaminen kaupasta (käyttäjän)
+
+- Kaupasta voi varastaa. Varastettu tavara menee käteen, joten se vaatii vapaan paikan.
+- Myyjä on fanaattinen: kun hän huomaa varkauden, hän tulee kimppuun ja jahtaa pelaajaa
+  kadulla. Jos hänellä on ase, edes nitoja, hän käyttää sitä säälittä. Joskus hänellä on
+  veitsi, harvoin jopa pistooli.
+- *(Builderin oletukset: kauppavalikossa `v` + numero varastaa. Myyjä huomaa varkauden
+  70 %:n todennäköisyydellä. Myyjän ase arvotaan: nitoja 75 %, veitsi 20 %, pistooli 5 %.
+  Kiinni jääneen myyjä ei enää myy samassa kaupassa sillä tasolla.)*
+
 ## Ohjaus
 
 Nykyiset näppäimet säilyvät: `q` juo, `e` syö, `t`/välilyönti heittää, Tab avaa inventaarion.
@@ -126,6 +136,40 @@ kädet ovat varattuina, peli vinkkaa mitä tehdä.
   Pistoolikuva piirretään uudelleen, ja hihat yhtenäistetään samaksi repaleiseksi takiksi.
 - Muut tavarat (kivi, makkara, olut…) voivat aluksi näkyä yleisellä nyrkkikuvalla ja nimellä
   kuvan alla. Omat kuvat ovat builderin harkinnassa.
+
+### Hihat repeytyvät vaurion mukaan (käyttäjän)
+
+Mitä enemmän pelaaja ottaa vauriota, sitä repaleisemmiksi hihat muuttuvat. Lähes kuolleena
+hihat ovat käytännössä revitty pois, ja kädet ovat verillä. Kuva kootaan kahdesta osasta:
+yläosan hiha valitaan voiman mukaan ja alaosan koura sen mukaan, mitä kädessä on.
+Vaiheet (`INITIAL_HP` = 10):
+
+| Voima | Hiha |
+|---|---|
+| ≥ 8 | repaleinen takki (julisteen tyyli) |
+| 5–7 | lisää reikiä, roikkuvia riekaleita |
+| 2–4 | hiha revitty kyynärpäästä, paljas käsivarsi |
+| 0–1 | hiha lähes poissa, käsivarressa ja kourassa verta (webissä punaisella) |
+
+### Uusi takki = lisää voimaa (käyttäjän)
+
+Uuden takin löytäminen on sama kuin voiman lisääminen. Takki (`T` kartalla) puetaan heti, kun sen
+päälle kävelee, eikä se vie käsipaikkaa. Voima nousee täyteen (`INITIAL_HP`, taudin
+`maxHealth`-katto rajoittaa), ja hihat näkyvät taas ehjimmässä vaiheessa.
+*(Builderin oletus: takkeja ilmestyy tasolle harvakseltaan kuten muitakin tavaroita, ja
+joskus kaatuneelta sotilaalta. Viesti esim. "Uusi takki! Vain vähän verta kauluksessa.")*
+
+**Takin riisuminen ruumiilta (käyttäjän):** kaatuneen (voima 0) ihmisen päälle
+kävellessä voi riisua tämän takin, jolloin voima nousee täyteen. Se on paheksuttavaa:
+jokainen, joka näkee teon (`Person::canSeeTarget`, kuten `Level::witnessPutinDeath`),
+hyökkää heti kimppuun ja huutaa esim. "Ruumiinryöstäjä!" tai "Paskiainen!".
+*(Hyökkäys käyttää samaa tilaa kuin muutkin vihaiset ohikulkijat, esim. `alerted`; builder
+valitsee. Riisuminen kysytään, jotta sitä ei tee vahingossa: "Riisutko takin? (k/e)")*
+Yhdeltä ruumiilta saa vain yhden takin.
+
+**Käytetty takki kaupasta (käyttäjän):** Divarista löytyy käytetty, heikkokuntoinen takki.
+Se antaa vähemmän voimaa (esim. +3, enintään `INITIAL_HP`), ja hihat jäävät
+repaleisemmiksi kuin uudella takilla. *(Hinta ja tarkka voima ovat builderin valinta.)*
 
 ### Missä kuvat näkyvät
 
