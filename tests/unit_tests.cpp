@@ -3647,41 +3647,132 @@ TEST(coat_restores_full_health)
     CHECK(w.player.stats.health == PlayerNS::INITIAL_HP + 2);
 }
 
+// keys already waiting are drained before a prompt: `now` is in the pipe at once, `later` comes after a moment
+static void feedKeysLater(const string& now, const string& later, int ms = 80)
+{
+    int fds[2];
+    if (pipe(fds) != 0) return;
+    if (!now.empty() && write(fds[1], now.data(), now.size()) < 0) { }
+    dup2(fds[0], STDIN_FILENO);
+    close(fds[0]);
+    clearerr(stdin);
+    const int w = fds[1];
+    std::thread([w, later, ms]() {
+        std::this_thread::sleep_for(std::chrono::milliseconds(ms));
+        if (write(w, later.data(), later.size()) < 0) { }
+        close(w);
+    }).detach();
+}
+
+static Ruumis* corpseAt(const Level& level, const Coord& c)
+{
+    for (auto i : level.items)
+        if (i->type == ERuumis && i->coord == c) return static_cast<Ruumis*>(i);
+    return nullptr;
+}
+
 TEST(stripping_corpse_coat_angers_witnesses)
 {
     World w;
     w.player.stats.health = 2;
-    auto* corpse = w.spawn(new Kansalainen(Coord{ 51, 50 }));
-    corpse->stats.health = 0;
-    auto* cop = w.spawn(new Cop(Coord{ 54, 50 }));
+    auto* corpse = new Ruumis(Coord{ 51, 50 });
+    w.level.addItem(corpse);
+    auto* cop = w.spawn(new Cop(Coord{ 55, 50 }));
+    auto* passer = w.spawn(new Kansalainen(Coord{ 51, 53 }));
     auto* blindMan = w.spawn(new Kansalainen(Coord{ 50, 53 }));
     blindMan->blind = true;
-    CHECK(w.player.stripCorpseCoat(corpse));
+    feedKeysLater("", "k");
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.printer.saw("Riisutko takin? (k/e)"));
     CHECK(corpse->coatTaken);
     CHECK(w.player.stats.health == PlayerNS::INITIAL_HP);
+    CHECK(w.player.coord == (Coord{ 51, 50 }));            // a body does not block the way
+    CHECK(corpseAt(w.level, Coord{ 51, 50 }) == corpse);   // it stays where it fell
+    CHECK(w.player.inventory.count(Thing::Kalja) == 1 && w.player.inventory.count(Thing::Lenkki) == 1);
     CHECK(cop->alerted);
     CHECK(cop->chaseTarget == &w.player);
     CHECK(w.said(cop, "Ruumiinry\xC3\xB6st\xC3\xA4j\xC3\xA4!") || w.said(cop, "Paskiainen!"));
-    CHECK(!blindMan->alerted);
-    CHECK(!w.said(blindMan, "Paskiainen!") && !w.said(blindMan, "Ruumiinry"));
-    w.player.stats.health = 2;
-    CHECK(!w.player.stripCorpseCoat(corpse));    // one coat per corpse
-    CHECK(w.player.stats.health == 2);
+    CHECK(passer->brawlActions > 0);                       // a civilian comes at you too
+    CHECK(!blindMan->alerted && blindMan->brawlActions == 0);
 
-    // walking onto a corpse asks first
+    // a 'k' already waiting (a step down) does not answer the question
     World v;
     v.player.stats.health = 2;
-    auto* dead = v.spawn(new Kansalainen(Coord{ 51, 50 }));
-    dead->stats.health = 0;
-    feedKeys("e");
+    auto* body = new Ruumis(Coord{ 51, 50 });
+    v.level.addItem(body);
+    feedKeysLater("k", "e");
     v.player.move(DirectionNS::right, &v.level);
     CHECK(v.printer.saw("Riisutko takin? (k/e)"));
+    CHECK(!body->coatTaken);
     CHECK(v.player.stats.health == 2);
-    CHECK(!dead->coatTaken);
-    feedKeys("k");
+}
+
+TEST(gunshot_kill_leaves_corpse_with_coat)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::None);
+    inv.right = loaded(Thing::Pistooli);
+    auto* victim = w.spawn(new Kansalainen(Coord{ 54, 50 }));
+    for (int i = 0; i < 8 && victim->stats.health > 0; ++i) w.player.shootAt(0.0f);
+    CHECK(victim->stats.health == 0);
+    w.level.cleanDead();
+    CHECK(w.count(kansalainen) == 0);
+    Ruumis* corpse = corpseAt(w.level, Coord{ 54, 50 });
+    CHECK(corpse != nullptr);
+    if (!corpse) return;
+    CHECK(corpse->typeToChar() == "\xE2\x80\xA0");
+    CHECK(!corpse->coatTaken);
+
+    // a rat leaves no body
+    auto* rat = w.spawn(new Rotta(Coord{ 60, 60 }));
+    rat->stats.health = 0;
+    w.level.cleanDead();
+    CHECK(corpseAt(w.level, Coord{ 60, 60 }) == nullptr);
+
+    w.player.stats.health = 3;
+    w.player.coord = Coord{ 53, 50 };
+    feedKeysLater("", "k");
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.stats.health == PlayerNS::INITIAL_HP);
+    CHECK(corpse->coatTaken);
+    NextLevel exit(Coord{ 70, 70 }, &w.level);
+    CHECK(exit.interact(&w.player));                       // a body is not a bottle for the exit
+}
+
+TEST(corpse_coat_only_once)
+{
+    World w;
+    w.player.stats.health = 2;
+    auto* corpse = new Ruumis(Coord{ 51, 50 });
+    w.level.addItem(corpse);
+    feedKeysLater("", "k");
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.stats.health == PlayerNS::INITIAL_HP);
+    w.player.move(DirectionNS::left, &w.level);
+    w.player.stats.health = 2;
+    w.printer.log.clear();
+    feedKeysLater("", "k");
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(!w.printer.saw("Riisutko takin?"));
+    CHECK(w.player.stats.health == 2);
+    CHECK(corpseAt(w.level, Coord{ 51, 50 }) == corpse);   // still a body, now coatless
+    CHECK(!w.player.stripCorpseCoat(corpse));
+
+    // no question when a coat would give nothing: full health, or the disease's cap
+    World v;
+    auto* body = new Ruumis(Coord{ 51, 50 });
+    v.level.addItem(body);
+    v.player.move(DirectionNS::right, &v.level);           // full health
+    CHECK(!v.printer.saw("Riisutko takin?"));
+    v.player.move(DirectionNS::left, &v.level);
+    v.player.hiv.needleStick(0, 0);
+    v.player.stats.turn = v.player.hiv.stageStart(3);
+    CHECK(v.player.coatCap() == Disease::maxHealth(3));
+    v.player.stats.health = Disease::maxHealth(3);
     v.player.move(DirectionNS::right, &v.level);
-    CHECK(v.player.stats.health == PlayerNS::INITIAL_HP);
-    CHECK(dead->coatTaken);
+    CHECK(!v.printer.saw("Riisutko takin?"));
+    CHECK(!body->coatTaken);
 }
 
 TEST(divari_used_coat_gives_three_hp)
@@ -3716,4 +3807,15 @@ TEST(divari_used_coat_gives_three_hp)
     CHECK(w.player.stats.health == 4);
     CHECK(w.player.stats.money == 0);
     CHECK(!d->getEnterMsg(&w.player, msg));      // nothing to sell, no money: out
+
+    // a coat that would give nothing is not sold
+    w.player.stats.health = PlayerNS::INITIAL_HP;
+    w.player.stats.money = 40;
+    w.player.usedCoat = false;
+    feedKeys("5");
+    msg.clear();
+    d->interact(&w.player, msg);
+    CHECK(w.player.stats.money == 40);
+    CHECK(!w.player.usedCoat);
+    CHECK(contains(msg, "Et tarvitse"));
 }

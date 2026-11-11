@@ -423,7 +423,10 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                 break;
             case 5:
                 // a worn coat off the rack: a little strength, and the sleeves stay ragged
-                if (player->stats.money < PlayerNS::USED_COAT_PRICE) {
+                if (player->stats.health >= player->coatCap()) {
+                    // it would give nothing: no sale
+                    msg = "Panttilainaaja: 'Et tarvitse uutta takkia. Sinun omasi on viel\xC3\xA4 ehj\xC3\xA4.'";
+                } else if (player->stats.money < PlayerNS::USED_COAT_PRICE) {
                     msg = "Panttilainaaja: 'Takki maksaa kolmekymment\xC3\xA4. Ei alennuksia juopoille.'";
                 } else {
                     player->updateMoney(-(int)PlayerNS::USED_COAT_PRICE);

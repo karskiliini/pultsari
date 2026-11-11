@@ -567,6 +567,19 @@ bool Takki::interact(PlayerNS::Player* player)
     return true;
 }
 
+std::string Ruumis::getMsg() const
+{
+    return coatTaken ? "Ruumis ilman takkia. Joku on jo k\xC3\xA4ynyt t\xC3\xA4ss\xC3\xA4."
+                     : "Ruumis. Joku kaatui t\xC3\xA4h\xC3\xA4n lopullisesti.";
+}
+
+// stays on the map: the coat may be taken, the body never
+bool Ruumis::interact(PlayerNS::Player* player)
+{
+    player->offerCorpseCoat(this);
+    return false;
+}
+
 // the belt is worn too; a pistol in hand goes onto it
 bool Vyo::interact(PlayerNS::Player* player)
 {

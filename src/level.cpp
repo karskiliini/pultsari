@@ -985,6 +985,8 @@ void Level::cleanDead()
                 if (p->type == sotilas) {
                     if (Item* loot = p->dropItem()) items.push_back(loot);
                 }
+                // a person stays where he fell (after the loot, so the loot is picked first); rats do not
+                if (p->type != rotta) items.push_back(new Ruumis(p->coord));
                 delete p;
                 p = nullptr;
 

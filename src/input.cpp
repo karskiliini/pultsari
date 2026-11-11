@@ -189,6 +189,15 @@ char Input::getMenuKey()
     return (char)c;
 }
 
+char Input::getFreshMenuKey()
+{
+    while (hasInput()) {
+        char c;
+        if (read(STDIN_FILENO, &c, 1) != 1) break;
+    }
+    return getMenuKey();
+}
+
 uint32_t Input::getInputDivari()
 {
     Input::raw();

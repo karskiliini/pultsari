@@ -79,8 +79,6 @@ public:
     bool knowsPutinDead = false;
     Person* currentTarget();
     bool alerted = false;
-    // the player has already taken this corpse's coat
-    bool coatTaken = false;
     Coord lastKnownPos = { 0, 0 };
     uint32_t alertCooldown = 0;
 };

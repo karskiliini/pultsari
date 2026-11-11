@@ -66,6 +66,8 @@ public:
     static uint32_t getInputDivari();
     // one key, whatever it is
     static char getMenuKey();
+    // keys typed before the question (a step that was still coming) do not answer it
+    static char getFreshMenuKey();
     static char inputYka();
 };
 

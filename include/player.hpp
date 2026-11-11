@@ -124,12 +124,14 @@ public:
     void maybeDropPocket(bool force = false);
     uint32_t pocketNoticeTurns = 0;
 
-    // a coat restores strength up to `hp` (never above full or the disease's cap, never down)
+    // the most a coat can bring the strength to: full, or less with the disease
+    uint32_t coatCap() const;
+    // a coat restores strength up to `hp` (never above coatCap(), never down)
     void wearCoat(uint32_t hp);
     // the coat off a corpse: full strength, and everyone who sees it goes for you
-    bool stripCorpseCoat(Person* corpse);
-    // walking onto a corpse: "Riisutko takin? (k/e)"
-    void offerCorpseCoat(Person* corpse);
+    bool stripCorpseCoat(Ruumis* corpse);
+    // walking onto a corpse: "Riisutko takin? (k/e)", only if a coat would help
+    void offerCorpseCoat(Ruumis* corpse);
     // the last coat was a worn one from the pawnshop: the sleeves stay ragged
     bool usedCoat = false;
 

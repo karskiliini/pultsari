@@ -807,34 +807,47 @@ void Player::maybeDropPocket(bool force)
     pocketNoticeTurns = POCKET_NOTICE_TURNS;
 }
 
-void Player::wearCoat(uint32_t hp)
+uint32_t Player::coatCap() const
 {
     const uint32_t stage = diseaseStage();
-    uint32_t cap = INITIAL_HP;
-    if (stage > 0) cap = std::min(cap, Disease::maxHealth(stage));
-    const uint32_t to = std::min(hp, cap);
+    return stage > 0 ? std::min(INITIAL_HP, Disease::maxHealth(stage)) : INITIAL_HP;
+}
+
+void Player::wearCoat(uint32_t hp)
+{
+    const uint32_t to = std::min(hp, coatCap());
     if (stats.health < to) stats.health = to;
     usedCoat = false;
 }
 
-bool Player::stripCorpseCoat(Person* corpse)
+bool Player::stripCorpseCoat(Ruumis* corpse)
 {
-    if (!corpse || corpse->stats.health > 0 || corpse->coatTaken || corpse == this) return false;
+    if (!corpse || corpse->coatTaken) return false;
     corpse->coatTaken = true;
     wearCoat(INITIAL_HP);
     if (printer) printer->showMessage("Riisut ruumiin takin ja puet sen p\xC3\xA4\xC3\xA4llesi. Viel\xC3\xA4 l\xC3\xA4mmin.", level, false);
     if (!level) return true;
     // a disgrace: everyone who saw it comes for you
     for (auto p : level->persons) {
-        if (p == this || p == corpse || p->type == pelaaja || p->stats.health == 0) continue;
+        if (p == this || p->type == pelaaja || p->stats.health == 0) continue;
         if (!p->canSeeTarget(coord)) continue;
         p->chaseTarget = this;
         p->alerted = true;
         p->lastKnownPos = coord;
         p->alertCooldown = 15;
+        p->brawlActions = 15;   // the ones who do not chase like cops come at you with their fists
         p->say(common::random(50) ? "Ruumiinry\xC3\xB6st\xC3\xA4j\xC3\xA4!" : "Paskiainen!");
     }
     return true;
+}
+
+// asked, so it is never done by accident; not asked when a coat would give nothing
+void Player::offerCorpseCoat(Ruumis* corpse)
+{
+    if (!corpse || corpse->coatTaken || stats.health >= coatCap()) return;
+    printer->showMessage("Riisutko takin? (k/e)", level, false);
+    const char c = InputNS::Input::getFreshMenuKey();
+    if (c == 'k' || c == 'K') stripCorpseCoat(corpse);
 }
 
 static Building* checkDoor(Level* level, const Coord& c)
@@ -879,16 +892,6 @@ bool Player::stagger(Level* level)
     }
 
     return move(d, level);
-}
-
-// asked, so it is never done by accident; rats wear no coat, and at full strength it would give nothing
-void Player::offerCorpseCoat(Person* corpse)
-{
-    if (!corpse || corpse->coatTaken || corpse->type == rotta || corpse->type == pelaaja) return;
-    if (stats.health >= INITIAL_HP) return;
-    printer->showMessage("Riisutko takin? (k/e)", level, false);
-    const char c = InputNS::Input::getMenuKey();
-    if (c == 'k' || c == 'K') stripCorpseCoat(corpse);
 }
 
 bool Player::move(DirectionNS::Direction d, Level* level)
@@ -1040,11 +1043,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             blocked = true;
             p = nullptr;
         }
-        if (p && p->stats.health == 0 && p != this) {
-            // a corpse: nothing to say, but it has a coat
-            blocked = true;
-            offerCorpseCoat(p);
-        } else if (p)
+        if (p)
         {
             blocked = p->interact(msg, this);
             printer->showMessage(msg, level);
@@ -1054,7 +1053,6 @@ bool Player::move(DirectionNS::Direction d, Level* level)
                 if (i) {
                     level->addItem(i);
                 }
-                offerCorpseCoat(p);
             }
         }
     }

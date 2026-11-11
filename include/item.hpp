@@ -42,7 +42,8 @@ enum ItemType {
     ENeula,
     ELipas,
     ETakki,
-    EVyo
+    EVyo,
+    ERuumis
 };
 
 class Level;
@@ -378,6 +379,17 @@ public:
     virtual std::string typeToChar() const { return "="; }
     virtual std::string getMsg() const { return "Sotilaan vy\xC3\xB6! Pistooli kulkee vy\xC3\xB6ll\xC3\xA4 ja k\xC3\xA4""det j\xC3\xA4\xC3\xA4v\xC3\xA4t vapaiksi."; }
     virtual bool interact(PlayerNS::Player* player);
+};
+
+// Someone who fell and stays where he fell until the level changes. Not carried, does not
+// block the way; his coat can be taken off once ("Riisutko takin? (k/e)").
+class Ruumis : public Item {
+public:
+    Ruumis(const Coord& c) : Item(c, ERuumis) { }
+    virtual std::string typeToChar() const { return "\xE2\x80\xA0"; }
+    virtual std::string getMsg() const;
+    virtual bool interact(PlayerNS::Player* player);
+    bool coatTaken = false;
 };
 
 // A used syringe on the ground: stepping on it may give you HIV, and you will not know.
