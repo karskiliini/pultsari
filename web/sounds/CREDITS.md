@@ -57,3 +57,6 @@ Also from Pixabay under the Pixabay Content License. Trimmed, normalised and re-
 | intro/stamp.mp3 | freesound_community | https://pixabay.com/sound-effects/film-special-effects-traditional-stamp-44189/ |
 | intro/yay.mp3 | freesound_community | https://pixabay.com/sound-effects/people-yay-6326/ |
 | intro/blow.mp3 | freesound_community | https://pixabay.com/sound-effects/film-special-effects-079635-mouth-blowing-86263/ |
+| intro/heels.mp3 | DRAGON-STUDIO | https://pixabay.com/sound-effects/film-special-effects-high-heels-clicking-on-a-hard-floor-515263/ |
+| intro/steps.mp3 | sumaga123 | https://pixabay.com/sound-effects/people-shoe-steps-447693/ |
+| intro/pencil.mp3 | u_xg7ssi08yr | https://pixabay.com/sound-effects/film-special-effects-writing-with-pencil-371358/ |

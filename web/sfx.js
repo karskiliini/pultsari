@@ -34,8 +34,8 @@
     // overlap freely, unlike the vomit samples, and are loaded the first time the intro needs them.
     const introFiles = ['blow', 'bonk', 'burp', 'burp-big', 'chew', 'clank', 'clink', 'clinks', 'cough',
         'engine', 'explosion', 'explosion-big', 'falling', 'fart', 'fire', 'fuse', 'glass-break', 'glug',
-        'gulp', 'gun-cock', 'hiccup', 'hiccup2', 'jet', 'knock', 'machinegun', 'pigeon', 'radio', 'seagull',
-        'snap', 'sneak', 'snore', 'sob', 'squeak', 'stamp', 'thud', 'tick', 'whistle', 'whoosh', 'yay'];
+        'gulp', 'gun-cock', 'heels', 'hiccup', 'hiccup2', 'jet', 'knock', 'machinegun', 'pencil', 'pigeon', 'radio', 'seagull',
+        'snap', 'sneak', 'snore', 'sob', 'squeak', 'stamp', 'steps', 'thud', 'tick', 'whistle', 'whoosh', 'yay'];
     const intro = {};
     let introLoading = false;
     function loadIntro() {

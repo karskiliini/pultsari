@@ -212,6 +212,7 @@
             who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Toivoo saavansa säkin perunoita – ja onnistuu!',
             color: '#d07a9a',
             dur: 7.2 + READ_S,
+            sfx: [[1.6, 'steps', 0.5], [2.9, 'thud', 0.4], [5.3, 'steps', 0.5]],
             // she stares into the camera; pull back: a man brings her a sack of potatoes for her
             // service, she watches him go, then turns back to stare into the camera again
             render(ctx, W, H, t, fs) {
@@ -1104,7 +1105,7 @@
             who: 'SEKÄ', name: 'KOTIÄITI', line: '"Vanjuska... missä sä..." *hik*',
             color: '#e0a0c0',
             dur: 7.8 + READ_S,
-            sfx: [[0.5, 'hiccup2', 0.5], [1.4, 'whoosh', 0.3], [2.2, 'knock', 0.7], [4.4, 'whoosh', 0.3]],
+            sfx: [[0.5, 'hiccup2', 0.5], [1.4, 'whoosh', 0.3], [2.2, 'knock', 0.7], [4.4, 'whoosh', 0.3], [5.8, 'heels', 0.6]],
             // close on her crying over the vodka; pull back: an officer knocks, brings a medal and
             // the news that her son fell a hero; pull back: in the yard, a new Lada with a bow on
             // it, the compensation. She runs out and hugs it
@@ -1769,7 +1770,7 @@
             who: 'SEKÄ', name: 'ILMATORJUNTAMIES', line: '"Kohde havaittu!" Sirpaleita sataa taivaalta.',
             color: '#8a9a6a',
             dur: 8.6 + READ_S,
-            sfx: [[0.9, 'machinegun', 0.6], [1.6, 'whoosh', 0.3], [2.0, 'jet', 0.5], [3.0, 'explosion', 0.8], [4.4, 'clank', 0.6], [5.0, 'whoosh', 0.3], [7.9, 'machinegun', 0.6], [8.7, 'explosion', 0.4], [9.2, 'falling', 0.6]],
+            sfx: [[0.9, 'machinegun', 0.6], [1.6, 'whoosh', 0.3], [2, 'jet', 0.5], [3, 'explosion', 0.8], [4.4, 'clank', 0.6], [5, 'whoosh', 0.3], [6.4, 'pencil', 0.6], [7.9, 'machinegun', 0.6], [8.7, 'explosion', 0.4], [9.2, 'falling', 0.6]],
             // close on him shouting and firing; pull back: the target is one of our own planes,
             // red star and all, and the pilot bails out screaming; pull back: the tally board by
             // the gun, all own planes and no enemies, and the pilot lands next to him. Again.
@@ -2157,7 +2158,7 @@
             who: 'SEKÄ', name: 'FSB-AGENTTI', line: '"FSB valvoo." Kaikki on hallinnassa.',
             color: '#9a9aa8',
             dur: 8.6 + READ_S,
-            sfx: [[1.6, 'whoosh', 0.3], [1.9, 'sneak', 0.5], [3.6, 'whoosh', 0.3], [6.0, 'radio', 0.3], [7.2, 'radio', 0.3]],
+            sfx: [[1.6, 'whoosh', 0.3], [1.9, 'sneak', 0.5], [3.6, 'whoosh', 0.3], [4.8, 'steps', 0.3], [5.5, 'steps', 0.4], [6, 'radio', 0.3], [7.2, 'radio', 0.3]],
             // close on his eyes peering through holes in a newspaper; pull back: he is tailing
             // another agent; pull back: a whole ring of agents tailing each other round a park,
             // while the real suspect gets up off the bench in the middle and strolls away
@@ -2239,7 +2240,7 @@
             who: 'SEKÄ', name: 'JOHTAJA, 61', line: 'Kaatui ikkunasta. Ihan itse.',
             color: '#cfcfcf',
             dur: 8.2 + READ_S,
-            sfx: [[0.0, 'glass-break', 0.6], [1.8, 'thud', 0.8], [2.0, 'whoosh', 0.3], [3.6, 'knock', 0.4], [5.0, 'whoosh', 0.3], [7.0, 'gulp', 0.7]],
+            sfx: [[0, 'glass-break', 0.6], [1.8, 'thud', 0.8], [2, 'whoosh', 0.3], [3.6, 'knock', 0.4], [3.6, 'steps', 0.4], [5, 'whoosh', 0.3], [7, 'gulp', 0.7]],
             // close on him falling from his office window, calm about it; pull back: a queue of new
             // directors at the door, briefcases ready, and the glazier fixing the window. Again;
             // pull back: the queue runs off down the street. The next one looks out of the window
@@ -2356,7 +2357,7 @@
             who: 'SEKÄ', name: 'VARTIJA', line: '"Stoi! Lattiaan!" Kremlin vartio.',
             color: '#c0c0e0',
             dur: 9.0 + READ_S,
-            sfx: [[1.5, 'whoosh', 0.3], [3.8, 'whoosh', 0.3], [6.2, 'whoosh', 0.3], [7.4, 'seagull', 0.6], [8.0, 'machinegun', 0.7], [8.2, 'explosion', 0.3]],
+            sfx: [[1.5, 'whoosh', 0.3], [2.2, 'thud', 0.35], [3.8, 'whoosh', 0.3], [6.2, 'whoosh', 0.3], [7.4, 'seagull', 0.6], [8, 'machinegun', 0.7], [8.2, 'explosion', 0.3]],
             // close on a guard shouting; pull back: a huge row of guards in front of a red wall,
             // the Kremlin surely; pull back: it is Vova's own dacha on the Black Sea, and there
             // were no guards left for anywhere else; pull back: dozens of anti-aircraft guns round it
@@ -2470,7 +2471,7 @@
             who: 'SEKÄ', name: 'AVUSTAJA', line: 'Henkilökohtainen avustaja. Henkilökohtaisesti kännissä.',
             color: '#a0b0d0',
             dur: 8.6 + READ_S,
-            sfx: [[1.6, 'whoosh', 0.3], [1.8, 'hiccup', 0.5], [2.4, 'clinks', 0.6], [3.0, 'glug', 0.6], [4.2, 'whoosh', 0.3], [5.6, 'bonk', 0.6], [7.7, 'hiccup2', 0.5]],
+            sfx: [[1.6, 'whoosh', 0.3], [1.8, 'hiccup', 0.5], [2.4, 'clinks', 0.6], [3, 'glug', 0.6], [4.2, 'whoosh', 0.3], [4.6, 'steps', 0.4], [5.6, 'bonk', 0.6], [7.7, 'hiccup2', 0.5]],
             // close on him carrying the nuclear briefcase with great care; pull back: he is drunk
             // and the case is full of vodka; pull back: he staggers after Vova down a Kremlin
             // corridor, and the real briefcase sits forgotten on the bar behind them
@@ -2572,7 +2573,7 @@
             who: 'VIERAILEVA TÄHTI', name: 'MEDVEDEV', line: 'Kirjoittaa Telegramiin. ISOILLA KIRJAIMILLA.',
             color: '#e0e0e0',
             dur: 8.2 + READ_S,
-            sfx: [[1.6, 'whoosh', 0.3], [3.0, 'tick', 0.5], [4.0, 'whoosh', 0.3]],
+            sfx: [[1.6, 'whoosh', 0.3], [3, 'tick', 0.5], [4, 'whoosh', 0.3], [6.2, 'steps', 0.4]],
             // close on him on the throne, proud; pull back: the throne says it is reserved for
             // V.V.P.; pull back: Vova with a stopwatch. "Warm? Move." He hops down onto his own
             // little stool, and Vova sits down
