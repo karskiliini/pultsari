@@ -877,6 +877,28 @@ static bool conscriptionGoesToWar(const GameState& gs)
     return gs.phase == GamePhase::Moscow && !gs.hasBeenToWar;
 }
 
+// The player walked to the rear after the shift: the next war level, or home after the last.
+static void leaveFront(Level& level, Printer* printer, GameState& gs)
+{
+    const char* msg;
+    switch (gs.warStage) {
+        case 1:
+            msg = "Selustassa sinut lastataan Uralin lavalle. Vuorovaihto tarkoittaa uutta kuoppaa: Ei-kenenk\xC3\xA4\xC3\xA4n-maa.";
+            break;
+        case 2:
+            msg = "Ural kolisee taas eteenp\xC3\xA4in. Lepoa luvattiin, mutta saat kyl\xC3\xA4n rauniot.";
+            break;
+        default:
+            msg = "KOTIUTUS! Sopimuksesi umpeutui, kun kukaan ei katsonut. Juna vie sinut takaisin Moskovaan veteraanina.";
+            break;
+    }
+    gs.advanceLevel();
+    printer->setMessage(msg);
+    printer->print(&level);
+    if (common::realtimeEnabled) common::sleep(3000);
+    else InputNS::Input::waitKey();
+}
+
 static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, Printer* printer, const std::string& cause)
 {
     constexpr uint32_t FRAME_MS = 50;
@@ -1554,6 +1576,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         level.skyTick();
                         level.robberyTick();
                         level.fsbTick();
+                        level.warTick();
                         if (level.events) level.events->update();
 
                         // ambient audio sources
@@ -1666,6 +1689,11 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     nextLevel = true;
                     break;
                 }
+                if (player.stats.health > 0 && level.reachedRear(player.coord)) {
+                    leaveFront(level, printer, gameState);
+                    nextLevel = true;
+                    break;
+                }
 
                 if (player.conscripted) {
                     player.conscripted = false;
@@ -1746,6 +1774,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     level.skyTick();
                     level.robberyTick();
                     level.fsbTick();
+                    level.warTick();
                     if (level.events) level.events->update();
 
                     // ambient audio sources
@@ -1802,6 +1831,11 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                 if (player.wonGame) {
                     gameState.phase = GamePhase::Victory;
+                    nextLevel = true;
+                    break;
+                }
+                if (player.stats.health > 0 && level.reachedRear(player.coord)) {
+                    leaveFront(level, printer, gameState);
                     nextLevel = true;
                     break;
                 }

@@ -186,6 +186,15 @@ public:
     FsbPatrol fsbPatrol;
     // world tick: the longer the player walks down the road, the likelier the FSB comes for him
     void fsbTick();
+    // The front: after a shift in the trench the rear opens at the map's left
+    // edge, and walking there takes the player to the next war level.
+    static constexpr uint32_t WAR_SHIFT_TICKS = 120;
+    static constexpr uint32_t REAR_X = 1;
+    uint32_t warTicks = 0;
+    bool rearOpen = false;
+    // world tick: counts the shift down and opens the rear when it is over
+    void warTick();
+    bool reachedRear(const Coord& c) const;
     bool hasVehicle(const Vehicle* v) const;
     // the FSB man who has the player by the collar, if any
     FSBAgent* fsbHolder() const;
