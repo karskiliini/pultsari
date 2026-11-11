@@ -285,13 +285,13 @@ void Alko::interact(PlayerNS::Player* player, std::string& msg)
     switch(purchase)
     {
         case InputNS::ostakalja:
+            if (!player->inventory.give(Thing::Kalja)) { msg = HANDS_FULL_MSG; break; }
             msg = "Myyjä: 'Спасибо. Seuraava!'";
-            ++player->inventory.kalja;
             player->updateMoney(-10);
             break;
         case InputNS::ostalonkka:
             if (player->stats.money < 15) { msg = "Myyj\xC3\xA4: 'Jaguar maksaa viisitoista. Ota Baltika.'"; break; }
-            ++player->inventory.lonkka;
+            if (!player->inventory.give(Thing::Lonkka)) { msg = HANDS_FULL_MSG; break; }
             player->updateMoney(-15);
             msg = "Myyjä: 'Jaguar on kielletty. Se maksaa siksi vähän enemmän.'";
             break;
@@ -359,10 +359,10 @@ bool Divari::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
         msg = "Panttilainaaja: 'Olet sikakännissä. Ulos täältä!'";
         return false;
     }
-    else if ((player->inventory.bootsit == 0) &&
-             (player->inventory.pamput == 0) &&
-             (player->inventory.ketjut == 0) &&
-             (player->inventory.veitset == 0)) {
+    else if (player->inventory.count(Thing::Bootsit) == 0 &&
+             player->inventory.count(Thing::Pamppu) == 0 &&
+             player->inventory.count(Thing::Ketjut) == 0 &&
+             player->inventory.count(Thing::Veitsi) == 0) {
            msg = "Panttilainaaja: 'Sinulla ei ole mitään, mitä ostaisin. Пока.'";
            return false;
     }
@@ -385,38 +385,34 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
 
         switch(item) {
             case 1:
-                if (player->inventory.bootsit < 1) {
+                if (!player->inventory.take(Thing::Bootsit)) {
                     msg = "Sinulla ei ole verkkareita. Housutkin ovat lainassa.";
                 } else {
-                    --player->inventory.bootsit;
                     player->updateMoney(100);
                     msg = "Adidas-verkkarit menivät satasella. Kolme raitaa, kolme kertaa hinta.";
                 }
                 break;
             case 2:
-                if (player->inventory.pamput < 1) {
+                if (!player->inventory.take(Thing::Pamppu)) {
                     msg = "Joo, montahan noita pamppuja sinulla onkin.";
                 } else {
-                    --player->inventory.pamput;
                     uint32_t price = std::rand() % 40 + 1;
                     player->updateMoney(price);
                     msg = "Pamppu meni " + std::to_string(price) + " ruplalla. Ei kysytty, kenen se oli.";
                 }
                 break;
             case 3:
-                if (player->inventory.ketjut < 1) {
+                if (!player->inventory.take(Thing::Ketjut)) {
                     msg = "Sinulla ei ole yhtikäs yhtään ketjun pätkääkään.";
                 } else {
-                    --player->inventory.ketjut;
                     player->updateMoney(30);
                     msg = "Myit ketjut kolmellakympillä.";
                 }
                 break;
             case 4:
-                if (player->inventory.veitset < 1) {
+                if (!player->inventory.take(Thing::Veitsi)) {
                     msg = "Et omista veitsiä.";
                 } else {
-                    --player->inventory.veitset;
                     uint32_t price = std::rand() % 50 + 1;
                     player->updateMoney(price);
                     msg = "Veitsestä sai " + std::to_string(price) + " ruplaa.";
@@ -736,9 +732,11 @@ bool Hypermarket::bumpWall(PlayerNS::Player* player, const Coord& c, std::string
         return seen;
     };
 
-    if (player->inventory.pullot > 0) {
-        --player->inventory.pullot;
-        ++hatchBottles;
+    // every empty bottle in the hands goes through at once
+    uint32_t handedIn = 0;
+    while (player->inventory.take(Thing::Tyhja)) ++handedIn;
+    if (handedIn > 0) {
+        hatchBottles += handedIn;
         static const char* grumble[] = {
             "T\xC3\xA4ti: 'T\xC3\xA4m\xC3\xA4 on lohjennut. No, otetaan nyt.'",
             "T\xC3\xA4ti: 'Etiketti on revitty. Ei kuulu minulle.'",
@@ -746,8 +744,9 @@ bool Hypermarket::bumpWall(PlayerNS::Player* player, const Coord& c, std::string
             "T\xC3\xA4ti nuuhkaisee pulloa ja irvist\xC3\xA4\xC3\xA4.",
             "T\xC3\xA4ti: 'Lis\xC3\xA4\xC3\xA4? Olenko min\xC3\xA4 joku automaatti?'",
         };
-        msg = "Ojennat tyhj\xC3\xA4n pullon luukusta (" + std::to_string(hatchBottles) + "). " + grumble[std::rand() % 5];
-        if (player->inventory.pullot == 0) msg += " Kolauta luukkua viel\xC3\xA4 kerran, niin saat kuitin.";
+        msg = std::string(handedIn == 1 ? "Ojennat tyhj\xC3\xA4n pullon luukusta (" : "Ojennat tyhj\xC3\xA4t pullot luukusta (") +
+              std::to_string(hatchBottles) + "). " + grumble[std::rand() % 5];
+        msg += " Kolauta luukkua viel\xC3\xA4 kerran, niin saat kuitin.";
         for (auto v : guardsWhoSee()) {
             if (!v->chasing) continue;
             v->chasing = false;
@@ -816,16 +815,18 @@ void Hypermarket::interact(PlayerNS::Player* player, std::string& msg)
         int roll = std::rand() % 100;
         if (roll < 20) {
             msg = "Löydät pivoa savuiselta hyllyltä!";
-            player->inventory.kalja += 2;
+            player->receive(Thing::Kalja);
+            player->receive(Thing::Kalja);
         } else if (roll < 35) {
             msg = "Löydät doktorskaja-makkaraa!";
-            player->inventory.lenkki += 1;
+            player->receive(Thing::Lenkki);
         } else if (roll < 50) {
             msg = "Löydät Jaguar-tölkkejä!";
-            player->inventory.lonkka += 2;
+            player->receive(Thing::Lonkka);
+            player->receive(Thing::Lonkka);
         } else if (roll < 60) {
             msg = "Löydät vodkaa romahtaneelta hyllyltä!";
-            player->inventory.vodka += 1;
+            player->receive(Thing::Vodka);
         } else if (roll < 75) {
             msg = "Hylly kaatuu päällesi!";
             player->damage(3);
@@ -835,20 +836,22 @@ void Hypermarket::interact(PlayerNS::Player* player, std::string& msg)
         return;
     }
     // grand tyr: grab what you can and run
-    auto& inv = player->inventory;
+    // what does not fit the hands drops on the floor next to you
     msg = "Kahmit hyllyistä:";
     const int grabs = 1 + std::rand() % 3;
+    bool fits = true;
     for (int i = 0; i < grabs; ++i) {
         switch (std::rand() % 6) {
-        case 0: ++inv.vodka; msg += " vodkaa,"; break;
-        case 1: inv.kalja += 2; msg += " kaksi Baltikaa,"; break;
-        case 2: ++inv.lenkki; msg += " makkaraa,"; break;
-        case 3: ++inv.kalat; msg += " voblaa,"; break;
-        case 4: ++inv.lonkka; msg += " Jaguaria,"; break;
-        default: ++inv.bansku; msg += " banaanin,"; break;
+        case 0: fits &= player->receive(Thing::Vodka); msg += " vodkaa,"; break;
+        case 1: fits &= player->receive(Thing::Kalja); fits &= player->receive(Thing::Kalja); msg += " kaksi Baltikaa,"; break;
+        case 2: fits &= player->receive(Thing::Lenkki); msg += " makkaraa,"; break;
+        case 3: fits &= player->receive(Thing::Kala); msg += " voblaa,"; break;
+        case 4: fits &= player->receive(Thing::Lonkka); msg += " Jaguaria,"; break;
+        default: fits &= player->receive(Thing::Bansku); msg += " banaanin,"; break;
         }
     }
     msg.back() = '!';
+    if (!fits) msg += std::string(" ") + HANDS_FULL_MSG;
     // the theft alarm beeps: guards who hear it come running
     msg += " Hälytin piippaa: VARAS!";
     if (level) {
@@ -971,7 +974,7 @@ bool Kauppa::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
     if (kind == Kind::Produkty)
         msg = "MYYJ\xC3\x84: 1) Makkara 6\xE2\x82\xBD  2) Vobla 4\xE2\x82\xBD  3) Antonovka 2\xE2\x82\xBD  4) Baltika 10\xE2\x82\xBD  muu) ulos";
     else if (kind == Kind::Oruzhie)
-        msg = "MYYJ\xC3\x84: 1) Veitsi 8\xE2\x82\xBD  2) Makarov + 6 panosta 35\xE2\x82\xBD  3) 12 panosta 10\xE2\x82\xBD  "
+        msg = "MYYJ\xC3\x84: 1) Veitsi 8\xE2\x82\xBD  2) Makarov + 8 panosta 35\xE2\x82\xBD  3) Lipas 10\xE2\x82\xBD  "
               "4) Granaatti 25\xE2\x82\xBD  5) Kalashnikov + 30 panosta 90\xE2\x82\xBD  muu) ulos";
     else
         msg = "MYYJ\xC3\x84: 1) Baltika 10\xE2\x82\xBD  2) Banaani 5\xE2\x82\xBD  3) Jaguar 15\xE2\x82\xBD  4) Vodka 25\xE2\x82\xBD  muu) ulos";
@@ -997,6 +1000,14 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
     }
     const int k = c - '1';
     const int price = kind == Kind::Produkty ? foodPrice[k] : kind == Kind::Oruzhie ? gunPrice[k] : kioskPrice[k];
+    static const Thing food[] = { Thing::Lenkki, Thing::Kala, Thing::Omppo, Thing::Kalja };
+    static const Thing guns[] = { Thing::Veitsi, Thing::Pistooli, Thing::Lipas, Thing::Granata, Thing::Rynkky };
+    static const Thing kiosk[] = { Thing::Kalja, Thing::Bansku, Thing::Lonkka, Thing::Vodka };
+    const Thing bought = kind == Kind::Produkty ? food[k] : kind == Kind::Oruzhie ? guns[k] : kiosk[k];
+    if (!player->inventory.fits(bought)) {
+        msg = HANDS_FULL_MSG;   // no room, no sale: the money stays
+        return;
+    }
     if ((int)player->stats.money < price) {
         static const char* broke[] = {
             "Myyj\xC3\xA4: 'Ei rahaa? Ulos, bom\xC5\xBE""!'",
@@ -1008,28 +1019,28 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
         return;
     }
     player->updateMoney(-price);
-    auto& inv = player->inventory;
+    player->inventory.give(bought);
     if (kind == Kind::Produkty) {
         switch (k) {
-        case 0: ++inv.lenkki; msg = "Makkarassa on 30 % lihaa. Loput on toivoa."; break;
-        case 1: ++inv.kalat;  msg = "Vobla on kuivempi kuin myyj\xC3\xA4n huumorintaju."; break;
-        case 2: ++inv.omppo;  msg = "Antonovka. Kotimainen. Ainoa asia, jota ei ole pakotteissa."; break;
-        default: ++inv.kalja; msg = "Myyj\xC3\xA4 l\xC3\xA4im\xC3\xA4ytt\xC3\xA4\xC3\xA4 Baltikan tiskille. 'Seuraava!'"; break;
+        case 0: msg = "Makkarassa on 30 % lihaa. Loput on toivoa."; break;
+        case 1: msg = "Vobla on kuivempi kuin myyj\xC3\xA4n huumorintaju."; break;
+        case 2: msg = "Antonovka. Kotimainen. Ainoa asia, jota ei ole pakotteissa."; break;
+        default: msg = "Myyj\xC3\xA4 l\xC3\xA4im\xC3\xA4ytt\xC3\xA4\xC3\xA4 Baltikan tiskille. 'Seuraava!'"; break;
         }
     } else if (kind == Kind::Oruzhie) {
         switch (k) {
-        case 0: ++inv.veitset; msg = "Myyj\xC3\xA4: 'Veitsi. Kiinalainen, mutta ter\xC3\xA4v\xC3\xA4.'"; break;
-        case 1: ++inv.pistooli; inv.ammukset += 6; msg = "Myyj\xC3\xA4 ty\xC3\xB6nt\xC3\xA4\xC3\xA4 Makarovin tiskin yli. 'Ei kuittia. Ei kysymyksi\xC3\xA4.'"; break;
-        case 2: inv.ammukset += 12; msg = "Kaksitoista panosta paperipussissa. Osa on ruosteessa."; break;
-        case 3: ++inv.granata; msg = "Myyj\xC3\xA4: 'Granaatti. Sokka on paikallaan. Toistaiseksi.'"; break;
-        default: ++inv.rynkky; inv.ammukset += 30; msg = "Kalashnikov tiskin alta. Myyj\xC3\xA4: 'Rintamalta. \xC3\x84l\xC3\xA4 kysy milt\xC3\xA4 rintamalta.'"; break;
+        case 0: msg = "Myyj\xC3\xA4: 'Veitsi. Kiinalainen, mutta ter\xC3\xA4v\xC3\xA4.'"; break;
+        case 1: msg = "Myyj\xC3\xA4 ty\xC3\xB6nt\xC3\xA4\xC3\xA4 Makarovin tiskin yli. 'Ei kuittia. Ei kysymyksi\xC3\xA4.'"; break;
+        case 2: msg = "Lipas paperipussissa. Osa panoksista on ruosteessa."; break;
+        case 3: msg = "Myyj\xC3\xA4: 'Granaatti. Sokka on paikallaan. Toistaiseksi.'"; break;
+        default: msg = "Kalashnikov tiskin alta. Myyj\xC3\xA4: 'Rintamalta. \xC3\x84l\xC3\xA4 kysy milt\xC3\xA4 rintamalta.'"; break;
         }
     } else {
         switch (k) {
-        case 0: ++inv.kalja;  msg = "Myyj\xC3\xA4: 'Baltika. L\xC3\xA4mmin. Ota tai j\xC3\xA4t\xC3\xA4.'"; break;
-        case 1: ++inv.bansku; msg = "Banaani on Ecuadorista. Se on n\xC3\xA4hnyt enemm\xC3\xA4n maailmaa kuin sin\xC3\xA4."; break;
-        case 2: ++inv.lonkka; msg = "Myyj\xC3\xA4: 'Jaguar on kielletty. Siksi se maksaa enemm\xC3\xA4n.'"; break;
-        default: ++inv.vodka; msg = "Vodka tiskin alta. Etiketti on liimattu vinoon."; break;
+        case 0: msg = "Myyj\xC3\xA4: 'Baltika. L\xC3\xA4mmin. Ota tai j\xC3\xA4t\xC3\xA4.'"; break;
+        case 1: msg = "Banaani on Ecuadorista. Se on n\xC3\xA4hnyt enemm\xC3\xA4n maailmaa kuin sin\xC3\xA4."; break;
+        case 2: msg = "Myyj\xC3\xA4: 'Jaguar on kielletty. Siksi se maksaa enemm\xC3\xA4n.'"; break;
+        default: msg = "Vodka tiskin alta. Etiketti on liimattu vinoon."; break;
         }
     }
     queueRage(this, player, msg, 35);
@@ -1081,10 +1092,15 @@ void SuljettuLiike::interact(PlayerNS::Player* player, std::string& msg)
         msg = "Myyj\xC3\xA4: 'Ei rahaa, ei kamaa. T\xC3\xA4m\xC3\xA4 ei ole sosiaalitoimisto.'";
         return;
     }
+    // the vodka needs a free hand; the other two are used on the spot
+    if ((c == '1' || c == '2') && !player->inventory.fits(Thing::Vodka)) {
+        msg = HANDS_FULL_MSG;
+        return;
+    }
     player->updateMoney(-price);
     switch (c) {
     case '1':
-        ++player->inventory.vodka;
+        player->inventory.give(Thing::Vodka);
         msg = "Pullossa lukee 'Absolut'. Kirjaimet ovat v\xC3\xA4\xC3\xA4rin p\xC3\xA4in. Sis\xC3\xA4lt\xC3\xB6 on aitoa.";
         break;
     case '2':
@@ -1093,7 +1109,7 @@ void SuljettuLiike::interact(PlayerNS::Player* player, std::string& msg)
             player->damage(2);
             msg = "Samogon polttaa kurkkua kuin jet-polttoaine. N\xC3\xA4k\xC3\xB6kentt\xC3\xA4 kapenee hetkeksi.";
         } else {
-            ++player->inventory.vodka;
+            player->inventory.give(Thing::Vodka);
             msg = "Samogon kolmen litran kurkkupurkissa. Mummon resepti, sanoo myyj\xC3\xA4.";
         }
         break;
@@ -1265,9 +1281,11 @@ void Bensa::interact(PlayerNS::Player* player, std::string& msg)
     if (c == '1' || c == '2') {
         const int price = c == '1' ? 6 : 12;
         if ((int)player->stats.money < price) { msg = "Kassa: 'Rahat ensin. Hinnat nousivat juuri.'"; return; }
+        const Thing bought = c == '1' ? Thing::Lenkki : Thing::Kalja;
+        if (!player->inventory.give(bought)) { msg = HANDS_FULL_MSG; return; }
         player->updateMoney(-price);
-        if (c == '1') { ++player->inventory.lenkki; msg = "Hot dog on ollut grillissä viikon. Se on nyt osa grilliä."; }
-        else { ++player->inventory.kalja; msg = "Baltika maksaa enemmän kuin eilen. Kassa ei tiedä miksi."; }
+        if (c == '1') { msg = "Hot dog on ollut grillissä viikon. Se on nyt osa grilliä."; }
+        else { msg = "Baltika maksaa enemmän kuin eilen. Kassa ei tiedä miksi."; }
         return;
     }
     if (c == '3') {

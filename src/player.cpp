@@ -180,9 +180,8 @@ bool Player::interact(std::string& msg, Person* source)
 
     if (source->type == yka) {
         if (common::realtimeEnabled) {
-            if (inventory.kalja > 0) {
+            if (inventory.take(Thing::Kalja)) {
                 msg = "Yevgeni pummaa pivoa. Annat yhden.";
-                --inventory.kalja;
                 return true;
             } else {
                 msg = "Yevgeni taputtelee palleaasi. Nyrkillä.";
@@ -199,7 +198,7 @@ bool Player::interact(std::string& msg, Person* source)
             case 'k':
             case 'K':
                 msg = "Yevgeni kiittelee: \"Спасибо, брат!\" ja istuu alas kittaamaan pivoasi.";
-                --inventory.kalja;
+                inventory.take(Thing::Kalja);
                 return true;
                 break;
             case 'e':
@@ -234,20 +233,20 @@ void Player::resetPosition()
 
 bool Player::drink(Level* level)
 {
-    if ((inventory.kalja > 0) && (inventory.lonkka > 0))
+    const bool kalja = inventory.count(Thing::Kalja) > 0, lonkka = inventory.count(Thing::Lonkka) > 0;
+    if (kalja && lonkka)
     {
         printer->showMessage("Kumpaakos horaat, pivoa vai Jaguaria (1,2)?", level);
         auto type = InputNS::Input::getDrink();
         switch(type)
         {
             case InputNS::kalja:
-                --inventory.kalja;
-                ++inventory.pullot;
+                inventory.drain(Thing::Kalja);
                 printer->showMessage("Glub glub glub glub ..... Burb !!!", level, false);
                 updatepromilles(2);
                 break;
             case InputNS::lonkka:
-                --inventory.lonkka;
+                inventory.drain(Thing::Lonkka);
                 printer->showMessage("Glub glub glub glub ..... Burb !!!", level, false);
                 updatepromilles(4);
                 break;
@@ -256,15 +255,14 @@ bool Player::drink(Level* level)
                 return false;
         }
     }
-    else if (inventory.lonkka > 0) {
+    else if (lonkka) {
         printer->showMessage("Glub glub .. gulb gulu... ooorbbbs.", level);
-        --inventory.lonkka;
+        inventory.drain(Thing::Lonkka);
         updatepromilles(4);
     }
-    else if (inventory.kalja > 0) {
+    else if (kalja) {
         printer->showMessage("<Tsuuuhss> .. gluuuub gluub glub ... ooorrroyyh hh hh", level);
-        --inventory.kalja;
-        ++inventory.pullot;
+        inventory.drain(Thing::Kalja);
         updatepromilles(3);
     } else {
         printer->showMessage("Ei oo ehtaa tavaraa.", level);
@@ -276,10 +274,12 @@ bool Player::drink(Level* level)
 
 bool Player::eat(Level* level)
 {
-    if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
+    const bool kalat = inventory.count(Thing::Kala) > 0, omppo = inventory.count(Thing::Omppo) > 0;
+    const bool bansku = inventory.count(Thing::Bansku) > 0, lenkki = inventory.count(Thing::Lenkki) > 0;
+    if (!kalat && !omppo && !bansku && !lenkki) {
         printer->showMessage("Ei syötävää.", level);
-    } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.lenkki == 0)) {
-        --inventory.bansku;
+    } else if (!kalat && !omppo && !lenkki) {
+        inventory.take(Thing::Bansku);
         if (random(50)) {
             printer->showMessage("Ei vaikutusta.", level);
         } else {
@@ -287,8 +287,8 @@ bool Player::eat(Level* level)
             printer->showMessage("Banaani teki teraa !!!", level);
         }
         feedHunger(10);
-    } else if ((inventory.kalat == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
-        --inventory.omppo;
+    } else if (!kalat && !bansku && !lenkki) {
+        inventory.take(Thing::Omppo);
         if (random(50)) {
             damage(1);
             printer->showMessage("Antonovka oli pilaantunut,oksennat.", level);
@@ -297,8 +297,8 @@ bool Player::eat(Level* level)
             printer->showMessage("Omena oli herkullinen !!!", level);
             feedHunger(15);
         }
-    } else if ((inventory.omppo == 0) && (inventory.bansku == 0) && (inventory.lenkki == 0)) {
-        --inventory.kalat;
+    } else if (!omppo && !bansku && !lenkki) {
+        inventory.take(Thing::Kala);
         if (random(70)) {
             damage(2);
             printer->showMessage("Syomasi kala sisalsi matoja...", level);
@@ -307,9 +307,9 @@ bool Player::eat(Level* level)
             printer->showMessage("Kala antaa sinulle uutta puhtia !!!", level);
             feedHunger(30);
         }
-    } else if ((inventory.kalat == 0) && (inventory.omppo == 0) && (inventory.bansku == 0)) {
+    } else if (!kalat && !omppo && !bansku) {
         powerup(1);
-        --inventory.lenkki;
+        inventory.take(Thing::Lenkki);
         printer->showMessage("Oispa edes samogonia kaveriksi.", level);
         feedHunger(25);
     } else {
@@ -318,19 +318,17 @@ bool Player::eat(Level* level)
 
         switch(type) {
             case InputNS::foodlenkki:
-                if (inventory.lenkki == 0) {
+                if (!inventory.take(Thing::Lenkki)) {
                     printer->showMessage("Ei ole niitä.", level, false);
                 } else {
-                    --inventory.lenkki;
                     printer->showMessage("Mamamamakkaraa.", level, false);
                     feedHunger(25);
                 }
                 break;
             case InputNS::foodkala:
-                if (inventory.kalat == 0) {
+                if (!inventory.take(Thing::Kala)) {
                     printer->showMessage("Kalat loppu.", level, false);
                 } else {
-                    --inventory.kalat;
                     if (random(70)) {
                         damage(2);
                         printer->showMessage("Syomasi kala sisalsi matoja...", level, false);
@@ -342,10 +340,9 @@ bool Player::eat(Level* level)
                 }
                 break;
             case InputNS::foodomppo:
-                if (inventory.omppo == 0) {
+                if (!inventory.take(Thing::Omppo)) {
                     printer->showMessage("EE OO OMMPPOJA.", level, false);
                 } else {
-                    --inventory.omppo;
                     if (random(50)) {
                         damage(1);
                         printer->showMessage("Joku oli kaytellyt keski keppiaan antonovkaasi.", level, false);
@@ -357,10 +354,9 @@ bool Player::eat(Level* level)
                 }
                 break;
             case InputNS::foodbansku:
-                if (inventory.bansku == 0) {
+                if (!inventory.take(Thing::Bansku)) {
                     printer->showMessage("Bailu ilman banaania?", level, false);
                 } else {
-                    --inventory.bansku;
                     if (random(50)) {
                         printer->showMessage("Banaani ei vaikuttanut.", level, false);
                     } else {
@@ -454,116 +450,64 @@ static DirectionNS::Direction getDirection(Level* level, Printer* printer)
 
 bool Player::decrementInventory(uint32_t index)
 {
-    switch(index) {
-        case 1:
-            if (inventory.kalja == 0) {
-                printer->showMessage("Ei ole pivoa...", level, false);
-                return false;
-            } else {
-                --inventory.kalja;
-            }
-            break;
-        case 2:
-            if (inventory.lonkka == 0) {
-                printer->showMessage("Ei ole Jaguaria...", level, false);
-                return false;
-            } else {
-                --inventory.lonkka;
-            }
-            break;
-        case 3:
-            if (inventory.lenkki == 0) {
-                printer->showMessage("Ei ole makkaraa...", level, false);
-                return false;
-            } else {
-                --inventory.lenkki;
-            }
-            break;
-        case 4:
-            if (inventory.ketjut == 0) {
-                printer->showMessage("Ei ole kettinkiä...", level, false);
-                return false;
-            } else {
-                --inventory.ketjut;
-            }
-            break;
-        case 5:
-            if (inventory.veitset == 0) {
-                printer->showMessage("Ei ole puukkoja...", level, false);
-                return false;
-            } else {
-                --inventory.veitset;
-            }
-            break;
-        case 6:
-            if (inventory.kivet == 0) {
-                printer->showMessage("Ei ole kiviä...", level, false);
-                return false;
-            } else {
-                --inventory.kivet;
-            }
-            break;
-        case 7:
-            if (inventory.pamput == 0) {
-                printer->showMessage("Ei ole pamppuja...", level, false);
-                return false;
-            } else {
-                --inventory.pamput;
-            }
-            break;
-        case 8:
-            if (inventory.bootsit == 0) {
-                printer->showMessage("Ei ole verkkareita...", level, false);
-                return false;
-            } else {
-                --inventory.bootsit;
-            }
-            break;
-        case 9:
-            if (inventory.kalat == 0) {
-                printer->showMessage("Ei ole voblaa...", level, false);
-                return false;
-            } else {
-                --inventory.kalat;
-            }
-            break;
-        case 10:
-            if (inventory.omppo == 0) {
-                printer->showMessage("Ei ole omenia...", level, false);
-                return false;
-            } else {
-                --inventory.omppo;
-            }
-            break;
-        case 11:
-            if (inventory.bansku == 0) {
-                printer->showMessage("Ei ole banaaneja...", level, false);
-                return false;
-            } else {
-                --inventory.bansku;
-            }
-            break;
-        case 13:
-            if (inventory.vodka == 0) {
-                printer->showMessage("Ei ole vodkaa...", level, false);
-                return false;
-            } else {
-                --inventory.vodka;
-                if (inventory.pissVodka.size() > inventory.vodka) inventory.pissVodka.pop_back();
-            }
-            break;
-        case 14:
-            if (inventory.granata == 0) {
-                printer->showMessage("Ei ole kranaatteja...", level, false);
-                return false;
-            } else {
-                --inventory.granata;
-            }
-            break;
-        default:
-            return false;
+    const Thing t = throwNumToThing(index);
+    if (t == Thing::None) return false;
+    if (inventory.take(t)) return true;
+    const char* missing = "";
+    switch (t) {
+        case Thing::Kalja:   missing = "Ei ole pivoa..."; break;
+        case Thing::Lonkka:  missing = "Ei ole Jaguaria..."; break;
+        case Thing::Lenkki:  missing = "Ei ole makkaraa..."; break;
+        case Thing::Ketjut:  missing = "Ei ole kettinki\xC3\xA4..."; break;
+        case Thing::Veitsi:  missing = "Ei ole puukkoja..."; break;
+        case Thing::Kivi:    missing = "Ei ole kivi\xC3\xA4..."; break;
+        case Thing::Pamppu:  missing = "Ei ole pamppuja..."; break;
+        case Thing::Bootsit: missing = "Ei ole verkkareita..."; break;
+        case Thing::Kala:    missing = "Ei ole voblaa..."; break;
+        case Thing::Omppo:   missing = "Ei ole omenia..."; break;
+        case Thing::Bansku:  missing = "Ei ole banaaneja..."; break;
+        case Thing::Vodka:   missing = "Ei ole vodkaa..."; break;
+        case Thing::Granata: missing = "Ei ole kranaatteja..."; break;
+        case Thing::Tyhja:   missing = "Ei ole tyhj\xC3\xA4\xC3\xA4 pulloa..."; break;
+        default: break;
     }
-    return true;
+    printer->showMessage(missing, level, false);
+    return false;
+}
+
+bool Player::receive(Thing t, const std::string& pissSeller)
+{
+    Held h = Inventory::heldOf(t);
+    if (t == Thing::Vodka) h.fill = VODKA_SIPS;
+    if (t == Thing::Pistooli) h.rounds = MAKAROV_ROUNDS;
+    if (t == Thing::Rynkky) h.rounds = AK_ROUNDS;
+    h.pissSeller = pissSeller;
+    return receive(h);
+}
+
+bool Player::receive(const Held& h)
+{
+    if (h.empty()) return false;
+    if (inventory.give(h)) return true;
+    dropNear(Item::createThing(h.what, coord));
+    return false;
+}
+
+// a free cell next to you, or your own if there is none
+void Player::dropNear(Item* item)
+{
+    if (!item) return;
+    item->coord = coord;
+    if (!level) { delete item; return; }
+    const int d[8][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1}, {1, 1}, {-1, 1}, {1, -1}, {-1, -1} };
+    for (const auto& o : d) {
+        const Coord c { (uint32_t)((int)coord.x + o[0]), (uint32_t)((int)coord.y + o[1]) };
+        if (c.x >= common::SIZEX || c.y >= common::SIZEY) continue;
+        if (level->hit(c) || level->getVehicleAt(c)) continue;
+        item->coord = c;
+        break;
+    }
+    level->addItem(item);
 }
 
 static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
@@ -651,11 +595,12 @@ bool Player::shoot(DirectionNS::Direction dir)
 
 bool Player::shootAt(float angle)
 {
-    if (inventory.ammukset == 0) {
+    Held* gun = inventory.find(Thing::Pistooli);
+    if (!gun || gun->rounds == 0) {
         printer->showMessage("Ei ammuksia!", level, false);
         return false;
     }
-    --inventory.ammukset;
+    --gun->rounds;
 
     if (level->isWarLevel) {
         int roll = std::rand() % 100;
@@ -820,14 +765,14 @@ bool Player::move(DirectionNS::Direction d, Level* level)
         if (getaway && getaway->loot) {
             // the robbers left the glovebox unlocked
             getaway->loot = false;
-            msg = "Penkot ry\xC3\xB6st\xC3\xA4jien autoa: ";
-            const uint32_t rounds = 8 + std::rand() % 10;
-            inventory.ammukset += rounds;
-            msg += std::to_string(rounds) + " patruunaa";
-            if (inventory.pistooli == 0 || common::random(40)) { ++inventory.pistooli; msg += ", pistooli"; }
-            if (common::random(40)) { ++inventory.granata; msg += ", kranaatti"; }
-            if (common::random(25)) { ++inventory.rynkky; inventory.ammukset += 30; msg += ", RYNKKY"; }
+            // what does not fit is left on the ground next to the car
+            msg = "Penkot ry\xC3\xB6st\xC3\xA4jien autoa: lipas";
+            bool fits = receive(Thing::Lipas);
+            if (inventory.count(Thing::Pistooli) == 0 || common::random(40)) { fits &= receive(Thing::Pistooli); msg += ", pistooli"; }
+            if (common::random(40)) { fits &= receive(Thing::Granata); msg += ", kranaatti"; }
+            if (common::random(25)) { fits &= receive(Thing::Rynkky); msg += ", RYNKKY"; }
             msg += "!";
+            if (!fits) msg += string(" ") + HANDS_FULL_MSG;
             printer->showMessage(msg, level, false);
             blocked = true;
         } else if (AAGun* gun = dynamic_cast<AAGun*>(level->getVehicleAt(check))) {
@@ -856,13 +801,12 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             msg = "Sait kiinni! Otat takaisin:";
             if (p->stolenMoney > 0) msg += " " + std::to_string(p->stolenMoney) + " ruplaa,";
             if (p->stolenBottles > 0) msg += " " + std::to_string(p->stolenBottles) + (p->stolenBottles == 1 ? " pullon," : " pulloa,");
-            for (int k : p->stolenItems) {
-                ++stealable(inventory, k);
-                msg += string(" ") + stealableName(k) + ",";
-            }
+            for (int k : p->stolenItems) msg += string(" ") + stealableName(k) + ",";
             msg.back() = '.';
+            // what does not fit the hands is dropped next to you
+            for (uint32_t k = 0; k < p->stolenBottles; ++k) receive(Thing::Tyhja);
+            for (int k : p->stolenItems) receive(stealableThing(k));
             stats.money += p->stolenMoney;
-            inventory.pullot += p->stolenBottles;
             p->stolenMoney = 0;
             p->stolenBottles = 0;
             p->stolenItems.clear();

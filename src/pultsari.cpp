@@ -1110,7 +1110,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             Mode mode = Mode::Normal;
             int invSelection = 0;
             bool throwMenu = false; // the inventory was opened with F, to throw something
-            constexpr int INV_ITEMS = 17; // rows in overlayItems()
+            // the overlay lists the slots; with a belt there is one more row
+            auto invItems = [&]() { return (int)overlayItems(&player.inventory).size(); };
 
             // aim state
             float aimAngle = 0.0f;
@@ -1125,8 +1126,6 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             uint32_t aimTick = 0;
             bool aimIsShooting = false;
 
-            // inventory item-to-throw mapping
-            // maps inventory overlay row to decrementInventory() index
             // the aim angle snapped to one of the four directions
             // the longer you hold a cocked pistol, the likelier it goes off by itself
             uint32_t aimHeldMs = 0;
@@ -1159,23 +1158,16 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 }
             };
 
-            // overlay row -> Player::decrementInventory / Item::createItem index
-            // rows: kalja jaguar vodka makkara vobla omppo banaani ketjut veitsi kivi pamppu verkkarit kranaatti
-            auto invIndexToThrowNum = [](int idx) -> uint32_t {
-                constexpr uint32_t map[] = { 1, 2, 13, 3, 9, 10, 11, 4, 5, 6, 7, 8, 14 };
-                if (idx >= 0 && idx < (int)(sizeof(map) / sizeof(map[0]))) return map[idx];
-                return 0;
+            // what the overlay row's slot holds
+            auto rowThing = [&](int idx) -> Thing {
+                const auto rows = overlayItems(&player.inventory);
+                return idx >= 0 && idx < (int)rows.size() ? rows[idx].what : Thing::None;
             };
+            // overlay row -> Player::decrementInventory / Item::createItem index (0: nothing to throw)
+            auto invIndexToThrowNum = [&](int idx) -> uint32_t { return thingToThrowNum(rowThing(idx)); };
             // how many of a throwable the player carries (decrementInventory numbering)
             auto throwableCount = [&](uint32_t num) -> uint32_t {
-                const auto& inv = player.inventory;
-                switch (num) {
-                    case 1: return inv.kalja;    case 2: return inv.lonkka;  case 3: return inv.lenkki;
-                    case 4: return inv.ketjut;   case 5: return inv.veitset; case 6: return inv.kivet;
-                    case 7: return inv.pamput;   case 8: return inv.bootsit; case 9: return inv.kalat;
-                    case 10: return inv.omppo;   case 11: return inv.bansku; case 13: return inv.vodka;
-                    case 14: return inv.granata; default: return 0;
-                }
+                return player.inventory.count(throwNumToThing(num));
             };
             // the item leaves the inventory only when it is actually thrown, so cancelling keeps it
             auto startThrowAim = [&](uint32_t throwNum) {
@@ -1195,84 +1187,70 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 if (player.stats.hunger > 100) player.stats.hunger = 100;
             };
 
-            auto useInventoryItem = [&](int idx) {
+            // eat, drink or raise a gun: the thing in a slot
+            auto useInventoryItem = [&](Thing what) {
                 auto& inv = player.inventory;
-                switch(idx) {
-                    case 0: // kalja
-                        if (inv.kalja > 0) {
-                            --inv.kalja;
-                            ++inv.pullot;
-                            printer->showMessage("Glub glub glub ..... Burb !!! Tyhj\xC3\xA4 pullo talteen.", &level, false);
-                            common::sound("glug");
-                            player.updatepromilles(2);
-                            feedHunger(2);
-                        } else printer->showMessage("Ei pivoa.", &level, false);
+                switch(what) {
+                    case Thing::Kalja:
+                        inv.drain(Thing::Kalja);   // the empty bottle stays in the hand
+                        printer->showMessage("Glub glub glub ..... Burb !!! Tyhj\xC3\xA4 pullo talteen.", &level, false);
+                        common::sound("glug");
+                        player.updatepromilles(2);
+                        feedHunger(2);
                         break;
-                    case 1: // lonkka (Jaguar)
-                        if (inv.lonkka > 0) {
-                            --inv.lonkka;
-                            printer->showMessage("Jaguar! Kofeiinia ja viinaa. Syd\xC3\xA4n hakkaa.", &level, false);
+                    case Thing::Lonkka:
+                        inv.drain(Thing::Lonkka);
+                        printer->showMessage("Jaguar! Kofeiinia ja viinaa. Syd\xC3\xA4n hakkaa.", &level, false);
+                        common::sound("glug");
+                        player.updatepromilles(4);
+                        feedHunger(1);
+                        break;
+                    case Thing::Vodka: {
+                        Held* bottle = inv.find(Thing::Vodka);
+                        if (!bottle) break;
+                        const std::string seller = bottle->pissSeller;
+                        *bottle = Inventory::heldOf(Thing::Tyhja); // whatever was in it, the bottle is worth 20 kopecks
+                        if (!seller.empty()) {
+                            printer->showMessage(seller + " myi sinulle n\xC3\xA4k\xC3\xB6j\xC3\xA4\xC3\xA4n kusta pullossa, hyi! Oksennat.", &level, false);
+                            level.audio.addSound(player.coord, SoundType::Vomit,
+                                "BL\xC3\x84\xC3\x84\xC3\x84RGH! Oksennat kaaressa!", "Joku oksentaa", "...ykin\xC3\xA4\xC3\xA4...", 15);
+                            HurtBy who(&level, seller + " (kusipullo)");
+                            player.damage(2);
+                            level.addItem(new Oksennus(player.coord));
+                        } else {
+                            printer->showMessage("Na zdorovje! Vodka polttaa kurkkua.", &level, false);
                             common::sound("glug");
-                            player.updatepromilles(4);
+                            player.updatepromilles(6);
                             feedHunger(1);
-                        } else printer->showMessage("Ei Jaguaria.", &level, false);
+                        }
                         break;
-                    case 2: // vodka
-                        if (inv.vodka > 0) {
-                            const bool piss = !inv.pissVodka.empty() &&
-                                (uint32_t)(std::rand() % inv.vodka) < inv.pissVodka.size();
-                            --inv.vodka;
-                            ++inv.pullot; // whatever was in it, the bottle is worth 20 kopecks
-                            if (piss) {
-                                const std::string seller = inv.pissVodka.back();
-                                inv.pissVodka.pop_back();
-                                printer->showMessage(seller + " myi sinulle n\xC3\xA4k\xC3\xB6j\xC3\xA4\xC3\xA4n kusta pullossa, hyi! Oksennat.", &level, false);
-                                level.audio.addSound(player.coord, SoundType::Vomit,
-                                    "BL\xC3\x84\xC3\x84\xC3\x84RGH! Oksennat kaaressa!", "Joku oksentaa", "...ykin\xC3\xA4\xC3\xA4...", 15);
-                                HurtBy who(&level, seller + " (kusipullo)");
-                                player.damage(2);
-                                level.addItem(new Oksennus(player.coord));
-                            } else {
-                                printer->showMessage("Na zdorovje! Vodka polttaa kurkkua.", &level, false);
-                            common::sound("glug");
-                                player.updatepromilles(6);
-                                feedHunger(1);
-                            }
-                        } else printer->showMessage("Ei vodkaa.", &level, false);
+                    }
+                    case Thing::Lenkki:
+                        inv.take(Thing::Lenkki); player.powerup(1);
+                        printer->showMessage("Mamamamakkaraa.", &level, false);
+                        feedHunger(25);
                         break;
-                    case 3: // lenkki
-                        if (inv.lenkki > 0) {
-                            --inv.lenkki; player.powerup(1);
-                            printer->showMessage("Mamamamakkaraa.", &level, false);
-                            feedHunger(25);
-                        } else printer->showMessage("Ei makkaraa.", &level, false);
+                    case Thing::Kala:
+                        inv.take(Thing::Kala);
+                        if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
+                        else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); feedHunger(30); }
                         break;
-                    case 4: // kala
-                        if (inv.kalat > 0) {
-                            --inv.kalat;
-                            if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
-                            else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); feedHunger(30); }
-                        } else printer->showMessage("Ei kalaa.", &level, false);
+                    case Thing::Omppo:
+                        inv.take(Thing::Omppo);
+                        if (random(50)) { player.damage(1); printer->showMessage("Antonovka oli pilaantunut.", &level, false); }
+                        else { player.powerup(2); printer->showMessage("orb.", &level, false); feedHunger(15); }
                         break;
-                    case 5: // omppo
-                        if (inv.omppo > 0) {
-                            --inv.omppo;
-                            if (random(50)) { player.damage(1); printer->showMessage("Antonovka oli pilaantunut.", &level, false); }
-                            else { player.powerup(2); printer->showMessage("orb.", &level, false); feedHunger(15); }
-                        } else printer->showMessage("Ei antonovkaa.", &level, false);
+                    case Thing::Bansku:
+                        inv.take(Thing::Bansku);
+                        if (random(50)) { printer->showMessage("Banaani ei vaikuttanut.", &level, false); feedHunger(5); }
+                        else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); feedHunger(10); }
                         break;
-                    case 6: // bansku
-                        if (inv.bansku > 0) {
-                            --inv.bansku;
-                            if (random(50)) { printer->showMessage("Banaani ei vaikuttanut.", &level, false); feedHunger(5); }
-                            else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); feedHunger(10); }
-                        } else printer->showMessage("Ei banaania.", &level, false);
+                    case Thing::Granata: // kranaatti can only be thrown
+                        startThrowAim(thingToThrowNum(Thing::Granata));
                         break;
-                    case 12: // kranaatti can only be thrown
-                        startThrowAim(14);
-                        break;
-                    case 15: // rynkky: raise the assault rifle; hold Space for full auto
-                        if (inv.rynkky > 0 && inv.ammukset > 0) {
+                    case Thing::Rynkky: { // raise the assault rifle; hold Space for full auto
+                        const Held* ak = inv.find(Thing::Rynkky);
+                        if (ak && ak->rounds > 0) {
                             gunDrawn = true;
                             rifleRaised = true;
                             aimIsShooting = true;
@@ -1280,14 +1258,16 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             aimTick = 0;
                             mode = Mode::Aim;
                             printer->showMessage("Rynkky olalle. Pid\xC3\xA4 v\xC3\xA4lily\xC3\xB6nti\xC3\xA4 pohjassa: sarjatulta!", &level, false);
-                        } else if (inv.rynkky == 0) {
+                        } else if (!ak) {
                             printer->showMessage("Ei rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri\xC3\xA4.", &level, false);
                         } else {
                             printer->showMessage("Ei ammuksia.", &level, false);
                         }
                         break;
-                    case 13: // pistooli: raise it towards the last step and aim
-                        if (inv.pistooli > 0 && inv.ammukset > 0) {
+                    }
+                    case Thing::Pistooli: { // raise it towards the last step and aim
+                        const Held* gun = inv.find(Thing::Pistooli);
+                        if (gun && gun->rounds > 0) {
                             gunDrawn = true;
                             rifleRaised = false;
                             aimIsShooting = true;
@@ -1295,14 +1275,15 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             aimTick = 0;
                             mode = Mode::Aim;
                             printer->showMessage("T\xC3\xA4ht\xC3\xA4\xC3\xA4t. A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti ampuu, Esc laskee aseen.", &level, false);
-                        } else if (inv.pistooli == 0) {
+                        } else if (!gun) {
                             printer->showMessage("Ei pistoolia.", &level, false);
                         } else {
                             printer->showMessage("Ei ammuksia.", &level, false);
                         }
                         break;
+                    }
                     default:
-                        printer->showMessage("Tätä ei voi käyttää.", &level, false);
+                        printer->showMessage("T\xC3\xA4t\xC3\xA4 ei voi k\xC3\xA4ytt\xC3\xA4\xC3\xA4.", &level, false);
                         break;
                 }
             };
@@ -1347,7 +1328,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 'f': {
                                     // F asks what to throw: the menu opens on the first throwable thing carried
                                     int first = -1;
-                                    for (int r = 0; r < INV_ITEMS && first < 0; ++r)
+                                    for (int r = 0; r < invItems() && first < 0; ++r)
                                         if (throwableCount(invIndexToThrowNum(r)) > 0) first = r;
                                     if (first < 0) {
                                         printer->showMessage("Ei mit\xC3\xA4\xC3\xA4n heitett\xC3\xA4v\xC3\xA4\xC3\xA4.", &level, false);
@@ -1365,8 +1346,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     }
                                     break;
                                 case ' ': // Space raises the best gun to aim; Space again fires
-                                    if (player.inventory.rynkky > 0) useInventoryItem(15);
-                                    else if (player.inventory.pistooli > 0) useInventoryItem(13);
+                                    if (player.inventory.count(Thing::Rynkky) > 0) useInventoryItem(Thing::Rynkky);
+                                    else if (player.inventory.count(Thing::Pistooli) > 0) useInventoryItem(Thing::Pistooli);
                                     else printer->showMessage("Sinulla ei ole asetta.", &level, false);
                                     break;
                                 default: break;
@@ -1404,17 +1385,17 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         if (c != 0) {
                             switch(c) {
                                 case 'w': case 'i':
-                                    invSelection = (invSelection - 1 + INV_ITEMS) % INV_ITEMS;
+                                    invSelection = (invSelection - 1 + invItems()) % invItems();
                                     break;
                                 case 's': case 'k':
-                                    invSelection = (invSelection + 1) % INV_ITEMS;
+                                    invSelection = (invSelection + 1) % invItems();
                                     break;
                                 case 'e': case '\r':
                                     if (throwMenu && c == '\r') {
                                         startThrowAim(invIndexToThrowNum(invSelection));
                                         break;
                                     }
-                                    useInventoryItem(invSelection); // eat, drink or aim the pistol
+                                    useInventoryItem(rowThing(invSelection)); // eat, drink or aim the pistol
                                     if (mode == Mode::Inventory) mode = Mode::Normal;
                                     break;
                                 case 'f': // throw -> aim mode
@@ -1443,11 +1424,12 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         // held Space repeats: full auto, about eight rounds a second, wildly
                                         if (msSinceShot < 120) break;
                                         msSinceShot = 0;
-                                        if (player.inventory.ammukset == 0) {
+                                        Held* ak = player.inventory.find(Thing::Rynkky);
+                                        if (!ak || ak->rounds == 0) {
                                             printer->showMessage("*KLIK* Lipas tyhj\xC3\xA4!", &level, false);
                                             break;
                                         }
-                                        --player.inventory.ammukset;
+                                        --ak->rounds;
                                         const float spread = ((std::rand() % 100) - 50) / 110.0f * (1.0f + player.stats.promilles / 30.0f);
                                         Person* hit = level.fireBullet(&player, aimNow + spread, 18, std::rand() % 3 + 3, 85);
                                         level.audio.addSound(player.coord, SoundType::Gunshot,
@@ -1478,7 +1460,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
                     }
 
-                    if (player.inventory.pistooli == 0) gunDrawn = false;
+                    if (player.inventory.count(Thing::Pistooli) == 0) gunDrawn = false;
                     // a pistol in hand, pointing at the ground, can always go off; now and
                     // then it is pointing at your own foot
                     float lowered = facing;
@@ -1487,8 +1469,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         swayMs += FRAME_MS;
                         lowered = facing + sinf(swayMs / 420.0f) * (0.35f + player.stats.promilles / 60.0f);
                         const float p = 0.0006f * (1.0f + player.stats.promilles / 15.0f);
-                        if (player.inventory.ammukset > 0 && (float)(std::rand() % 100000) < p * 100000.0f) {
-                            --player.inventory.ammukset;
+                        Held* pistol = player.inventory.find(Thing::Pistooli);
+                        if (pistol && pistol->rounds > 0 && (float)(std::rand() % 100000) < p * 100000.0f) {
+                            --pistol->rounds;
                             common::sound("pistol", 1.0f);
                             level.audio.addSound(player.coord, SoundType::Gunshot,
                                 "PAM! Pistooli laukesi!", "Pistoolinlaukaus", "...pamaus kaukaa...", 30);

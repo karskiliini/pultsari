@@ -669,28 +669,61 @@ void Printer::print(Level* level)
     printerRefresh();
 }
 
-// row order must match useInventoryItem / invIndexToThrowNum in pultsari.cpp
+// what a slot holds, as the overlay shows it
+static std::string heldText(const Held& h)
+{
+    std::string t = thingName(h.what);
+    if (h.what == Thing::Vodka) t += " " + std::to_string(h.fill) + "/" + std::to_string(VODKA_SIPS);
+    if (isWeapon(h.what)) t += " " + std::to_string(h.rounds);
+    return t;
+}
+
+static const char* useLabel(Thing t)
+{
+    if (isDrink(t)) return "[E] juo  ";
+    switch (t) {
+        case Thing::Lenkki: case Thing::Kala: case Thing::Omppo: case Thing::Bansku: return "[E] sy\xC3\xB6  ";
+        case Thing::Pistooli: return "[E] ammu ";
+        case Thing::Rynkky: return "[E] t\xC3\xA4ht\xC3\xA4\xC3\xA4";
+        default: return "         ";
+    }
+}
+
+// row order is what useInventoryItem in pultsari.cpp reads: the selected row's thing
 std::vector<OverlayItem> overlayItems(const Inventory* inventory)
 {
-    return {
-        {"PIVO",     inventory->kalja,    true,  true,  "[E] juo  "},
-        {"JAGUAR",    inventory->lonkka,   true,  true,  "[E] juo  "},
-        {"VODKA",     inventory->vodka,    true,  true,  "[E] juo  "},
-        {"MAKKARA",   inventory->lenkki,   true,  true,  "[E] syö  "},
-        {"VOBLA",     inventory->kalat,    true,  true,  "[E] syö  "},
-        {"ANTONOVKA",     inventory->omppo,    true,  true,  "[E] syö  "},
-        {"BANAANI",   inventory->bansku,   true,  true,  "[E] syö  "},
-        {"KETJUT",    inventory->ketjut,   false, true,  "         "},
-        {"VEITSI",    inventory->veitset,  false, true,  "         "},
-        {"KIVI",      inventory->kivet,    false, true,  "         "},
-        {"PAMPPU",    inventory->pamput,   false, true,  "         "},
-        {"VERKKARIT", inventory->bootsit,  false, true,  "         "},
-        {"KRANAATTI", inventory->granata,  false, true,  "         "},
-        {"PISTOOLI",  inventory->pistooli, true,  false, "[E] ammu "},
-        {"AMMUKSET",  inventory->ammukset, false, false, "         "},
-        {"RYNKKY",    inventory->rynkky,   true,  false, "[E] t\xC3\xA4ht\xC3\xA4\xC3\xA4"},
-        {"PULLOT",    inventory->pullot,   false, false, "         "},
+    std::vector<std::pair<const char*, const Held*>> slots = {
+        { "VASEN", &inventory->left }, { "OIKEA", &inventory->right }, { "TASKU", &inventory->pocket },
     };
+    if (inventory->hasBelt) slots.push_back({ "VY\xC3\x96", &inventory->belt });
+    slots.push_back({ "SELK\xC3\x84", &inventory->back });
+
+    std::vector<OverlayItem> rows;
+    for (const auto& s : slots) {
+        const Held& h = *s.second;
+        rows.push_back({ s.first, h.empty() ? std::string() : heldText(h), h.what, h.empty() ? 0u : 1u,
+                         useLabel(h.what)[0] == '[',
+                         thingToThrowNum(h.what) != 0, useLabel(h.what) });
+    }
+    return rows;
+}
+
+// visible columns of a UTF-8 string, padded or cut to `width`
+static std::string padColumns(const std::string& s, uint32_t width)
+{
+    std::string out;
+    uint32_t cols = 0;
+    for (size_t i = 0; i < s.size(); ) {
+        size_t len = 1;
+        const unsigned char c = s[i];
+        if (c >= 0xF0) len = 4; else if (c >= 0xE0) len = 3; else if (c >= 0xC0) len = 2;
+        if (cols == width) break;
+        out += s.substr(i, len);
+        ++cols;
+        i += len;
+    }
+    for (; cols < width; ++cols) out += ' ';
+    return out;
 }
 
 void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow, bool throwMenu)
@@ -704,10 +737,11 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow, bool 
 
     char buf[256];
 
-    // all rows are 32 columns wide; box-drawing chars are 3 bytes but 1 column
+    // all rows are 38 columns wide; box-drawing chars are 3 bytes but 1 column
     snprintf(buf, sizeof(buf), "\033[%d;%dH%s\xE2\x95\x94\xE2\x95\x90\xE2\x95\x90 \xD0\xA2\xD0\x9E\xD0\x92\xD0\x90\xD0\xA0\xD0\xAB \xC2\xB7 TAVARAT "
                  "\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90"
-                 "\xE2\x95\x90\xE2\x95\x90\xE2\x95\x97",
+                 "\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90\xE2\x95\x90"
+                 "\xE2\x95\x97",
             OVERLAY_Y, OVERLAY_X, frame);
     cout << buf;
 
@@ -715,10 +749,11 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow, bool 
         bool selected = (i == selectedRow);
         const char* row = selected ? "\033[0;1;30;107m" : items[i].count ? "\033[0;41;97m" : "\033[0;41;2;37m";
 
-        snprintf(buf, sizeof(buf), "\033[%d;%dH%s\xE2\x95\x91%s%s %-9s x%-3u %s %s%s\xE2\x95\x91",
+        snprintf(buf, sizeof(buf), "\033[%d;%dH%s\xE2\x95\x91%s%s %s %s %s %s%s\xE2\x95\x91",
                 OVERLAY_Y + 1 + i, OVERLAY_X, frame, row,
                 selected ? "\xE2\x96\xB6" : " ",
-                items[i].name, items[i].count,
+                padColumns(items[i].name, 5).c_str(),
+                padColumns(items[i].count ? items[i].thing : "-", 14).c_str(),
                 items[i].useLabel,
                 items[i].canThrow ? "[F]" : "   ",
                 frame);
@@ -727,7 +762,7 @@ void Printer::printInventoryOverlay(Inventory* inventory, int selectedRow, bool 
 
     snprintf(buf, sizeof(buf), "\033[%d;%dH%s\xE2\x95\x9A", OVERLAY_Y + NUM_ITEMS + 1, OVERLAY_X, frame);
     cout << buf;
-    for (int i = 0; i < 30; ++i) cout << "\xE2\x95\x90";
+    for (int i = 0; i < 36; ++i) cout << "\xE2\x95\x90";
     cout << "\xE2\x95\x9D";
     snprintf(buf, sizeof(buf), "\033[%d;%dH\033[0;1;97;40m W/S selaa \xC2\xB7 E k\xC3\xA4yt\xC3\xA4 \xC2\xB7 F heit\xC3\xA4 \xC2\xB7 Q sulje ",
             OVERLAY_Y + NUM_ITEMS + 2, OVERLAY_X);

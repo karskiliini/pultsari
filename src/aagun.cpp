@@ -69,8 +69,8 @@ bool AAGun::approach(Player* player, string& msg)
     const auto all = crew();
     if (!awake.empty()) {
         // a bottle each and the crew takes a break; without, they chase the drunk off
-        if (player->inventory.vodka >= awake.size()) {
-            player->inventory.vodka -= awake.size();
+        if (player->inventory.count(Thing::Vodka) >= awake.size()) {
+            for (size_t k = 0; k < awake.size(); ++k) player->inventory.take(Thing::Vodka);
             for (auto m : awake) {
                 m->passedOut = true;
                 m->say("Vodka? ...Davai. Ammu vaikka Kuuta, min\xC3\xA4 pid\xC3\xA4n tauon.");
@@ -79,7 +79,7 @@ bool AAGun::approach(Player* player, string& msg)
                 ? "Ojennat ampujalle pullon vodkaa. H\xC3\xA4n kulauttaa sen kerralla ja sammuu hiekkas\xC3\xA4kkien viereen. Tykki on sinun!"
                 : "Jokainen saa oman pullonsa. Miehist\xC3\xB6 juo ja sammuu rivissä. Tykki on sinun!";
         } else {
-            awake.front()->say(player->inventory.vodka == 0
+            awake.front()->say(player->inventory.count(Thing::Vodka) == 0
                 ? "H\xC3\xA4ivy, juoppo! Sotilasalue! ...Ellei sinulla sitten ole pulloa?"
                 : "Meit\xC3\xA4 on useampi, juoppo. Pullo jokaiselle tai h\xC3\xA4ivy!");
             msg = "Miehist\xC3\xB6 t\xC3\xB6n\xC3\xA4isee sinut kauemmas tykist\xC3\xA4.";

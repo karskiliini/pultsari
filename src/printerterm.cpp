@@ -59,8 +59,6 @@ string pad(const string& s, uint32_t width)
     return out;
 }
 
-struct SideEntry { const char* name; uint32_t count; };
-
 }
 
 void PrinterTerm::cursorHome()
@@ -120,32 +118,22 @@ void PrinterTerm::printVBorder(Level* l)
 
 void PrinterTerm::printInventory(uint32_t y, Inventory* inventory)
 {
-    const auto& i = *inventory;
-    const SideEntry all[] = {
-        {"PIVO", i.kalja}, {"JAGUAR", i.lonkka}, {"VODKA", i.vodka},
-        {"MAKKARA", i.lenkki}, {"VOBLA", i.kalat}, {"ANTONOVKA", i.omppo},
-        {"BANAANI", i.bansku}, {"KETJUT", i.ketjut}, {"VEITSET", i.veitset},
-        {"KIVET", i.kivet}, {"PAMPUT", i.pamput}, {"VERKKARIT", i.bootsit},
-        {"KRANAATIT", i.granata}, {"PISTOOLI", i.pistooli}, {"AMMUKSET", i.ammukset},
-        {"PROPUSK", i.propusk},
-    };
-
     if (y == 0) {
         cout << "\033[1;31m" << pad(" \xD0\xA2\xD0\x9E\xD0\x92\xD0\x90\xD0\xA0\xD0\xAB", SIDE_W) << RESET;
         return;
     }
 
-    uint32_t row = 0;
-    for (const auto& e : all) {
-        if (e.count == 0) continue;
-        if (++row != y) continue;
-        char buf[32];
-        snprintf(buf, sizeof(buf), "%-9s%2u  ", e.name, e.count > 99 ? 99 : e.count);
-        cout << "\033[37m" << buf << RESET;
+    // each slot takes two rows: its name, then what is in it
+    const auto slots = overlayItems(inventory);
+    const uint32_t row = y - 1;
+    if (row < slots.size() * 2) {
+        const auto& s = slots[row / 2];
+        if (row % 2 == 0) cout << "\033[2;37m" << pad(s.name, SIDE_W) << RESET;
+        else cout << (s.count ? "\033[37m" : "\033[2;37m") << pad(" " + (s.count ? s.thing : string("-")), SIDE_W) << RESET;
         return;
     }
-    if (row == 0 && y == 1) {
-        cout << "\033[2;37m" << pad(" (tyhj\xC3\xA4)", SIDE_W) << RESET;
+    if (inventory->propusk && row == slots.size() * 2) {
+        cout << "\033[37m" << pad("PROPUSK", SIDE_W) << RESET;
         return;
     }
     printLeftBorderSpaces();

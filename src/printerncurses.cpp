@@ -85,19 +85,9 @@ void PrinterNcurses::printVBorder(Level* l) { }
 void PrinterNcurses::printInventory(uint32_t /* y */, Inventory* inventory)
 {
     constexpr uint32_t x_offset = 1;
-    const auto& i = *inventory;
-
-    mvwprintw((WINDOW*)inventorywindow, 1, x_offset, (std::string("1. PIVOA    ") + inventoryAligned(i.kalja)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 2, x_offset, (std::string("2. JAGUAR    ") + inventoryAligned(i.lonkka)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 3, x_offset, (std::string("3. MAKKARA    ") + inventoryAligned(i.lenkki)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 4, x_offset, (std::string("4. KETJUT    ") + inventoryAligned(i.ketjut)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 5, x_offset, (std::string("5. VEITSET   ") + inventoryAligned(i.veitset)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 6, x_offset, (std::string("6. KIVET     ") + inventoryAligned(i.kivet)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 7, x_offset, (std::string("7. PAMPUT    ") + inventoryAligned(i.pamput)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 8, x_offset, (std::string("8. BOOTSIT   ") + inventoryAligned(i.bootsit)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 9, x_offset, (std::string("9. KALAT     ") + inventoryAligned(i.kalat)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 10, x_offset, (std::string("A. ANTONOVKA     ") + inventoryAligned(i.omppo)).c_str());
-    mvwprintw((WINDOW*)inventorywindow, 11, x_offset, (std::string("B. BANAANI    ") + inventoryAligned(i.bansku)).c_str());
+    int row = 1;
+    for (const auto& slot : overlayItems(inventory))
+        mvwprintw((WINDOW*)inventorywindow, row++, x_offset, (std::string(slot.name) + ": " + (slot.count ? slot.thing : "-")).c_str());
 }
 
 void PrinterNcurses::printStats(Level* l, Stats* stats)

@@ -1363,10 +1363,11 @@ static void fleeStep(Level* level, Person* p)
     p->coord = best;
 }
 
-// ---- empty bottles: from five up they draw people, and the poorer they are the harder ----
+// ---- bottles in both hands draw people, and the poorer they are the harder ----
 
-static constexpr uint32_t BOTTLE_LURE_MIN = 5;
-static constexpr uint32_t BOTTLE_SACK_FULL = 25;
+// bottles = the empty bottles and drinks in the hands (Inventory::bottlesInHands, at most two)
+static constexpr uint32_t BOTTLE_LURE_MIN = 2;
+static constexpr uint32_t BOTTLE_SACK_FULL = 4;
 
 static bool isOneLegged(const Person* p)
 {
@@ -1383,7 +1384,7 @@ static bool isPoor(const Person* p)
     }
 }
 
-// how much someone wants the bottles (percent per action with a full sack)
+// how much someone wants the bottles (percent per action with BOTTLE_SACK_FULL bottles)
 static uint32_t bottleGreed(const Person* p)
 {
     if (isOneLegged(p)) return 70;
@@ -1434,13 +1435,27 @@ static void approachStep(Level* level, Person* p, const Coord& target)
     p->coord = best;
 }
 
+// one bottle out of the hands, an empty one first: -1 for an empty, the stealableThing() index of a
+// drink, or -2 if there was none
+static int takeBottle(Inventory& inv)
+{
+    if (inv.take(Thing::Tyhja)) return -1;
+    for (int k = 0; k < STEALABLE_COUNT; ++k) {
+        const Thing t = stealableThing(k);
+        if (!isDrink(t)) continue;
+        if (inv.left.what == t) { inv.left = Held(); return k; }
+        if (inv.right.what == t) { inv.right = Held(); return k; }
+    }
+    return -2;
+}
+
 static void stealBottles(Level* level, Person* p, Player* player)
 {
     auto& inv = player->inventory;
     const string name = level->nameOf(p);
     if (!isPoor(p)) {
         // someone you would rather not meet takes one bottle and goes; you breathe out
-        --inv.pullot;
+        takeBottle(inv);
         static const char* relief[] = {
             " otti tyhj\xC3\xA4n pullon ja k\xC3\xA4veli pois. Huh.",
             " nappasi pullon. Onneksi vain pullon.",
@@ -1451,17 +1466,19 @@ static void stealBottles(Level* level, Person* p, Player* player)
         return;
     }
 
-    const uint32_t bottles = std::min(inv.pullot, std::max<uint32_t>(1, inv.pullot * (10 + std::rand() % 21) / 100));
-    inv.pullot -= bottles;
-    p->stolenBottles += bottles;
+    // the poor grab every bottle in your hands, full or empty
+    uint32_t bottles = 0;
+    for (int k; (k = takeBottle(inv)) != -2; ++bottles) {
+        if (k == -1) ++p->stolenBottles;
+        else p->stolenItems.push_back(k);
+    }
     string msg = name + " kahmaisi sinulta " + std::to_string(bottles) + (bottles == 1 ? " pullon" : " pulloa");
 
     // anything else that comes loose
     for (int tries = 0; tries < 2; ++tries) {
         if (!common::random(45)) continue;
         const int k = std::rand() % STEALABLE_COUNT;
-        if (stealable(inv, k) == 0) continue;
-        --stealable(inv, k);
+        if (!inv.take(stealableThing(k))) continue;
         p->stolenItems.push_back(k);
         msg += string(", ") + stealableName(k);
     }
@@ -1492,12 +1509,12 @@ static bool bottleLure(Level* level, Person* p)
 {
     Player* player = level->getPlayer();
     if (!player || level->playerDead || player->inJail) return false;
-    const uint32_t bottles = player->inventory.pullot;
+    const uint32_t bottles = player->inventory.bottlesInHands();
     if (bottles < BOTTLE_LURE_MIN) return false;
     const uint32_t greed = bottleGreed(p);
     if (greed == 0) return false;
-    // a bigger sack is noticed from further away and wanted more
-    const uint32_t reach = 4 + std::min(bottles, BOTTLE_SACK_FULL) / 2;
+    // a bottle in each hand clinks: noticed from further away than a drunk's eyesight
+    const uint32_t reach = 4 + bottles;
     if (!seesPlayer(level, p, player->coord, reach)) return false;
     const uint32_t chance = greed * std::min(bottles, BOTTLE_SACK_FULL) / BOTTLE_SACK_FULL;
     if ((uint32_t)(std::rand() % 100) >= std::max<uint32_t>(1, chance)) return false;

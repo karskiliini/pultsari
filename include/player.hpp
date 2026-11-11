@@ -84,6 +84,10 @@ public:
     ScoreBoard scoreBoard;
 
     bool decrementInventory(uint32_t index);
+    // into the hands (or pocket, belt, back); what does not fit is left on the ground next to you
+    bool receive(Thing t, const std::string& pissSeller = "");
+    bool receive(const Held& h);
+    void dropNear(Item* item);
     bool executeThrow(uint32_t itemNum, DirectionNS::Direction dir);
     bool executeThrowAt(uint32_t itemNum, float angle);
     bool shoot(DirectionNS::Direction dir);

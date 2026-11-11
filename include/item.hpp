@@ -2,6 +2,7 @@
 #define ITEM_HPP
 
 #include "coord.hpp"
+#include "hands.hpp"
 #include <string>
 
 namespace PlayerNS {
@@ -38,7 +39,8 @@ enum ItemType {
     EKartta,
     ERoska,
     ERynkky,
-    ENeula
+    ENeula,
+    ELipas
 };
 
 class Level;
@@ -54,6 +56,8 @@ public:
 
     virtual void actThrow(Level* level);
     static Item* createItem(uint32_t index, Coord coord);
+    // the map item for something carried (nullptr for Thing::None)
+    static Item* createThing(Thing t, Coord coord);
 
     Coord coord;
     ItemType type;
@@ -344,6 +348,15 @@ public:
     Rynkky(const Coord& c) : Item(c, ERynkky) { }
     virtual std::string typeToChar() const { return "\xC2\xAC"; }
     virtual std::string getMsg() const { return "Rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri! Kalashnikov, tietysti. Ja t\xC3\xA4ysi lipas."; }
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+// A spare magazine: one reload for either gun.
+class Lipas : public Item {
+public:
+    Lipas(const Coord& c) : Item(c, ELipas) { }
+    virtual std::string typeToChar() const { return "]"; }
+    virtual std::string getMsg() const { return "Lipas! T\xC3\xA4ysi lataus."; }
     virtual bool interact(PlayerNS::Player* player);
 };
 

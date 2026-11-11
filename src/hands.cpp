@@ -39,3 +39,31 @@ const char* thingName(Thing t)
     }
     return "";
 }
+
+Thing throwNumToThing(uint32_t n)
+{
+    switch (n) {
+        case 1: return Thing::Kalja;
+        case 2: return Thing::Lonkka;
+        case 3: return Thing::Lenkki;
+        case 4: return Thing::Ketjut;
+        case 5: return Thing::Veitsi;
+        case 6: return Thing::Kivi;
+        case 7: return Thing::Pamppu;
+        case 8: return Thing::Bootsit;
+        case 9: return Thing::Kala;
+        case 10: return Thing::Omppo;
+        case 11: return Thing::Bansku;
+        case 13: return Thing::Vodka;
+        case 14: return Thing::Granata;
+        case 15: return Thing::Tyhja;
+        default: return Thing::None;
+    }
+}
+
+uint32_t thingToThrowNum(Thing t)
+{
+    for (uint32_t n = 1; n <= 15; ++n)
+        if (t != Thing::None && throwNumToThing(n) == t) return n;
+    return 0;
+}

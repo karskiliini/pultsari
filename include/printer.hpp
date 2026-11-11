@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include "hands.hpp"
 
 namespace PlayerNS {
     class Player;
@@ -24,14 +25,17 @@ struct ScoreBoard;
 struct Inventory;
 struct Stats;
 
+// one carrying slot of the inventory overlay
 struct OverlayItem {
-    const char* name;
-    uint32_t count;
+    const char* name;     // the slot: VASEN, OIKEA, TASKU, VYÖ (with a belt), SELKÄ
+    std::string thing;    // what is in it, "" when empty; vodka shows n/6, guns their rounds
+    Thing what;
+    uint32_t count;       // 1 when the slot holds something
     bool canUse;
     bool canThrow;
     const char* useLabel;
 };
-// the inventory overlay rows, in the order the game's inventory keys expect
+// the inventory overlay rows: the slots, in the order the game's inventory keys expect
 std::vector<OverlayItem> overlayItems(const Inventory* inventory);
 // viewport cells of the aiming line
 std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle, int maxSteps = 20);

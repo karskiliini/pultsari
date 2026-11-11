@@ -61,7 +61,7 @@ public:
     // pickpocketing: money taken from the player, and how many more actions to run away
     uint32_t stolenMoney = 0;
     uint32_t fleeActions = 0;
-    // bottle thieves: what they took (stealable() indexes), and how long a brawler keeps at you
+    // bottle thieves: what they took (stealableThing() indexes), and how long a brawler keeps at you
     uint32_t stolenBottles = 0;
     std::vector<int> stolenItems;
     uint32_t brawlActions = 0;

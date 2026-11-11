@@ -3,33 +3,13 @@
 
 #include <cstdint>
 #include <string>
-#include <vector>
 #include "hands.hpp"
 
 struct Inventory {
-    uint32_t kalja = 1;
-    uint32_t lonkka = 0;
-    uint32_t lenkki = 1;
-    uint32_t ketjut = 0;
-    uint32_t veitset = 0;
-    uint32_t kivet = 0;
-    uint32_t pamput = 0;
-    uint32_t bootsit = 0;
-    uint32_t kalat = 0;
-    uint32_t omppo = 0;
-    uint32_t bansku = 0;
-    uint32_t pistooli = 0;
-    uint32_t ammukset = 0;
+    // the Kremlin pass is a paper in the inner pocket: it takes no slot and never falls out
     uint32_t propusk = 0;
-    uint32_t granata = 0;
-    uint32_t vodka = 0;
-    uint32_t rynkky = 0;
-    // empty bottles: 20 kopecks each at a hypermarket's return hatch
-    uint32_t pullot = 0;
-    // sellers of bottles counted in `vodka` that are actually piss
-    std::vector<std::string> pissVodka;
 
-    // two-hands model (replaces the counters above in a later task)
+    // two hands, one pocket, the belt (pistol) and the back (AK)
     Held left = heldOf(Thing::Kalja);
     Held right = heldOf(Thing::Lenkki);
     Held pocket, belt, back;
@@ -92,22 +72,32 @@ struct Inventory {
         }
         return isSmall(t) && put(pocket);
     }
+    // would give() take it? nothing changes
+    bool fits(Thing t) const
+    {
+        Inventory copy = *this;
+        return copy.give(t);
+    }
+    // a drink in hand is drunk: a bottle stays in the hand empty, a Jaguar can goes
+    bool drain(Thing t)
+    {
+        Held* s = find(t);
+        if (!s) return false;
+        *s = t == Thing::Lonkka ? Held() : heldOf(Thing::Tyhja);
+        return true;
+    }
+    // bottles in the hands, empty or not: what a bottle thief is after
+    uint32_t bottlesInHands() const
+    {
+        uint32_t n = 0;
+        for (const Held* s : { &left, &right })
+            if (s->what == Thing::Tyhja || isDrink(s->what)) ++n;
+        return n;
+    }
 };
 
 // what a bottle thief can grab besides bottles, by index (see stolenItems in Person)
 constexpr int STEALABLE_COUNT = 7;
-inline uint32_t& stealable(Inventory& inv, int i)
-{
-    switch (i) {
-        case 0: return inv.kalja;
-        case 1: return inv.lonkka;
-        case 2: return inv.vodka;
-        case 3: return inv.lenkki;
-        case 4: return inv.kalat;
-        case 5: return inv.omppo;
-        default: return inv.bansku;
-    }
-}
 inline Thing stealableThing(int i)
 {
     switch (i) {

@@ -105,6 +105,23 @@ struct World {
     }
 };
 
+// both hands at once; Thing::None empties a hand
+static void hold(Inventory& inv, Thing l, Thing r)
+{
+    inv.left = Held();
+    inv.right = Held();
+    if (l != Thing::None) inv.left = Inventory::heldOf(l);
+    if (r != Thing::None) inv.right = Inventory::heldOf(r);
+    if (l == Thing::Vodka) inv.left.fill = VODKA_SIPS;
+    if (r == Thing::Vodka) inv.right.fill = VODKA_SIPS;
+}
+
+static bool itemAt(const Level& level, ItemType t)
+{
+    for (auto i : level.items) if (i->type == t) return true;
+    return false;
+}
+
 // ---- Russian shops ----
 
 TEST(shop_sells_food_for_money)
@@ -112,12 +129,13 @@ TEST(shop_sells_food_for_money)
     World w;
     auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
     w.player.stats.money = 20;
-    const uint32_t had = w.player.inventory.lenkki;
+    w.player.inventory.right = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Lenkki);
     feedKeys("1");
     string msg;
     k->interact(&w.player, msg);
     CHECK(w.player.stats.money == 14);
-    CHECK(w.player.inventory.lenkki == had + 1);
+    CHECK(w.player.inventory.count(Thing::Lenkki) == had + 1);
 }
 
 TEST(shop_kiosk_sells_vodka)
@@ -125,12 +143,13 @@ TEST(shop_kiosk_sells_vodka)
     World w;
     auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Kioski), 10, 10);
     w.player.stats.money = 30;
-    const uint32_t had = w.player.inventory.vodka;
+    w.player.inventory.left = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Vodka);
     feedKeys("4");
     string msg;
     k->interact(&w.player, msg);
     CHECK(w.player.stats.money == 5);
-    CHECK(w.player.inventory.vodka == had + 1);
+    CHECK(w.player.inventory.count(Thing::Vodka) == had + 1);
 }
 
 TEST(gun_shop_sells_a_pistol_with_rounds)
@@ -138,13 +157,14 @@ TEST(gun_shop_sells_a_pistol_with_rounds)
     World w;
     auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Oruzhie), 10, 10);
     w.player.stats.money = 50;
-    const uint32_t guns = w.player.inventory.pistooli, rounds = w.player.inventory.ammukset;
+    w.player.inventory.right = Held();
+    const uint32_t guns = w.player.inventory.count(Thing::Pistooli);
     feedKeys("2");
     string msg;
     k->interact(&w.player, msg);
     CHECK(w.player.stats.money == 15);
-    CHECK(w.player.inventory.pistooli == guns + 1);
-    CHECK(w.player.inventory.ammukset == rounds + 6);
+    CHECK(w.player.inventory.count(Thing::Pistooli) == guns + 1);
+    CHECK(w.player.inventory.find(Thing::Pistooli) && w.player.inventory.find(Thing::Pistooli)->rounds == MAKAROV_ROUNDS);
 }
 
 TEST(gun_shop_sells_a_kalashnikov_as_the_fifth_item)
@@ -152,13 +172,13 @@ TEST(gun_shop_sells_a_kalashnikov_as_the_fifth_item)
     World w;
     auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Oruzhie), 10, 10);
     w.player.stats.money = 100;
-    const uint32_t ak = w.player.inventory.rynkky, rounds = w.player.inventory.ammukset;
+    const uint32_t ak = w.player.inventory.count(Thing::Rynkky);
     feedKeys("5");
     string msg;
     k->interact(&w.player, msg);
     CHECK(w.player.stats.money == 10);
-    CHECK(w.player.inventory.rynkky == ak + 1);
-    CHECK(w.player.inventory.ammukset == rounds + 30);
+    CHECK(w.player.inventory.count(Thing::Rynkky) == ak + 1);
+    CHECK(w.player.inventory.back.what == Thing::Rynkky && w.player.inventory.back.rounds == AK_ROUNDS);
 }
 
 TEST(gun_shop_refuses_the_broke_and_food_shops_have_no_fifth_item)
@@ -166,12 +186,12 @@ TEST(gun_shop_refuses_the_broke_and_food_shops_have_no_fifth_item)
     World w;
     auto* gun = w.add(new Kauppa("TEST", Kauppa::Kind::Oruzhie), 10, 10);
     w.player.stats.money = 20;
-    const uint32_t ak = w.player.inventory.rynkky;
+    const uint32_t ak = w.player.inventory.count(Thing::Rynkky);
     feedKeys("5");
     string msg;
     gun->interact(&w.player, msg);
     CHECK(w.player.stats.money == 20);
-    CHECK(w.player.inventory.rynkky == ak);
+    CHECK(w.player.inventory.count(Thing::Rynkky) == ak);
 
     auto* food = w.add(new Kauppa("FOOD", Kauppa::Kind::Produkty), 40, 10);
     w.player.stats.money = 200;
@@ -185,12 +205,13 @@ TEST(shop_refuses_the_broke)
     World w;
     auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
     w.player.stats.money = 1;
-    const uint32_t had = w.player.inventory.lenkki;
+    w.player.inventory.right = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Lenkki);
     feedKeys("1");
     string msg;
     k->interact(&w.player, msg);
     CHECK(w.player.stats.money == 1);
-    CHECK(w.player.inventory.lenkki == had);
+    CHECK(w.player.inventory.count(Thing::Lenkki) == had);
     CHECK(contains(msg, "Myyj"));
 }
 
@@ -257,10 +278,10 @@ TEST(alko_counter_refuses_drunks_without_reading_keys)
     string msg;
     a->getInteractMsg(&w.player, msg);
     CHECK(contains(msg, "liian"));
-    const uint32_t had = w.player.inventory.kalja;
+    const uint32_t had = w.player.inventory.count(Thing::Kalja);
     feedKeys("1");
     a->interact(&w.player, msg);
-    CHECK(w.player.inventory.kalja == had);
+    CHECK(w.player.inventory.count(Thing::Kalja) == had);
     CHECK(InputNS::Input::getMenuKey() == '1'); // the key was left alone
 }
 
@@ -270,11 +291,12 @@ TEST(alko_sells_beer)
     auto* a = w.add(new Alko(), 10, 10);
     w.player.stats.promilles = 5;
     w.player.stats.money = 20;
-    const uint32_t had = w.player.inventory.kalja;
+    w.player.inventory.left = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Kalja);
     feedKeys("1");
     string msg;
     a->interact(&w.player, msg);
-    CHECK(w.player.inventory.kalja == had + 1);
+    CHECK(w.player.inventory.count(Thing::Kalja) == had + 1);
     CHECK(w.player.stats.money == 10);
 }
 
@@ -284,11 +306,12 @@ TEST(alko_jaguar_needs_fifteen)
     auto* a = w.add(new Alko(), 10, 10);
     w.player.stats.promilles = 5;
     w.player.stats.money = 12;
-    const uint32_t had = w.player.inventory.lonkka;
+    w.player.inventory.left = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Lonkka);
     feedKeys("2");
     string msg;
     a->interact(&w.player, msg);
-    CHECK(w.player.inventory.lonkka == had);
+    CHECK(w.player.inventory.count(Thing::Lonkka) == had);
     CHECK(w.player.stats.money == 12);
 }
 
@@ -302,10 +325,11 @@ TEST(back_room_sells_vodka)
     CHECK(s->walkable);
     CHECK(s->getEnterMsg(&w.player, msg));
     w.player.stats.money = 30;
-    const uint32_t had = w.player.inventory.vodka;
+    w.player.inventory.left = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Vodka);
     feedKeys("1");
     s->interact(&w.player, msg);
-    CHECK(w.player.inventory.vodka == had + 1);
+    CHECK(w.player.inventory.count(Thing::Vodka) == had + 1);
     CHECK(w.player.stats.money == 10);
 }
 
@@ -322,7 +346,7 @@ TEST(stone_smashes_shop_window_and_alerts_police)
     World w(Coord{ 23, 15 });
     auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20); // front windows at (23,20) and (31,20)
     auto* cop = w.spawn(new Cop(Coord{ 60, 15 }));
-    w.player.inventory.kivet = 1;
+    w.player.inventory.left = Inventory::heldOf(Thing::Kivi);
     w.player.executeThrow(6, DirectionNS::down);
     CHECK(s->smashed);
     CHECK(s->isBreach(Coord{ 23, 20 }));
@@ -620,11 +644,12 @@ TEST(african_recruit_shares_his_ration_once)
 {
     World w(Coord{ 60, 60 });
     auto* r = w.spawn(new Varvatty(Coord{ 61, 60 }, rekryytti));
-    const uint32_t had = w.player.inventory.lenkki;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    const uint32_t had = w.player.inventory.count(Thing::Lenkki);
     string msg;
     r->interact(msg, &w.player);
     r->interact(msg, &w.player);
-    CHECK(w.player.inventory.lenkki == had + 1);
+    CHECK(w.player.inventory.count(Thing::Lenkki) == had + 1);
 }
 
 TEST(north_korean_marches_and_hits_back)
@@ -655,11 +680,12 @@ TEST(petrol_station_sells_hot_dogs)
     World w(Coord{ 30, 30 });
     auto* st = w.add(new Bensa(), 100, 100);
     w.player.stats.money = 20;
-    const uint32_t had = w.player.inventory.lenkki;
+    w.player.inventory.right = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Lenkki);
     feedKeys("1");
     string msg;
     st->interact(&w.player, msg);
-    CHECK(w.player.inventory.lenkki == had + 1);
+    CHECK(w.player.inventory.count(Thing::Lenkki) == had + 1);
     CHECK(w.player.stats.money == 14);
 }
 
@@ -1405,12 +1431,9 @@ TEST(market_empty_door_lets_you_in_and_the_theft_alarm_brings_them_back)
     m.g2->coord = Coord{ m.door.x + 15, m.door.y + 8 };
     string msg;
     CHECK(m.hm->getEnterMsg(&m.w.player, msg));
-    const auto before = m.w.player.inventory;
+    hold(m.w.player.inventory, Thing::None, Thing::None);
     m.hm->interact(&m.w.player, msg);
-    const auto& after = m.w.player.inventory;
-    const uint32_t gained = (after.vodka - before.vodka) + (after.kalja - before.kalja) + (after.lenkki - before.lenkki) +
-                            (after.kalat - before.kalat) + (after.lonkka - before.lonkka) + (after.bansku - before.bansku);
-    CHECK(gained >= 1);
+    CHECK(!m.w.player.inventory.left.empty());   // the first grab always fits
     CHECK(contains(msg, "VARAS"));
     CHECK(m.g1->chasing && m.g2->chasing);
 }
@@ -1420,9 +1443,11 @@ TEST(market_empty_door_lets_you_in_and_the_theft_alarm_brings_them_back)
 TEST(picked_up_bottle_goes_into_the_sack)
 {
     World w;
+    w.player.inventory.right = Held();
     Bona b(Coord{ 51, 50 });
     CHECK(b.interact(&w.player));
-    CHECK(w.player.inventory.pullot == 1);
+    CHECK(w.player.inventory.count(Thing::Tyhja) == 1);
+    CHECK(w.player.inventory.right.what == Thing::Tyhja);
 }
 
 TEST(kopecks_roll_over_into_roubles)
@@ -1441,15 +1466,14 @@ TEST(kopecks_roll_over_into_roubles)
 // standing just east of the hatch, ready to bump it
 static void atHatch(Market& m) { const Coord h = m.hm->getHatch(); m.w.player.coord = Coord{ h.x + 1, h.y }; }
 
-TEST(hatch_takes_one_bottle_per_bump_and_pays_on_the_receipt)
+TEST(hatch_pays_on_the_receipt)
 {
     Market m;
     atHatch(m);
-    m.w.player.inventory.pullot = 6;
     m.w.player.stats.money = 10;
-    for (uint32_t i = 1; i <= 6; ++i) {
+    for (int round = 0; round < 3; ++round) {
+        hold(m.w.player.inventory, Thing::Tyhja, Thing::Tyhja);
         m.w.player.move(DirectionNS::left, &m.w.level);
-        CHECK(m.w.player.inventory.pullot == 6 - i);
         CHECK(m.w.player.stats.money == 10);       // nothing paid before the receipt
     }
     CHECK(m.hm->hatchBottles == 6);
@@ -1459,13 +1483,34 @@ TEST(hatch_takes_one_bottle_per_bump_and_pays_on_the_receipt)
     CHECK(m.w.printer.saw("kuitin"));
 }
 
+TEST(deposit_hatch_takes_all_empty_bottles_in_hands)
+{
+    Market m;
+    atHatch(m);
+    m.w.player.stats.money = 10;
+    hold(m.w.player.inventory, Thing::Tyhja, Thing::Tyhja);
+    m.w.player.move(DirectionNS::left, &m.w.level);
+    CHECK(m.w.player.inventory.count(Thing::Tyhja) == 0);
+    CHECK(m.w.player.inventory.freeHands() == 2);
+    CHECK(m.hm->hatchBottles == 2);
+    CHECK(m.w.player.stats.money == 10);
+
+    // only the empties go: a full beer stays in the hand
+    hold(m.w.player.inventory, Thing::Kalja, Thing::Tyhja);
+    m.w.player.move(DirectionNS::left, &m.w.level);
+    CHECK(m.hm->hatchBottles == 3);
+    CHECK(m.w.player.inventory.left.what == Thing::Kalja && m.w.player.inventory.right.empty());
+    m.w.player.move(DirectionNS::left, &m.w.level);  // the receipt: 3 x 20 kop
+    CHECK(m.w.player.stats.money == 10 && m.w.player.stats.kopecks == 60);
+}
+
 TEST(handing_in_a_bottle_calms_a_guard_who_sees_it)
 {
     Market m;
     atHatch(m);
     m.g1->coord = Coord{ m.w.player.coord.x + 2, m.w.player.coord.y };
     m.g1->provoke(&m.w.player);
-    m.w.player.inventory.pullot = 1;
+    m.w.player.inventory.left = Inventory::heldOf(Thing::Tyhja);
     m.w.player.move(DirectionNS::left, &m.w.level);
     CHECK(!m.g1->chasing);
 }
@@ -1475,19 +1520,19 @@ TEST(loitering_at_the_hatch_without_bottles_angers_the_guards)
     Market m;
     atHatch(m);
     m.g1->coord = Coord{ m.w.player.coord.x + 2, m.w.player.coord.y };
-    m.w.player.inventory.pullot = 0;
+    CHECK(m.w.player.inventory.count(Thing::Tyhja) == 0);   // a full beer is no deposit
     m.w.player.move(DirectionNS::left, &m.w.level);
     CHECK(m.g1->chasing);
     CHECK(m.w.player.stats.money == 20 && m.w.player.stats.kopecks == 0);
 }
 
-TEST(four_bottles_draw_nobody)
+TEST(one_bottle_draws_nobody)
 {
     World w;
     auto* j = w.spawn(new Juoppo(Coord{ 52, 50 }));
-    w.player.inventory.pullot = 4;
+    hold(w.player.inventory, Thing::Tyhja, Thing::Lenkki);
     for (int i = 0; i < 300; ++i) w.level.npcFrame(500);
-    CHECK(w.player.inventory.pullot == 4);
+    CHECK(w.player.inventory.count(Thing::Tyhja) == 1);
     CHECK(j->stolenBottles == 0);
 }
 
@@ -1495,16 +1540,16 @@ TEST(a_drunk_comes_for_a_full_sack_takes_a_handful_and_picks_a_fight)
 {
     World w;
     auto* j = w.spawn(new Juoppo(Coord{ 56, 50 }));   // further than he can normally see
-    w.player.inventory.pullot = 25;
+    hold(w.player.inventory, Thing::Tyhja, Thing::Tyhja);
     bool came = false;
-    for (int i = 0; i < 400 && w.player.inventory.pullot == 25; ++i) {
+    for (int i = 0; i < 400 && w.player.inventory.count(Thing::Tyhja) == 2; ++i) {
         w.level.npcFrame(500);
         if (j->coord.distance(w.player.coord) <= 2) came = true;
     }
     CHECK(came);
-    CHECK(w.player.inventory.pullot < 25);
-    CHECK(j->stolenBottles == 25 - w.player.inventory.pullot);
-    CHECK(j->stolenBottles >= 2);                       // a handful, not just one
+    CHECK(w.player.inventory.count(Thing::Tyhja) < 2);
+    CHECK(j->stolenBottles == 2 - w.player.inventory.count(Thing::Tyhja));
+    CHECK(j->stolenBottles >= 2);                       // both hands, not just one
     CHECK(j->brawlActions > 0);                         // and now he wants a fight
 }
 
@@ -1512,9 +1557,10 @@ TEST(someone_feared_takes_just_one_bottle)
 {
     World w;
     auto* s = w.spawn(new Skinhead(Coord{ 51, 50 }));
-    w.player.inventory.pullot = 25;
-    for (int i = 0; i < 400 && w.player.inventory.pullot == 25; ++i) w.level.npcFrame(500);
-    CHECK(w.player.inventory.pullot == 24);
+    w.player.stats.money = 0;   // nothing to pick from the pocket meanwhile
+    hold(w.player.inventory, Thing::Tyhja, Thing::Tyhja);
+    for (int i = 0; i < 400 && w.player.inventory.count(Thing::Tyhja) == 2; ++i) w.level.npcFrame(500);
+    CHECK(w.player.inventory.count(Thing::Tyhja) == 1);
     CHECK(!s->hasLoot());
 }
 
@@ -1528,9 +1574,9 @@ TEST(the_poorer_want_bottles_more)
         for (int i = 0; i < 600; ++i) {
             p->coord = Coord{ 51, 50 };
             p->fleeActions = p->brawlActions = 0;
-            w.player.inventory.pullot = 10;
+            hold(w.player.inventory, Thing::Tyhja, Thing::Tyhja);
             w.level.npcFrame(500);
-            if (w.player.inventory.pullot < 10) ++n;
+            if (w.player.inventory.count(Thing::Tyhja) < 2) ++n;
         }
         return n;
     };
@@ -1546,7 +1592,7 @@ TEST(a_brawler_forgets_you_out_of_sight)
     auto* j = w.spawn(new Juoppo(Coord{ 51, 50 }));
     j->brawlActions = 10;
     w.player.coord = Coord{ 90, 50 };
-    w.player.inventory.pullot = 30;
+    hold(w.player.inventory, Thing::Tyhja, Thing::Tyhja);
     for (int i = 0; i < 5; ++i) w.level.npcFrame(500);   // he gets to act at least once
     CHECK(j->brawlActions == 0);
 }
@@ -1555,15 +1601,14 @@ TEST(catching_a_bottle_thief_gets_everything_back)
 {
     World w;
     auto* j = w.spawn(new Juoppo(Coord{ 51, 50 }));
-    j->stolenBottles = 3;
+    j->stolenBottles = 1;
     j->stolenItems = { 0, 3 };   // a Baltika and a sausage
     j->stolenMoney = 5;
-    const auto before = w.player.inventory;
+    hold(w.player.inventory, Thing::None, Thing::None);
     const uint32_t money = w.player.stats.money;
     w.player.move(DirectionNS::right, &w.level);
-    CHECK(w.player.inventory.pullot == before.pullot + 3);
-    CHECK(w.player.inventory.kalja == before.kalja + 1);
-    CHECK(w.player.inventory.lenkki == before.lenkki + 1);
+    CHECK(w.player.inventory.count(Thing::Tyhja) + w.player.inventory.count(Thing::Kalja) == 2);   // two hands
+    CHECK(itemAt(w.level, ELenkki) || itemAt(w.level, EKalja) || itemAt(w.level, EBona));        // the rest on the ground
     CHECK(w.player.stats.money == money + 5);
     CHECK(!j->hasLoot());
 }
@@ -2397,13 +2442,12 @@ TEST(aa_gun_crew_takes_a_bottle_of_vodka_each)
 {
     World w(Coord{ 20, 20 });
     auto* gun = placeTestGun(w, 200, 150, 1);
-    w.player.inventory.vodka = 0;
     string msg;
     CHECK(!gun->approach(&w.player, msg));  // no bottle: shoved away
     CHECK(w.player.manning == nullptr);
-    w.player.inventory.vodka = 2;
+    hold(w.player.inventory, Thing::Vodka, Thing::Vodka);
     CHECK(gun->approach(&w.player, msg));
-    CHECK(w.player.inventory.vodka == 1);
+    CHECK(w.player.inventory.count(Thing::Vodka) == 1);
     CHECK(w.player.manning == gun);
     CHECK(gun->gunner == &w.player);
     CHECK(gun->crew().size() == 1 && gun->awakeCrew().empty());   // drank it and passed out
@@ -2415,10 +2459,10 @@ TEST(aa_gun_two_crew_need_two_bottles)
 {
     World w(Coord{ 20, 20 });
     auto* gun = placeTestGun(w, 200, 150, 2);
-    w.player.inventory.vodka = 1;
+    hold(w.player.inventory, Thing::Vodka, Thing::Lenkki);
     string msg;
     CHECK(!gun->approach(&w.player, msg));
-    CHECK(w.player.inventory.vodka == 1);   // the bottle is not wasted
+    CHECK(w.player.inventory.count(Thing::Vodka) == 1);   // the bottle is not wasted
 }
 
 TEST(aa_gun_sleeping_crew_lets_the_drunk_take_it)
@@ -2426,10 +2470,10 @@ TEST(aa_gun_sleeping_crew_lets_the_drunk_take_it)
     World w(Coord{ 20, 20 });
     auto* gun = placeTestGun(w, 200, 150, 1);
     gun->crew().front()->doze(50);
-    w.player.inventory.vodka = 3;
+    hold(w.player.inventory, Thing::Vodka, Thing::Vodka);
     string msg;
     CHECK(gun->approach(&w.player, msg));
-    CHECK(w.player.inventory.vodka == 3);   // no bribe needed
+    CHECK(w.player.inventory.count(Thing::Vodka) == 2);   // no bribe needed
     CHECK(contains(msg, "kuorsaa"));
 }
 
@@ -2438,7 +2482,6 @@ TEST(aa_gun_can_be_captured_once_the_crew_is_dead)
     World w(Coord{ 20, 20 });
     auto* gun = placeTestGun(w, 200, 150, 1);
     gun->crew().front()->stats.health = 0;
-    w.player.inventory.vodka = 0;
     string msg;
     CHECK(gun->approach(&w.player, msg));
     CHECK(contains(msg, "Kaappaat"));
@@ -3207,4 +3250,50 @@ TEST(hands_give_held_keeps_fill_and_seller)
     CHECK(inv.give(h));
     CHECK(inv.left.fill == 2 && inv.left.pissSeller == "Vasja");
     CHECK(stealableThing(2) == Thing::Vodka);
+}
+
+TEST(pickup_with_full_hands_leaves_item_on_map)
+{
+    World w;
+    CHECK(w.player.inventory.freeHands() == 0);   // the default kit: beer and sausage
+    w.level.addItem(new Kalja(Coord{ 51, 50 }));
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(itemAt(w.level, EKalja));
+    CHECK(w.player.inventory.count(Thing::Kalja) == 1);
+    CHECK(w.printer.saw(HANDS_FULL_MSG));
+
+    // a free hand picks it up
+    w.player.inventory.right = Held();
+    w.player.move(DirectionNS::right, &w.level);
+    w.player.move(DirectionNS::left, &w.level);
+    CHECK(!itemAt(w.level, EKalja));
+    CHECK(w.player.inventory.count(Thing::Kalja) == 2);
+}
+
+TEST(shop_refuses_and_keeps_money_when_hands_full)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.stats.money = 20;
+    feedKeys("1");
+    string msg;
+    k->interact(&w.player, msg);
+    CHECK(w.player.stats.money == 20);
+    CHECK(w.player.inventory.count(Thing::Lenkki) == 1);
+    CHECK(contains(msg, HANDS_FULL_MSG));
+}
+
+TEST(robber_loot_that_does_not_fit_drops_to_ground)
+{
+    World w;
+    w.player.inventory.pocket = Inventory::heldOf(Thing::Lipas);   // the pocket is taken too
+    Car* car = new Car(Coord{ 51, 50 }, true, -1);
+    car->loot = true;
+    w.level.addVehicle(car);
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(!car->loot);
+    CHECK(w.player.inventory.count(Thing::Pistooli) == 0);   // no free hand for it
+    CHECK(itemAt(w.level, EPistooli));
+    CHECK(itemAt(w.level, ELipas));
+    for (auto i : w.level.items) CHECK(i->coord.distance(w.player.coord) <= 1);
 }

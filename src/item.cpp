@@ -44,8 +44,28 @@ Item* Item::createItem(uint32_t index, Coord coord) {
         case 12: return new Oksennus(coord);
         case 13: return new Vodka(coord);
         case 14: return new Granata(coord);
+        case 15: return new Bona(coord); // an empty bottle flies like any other
         default: return nullptr;
     }
+}
+
+Item* Item::createThing(Thing t, Coord coord)
+{
+    switch (t) {
+        case Thing::Tyhja: return new Bona(coord);
+        case Thing::Pistooli: return new Pistooli(coord);
+        case Thing::Rynkky: return new Rynkky(coord);
+        case Thing::Lipas: return new Lipas(coord);
+        default: return createItem(thingToThrowNum(t), coord);
+    }
+}
+
+// into a free hand (or the pocket); with full hands it stays on the ground
+static bool pickUp(PlayerNS::Player* player, Thing t)
+{
+    if (player->inventory.give(t)) return true;
+    if (player->printer) player->printer->showMessage(HANDS_FULL_MSG, player->level, false);
+    return false;
 }
 
 // bona
@@ -56,8 +76,7 @@ std::string Bona::getMsg() const {
 }
 bool Bona::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.pullot;
-    return true;
+    return pickUp(player, Thing::Tyhja);
 }
 
 // kalja
@@ -68,8 +87,7 @@ std::string Kalja::getMsg() const {
 }
 bool Kalja::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.kalja;
-    return true;
+    return pickUp(player, Thing::Kalja);
 }
 
 // lonkka
@@ -80,8 +98,7 @@ std::string Lonkka::getMsg() const {
 }
 bool Lonkka::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.lonkka;
-    return true;
+    return pickUp(player, Thing::Lonkka);
 }
 
 // lenkki
@@ -92,8 +109,7 @@ std::string Lenkki::getMsg() const {
 }
 bool Lenkki::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.lenkki;
-    return true;
+    return pickUp(player, Thing::Lenkki);
 }
 
 // pamppu
@@ -104,8 +120,7 @@ std::string Pamppu::getMsg() const {
 }
 bool Pamppu::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.pamput;
-    return true;
+    return pickUp(player, Thing::Pamppu);
 }
 
 // veitset
@@ -116,8 +131,7 @@ std::string Veitsi::getMsg() const {
 }
 bool Veitsi::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.veitset;
-    return true;
+    return pickUp(player, Thing::Veitsi);
 }
 
 // ketjut
@@ -128,8 +142,7 @@ std::string Ketjut::getMsg() const {
 }
 bool Ketjut::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.ketjut;
-    return true;
+    return pickUp(player, Thing::Ketjut);
 }
 
 // kivi
@@ -140,8 +153,7 @@ std::string Kivi::getMsg() const {
 }
 bool Kivi::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.kivet;
-    return true;
+    return pickUp(player, Thing::Kivi);
 }
 
 // Bootsit
@@ -152,8 +164,7 @@ std::string Bootsit::getMsg() const {
 }
 bool Bootsit::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.bootsit;
-    return true;
+    return pickUp(player, Thing::Bootsit);
 }
 
 // Kala
@@ -164,8 +175,7 @@ std::string Kala::getMsg() const {
 }
 bool Kala::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.kalat;
-    return true;
+    return pickUp(player, Thing::Kala);
 }
 
 // omppo
@@ -176,8 +186,7 @@ std::string Omppo::getMsg() const {
 }
 bool Omppo::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.omppo;
-    return true;
+    return pickUp(player, Thing::Omppo);
 }
 
 // banaani
@@ -188,8 +197,7 @@ std::string Banaani::getMsg() const {
 }
 bool Banaani::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.bansku;
-    return true;
+    return pickUp(player, Thing::Bansku);
 }
 
 // Raha
@@ -313,9 +321,7 @@ std::string Pistooli::getMsg() const {
     return "Löysit pistoolin! Vaarallinen kapistus.";
 }
 bool Pistooli::interact(PlayerNS::Player* player) {
-    ++player->inventory.pistooli;
-    player->inventory.ammukset += (std::rand() % 4 + 2);
-    return true;
+    return pickUp(player, Thing::Pistooli); // loaded: its own eight rounds
 }
 
 // bus stop
@@ -434,8 +440,7 @@ std::string Granata::getMsg() const {
     return "Kranaatti! Vaarallinen löytö.";
 }
 bool Granata::interact(PlayerNS::Player* player) {
-    ++player->inventory.granata;
-    return true;
+    return pickUp(player, Thing::Granata);
 }
 
 // vodka
@@ -445,8 +450,7 @@ std::string Vodka::getMsg() const {
     return "Vodka! Venäjän vesijohtovettä.";
 }
 bool Vodka::interact(PlayerNS::Player* player) {
-    ++player->inventory.vodka;
-    return true;
+    return pickUp(player, Thing::Vodka);
 }
 
 // viina kellari (wine cellar door - victory item)
@@ -491,9 +495,12 @@ bool PutinPoyta::interact(PlayerNS::Player* player) {
 // assault rifle
 bool Rynkky::interact(PlayerNS::Player* player)
 {
-    ++player->inventory.rynkky;
-    player->inventory.ammukset += 30;
-    return true;
+    return pickUp(player, Thing::Rynkky); // on the back, with its own magazine
+}
+
+bool Lipas::interact(PlayerNS::Player* player)
+{
+    return pickUp(player, Thing::Lipas);
 }
 
 // war map
@@ -523,16 +530,16 @@ Roska::Roska(const Coord& c) : Item(c, ERoska)
 
 bool Roska::interact(PlayerNS::Player* player)
 {
-    auto& inv = player->inventory;
-    if (outcome < 14) ++inv.lenkki;
-    else if (outcome < 22) ++inv.omppo;
-    else if (outcome < 32) ++inv.kalja;
-    else if (outcome < 37) ++inv.vodka;
+    // a find that does not fit the hands is left next to you
+    if (outcome < 14) player->receive(Thing::Lenkki);
+    else if (outcome < 22) player->receive(Thing::Omppo);
+    else if (outcome < 32) player->receive(Thing::Kalja);
+    else if (outcome < 37) player->receive(Thing::Vodka);
     else if (outcome < 50) player->updateMoney(std::rand() % 8 + 1);
     else if (outcome < 58) player->damage(1);
     else if (outcome < 62) { player->damage(2); player->stepOnNeedle(); }
-    else if (outcome < 64) ++inv.ammukset;
-    else if (outcome < 65) ++inv.pistooli;
+    else if (outcome < 64) player->receive(Thing::Lipas);
+    else if (outcome < 65) player->receive(Thing::Pistooli);
     else if (outcome < 80) {
         Level* level = player->level;
         const int d[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };

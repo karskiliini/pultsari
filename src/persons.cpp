@@ -209,7 +209,7 @@ void Mummo::npcAct()
         reactedToUniform = true;
         if (random(50)) {
             say("Kiitos palveluksestasi, poikaseni!");
-            p->inventory.vodka++;
+            p->receive(Thing::Vodka);
             p->updatepromilles(3);
         } else {
             say("MURHAAJA! Tapoit poikani!");
@@ -1098,7 +1098,7 @@ void Yka::npcAct()
     Player* p = level->getPlayer();
     bool seesPlayer = canSeeTarget(p->coord);
 
-    if (seesPlayer && p->inventory.kalja > 0) {
+    if (seesPlayer && p->inventory.count(Thing::Kalja) > 0) {
         Direction d = getMoveDirection(p->coord);
         move(d, msg);
     } else {
@@ -1115,10 +1115,9 @@ bool Yka::interact(std::string& msg, Person* source)
     if (source->type == pelaaja)
     {
         Player* p = dynamic_cast<Player*>(source);
-        if (p->inventory.kalja > 0)
+        if (p->inventory.take(Thing::Kalja))
         {
             msg = "Huitaiset Yevgeniä,joka pollii sulta yhen pivon.";
-            --p->inventory.kalja;
             damage(stats.health);
         } else {
             msg = "Mätät Yevgeniä sikana naamaan!";
@@ -1790,10 +1789,13 @@ bool Juoppo::interact(std::string& msg, Person* source)
         Player* player = dynamic_cast<Player*>(source);
         constexpr uint32_t PRICE = 15;
         if (player->stats.money >= PRICE && random(40)) {
+            if (!player->inventory.fits(Thing::Vodka)) {
+                msg = HANDS_FULL_MSG;   // no free hand: no sale, the money stays
+                return true;
+            }
             // half of the bottles sold on the street are piss; you find out when you drink
             player->stats.money -= PRICE;
-            ++player->inventory.vodka;
-            if (random(50)) player->inventory.pissVodka.push_back(name);
+            player->inventory.give(Thing::Vodka, random(50) ? name : "");
             msg = name + " myy sinulle pullon vodkaa 15 ruplalla. \"Aitoa tavaraa, brat!\"";
             say("Aitoa, brat!");
             return true;
@@ -1901,7 +1903,7 @@ bool Varvatty::interact(std::string& msg, Person* source)
     }
     if (player && !gaveRation) {
         gaveRation = true;
-        ++player->inventory.lenkki;
+        player->receive(Thing::Lenkki);
         msg = "Värvätty antaa sinulle muonapakkauksensa. \"Ota. Minä en saa sitä alas.\"";
         say("Ota se.");
         return true;

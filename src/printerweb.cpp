@@ -94,9 +94,10 @@ void PrinterWeb::print(Level* l)
 
         j += ",\"inv\":[";
         first = true;
+        // what each slot holds: [slot, thing]
         for (const auto& item : overlayItems(&player->inventory)) {
             if (item.count == 0) continue;
-            j += string(first ? "" : ",") + "[" + jsonString(item.name) + "," + to_string(item.count) + "]";
+            j += string(first ? "" : ",") + "[" + jsonString(item.name) + "," + jsonString(item.thing) + "]";
             first = false;
         }
         if (player->inventory.propusk) j += string(first ? "" : ",") + "[\"PROPUSK\"," + to_string(player->inventory.propusk) + "]";
@@ -170,7 +171,7 @@ void PrinterWeb::printInventoryOverlay(Inventory* inventory, int selectedRow, bo
     for (const auto& item : overlayItems(inventory)) {
         string use = item.useLabel;
         while (!use.empty() && use.back() == ' ') use.pop_back();
-        j += string(first ? "" : ",") + "[" + jsonString(item.name) + "," + to_string(item.count) + "," +
+        j += string(first ? "" : ",") + "[" + jsonString(item.name) + "," + jsonString(item.thing) + "," +
              jsonString(use) + "," + (item.canThrow ? "1" : "0") + "]";
         first = false;
     }

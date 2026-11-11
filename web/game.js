@@ -537,9 +537,10 @@
         const key = JSON.stringify(invMenu);
         if (ui.menu.dataset.key === key) return;
         ui.menu.dataset.key = key;
-        const rows = invMenu.items.map(([name, count, use, canThrow], i) => {
-            const sel = i === invMenu.sel ? ' class="sel"' : count ? '' : ' class="none"';
-            return `<tr${sel}><td>${i === invMenu.sel ? '▶' : ''}</td><td>${name}</td><td>×${count}</td><td>${use}</td><td>${canThrow ? '[F]' : ''}</td></tr>`;
+        // one row per slot: [slot, what is in it ('' when empty), use, can throw]
+        const rows = invMenu.items.map(([name, thing, use, canThrow], i) => {
+            const sel = i === invMenu.sel ? ' class="sel"' : thing ? '' : ' class="none"';
+            return `<tr${sel}><td>${i === invMenu.sel ? '▶' : ''}</td><td>${name}</td><td>${thing || '-'}</td><td>${use}</td><td>${canThrow ? '[F]' : ''}</td></tr>`;
         });
         ui.menu.querySelector('tbody').innerHTML = rows.join('');
         ui.menu.querySelector('h3').textContent = invMenu.throw ? 'HEITÄ MITÄ?' : 'ТОВАРЫ · TAVARAT';
