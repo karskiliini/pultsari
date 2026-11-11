@@ -3405,5 +3405,27 @@ TEST(full_hands_kick_bona_and_it_counts)
     w.player.move(DirectionNS::right, &w.level);
     CHECK(!itemAt(w.level, EBona));
     CHECK(w.player.inventory.count(Thing::Tyhja) == 0);
-    CHECK(w.printer.saw("potkaiset pullon rikki"));
+    CHECK(!w.printer.log.empty() && contains(w.printer.log.back(), "potkaiset pullon rikki"));   // not the pickup line
+    NextLevel exit(Coord{ 60, 60 }, &w.level);
+    CHECK(exit.interact(&w.player));   // that was the last bottle: the exit is open
+}
+
+TEST(overlay_throw_takes_from_selected_hand)
+{
+    World w;
+    hold(w.player.inventory, Thing::Kalja, Thing::Kalja);
+    w.player.inventory.left.fill = 0;
+    w.player.inventory.right.rounds = 7;   // a marker to tell the hands apart
+    CHECK(w.player.takeThrowable(w.player.inventory.right) == thingToThrowNum(Thing::Kalja));
+    CHECK(w.player.inventory.right.empty());
+    CHECK(w.player.inventory.left.what == Thing::Kalja);
+}
+
+TEST(overlay_eat_uses_selected_hand)
+{
+    World w;
+    hold(w.player.inventory, Thing::Lenkki, Thing::Lenkki);
+    w.player.eatHeld(w.player.inventory.right, &w.level);
+    CHECK(w.player.inventory.right.empty());
+    CHECK(w.player.inventory.left.what == Thing::Lenkki);
 }

@@ -62,6 +62,10 @@ public:
     void drinkHeld(Held& h, Level* level);
     // which hand a throw or use is meant for: the only full hand, or ask (v/o) when both are; null = none/cancel
     Held* chooseHand(Level* level);
+    // eat what the hand holds (the overlay row and "e" share this)
+    void eatHeld(Held& h, Level* level);
+    // the hand lets go of what it holds, to be thrown: its throw number (0 and untouched if it cannot fly)
+    uint32_t takeThrowable(Held& h);
     virtual bool eat(Level* level);
     virtual bool puke(DirectionNS::Direction d, Level* level);
     virtual bool throwItem();

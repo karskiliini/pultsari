@@ -104,6 +104,18 @@ def test_player_starts_on_leninski():
           f"pos {first.get('pos')} lvl {first.get('lvl')}")
 
 
+def test_q_drinks_in_realtime():
+    g = Game()
+    time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
+    g.keys('q'); time.sleep(1)
+    msgs = [f.get('msg', '') for f in g.frames()]
+    menus = [e for e in g.events() if e.get('t') == 'invmenu']
+    g.close()
+    # a beggar may have taken the starting beer: then Player::drink says there is nothing to drink
+    drank = ('Olutpullo meni', 'Baltika katosi', 'Ei oo ehtaa tavaraa')
+    check('q_drinks_in_realtime', any(any(d in m for d in drank) for m in msgs) and not menus, f'menus {len(menus)}')
+
+
 def test_random_play_does_not_crash():
     g = Game()
     time.sleep(1); g.keys(' ', 0)
@@ -126,6 +138,7 @@ if __name__ == '__main__':
     test_z_restarts()
     test_city_is_built_up()
     test_player_starts_on_leninski()
+    test_q_drinks_in_realtime()
     test_random_play_does_not_crash()
     print(f'{6 - len(failures)}/6 game tests passed')
     sys.exit(1 if failures else 0)

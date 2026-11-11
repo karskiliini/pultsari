@@ -295,6 +295,41 @@ bool Player::drink(Level* level)
     return true;
 }
 
+uint32_t Player::takeThrowable(Held& h)
+{
+    const uint32_t n = thingToThrowNum(h.what);
+    if (n != 0) h = Held();
+    return n;
+}
+
+void Player::eatHeld(Held& h, Level* level)
+{
+    const Thing t = h.what;
+    switch (t) {
+        case Thing::Lenkki:
+            h = Held(); powerup(1);
+            printer->showMessage("Mamamamakkaraa.", level, false);
+            feedHunger(25);
+            break;
+        case Thing::Kala:
+            h = Held();
+            if (random(70)) { damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", level, false); }
+            else { powerup(4); printer->showMessage("Kaloreja kalasta.", level, false); feedHunger(30); }
+            break;
+        case Thing::Omppo:
+            h = Held();
+            if (random(50)) { damage(1); printer->showMessage("Antonovka oli pilaantunut.", level, false); }
+            else { powerup(2); printer->showMessage("orb.", level, false); feedHunger(15); }
+            break;
+        case Thing::Bansku:
+            h = Held();
+            if (random(50)) { printer->showMessage("Banaani ei vaikuttanut.", level, false); feedHunger(5); }
+            else { powerup(1); printer->showMessage("Babababananiii", level, false); feedHunger(10); }
+            break;
+        default: break;
+    }
+}
+
 Held* Player::chooseHand(Level* level)
 {
     Held* l = &inventory.left;
@@ -568,12 +603,11 @@ bool Player::throwItem()
         printer->showMessage(inventory.freeHands() == 2 ? "Ei mit\xC3\xA4n heitett\xC3\xA4v\xC3\xA4\xC3\xA4." : "Et heit\xC3\xA4 mit\xC3\xA4\xC3\xA4n.", level, false);
         return false;
     }
-    const uint32_t number = thingToThrowNum(hand->what);
+    const uint32_t number = takeThrowable(*hand);
     if (number == 0) {
         printer->showMessage("T\xC3\xA4t\xC3\xA4 ei voi heitt\xC3\xA4\xC3\xA4.", level, false);
         return false;
     }
-    *hand = Held();
 
     auto dir = getDirection(level, printer);
     return executeThrow(number, dir);

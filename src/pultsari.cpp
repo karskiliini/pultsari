@@ -1123,6 +1123,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             uint32_t msSinceShot = 1000;
             float facing = 0.0f; // direction of the last step, for raising the gun
             uint32_t aimItemNum = 0;
+            Held* aimSlot = nullptr;
             uint32_t aimTick = 0;
             bool aimIsShooting = false;
 
@@ -1173,14 +1174,12 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             };
             // overlay row -> Player::decrementInventory / Item::createItem index (0: nothing to throw)
             auto invIndexToThrowNum = [&](int idx) -> uint32_t { return thingToThrowNum(rowThing(idx)); };
-            // how many of a throwable the player carries (decrementInventory numbering)
-            auto throwableCount = [&](uint32_t num) -> uint32_t {
-                return player.inventory.count(throwNumToThing(num));
-            };
-            // the item leaves the inventory only when it is actually thrown, so cancelling keeps it
-            auto startThrowAim = [&](uint32_t throwNum) {
-                if (throwNum > 0 && throwableCount(throwNum) > 0) {
+            // the item leaves the hand only when it is actually thrown, so cancelling keeps it
+            auto startThrowAim = [&](Held* slot) {
+                const uint32_t throwNum = slot ? thingToThrowNum(slot->what) : 0;
+                if (throwNum > 0) {
                     aimItemNum = throwNum;
+                    aimSlot = slot;
                     aimAngle = -M_PI / 2.0f;
                     aimTick = 0;
                     mode = Mode::Aim;
@@ -1207,27 +1206,15 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         break;
                     }
                     case Thing::Lenkki:
-                        inv.take(Thing::Lenkki); player.powerup(1);
-                        printer->showMessage("Mamamamakkaraa.", &level, false);
-                        feedHunger(25);
-                        break;
                     case Thing::Kala:
-                        inv.take(Thing::Kala);
-                        if (random(70)) { player.damage(2); printer->showMessage("Syomasi kala sisalsi matoja...", &level, false); }
-                        else { player.powerup(4); printer->showMessage("Kaloreja kalasta.", &level, false); feedHunger(30); }
-                        break;
                     case Thing::Omppo:
-                        inv.take(Thing::Omppo);
-                        if (random(50)) { player.damage(1); printer->showMessage("Antonovka oli pilaantunut.", &level, false); }
-                        else { player.powerup(2); printer->showMessage("orb.", &level, false); feedHunger(15); }
+                    case Thing::Bansku: {
+                        Held* h = slot && slot->what == what ? slot : inv.find(what);
+                        if (h) player.eatHeld(*h, &level);
                         break;
-                    case Thing::Bansku:
-                        inv.take(Thing::Bansku);
-                        if (random(50)) { printer->showMessage("Banaani ei vaikuttanut.", &level, false); feedHunger(5); }
-                        else { player.powerup(1); printer->showMessage("Babababananiii", &level, false); feedHunger(10); }
-                        break;
+                    }
                     case Thing::Granata: // kranaatti can only be thrown
-                        startThrowAim(thingToThrowNum(Thing::Granata));
+                        startThrowAim(slot);
                         break;
                     case Thing::Rynkky: { // raise the assault rifle; hold Space for full auto
                         const Held* ak = inv.find(Thing::Rynkky);
@@ -1305,12 +1292,13 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 's': case 'k': queuedMove = InputNS::down; break;
                                 case 'a': case 'j': queuedMove = InputNS::left; break;
                                 case 'd': case 'l': queuedMove = InputNS::right; break;
-                                case 'q': case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
+                                case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
+                                case 'q': player.drink(&level); break;   // a sip or the beer in one go
                                 case 'f': {
                                     // F asks what to throw: the menu opens on the first throwable thing carried
                                     int first = -1;
                                     for (int r = 0; r < invItems() && first < 0; ++r)
-                                        if (throwableCount(invIndexToThrowNum(r)) > 0) first = r;
+                                        if (invIndexToThrowNum(r) > 0) first = r;
                                     if (first < 0) {
                                         printer->showMessage("Ei mit\xC3\xA4\xC3\xA4n heitett\xC3\xA4v\xC3\xA4\xC3\xA4.", &level, false);
                                     } else {
@@ -1373,14 +1361,14 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     break;
                                 case 'e': case '\r':
                                     if (throwMenu && c == '\r') {
-                                        startThrowAim(invIndexToThrowNum(invSelection));
+                                        startThrowAim(rowSlot(invSelection));
                                         break;
                                     }
                                     useInventoryItem(rowThing(invSelection), rowSlot(invSelection)); // eat, drink or aim the pistol
                                     if (mode == Mode::Inventory) mode = Mode::Normal;
                                     break;
                                 case 'f': // throw -> aim mode
-                                    startThrowAim(invIndexToThrowNum(invSelection));
+                                    startThrowAim(rowSlot(invSelection));
                                     break;
                                 case 'q': case '\t': case 27: // Q, Tab or ESC closes
                                     mode = Mode::Normal;
@@ -1423,8 +1411,12 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         player.shootAt(aimNow);
                                         aimIsShooting = false;
                                     } else {
-                                        if (player.decrementInventory(aimItemNum))
+                                        // out of the very hand it was aimed from
+                                        if (aimSlot && thingToThrowNum(aimSlot->what) == aimItemNum && player.takeThrowable(*aimSlot)) {
                                             player.executeThrowAt(aimItemNum, aimNow);
+                                        } else {
+                                            printer->showMessage("Heitett\xC3\xA4v\xC3\xA4 on poissa k\xC3\xA4""dest\xC3\xA4.", &level, false);
+                                        }
                                     }
                                     mode = Mode::Normal;
                                     break;
