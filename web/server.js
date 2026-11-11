@@ -172,7 +172,7 @@ const server = http.createServer((req, res) => {
     }
 
     // recorded sound effects (Pixabay, see web/sounds/CREDITS.md): only plain mp3 file names
-    const sample = url.pathname.match(/\/sounds\/([a-z0-9_-]+\.mp3)$/);
+    const sample = url.pathname.match(/\/sounds\/((?:intro\/)?[a-z0-9_-]+\.mp3)$/);
     if (sample) {
         fs.readFile(path.join(__dirname, 'sounds', sample[1]), (err, data) => {
             if (err) { res.writeHead(404); res.end(); return; }
