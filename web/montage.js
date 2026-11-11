@@ -212,7 +212,7 @@
             who: 'SEKÄ', name: 'BABUŠKA, 84', line: 'Toivoo saavansa säkin perunoita – ja onnistuu!',
             color: '#d07a9a',
             dur: 7.2 + READ_S,
-            sfx: [[1.6, 'steps', 0.5], [2.9, 'thud', 0.4], [5.3, 'steps', 0.5]],
+            sfx: [[1.6, 'steps', 0.5], [2.9, 'soft-fall', 0.6], [5.3, 'steps', 0.5]],
             // she stares into the camera; pull back: a man brings her a sack of potatoes for her
             // service, she watches him go, then turns back to stare into the camera again
             render(ctx, W, H, t, fs) {
@@ -2240,7 +2240,7 @@
             who: 'SEKÄ', name: 'JOHTAJA, 61', line: 'Kaatui ikkunasta. Ihan itse.',
             color: '#cfcfcf',
             dur: 8.2 + READ_S,
-            sfx: [[0, 'glass-break', 0.6], [1.8, 'thud', 0.8], [2, 'whoosh', 0.3], [3.6, 'knock', 0.4], [3.6, 'steps', 0.4], [5, 'whoosh', 0.3], [7, 'gulp', 0.7]],
+            sfx: [[0, 'glass-break', 0.6], [1.8, 'soft-fall', 0.8], [2, 'whoosh', 0.3], [3.6, 'knock', 0.4], [3.6, 'steps', 0.4], [5, 'whoosh', 0.3], [7, 'gulp', 0.7]],
             // close on him falling from his office window, calm about it; pull back: a queue of new
             // directors at the door, briefcases ready, and the glazier fixing the window. Again;
             // pull back: the queue runs off down the street. The next one looks out of the window

@@ -35,7 +35,7 @@
     const introFiles = ['blow', 'bonk', 'burp', 'burp-big', 'chew', 'clank', 'clink', 'clinks', 'cough',
         'engine', 'explosion', 'explosion-big', 'falling', 'fart', 'fire', 'fuse', 'glass-break', 'glug',
         'gulp', 'gun-cock', 'heels', 'hiccup', 'hiccup2', 'jet', 'knock', 'machinegun', 'pencil', 'pigeon', 'radio', 'seagull',
-        'snap', 'sneak', 'snore', 'sob', 'squeak', 'stamp', 'steps', 'thud', 'tick', 'whistle', 'whoosh', 'yay'];
+        'snap', 'sneak', 'snore', 'soft-fall', 'sob', 'squeak', 'stamp', 'steps', 'thud', 'tick', 'whistle', 'whoosh', 'yay'];
     const intro = {};
     let introLoading = false;
     function loadIntro() {
@@ -398,7 +398,8 @@
     };
 
     function play(name, vol) {
-        if (!ctx || muted || !sounds[name]) return;
+        if (!ctx || muted) return;
+        if (!sounds[name]) { if (intro[name]) cue(name, vol); return; }   // a recording the game asks for by name
         const now = performance.now();
         const gap = minGapMs[name] ?? 80;
         if (lastPlayed[name] && now - lastPlayed[name] < gap) return;

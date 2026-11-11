@@ -688,8 +688,10 @@ void MetroGame::answer(int option)
             break;
         case 6:
             if (option == 0) {
+                common::sound("pencil", 1.0f);
                 finish(Outcome::Recruited, "Allekirjoitit sopimuksen metrossa. FSB:n mies taputtaa olkapäälle: «Молодец!» Seuraava pysäkki: rintama.");
             } else if (player->stats.promilles >= 25 && chance(25)) {
+                common::sound("pencil", 1.0f);
                 finish(Outcome::Recruited, "Yritit kieltäytyä, mutta kynä oli jo kädessäsi. Allekirjoitit humalassa. Seuraava pysäkki: rintama.");
             } else if (n) {
                 ++n->refusals;
