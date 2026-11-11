@@ -30,6 +30,37 @@
         }
     }
 
+    // Intro montage cues: one recording each (web/sounds/intro, credits in CREDITS.md). They
+    // overlap freely, unlike the vomit samples, and are loaded the first time the intro needs them.
+    const introFiles = ['blow', 'bonk', 'burp', 'burp-big', 'chew', 'clank', 'clink', 'clinks', 'cough',
+        'engine', 'explosion', 'explosion-big', 'falling', 'fart', 'fire', 'fuse', 'glass-break', 'glug',
+        'gulp', 'gun-cock', 'hiccup', 'hiccup2', 'jet', 'knock', 'machinegun', 'pigeon', 'radio', 'seagull',
+        'snap', 'sneak', 'snore', 'sob', 'squeak', 'stamp', 'thud', 'tick', 'whistle', 'whoosh', 'yay'];
+    const intro = {};
+    let introLoading = false;
+    function loadIntro() {
+        if (introLoading || !ctx) return;
+        introLoading = true;
+        for (const f of introFiles) {
+            fetch('sounds/intro/' + f + '.mp3')
+                .then((r) => (r.ok ? r.arrayBuffer() : Promise.reject(r.status)))
+                .then((data) => new Promise((ok, fail) => ctx.decodeAudioData(data, ok, fail)))
+                .then((buf) => { intro[f] = buf; })
+                .catch(() => {});
+        }
+    }
+    function cue(name, vol = 0.6) {
+        if (!ctx || muted) return;
+        const buf = intro[name];
+        if (!buf) { if (sounds[name]) play(name, vol); return; }
+        const src = ctx.createBufferSource();
+        src.buffer = buf;
+        const gain = ctx.createGain();
+        gain.gain.value = Math.max(0.02, Math.min(1, vol));
+        src.connect(gain).connect(master);
+        src.start(ctx.currentTime + 0.01);
+    }
+
     function init() {
         if (!ctx) {
             ctx = new (window.AudioContext || window.webkitAudioContext)();
@@ -37,6 +68,7 @@
             master.gain.value = 0.6;
             master.connect(ctx.destination);
             loadSamples();
+            loadIntro();
         }
         if (ctx.state === 'suspended') ctx.resume();
     }
@@ -453,6 +485,8 @@
     window.SFX = {
         init,
         play,
+        cue,
+        loadIntro,
         playSample,
         startTheme,
         toggleMute() { muted = !muted; return muted; },

@@ -29,6 +29,7 @@
             line: 'Via dolorosalla El Doradoon: Vovan viinakellariin, jossa kalja virtaa kuin vodka.',
             color: '#c8c8a0',
             dur: 7.4 + READ_S,
+            sfx: [[0.57, 'thud', 0.7], [1.2, 'hiccup', 0.5], [2.14, 'thud', 0.7], [3.71, 'thud', 0.7], [4.15, 'whistle', 0.6], [5.0, 'hiccup2', 0.5]],
             // he staggers on towards El Dorado and walks straight through everyone in his way;
             // each one he bumps topples over flat, and he never even notices. The camera stays
             // tight on his face the whole way; the pull-back at the end shows the ditch full of people
@@ -98,6 +99,7 @@
             who: 'PÄÄOSISSA', name: 'VANJA, 19', line: 'Värvätty.',
             color: '#9fb36a',
             dur: 6.8 + READ_S,
+            sfx: [[0.9, 'whoosh', 0.3], [2.9, 'whoosh', 0.3], [3.7, 'snap', 0.8], [3.9, 'whoosh', 0.3], [5.25, 'thud', 0.7]],
             // close on Vanja's face with nobody else in the shot; pull back to show only the
             // recruiting officer, the form and Vanja: he writes his name on it. Pull back again:
             // two men stand right beside him and grab him under the arms. Pull back once more:
@@ -252,6 +254,7 @@
             who: 'SEKÄ', name: 'JUOPPO', line: '"Harashoo, tähtiorkesteri soittaa dobri stolisnada!" Juo mitä tahansa.',
             color: '#c9b37a',
             dur: 5.8 + READ_S,
+            sfx: [[1.7, 'glug', 0.6], [4.15, 'clink', 0.7], [4.6, 'burp-big', 0.8]],
             // he bends down for the bottle at his feet, tips his head back, pours the whole thing
             // down his throat, throws the empty over his shoulder and belches with joy. Close on him
             // until the throw; the pull-back shows him standing on top of a mountain of empties
@@ -348,6 +351,7 @@
             who: 'VIERAILEVA TÄHTI', name: 'MILIISI', line: '"Palvellakseni ja auttaakseni." Ottaa vastaan vain käteistä.',
             color: '#6d8bff',
             dur: 6.6 + READ_S,
+            sfx: [[3.0, 'stamp', 0.4], [3.45, 'bonk', 0.7], [5.0, 'cough', 0.6]],
             // close on his face; pull back: a driver hands a note out of his car window, the note
             // goes into the officer's breast pocket, he kicks the car and waves it off, and the
             // driver leaves, shouting out of the window
@@ -418,6 +422,7 @@
             who: 'SEKÄ', name: 'GOPNIK', line: '"Jest\' zakurit\'?" Kyykkii ja uhkailee. Verkkareissa.',
             color: '#d8d8d8',
             dur: 6.8 + READ_S,
+            sfx: [[3.4, 'hiccup', 0.5], [4.3, 'hiccup2', 0.5]],
             // close on him squatting, spitting sunflower-seed shells, asking for a smoke; pull back:
             // he squats in a children's sandbox, and his mother, drunk, yells from the balcony that
             // dinner is ready. He gets up, says he has to go, and shuffles home
@@ -495,6 +500,7 @@
             who: 'SEKÄ', name: 'VARAS', line: '"Hipelöin sua!!" Ja lompakkoasi.',
             color: '#b08cd0',
             dur: 7.8 + READ_S,
+            sfx: [[1.0, 'whoosh', 0.3], [2.9, 'whoosh', 0.3], [3.0, 'sneak', 0.4], [4.7, 'whoosh', 0.3]],
             // four shots, each pulling back further: (1) close on him running in with open arms,
             // shouting for his long-lost brother; (2) the hug, close enough to show only his hand
             // lifting the officer's wallet, the officer's pocket left turned out; (3) the officer
@@ -594,6 +600,7 @@
             who: 'SEKÄ', name: 'RYÖSTÄJÄ', line: '"RAHAT TAI HENKI!" Mieluiten molemmat.',
             color: '#d06a4a',
             dur: 10.4 + READ_S,
+            sfx: [[1.5, 'whoosh', 0.3], [4.2, 'whoosh', 0.3], [5.6, 'whoosh', 0.3], [6.3, 'gun-cock', 0.7], [7.6, 'whoosh', 0.3], [8.9, 'thud', 0.7]],
             // close on him, gun out, shouting his line; pull back: it's a bank counter, and the
             // cashier has bad news. Push back in on him: he turns and looks into the camera. Pull
             // back: an officer has come up behind him and cuffs him, a second one comes in, they
@@ -720,6 +727,7 @@
             who: 'SEKÄ', name: 'DIILERI', line: '"Tässä on hyvää kamaa!" Ei ole.',
             color: '#7fd0a0',
             dur: 10.1 + READ_S,
+            sfx: [[1.2, 'whoosh', 0.3], [2.6, 'whoosh', 0.3]],
             // close on him whispering; pull back: his coat opens on a lining full of sanctioned
             // Western goods; pull back again: a customer. The iPhones are sold out, so is the
             // Coca-Cola and the Snickers, but there are IKEA meatballs: from 2021
@@ -817,6 +825,7 @@
             who: 'SEKÄ', name: 'SKINHEAD', line: '"TAPAN SINUT!!" Sanoo sen kaikille.',
             color: '#c06060',
             dur: 5.6 + READ_S,
+            sfx: [[1.3, 'whoosh', 0.3], [3.0, 'whoosh', 0.3]],
             // close on him screaming; pull back: a whole row of him, skull tattoos, screaming
             // together; pull back again: the banner above them reads DENAZIFICATION
             render(ctx, W, H, t, fs) {
@@ -878,6 +887,7 @@
             who: 'SEKÄ', name: 'PAKOVANKI', line: 'Karkasi SIZOsta. Kiekuralenkki tekee vahvaksi.',
             color: '#c8c8c8',
             dur: 5.8 + READ_S,
+            sfx: [[1.6, 'whoosh', 0.3], [3.2, 'whoosh', 0.3]],
             // close on him running, ball and chain bouncing behind, shouting for freedom; pull
             // back: he has just crawled out through a hole in the remand prison wall; pull back
             // again: around everything runs a barbed-wire fence with a sign, РОССИЯ
@@ -964,6 +974,7 @@
             who: 'SEKÄ', name: 'YEVGENI', line: '"Kuka haluaa puhaltaa?" Koulubussin kuljettaja.',
             color: '#a0c0e0',
             dur: 11.6 + READ_S,
+            sfx: [[0.3, 'hiccup', 0.5], [1.0, 'whoosh', 0.3], [2.6, 'whoosh', 0.3], [5.1, 'engine', 0.6], [6.4, 'glug', 0.6], [7.0, 'whoosh', 0.3], [8.3, 'whoosh', 0.3], [8.7, 'cough', 0.5], [10.3, 'fart', 0.7]],
             // close on him, swaying; pull back: he holds the bus's alcohol interlock, which says
             // BLOW, and asks who wants to; pull back: a bus full of children, all hands up. Dimitri
             // blows 0.7 per mille, the engine starts, Yevgeni has a swig of vodka; pull back: he
@@ -1093,6 +1104,7 @@
             who: 'SEKÄ', name: 'KOTIÄITI', line: '"Vanjuska... missä sä..." *hik*',
             color: '#e0a0c0',
             dur: 7.8 + READ_S,
+            sfx: [[0.5, 'hiccup2', 0.5], [1.4, 'whoosh', 0.3], [2.2, 'knock', 0.7], [4.4, 'whoosh', 0.3]],
             // close on her crying over the vodka; pull back: an officer knocks, brings a medal and
             // the news that her son fell a hero; pull back: in the yard, a new Lada with a bow on
             // it, the compensation. She runs out and hugs it
@@ -1182,6 +1194,7 @@
             who: 'SEKÄ', name: 'LAPSI', line: '"Ei saa koskea! ÄITIII!"',
             color: '#f0d080',
             dur: 6.8 + READ_S,
+            sfx: [[1.4, 'whoosh', 0.3], [3.2, 'whoosh', 0.3], [4.6, 'whistle', 0.7]],
             // close on him screaming; pull back: what he clutches is a toy tank with a Z on it;
             // pull back: his whole kindergarten group marches in, in uniform with toy rifles, the
             // teacher blows her whistle and they all march on the spot: the Yunarmiya
@@ -1253,6 +1266,7 @@
             who: 'SEKÄ', name: 'DIMA, TAKSIKUSKI', line: 'Navigaattori näyttää Kiovaa. Taas.',
             color: '#f2d34a',
             dur: 8.2 + READ_S,
+            sfx: [[0.2, 'radio', 0.25], [1.2, 'radio', 0.25], [2.6, 'whoosh', 0.3], [5.3, 'whoosh', 0.3]],
             // close on Dima at the wheel while a navigator's voice slides in from the side; pull
             // back: the "navigator" is a soldier jogging beside the taxi with a paper map; pull
             // back: a whole tank column follows the taxi, and nobody knows how far Kyiv is
@@ -1340,6 +1354,7 @@
             who: 'SEKÄ', name: 'ROTTA', line: 'Pakotteet eivät pure. Parmesaani maistuu.',
             color: '#a89080',
             dur: 7.6 + READ_S,
+            sfx: [[0.2, 'chew', 0.5], [2.0, 'whoosh', 0.3], [3.0, 'stamp', 0.8], [3.4, 'burp', 0.5], [4.2, 'whoosh', 0.3], [6.0, 'squeak', 0.7]],
             // close on a rat nibbling cheese; pull back: it sits on a gilded throne-chair, a
             // napkin on, and the cheese is sanctioned Parmesan on a gold plate; pull back: the
             // ridiculously long Kremlin table, and at its far end Vova wishes it bon appétit
@@ -1427,6 +1442,7 @@
             who: 'SEKÄ', name: 'PANKKIRYÖSTÄJÄ', line: '"KAIKKI MAAHAN! *hik*"',
             color: '#c0a060',
             dur: 8.6 + READ_S,
+            sfx: [[0.4, 'hiccup', 0.5], [1.5, 'whoosh', 0.3], [1.9, 'fuse', 0.5], [2.9, 'explosion', 0.9], [3.6, 'whoosh', 0.3], [6.6, 'hiccup2', 0.5], [7.6, 'snore', 0.5]],
             // close on him shouting; pull back: he is shouting at a vault door with nobody around,
             // lights the dynamite, KABOOM; pull back: the vault is empty, an oligarch's note on
             // the wall, and two earlier robbers already lying on the floor. He lies down too
@@ -1525,6 +1541,7 @@
             who: 'SEKÄ', name: 'VETERAANI', line: '"TANKIT!! DROONIT!!" Sokea, mutta kuulee askeleesi.',
             color: '#b0a080',
             dur: 7.4 + READ_S,
+            sfx: [[0.6, 'clink', 0.4], [1.8, 'whoosh', 0.3], [2.3, 'clinks', 0.6], [3.3, 'clinks', 0.6], [4.6, 'whoosh', 0.3], [6.2, 'pigeon', 0.6]],
             // close on him shouting; pull back: medals cover him down to the ground and drag
             // behind him, clinking at every step (that is what he hears), all of them for the
             // same battle; pull back: a street banner of him, the hero, 25 years old. A pigeon lands
@@ -1619,6 +1636,7 @@
             who: 'SEKÄ', name: 'SOTILAS', line: '"Rintamalle, svinya!" Tarvitsee miehiä. Sinut.',
             color: '#7e8c6a',
             dur: 8.8 + READ_S,
+            sfx: [[1.6, 'whoosh', 0.3], [2.1, 'gun-cock', 0.7], [3.2, 'whoosh', 0.3], [5.3, 'whoosh', 0.3], [5.4, 'explosion', 0.6], [5.8, 'fire', 0.5]],
             // close on his face, all going to plan; pull back: an assault rifle in his hands;
             // pull back: he sits in an armoured personnel carrier; pull back: the carrier is on
             // fire with a track off, drones buzzing round, burning wrecks everywhere
@@ -1751,6 +1769,7 @@
             who: 'SEKÄ', name: 'ILMATORJUNTAMIES', line: '"Kohde havaittu!" Sirpaleita sataa taivaalta.',
             color: '#8a9a6a',
             dur: 8.6 + READ_S,
+            sfx: [[0.9, 'machinegun', 0.6], [1.6, 'whoosh', 0.3], [2.0, 'jet', 0.5], [3.0, 'explosion', 0.8], [4.4, 'clank', 0.6], [5.0, 'whoosh', 0.3], [7.9, 'machinegun', 0.6], [8.7, 'explosion', 0.4], [9.2, 'falling', 0.6]],
             // close on him shouting and firing; pull back: the target is one of our own planes,
             // red star and all, and the pilot bails out screaming; pull back: the tally board by
             // the gun, all own planes and no enemies, and the pilot lands next to him. Again.
@@ -1961,6 +1980,7 @@
             who: 'SEKÄ', name: 'НПЗ · ÖLJYNJALOSTAMO', line: 'Palaa taas. Savu on "länsimaista propagandaa".',
             color: '#c9a96a',
             dur: 9.4 + READ_S,
+            sfx: [[2.33, 'explosion-big', 0.8], [2.6, 'explosion', 0.6], [3.0, 'fire', 0.6], [4.3, 'whoosh', 0.3], [5.2, 'blow', 0.6], [6.0, 'fuse', 0.4], [6.4, 'whoosh', 0.3], [7.0, 'fire', 0.7], [7.6, 'radio', 0.3]],
             noFlash: true,           // it carries on straight from the anti-aircraft gunner's shard
             // follow the burning shard down onto a refinery that is not on fire yet; it hits, and
             // the place goes up while two workers watch; zoom in: they are roasting sausages on a
@@ -2137,6 +2157,7 @@
             who: 'SEKÄ', name: 'FSB-AGENTTI', line: '"FSB valvoo." Kaikki on hallinnassa.',
             color: '#9a9aa8',
             dur: 8.6 + READ_S,
+            sfx: [[1.6, 'whoosh', 0.3], [1.9, 'sneak', 0.5], [3.6, 'whoosh', 0.3], [6.0, 'radio', 0.3], [7.2, 'radio', 0.3]],
             // close on his eyes peering through holes in a newspaper; pull back: he is tailing
             // another agent; pull back: a whole ring of agents tailing each other round a park,
             // while the real suspect gets up off the bench in the middle and strolls away
@@ -2218,6 +2239,7 @@
             who: 'SEKÄ', name: 'JOHTAJA, 61', line: 'Kaatui ikkunasta. Ihan itse.',
             color: '#cfcfcf',
             dur: 8.2 + READ_S,
+            sfx: [[0.0, 'glass-break', 0.6], [1.8, 'thud', 0.8], [2.0, 'whoosh', 0.3], [3.6, 'knock', 0.4], [5.0, 'whoosh', 0.3], [7.0, 'gulp', 0.7]],
             // close on him falling from his office window, calm about it; pull back: a queue of new
             // directors at the door, briefcases ready, and the glazier fixing the window. Again;
             // pull back: the queue runs off down the street. The next one looks out of the window
@@ -2334,6 +2356,7 @@
             who: 'SEKÄ', name: 'VARTIJA', line: '"Stoi! Lattiaan!" Kremlin vartio.',
             color: '#c0c0e0',
             dur: 9.0 + READ_S,
+            sfx: [[1.5, 'whoosh', 0.3], [3.8, 'whoosh', 0.3], [6.2, 'whoosh', 0.3], [7.4, 'seagull', 0.6], [8.0, 'machinegun', 0.7], [8.2, 'explosion', 0.3]],
             // close on a guard shouting; pull back: a huge row of guards in front of a red wall,
             // the Kremlin surely; pull back: it is Vova's own dacha on the Black Sea, and there
             // were no guards left for anywhere else; pull back: dozens of anti-aircraft guns round it
@@ -2447,6 +2470,7 @@
             who: 'SEKÄ', name: 'AVUSTAJA', line: 'Henkilökohtainen avustaja. Henkilökohtaisesti kännissä.',
             color: '#a0b0d0',
             dur: 8.6 + READ_S,
+            sfx: [[1.6, 'whoosh', 0.3], [1.8, 'hiccup', 0.5], [2.4, 'clinks', 0.6], [3.0, 'glug', 0.6], [4.2, 'whoosh', 0.3], [5.6, 'bonk', 0.6], [7.7, 'hiccup2', 0.5]],
             // close on him carrying the nuclear briefcase with great care; pull back: he is drunk
             // and the case is full of vodka; pull back: he staggers after Vova down a Kremlin
             // corridor, and the real briefcase sits forgotten on the bar behind them
@@ -2548,6 +2572,7 @@
             who: 'VIERAILEVA TÄHTI', name: 'MEDVEDEV', line: 'Kirjoittaa Telegramiin. ISOILLA KIRJAIMILLA.',
             color: '#e0e0e0',
             dur: 8.2 + READ_S,
+            sfx: [[1.6, 'whoosh', 0.3], [3.0, 'tick', 0.5], [4.0, 'whoosh', 0.3]],
             // close on him on the throne, proud; pull back: the throne says it is reserved for
             // V.V.P.; pull back: Vova with a stopwatch. "Warm? Move." He hops down onto his own
             // little stool, and Vova sits down
@@ -2619,6 +2644,7 @@
             who: 'ERITYISESSÄ ROOLISSA', name: 'VOVA', line: 'Pitää kenraalinsa turvav\u00e4lin p\u00e4\u00e4ss\u00e4.',
             color: '#f2d34a',
             dur: 7.0 + READ_S,
+            sfx: [[0.1, 'sob', 0.4]],
             // camera work: close on Vova, a quick pull back, then a long pan left along the table
             // to the two generals at the far end
             render(ctx, W, H, t, fs) {
@@ -2781,6 +2807,7 @@
             who: 'SEKÄ', name: 'VKUSNO I TOTŠKA', line: 'Ei ole sama. Jono on silti sama.',
             color: '#e05050',
             dur: 8.6 + READ_S,
+            sfx: [[0.8, 'yay', 0.6], [1.6, 'whoosh', 0.3], [4.4, 'whoosh', 0.3], [5.8, 'whoosh', 0.3], [7.6, 'stamp', 0.5]],
             // close on a kid getting the toy out of his kids' meal; pull back: it is a toy tank,
             // the box says PATRIOTIC MEAL and the menu offers a meal with call-up papers; pull
             // back: a recruiter stands at the till handing his father the summons with the tray
@@ -2942,6 +2969,7 @@
         ctx.fillText(line, x, barY + fs * 1.55);
     }
 
+    let cueScene = -1, cueAt = 0;
     // draws the montage at time t (seconds); returns false when it is over
     function draw(ctx, W, H, t) {
         ctx.fillStyle = '#000';
@@ -2976,6 +3004,13 @@
         }
         const s = scenes[index];
         const local = t - startAt;
+
+        // sound cues: each fires once as the scene's clock passes it; seeking back re-arms them
+        if (index !== cueScene || local < cueAt) { cueScene = index; cueAt = -0.01; }
+        if (s.sfx && window.SFX && SFX.cue) {
+            for (const [at, name, vol] of s.sfx) if (at > cueAt && at <= local) SFX.cue(name, vol);
+        }
+        cueAt = local;
 
         // quick zoom-in cut and a white flash between scenes, like the eighties
         const zoom = 1.25 - Math.min(0.25, local * 0.6);
