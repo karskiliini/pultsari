@@ -2264,6 +2264,16 @@ void Sotilas::npcAct()
     report(msg);
 }
 
+// a fallen soldier's belt (30 %), now and then his coat; only once
+Item* Sotilas::dropItem()
+{
+    if (looted) return nullptr;
+    looted = true;
+    if (common::random(30)) return new Vyo(coord);
+    if (common::random(10)) return new Takki(coord);
+    return nullptr;
+}
+
 bool Sotilas::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja && level->isWarLevel) {

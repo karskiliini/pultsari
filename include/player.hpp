@@ -22,6 +22,12 @@ namespace PlayerNS {
 constexpr uint32_t INITIAL_HP = 10;
 // above this many tenths of a promille you may end up crawling on all fours
 constexpr uint32_t CRAWL_PROMILLES = 25;
+// a fall may shake the pocket empty; you notice a few turns later
+constexpr uint32_t POCKET_DROP_PERCENT = 25;
+constexpr uint32_t POCKET_NOTICE_TURNS = 4;
+// the pawnshop's worn coat: a little strength, never past full; 30 roubles
+constexpr uint32_t USED_COAT_HP = 3;
+constexpr uint32_t USED_COAT_PRICE = 30;
 
 class Player : public Person {
 public:
@@ -102,6 +108,30 @@ public:
     bool executeThrowAt(uint32_t itemNum, float angle);
     bool shoot(DirectionNS::Direction dir);
     bool shootAt(float angle);
+
+    // the pistol from the belt into a free hand (already in a hand counts); false + a hint if no hand is free
+    bool drawPistol();
+    // back onto the belt, if there is one; without a belt it stays in the hand
+    void holsterPistol();
+    // the rifle off the back to the shoulder: both hands must be empty (false + a hint otherwise)
+    bool shoulderAk();
+    void lowerAk();
+    // the pocket's spare magazine fills a gun (None: the one in hand, else whichever needs it)
+    bool reload(Thing gun = Thing::None);
+    // the gun Space raises: the one in hand first; an empty rifle never blocks a loaded pistol
+    Thing readyWeapon();
+    // a fall: with POCKET_DROP_PERCENT (always with force) the pocket's thing lands at your feet
+    void maybeDropPocket(bool force = false);
+    uint32_t pocketNoticeTurns = 0;
+
+    // a coat restores strength up to `hp` (never above full or the disease's cap, never down)
+    void wearCoat(uint32_t hp);
+    // the coat off a corpse: full strength, and everyone who sees it goes for you
+    bool stripCorpseCoat(Person* corpse);
+    // walking onto a corpse: "Riisutko takin? (k/e)"
+    void offerCorpseCoat(Person* corpse);
+    // the last coat was a worn one from the pawnshop: the sleeves stay ragged
+    bool usedCoat = false;
 
     bool sentToWar = false;
     bool returnedFromWar = false;

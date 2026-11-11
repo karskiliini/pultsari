@@ -40,7 +40,9 @@ enum ItemType {
     ERoska,
     ERynkky,
     ENeula,
-    ELipas
+    ELipas,
+    ETakki,
+    EVyo
 };
 
 class Level;
@@ -357,6 +359,24 @@ public:
     Lipas(const Coord& c) : Item(c, ELipas) { }
     virtual std::string typeToChar() const { return "]"; }
     virtual std::string getMsg() const { return "Lipas! T\xC3\xA4ysi lataus."; }
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+// A coat to put on at once: full strength again. It takes no hand.
+class Takki : public Item {
+public:
+    Takki(const Coord& c) : Item(c, ETakki) { }
+    virtual std::string typeToChar() const { return "["; }
+    virtual std::string getMsg() const { return "Uusi takki! Vain v\xC3\xA4h\xC3\xA4n verta kauluksessa."; }
+    virtual bool interact(PlayerNS::Player* player);
+};
+
+// A soldier's belt: the pistol rides on it and the hand is free.
+class Vyo : public Item {
+public:
+    Vyo(const Coord& c) : Item(c, EVyo) { }
+    virtual std::string typeToChar() const { return "="; }
+    virtual std::string getMsg() const { return "Sotilaan vy\xC3\xB6! Pistooli kulkee vy\xC3\xB6ll\xC3\xA4 ja k\xC3\xA4""det j\xC3\xA4\xC3\xA4v\xC3\xA4t vapaiksi."; }
     virtual bool interact(PlayerNS::Player* player);
 };
 

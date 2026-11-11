@@ -560,3 +560,22 @@ bool Roska::interact(PlayerNS::Player* player)
     }
     return true;
 }
+// a new coat is worn at once: it takes no hand
+bool Takki::interact(PlayerNS::Player* player)
+{
+    player->wearCoat(PlayerNS::INITIAL_HP);
+    return true;
+}
+
+// the belt is worn too; a pistol in hand goes onto it
+bool Vyo::interact(PlayerNS::Player* player)
+{
+    auto& inv = player->inventory;
+    if (inv.hasBelt) {
+        if (player->printer) player->printer->showMessage("Sinulla on jo vy\xC3\xB6. Housut pysyv\xC3\xA4t ylh\xC3\xA4\xC3\xA4ll\xC3\xA4.", player->level, false);
+        return false;
+    }
+    inv.hasBelt = true;
+    player->holsterPistol();
+    return true;
+}

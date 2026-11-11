@@ -982,6 +982,9 @@ void Level::cleanDead()
                     witnessPutinDeath(p->coord);
                 }
                 if (p->type == pankkirosvo && common::random(70)) items.push_back(new Rynkky(p->coord));
+                if (p->type == sotilas) {
+                    if (Item* loot = p->dropItem()) items.push_back(loot);
+                }
                 delete p;
                 p = nullptr;
 
@@ -1196,6 +1199,9 @@ void Level::addItem(ItemType item)
             break;
         case EVodka:
             i = new Vodka(c);
+            break;
+        case ETakki:
+            i = new Takki(c);
             break;
     }
     if (i) {

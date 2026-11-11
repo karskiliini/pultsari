@@ -79,6 +79,8 @@ public:
     bool knowsPutinDead = false;
     Person* currentTarget();
     bool alerted = false;
+    // the player has already taken this corpse's coat
+    bool coatTaken = false;
     Coord lastKnownPos = { 0, 0 };
     uint32_t alertCooldown = 0;
 };
@@ -302,6 +304,9 @@ public:
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "S"; };
+    // the corpse's belt (sometimes a coat), once
+    Item* dropItem();
+    bool looted = false;
     bool firstMove = true;
     uint32_t ammo = 4;
 };

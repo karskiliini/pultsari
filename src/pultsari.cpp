@@ -40,6 +40,7 @@ static void populateItems(Level& level, const GameState& gs)
         if (random(30)) level.addItem(EVodka);
         if (random(20)) level.addItem(EGranata);
         if (random(25)) level.addItem(EPistooli);
+        if (random(10)) level.addItem(ETakki);
         if (random(40)) level.addItem(EKivi);
         if (random(60)) level.addItem(ELenkki);
         if (random(30)) level.addItem(EVeitsi);
@@ -68,6 +69,8 @@ static void populateItems(Level& level, const GameState& gs)
     }
     if (random(15))
         level.addItem(EPistooli);
+    // a coat now and then: put on at once, full strength again
+    if (random(15)) level.addItem(ETakki);
     if (random(20)) level.addItem(EVodka);
     for (int i = 0; i < std::rand() % 8 + 4; ++i)
         level.addItem(EPensas);
@@ -1216,26 +1219,30 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     case Thing::Granata: // kranaatti can only be thrown
                         startThrowAim(slot);
                         break;
-                    case Thing::Rynkky: { // raise the assault rifle; hold Space for full auto
-                        const Held* ak = inv.find(Thing::Rynkky);
-                        if (ak && ak->rounds > 0) {
-                            gunDrawn = true;
+                    case Thing::Rynkky: { // off the back to the shoulder; hold Space for full auto
+                        Held* ak = inv.find(Thing::Rynkky);
+                        if (!ak) {
+                            printer->showMessage("Ei rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri\xC3\xA4.", &level, false);
+                        } else if (ak->rounds == 0 && !player.reload(Thing::Rynkky)) {
+                            printer->showMessage("Ei ammuksia.", &level, false);
+                        } else if (player.shoulderAk()) {   // both hands must be empty, or a hint
+                            gunDrawn = false;
                             rifleRaised = true;
                             aimIsShooting = true;
                             aimAngle = facing;
                             aimTick = 0;
                             mode = Mode::Aim;
                             printer->showMessage("Rynkky olalle. Pid\xC3\xA4 v\xC3\xA4lily\xC3\xB6nti\xC3\xA4 pohjassa: sarjatulta!", &level, false);
-                        } else if (!ak) {
-                            printer->showMessage("Ei rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri\xC3\xA4.", &level, false);
-                        } else {
-                            printer->showMessage("Ei ammuksia.", &level, false);
                         }
                         break;
                     }
-                    case Thing::Pistooli: { // raise it towards the last step and aim
-                        const Held* gun = inv.find(Thing::Pistooli);
-                        if (gun && gun->rounds > 0) {
+                    case Thing::Pistooli: { // into a free hand, raised towards the last step
+                        Held* gun = inv.find(Thing::Pistooli);
+                        if (!gun) {
+                            printer->showMessage("Ei pistoolia.", &level, false);
+                        } else if (gun->rounds == 0 && !player.reload(Thing::Pistooli)) {
+                            printer->showMessage("Ei ammuksia.", &level, false);
+                        } else if (player.drawPistol()) {   // a free hand, or a hint
                             gunDrawn = true;
                             rifleRaised = false;
                             aimIsShooting = true;
@@ -1243,10 +1250,6 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             aimTick = 0;
                             mode = Mode::Aim;
                             printer->showMessage("T\xC3\xA4ht\xC3\xA4\xC3\xA4t. A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti ampuu, Esc laskee aseen.", &level, false);
-                        } else if (!gun) {
-                            printer->showMessage("Ei pistoolia.", &level, false);
-                        } else {
-                            printer->showMessage("Ei ammuksia.", &level, false);
                         }
                         break;
                     }
@@ -1308,17 +1311,21 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     }
                                     break;
                                 }
-                                case 27: // Esc puts a drawn pistol back in the belt
+                                case 27: // Esc puts a drawn pistol back on the belt; without one it stays in hand
                                     if (gunDrawn) {
                                         gunDrawn = false;
-                                        printer->showMessage("Laitat aseen vy\xC3\xB6lle.", &level, false);
+                                        player.holsterPistol();
+                                        printer->showMessage(player.inventory.inHand(Thing::Pistooli)
+                                            ? "Lasket aseen. Ilman vy\xC3\xB6t\xC3\xA4 se pysyy k\xC3\xA4""dess\xC3\xA4."
+                                            : "Laitat aseen vy\xC3\xB6lle.", &level, false);
                                     }
                                     break;
-                                case ' ': // Space raises the best gun to aim; Space again fires
-                                    if (player.inventory.count(Thing::Rynkky) > 0) useInventoryItem(Thing::Rynkky);
-                                    else if (player.inventory.count(Thing::Pistooli) > 0) useInventoryItem(Thing::Pistooli);
-                                    else printer->showMessage("Sinulla ei ole asetta.", &level, false);
+                                case ' ': { // Space raises the gun in hand (or the one that can fire); Space again fires
+                                    const Thing gun = player.readyWeapon();
+                                    if (gun == Thing::None) printer->showMessage("Sinulla ei ole asetta.", &level, false);
+                                    else useInventoryItem(gun);
                                     break;
+                                }
                                 default: break;
                             }
                         }
@@ -1394,11 +1401,13 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         if (msSinceShot < 120) break;
                                         msSinceShot = 0;
                                         Held* ak = player.inventory.find(Thing::Rynkky);
-                                        if (!ak || ak->rounds == 0) {
+                                        if (!ak || (ak->rounds == 0 && !player.reload(Thing::Rynkky))) {
                                             printer->showMessage("*KLIK* Lipas tyhj\xC3\xA4!", &level, false);
                                             break;
                                         }
                                         --ak->rounds;
+                                        // the magazine runs dry: the spare from the pocket goes in
+                                        if (ak->rounds == 0) player.reload(Thing::Rynkky);
                                         const float spread = ((std::rand() % 100) - 50) / 110.0f * (1.0f + player.stats.promilles / 30.0f);
                                         Person* hit = level.fireBullet(&player, aimNow + spread, 18, std::rand() % 3 + 3, 85);
                                         level.audio.addSound(player.coord, SoundType::Gunshot,
@@ -1421,7 +1430,15 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     mode = Mode::Normal;
                                     break;
                                 case 27: case '\t': // ESC or Tab cancels; a raised pistol is lowered, still in hand
-                                    if (aimIsShooting) printer->showMessage("Lasket aseen. Se on yh\xC3\xA4 k\xC3\xA4""dess\xC3\xA4 (Esc laittaa vy\xC3\xB6lle).", &level, false);
+                                    if (aimIsShooting && rifleRaised) {
+                                        player.lowerAk();
+                                        rifleRaised = false;
+                                        printer->showMessage("Lasket rynkyn takaisin selk\xC3\xA4\xC3\xA4n.", &level, false);
+                                    } else if (aimIsShooting) {
+                                        printer->showMessage(player.inventory.hasBelt
+                                            ? "Lasket aseen. Se on yh\xC3\xA4 k\xC3\xA4""dess\xC3\xA4 (Esc laittaa vy\xC3\xB6lle)."
+                                            : "Lasket aseen. Se on yh\xC3\xA4 k\xC3\xA4""dess\xC3\xA4.", &level, false);
+                                    }
                                     aimIsShooting = false;
                                     mode = Mode::Normal;
                                     break;
@@ -1433,7 +1450,12 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
                     }
 
-                    if (player.inventory.count(Thing::Pistooli) == 0) gunDrawn = false;
+                    if (!player.inventory.inHand(Thing::Pistooli)) gunDrawn = false;
+                    // the rifle fills the hands only while it is up at the shoulder
+                    if (player.inventory.akRaised && !(mode == Mode::Aim && rifleRaised)) {
+                        player.lowerAk();
+                        rifleRaised = false;
+                    }
                     // a pistol in hand, pointing at the ground, can always go off; now and
                     // then it is pointing at your own foot
                     float lowered = facing;

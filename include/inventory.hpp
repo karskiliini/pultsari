@@ -14,6 +14,8 @@ struct Inventory {
     Held right = heldOf(Thing::Lenkki);
     Held pocket, belt, back;
     bool hasBelt = false;
+    // the rifle is off the back and up at the shoulder: it fills both hands until lowered
+    bool akRaised = false;
 
     static Held heldOf(Thing t)
     {
@@ -28,7 +30,15 @@ struct Inventory {
             if (s->what == t) ++n;
         return t == Thing::None ? 0 : n;
     }
-    int freeHands() const { return (left.empty() ? 1 : 0) + (right.empty() ? 1 : 0); }
+    int freeHands() const { return akRaised ? 0 : (left.empty() ? 1 : 0) + (right.empty() ? 1 : 0); }
+    // the hand holding it, if either does
+    Held* inHand(Thing t)
+    {
+        if (t == Thing::None) return nullptr;
+        if (left.what == t) return &left;
+        if (right.what == t) return &right;
+        return nullptr;
+    }
     Held* find(Thing t)
     {
         if (t == Thing::None) return nullptr;
@@ -59,6 +69,7 @@ struct Inventory {
         if (t == Thing::None) return false;
         auto put = [&](Held& slot) {
             if (!slot.empty()) return false;
+            if (akRaised && (&slot == &left || &slot == &right)) return false;
             slot = h;
             return true;
         };

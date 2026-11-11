@@ -363,7 +363,9 @@ bool Divari::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
     else if (player->inventory.count(Thing::Bootsit) == 0 &&
              player->inventory.count(Thing::Pamppu) == 0 &&
              player->inventory.count(Thing::Ketjut) == 0 &&
-             player->inventory.count(Thing::Veitsi) == 0) {
+             player->inventory.count(Thing::Veitsi) == 0 &&
+             player->stats.money < PlayerNS::USED_COAT_PRICE) {
+           // nothing to pawn and no money for the worn coat either
            msg = "Panttilainaaja: 'Sinulla ei ole mitään, mitä ostaisin. Пока.'";
            return false;
     }
@@ -372,7 +374,7 @@ bool Divari::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 
 bool Divari::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
-    msg = "Mitä myyt? Verkkarit=1  Pamppu=2  Ketjut=3  Veitsi=4";
+    msg = "Mitä myyt? Verkkarit=1  Pamppu=2  Ketjut=3  Veitsi=4  Ostatko? K\xC3\xA4ytetty takki 30\xE2\x82\xBD=5";
     return true;
 }
 
@@ -419,8 +421,20 @@ void Divari::interact(PlayerNS::Player* player, std::string& msg) {
                     msg = "Veitsestä sai " + std::to_string(price) + " ruplaa.";
                 }
                 break;
+            case 5:
+                // a worn coat off the rack: a little strength, and the sleeves stay ragged
+                if (player->stats.money < PlayerNS::USED_COAT_PRICE) {
+                    msg = "Panttilainaaja: 'Takki maksaa kolmekymment\xC3\xA4. Ei alennuksia juopoille.'";
+                } else {
+                    player->updateMoney(-(int)PlayerNS::USED_COAT_PRICE);
+                    player->wearCoat(player->stats.health + PlayerNS::USED_COAT_HP);
+                    player->usedCoat = true;
+                    msg = "Ostit k\xC3\xA4ytetyn takin. Hihat ovat rikki ja taskussa on jonkun hammas.";
+                }
+                break;
             default:
-                retry = true;
+                // the key never changes here, so asking again would only spin
+                msg = "Panttilainaaja: '\xD0\x9F\xD0\xBE\xD0\xBA\xD0\xB0.'";
                 break;
         }
     }

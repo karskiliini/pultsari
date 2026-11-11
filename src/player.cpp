@@ -10,6 +10,7 @@
 #include "animation.hpp"
 #include "vehicle.hpp"
 #include "aagun.hpp"
+#include <algorithm>
 #include <iostream>
 #include <string>
 #include <cmath>
@@ -135,6 +136,7 @@ void Player::updateCrawling()
         if (stats.promilles > CRAWL_PROMILLES && common::random(2)) {
             crawling = true;
             if (printer) printer->showMessage("Jalat pettävät. Konttaat eteenpäin nenä maata viistäen.", level, false);
+            maybeDropPocket();
         }
     } else if (stats.promilles <= CRAWL_PROMILLES || common::random(3)) {
         crawling = false;
@@ -146,6 +148,9 @@ void Player::updateTurn()
 {
     ++stats.turn;
     diseaseTick();
+    // the pocket emptied in a fall a few turns ago: only now you notice
+    if (pocketNoticeTurns > 0 && --pocketNoticeTurns == 0 && printer)
+        printer->showMessage("Hetkinen... tasku tuntuu kevyelt\xC3\xA4!", level, false);
     updateCrawling();
 
     if (common::realtimeEnabled) {
@@ -669,12 +674,20 @@ bool Player::shoot(DirectionNS::Direction dir)
 
 bool Player::shootAt(float angle)
 {
-    Held* gun = inventory.find(Thing::Pistooli);
-    if (!gun || gun->rounds == 0) {
+    // the pistol has to be in a hand: off the belt first, if a hand is free
+    if (!inventory.find(Thing::Pistooli)) {
+        printer->showMessage("Ei pistoolia.", level, false);
+        return false;
+    }
+    if (!drawPistol()) return false;
+    Held* gun = inventory.inHand(Thing::Pistooli);
+    if (gun->rounds == 0 && !reload(Thing::Pistooli)) {
         printer->showMessage("Ei ammuksia!", level, false);
         return false;
     }
     --gun->rounds;
+    // the last round out: the spare goes in by itself
+    if (gun->rounds == 0) reload(Thing::Pistooli);
 
     if (level->isWarLevel) {
         int roll = std::rand() % 100;
@@ -695,6 +708,132 @@ bool Player::shootAt(float angle)
     Person* target = level->fireBullet(this, angle, 20, 5, 90);
     if (!target) printer->showMessage("PAM! Huti.", level, false);
     else printer->showMessage(target->stats.health == 0 ? "PAM! Osuma! Kohde kaatuu maahan." : "PAM! Osuma!", level, false);
+    return true;
+}
+
+bool Player::drawPistol()
+{
+    if (inventory.inHand(Thing::Pistooli)) return true;
+    if (inventory.belt.what != Thing::Pistooli) return false;
+    Held* hand = inventory.freeHands() == 0 ? nullptr : inventory.right.empty() ? &inventory.right : &inventory.left;
+    if (!hand) {
+        if (printer) printer->showMessage(HINT_PISTOL_BOTTLE, level, false);
+        return false;
+    }
+    *hand = inventory.belt;
+    inventory.belt = Held();
+    return true;
+}
+
+void Player::holsterPistol()
+{
+    Held* hand = inventory.inHand(Thing::Pistooli);
+    if (!hand || !inventory.hasBelt || !inventory.belt.empty()) return;
+    inventory.belt = *hand;
+    *hand = Held();
+}
+
+bool Player::shoulderAk()
+{
+    if (inventory.back.what != Thing::Rynkky) return false;
+    if (inventory.akRaised) return true;
+    if (inventory.freeHands() != 2) {
+        if (printer) printer->showMessage(HINT_AK_HANDS, level, false);
+        return false;
+    }
+    inventory.akRaised = true;
+    return true;
+}
+
+void Player::lowerAk()
+{
+    inventory.akRaised = false;
+}
+
+bool Player::reload(Thing gun)
+{
+    if (inventory.pocket.what != Thing::Lipas) return false;
+    Held* g = nullptr;
+    if (gun == Thing::None) {
+        // the gun in hand, else whichever is not full
+        g = inventory.inHand(Thing::Pistooli);
+        if (!g && inventory.akRaised) g = &inventory.back;
+        if (!g) {
+            Held* p = inventory.find(Thing::Pistooli);
+            Held* ak = inventory.find(Thing::Rynkky);
+            if (p && p->rounds < MAKAROV_ROUNDS) g = p;
+            else if (ak && ak->rounds < AK_ROUNDS) g = ak;
+        }
+    } else if (gun == Thing::Pistooli || gun == Thing::Rynkky) {
+        g = inventory.find(gun);
+    }
+    if (!g) return false;
+    const uint8_t full = g->what == Thing::Rynkky ? AK_ROUNDS : MAKAROV_ROUNDS;
+    if (g->rounds >= full) return false;
+    g->rounds = full;
+    inventory.pocket = Held();
+    if (printer) printer->showMessage("Vaihdat lippaan.", level, false);
+    return true;
+}
+
+Thing Player::readyWeapon()
+{
+    const bool spare = inventory.pocket.what == Thing::Lipas;
+    auto canFire = [&](const Held* g) { return g && (g->rounds > 0 || spare); };
+    const Held* inHand = inventory.inHand(Thing::Pistooli);
+    const Held* pistol = inventory.find(Thing::Pistooli);
+    const Held* ak = inventory.find(Thing::Rynkky);
+    if (canFire(inHand)) return Thing::Pistooli;
+    if (inventory.akRaised && ak) return Thing::Rynkky;
+    if (canFire(ak) && inventory.freeHands() == 2) return Thing::Rynkky;
+    if (canFire(pistol)) return Thing::Pistooli;
+    if (canFire(ak)) return Thing::Rynkky;   // up it goes, or the hint says why not
+    if (pistol) return Thing::Pistooli;      // "Ei ammuksia."
+    if (ak) return Thing::Rynkky;
+    return Thing::None;
+}
+
+void Player::maybeDropPocket(bool force)
+{
+    if (inventory.pocket.empty()) return;
+    if (!force && !common::random(POCKET_DROP_PERCENT)) return;
+    Item* i = Item::createThing(inventory.pocket.what, coord);
+    inventory.pocket = Held();
+    if (i) {
+        i->coord = coord;
+        if (level) level->addItem(i);
+        else delete i;
+    }
+    pocketNoticeTurns = POCKET_NOTICE_TURNS;
+}
+
+void Player::wearCoat(uint32_t hp)
+{
+    const uint32_t stage = diseaseStage();
+    uint32_t cap = INITIAL_HP;
+    if (stage > 0) cap = std::min(cap, Disease::maxHealth(stage));
+    const uint32_t to = std::min(hp, cap);
+    if (stats.health < to) stats.health = to;
+    usedCoat = false;
+}
+
+bool Player::stripCorpseCoat(Person* corpse)
+{
+    if (!corpse || corpse->stats.health > 0 || corpse->coatTaken || corpse == this) return false;
+    corpse->coatTaken = true;
+    wearCoat(INITIAL_HP);
+    if (printer) printer->showMessage("Riisut ruumiin takin ja puet sen p\xC3\xA4\xC3\xA4llesi. Viel\xC3\xA4 l\xC3\xA4mmin.", level, false);
+    if (!level) return true;
+    // a disgrace: everyone who saw it comes for you
+    for (auto p : level->persons) {
+        if (p == this || p == corpse || p->type == pelaaja || p->stats.health == 0) continue;
+        if (!p->canSeeTarget(coord)) continue;
+        p->chaseTarget = this;
+        p->alerted = true;
+        p->lastKnownPos = coord;
+        p->alertCooldown = 15;
+        p->say(common::random(50) ? "Ruumiinry\xC3\xB6st\xC3\xA4j\xC3\xA4!" : "Paskiainen!");
+    }
     return true;
 }
 
@@ -740,6 +879,16 @@ bool Player::stagger(Level* level)
     }
 
     return move(d, level);
+}
+
+// asked, so it is never done by accident; rats wear no coat, and at full strength it would give nothing
+void Player::offerCorpseCoat(Person* corpse)
+{
+    if (!corpse || corpse->coatTaken || corpse->type == rotta || corpse->type == pelaaja) return;
+    if (stats.health >= INITIAL_HP) return;
+    printer->showMessage("Riisutko takin? (k/e)", level, false);
+    const char c = InputNS::Input::getMenuKey();
+    if (c == 'k' || c == 'K') stripCorpseCoat(corpse);
 }
 
 bool Player::move(DirectionNS::Direction d, Level* level)
@@ -891,7 +1040,11 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             blocked = true;
             p = nullptr;
         }
-        if (p)
+        if (p && p->stats.health == 0 && p != this) {
+            // a corpse: nothing to say, but it has a coat
+            blocked = true;
+            offerCorpseCoat(p);
+        } else if (p)
         {
             blocked = p->interact(msg, this);
             printer->showMessage(msg, level);
@@ -901,6 +1054,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
                 if (i) {
                     level->addItem(i);
                 }
+                offerCorpseCoat(p);
             }
         }
     }

@@ -3429,3 +3429,291 @@ TEST(overlay_eat_uses_selected_hand)
     CHECK(w.player.inventory.right.empty());
     CHECK(w.player.inventory.left.what == Thing::Lenkki);
 }
+
+// ---- weapons, belt, magazines, pocket, coats ----
+
+static Held loaded(Thing gun)
+{
+    Held h = Inventory::heldOf(gun);
+    h.rounds = gun == Thing::Rynkky ? AK_ROUNDS : MAKAROV_ROUNDS;
+    return h;
+}
+
+TEST(pistol_needs_a_free_hand)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    inv.hasBelt = true;
+    hold(inv, Thing::Kalja, Thing::Lenkki);
+    inv.belt = loaded(Thing::Pistooli);
+    CHECK(!w.player.drawPistol());
+    CHECK(w.printer.saw(HINT_PISTOL_BOTTLE));
+    CHECK(inv.belt.what == Thing::Pistooli);
+    CHECK(!w.player.shootAt(0.0f));              // no hand to hold it: no shot
+    CHECK(inv.belt.rounds == MAKAROV_ROUNDS);
+
+    inv.right = Held();
+    CHECK(w.player.drawPistol());
+    CHECK(inv.right.what == Thing::Pistooli);
+    CHECK(inv.right.rounds == MAKAROV_ROUNDS);
+    CHECK(inv.belt.empty());
+    CHECK(w.player.drawPistol());                // already in hand counts as drawn
+}
+
+TEST(belt_frees_the_hand_until_drawn)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::Pistooli);
+    inv.right.rounds = 5;
+    w.level.addItem(new Vyo(Coord{ 51, 50 }));
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(inv.hasBelt);
+    CHECK(!itemAt(w.level, EVyo));
+    CHECK(inv.belt.what == Thing::Pistooli);
+    CHECK(inv.belt.rounds == 5);                 // the same gun, not a new one
+    CHECK(inv.freeHands() == 2);
+
+    CHECK(w.player.drawPistol());
+    CHECK(inv.freeHands() == 1);
+    CHECK(inv.belt.empty());
+    w.player.holsterPistol();
+    CHECK(inv.belt.what == Thing::Pistooli);
+    CHECK(inv.freeHands() == 2);
+
+    // without a belt the pistol just stays in the hand
+    World v;
+    hold(v.player.inventory, Thing::None, Thing::Pistooli);
+    v.player.holsterPistol();
+    CHECK(v.player.inventory.right.what == Thing::Pistooli);
+}
+
+TEST(soldier_corpse_sometimes_leaves_a_belt)
+{
+    int belts = 0;
+    for (int n = 0; n < 300; ++n) {
+        Sotilas s(Coord{ 10, 10 });
+        Item* i = s.dropItem();
+        if (i && i->type == EVyo) ++belts;
+        CHECK(s.dropItem() == nullptr);          // one corpse, one loot
+        delete i;
+    }
+    CHECK(belts > 60 && belts < 130);
+}
+
+TEST(ak_needs_both_hands_empty_and_hints)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    inv.back = loaded(Thing::Rynkky);
+    hold(inv, Thing::Kalja, Thing::None);
+    CHECK(!w.player.shoulderAk());
+    CHECK(w.printer.saw(HINT_AK_HANDS));
+    CHECK(!inv.akRaised);
+
+    inv.left = Held();
+    CHECK(w.player.shoulderAk());
+    CHECK(inv.akRaised);
+    CHECK(inv.freeHands() == 0);
+    CHECK(!inv.give(Thing::Kalja));              // the rifle fills both hands
+    CHECK(inv.left.empty() && inv.right.empty());
+    CHECK(inv.give(Thing::Granata));             // the pocket is still free
+    CHECK(inv.pocket.what == Thing::Granata);
+
+    w.player.lowerAk();
+    CHECK(!inv.akRaised);
+    CHECK(inv.freeHands() == 2);
+    CHECK(inv.back.what == Thing::Rynkky);
+}
+
+TEST(makarov_has_eight_rounds_and_reloads_from_pocket)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::None);
+    CHECK(inv.give(Thing::Pistooli));
+    CHECK(inv.right.rounds == 8);
+    inv.pocket = Inventory::heldOf(Thing::Lipas);
+    for (int i = 0; i < 8; ++i) CHECK(w.player.shootAt(0.0f));
+    CHECK(inv.right.rounds == MAKAROV_ROUNDS);   // the last round out, the spare in
+    CHECK(inv.pocket.empty());
+    CHECK(w.printer.saw("Vaihdat lippaan."));
+    for (int i = 0; i < 8; ++i) CHECK(w.player.shootAt(0.0f));
+    CHECK(inv.right.rounds == 0);
+    CHECK(!w.player.shootAt(0.0f));
+    CHECK(w.printer.saw("Ei ammuksia!"));
+
+    // the same spare fills the rifle
+    inv.back = Inventory::heldOf(Thing::Rynkky);
+    inv.pocket = Inventory::heldOf(Thing::Lipas);
+    CHECK(w.player.reload(Thing::Rynkky));
+    CHECK(inv.back.rounds == AK_ROUNDS);
+    CHECK(inv.pocket.empty());
+    CHECK(!w.player.reload(Thing::Rynkky));      // no spare left
+}
+
+TEST(empty_ak_does_not_block_loaded_pistol)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::None);
+    inv.right = loaded(Thing::Pistooli);
+    inv.back = Inventory::heldOf(Thing::Rynkky);   // no rounds left
+    CHECK(w.player.readyWeapon() == Thing::Pistooli);
+
+    // pistol on the belt, hands free, rifle empty: still the pistol
+    inv.hasBelt = true;
+    inv.belt = inv.right;
+    inv.right = Held();
+    CHECK(w.player.readyWeapon() == Thing::Pistooli);
+
+    // a loaded rifle and free hands: the rifle
+    inv.back.rounds = AK_ROUNDS;
+    CHECK(w.player.readyWeapon() == Thing::Rynkky);
+
+    // the pistol in hand goes first
+    CHECK(w.player.drawPistol());
+    CHECK(w.player.readyWeapon() == Thing::Pistooli);
+
+    hold(inv, Thing::None, Thing::None);
+    inv.belt = Held();
+    inv.back = Held();
+    CHECK(w.player.readyWeapon() == Thing::None);
+}
+
+TEST(fall_can_drop_pocket_item_and_notices_later)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    inv.pocket = Inventory::heldOf(Thing::Granata);
+    w.player.maybeDropPocket(true);
+    CHECK(inv.pocket.empty());
+    bool here = false;
+    for (auto i : w.level.items) if (i->type == EGranata && i->coord == w.player.coord) here = true;
+    CHECK(here);                                 // on the ground at once
+    CHECK(w.player.pocketNoticeTurns == PlayerNS::POCKET_NOTICE_TURNS);
+    for (uint32_t t = 1; t < PlayerNS::POCKET_NOTICE_TURNS; ++t) w.player.updateTurn();
+    CHECK(!w.printer.saw("tasku tuntuu kevyelt"));
+    w.player.updateTurn();
+    CHECK(w.printer.saw("Hetkinen... tasku tuntuu kevyelt\xC3\xA4!"));
+
+    // dropping to all fours rolls the dice: about one fall in four
+    int falls = 0, dropped = 0;
+    w.player.stats.promilles = 40;
+    for (int n = 0; n < 100000 && falls < 200; ++n) {
+        w.player.crawling = false;
+        inv.pocket = Inventory::heldOf(Thing::Lipas);
+        w.player.updateCrawling();
+        if (!w.player.crawling) {
+            CHECK(inv.pocket.what == Thing::Lipas);   // no fall, nothing lost
+            continue;
+        }
+        ++falls;
+        if (inv.pocket.empty()) ++dropped;
+    }
+    CHECK(falls == 200);
+    CHECK(dropped > 25 && dropped < 80);
+}
+
+TEST(empty_pocket_drop_spawns_nothing)
+{
+    World w;
+    w.player.inventory.pocket = Held();
+    const size_t n = w.level.items.size();
+    w.player.maybeDropPocket(true);
+    CHECK(w.level.items.size() == n);
+    CHECK(w.player.pocketNoticeTurns == 0);
+}
+
+TEST(coat_restores_full_health)
+{
+    World w;
+    w.player.stats.health = 3;
+    w.player.usedCoat = true;
+    w.level.addItem(new Takki(Coord{ 51, 50 }));
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.stats.health == PlayerNS::INITIAL_HP);
+    CHECK(!itemAt(w.level, ETakki));
+    CHECK(w.printer.saw("Uusi takki! Vain v\xC3\xA4h\xC3\xA4n verta kauluksessa."));
+    CHECK(!w.player.usedCoat);
+    CHECK(w.player.inventory.count(Thing::Kalja) == 1);   // worn, not carried
+    CHECK(w.player.inventory.count(Thing::Lenkki) == 1);
+    Takki t(Coord{ 0, 0 });
+    CHECK(t.typeToChar() == "[");
+
+    // a coat never takes health away
+    w.player.stats.health = PlayerNS::INITIAL_HP + 2;
+    w.player.wearCoat(PlayerNS::INITIAL_HP);
+    CHECK(w.player.stats.health == PlayerNS::INITIAL_HP + 2);
+}
+
+TEST(stripping_corpse_coat_angers_witnesses)
+{
+    World w;
+    w.player.stats.health = 2;
+    auto* corpse = w.spawn(new Kansalainen(Coord{ 51, 50 }));
+    corpse->stats.health = 0;
+    auto* cop = w.spawn(new Cop(Coord{ 54, 50 }));
+    auto* blindMan = w.spawn(new Kansalainen(Coord{ 50, 53 }));
+    blindMan->blind = true;
+    CHECK(w.player.stripCorpseCoat(corpse));
+    CHECK(corpse->coatTaken);
+    CHECK(w.player.stats.health == PlayerNS::INITIAL_HP);
+    CHECK(cop->alerted);
+    CHECK(cop->chaseTarget == &w.player);
+    CHECK(w.said(cop, "Ruumiinry\xC3\xB6st\xC3\xA4j\xC3\xA4!") || w.said(cop, "Paskiainen!"));
+    CHECK(!blindMan->alerted);
+    CHECK(!w.said(blindMan, "Paskiainen!") && !w.said(blindMan, "Ruumiinry"));
+    w.player.stats.health = 2;
+    CHECK(!w.player.stripCorpseCoat(corpse));    // one coat per corpse
+    CHECK(w.player.stats.health == 2);
+
+    // walking onto a corpse asks first
+    World v;
+    v.player.stats.health = 2;
+    auto* dead = v.spawn(new Kansalainen(Coord{ 51, 50 }));
+    dead->stats.health = 0;
+    feedKeys("e");
+    v.player.move(DirectionNS::right, &v.level);
+    CHECK(v.printer.saw("Riisutko takin? (k/e)"));
+    CHECK(v.player.stats.health == 2);
+    CHECK(!dead->coatTaken);
+    feedKeys("k");
+    v.player.move(DirectionNS::right, &v.level);
+    CHECK(v.player.stats.health == PlayerNS::INITIAL_HP);
+    CHECK(dead->coatTaken);
+}
+
+TEST(divari_used_coat_gives_three_hp)
+{
+    World w;
+    auto* d = w.add(new Divari(), 10, 10);
+    w.player.stats.health = 4;
+    w.player.stats.money = 40;
+    string msg;
+    CHECK(d->getEnterMsg(&w.player, msg));       // nothing to sell, but money for the coat
+    CHECK(d->getInteractMsg(&w.player, msg));
+    CHECK(contains(msg, "K\xC3\xA4ytetty takki 30\xE2\x82\xBD"));
+    feedKeys("5");
+    msg.clear();
+    d->interact(&w.player, msg);
+    CHECK(w.player.stats.health == 4 + PlayerNS::USED_COAT_HP);
+    CHECK(w.player.stats.money == 10);
+    CHECK(w.player.usedCoat);
+
+    // never past full health
+    w.player.stats.health = 9;
+    w.player.stats.money = 30;
+    feedKeys("5");
+    d->interact(&w.player, msg);
+    CHECK(w.player.stats.health == PlayerNS::INITIAL_HP);
+    CHECK(w.player.stats.money == 0);
+
+    // broke: no coat
+    w.player.stats.health = 4;
+    feedKeys("5");
+    d->interact(&w.player, msg);
+    CHECK(w.player.stats.health == 4);
+    CHECK(w.player.stats.money == 0);
+    CHECK(!d->getEnterMsg(&w.player, msg));      // nothing to sell, no money: out
+}

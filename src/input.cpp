@@ -203,6 +203,8 @@ uint32_t Input::getInputDivari()
             case '2': sel = 2; break;
             case '3': sel = 3; break;
             case '4': sel = 4; break;
+            case '5': sel = 5; break;
+            case EOF: sel = 99; break; // no more keys: out, rather than wait forever
             default: sel = 0; break;
         }
     }

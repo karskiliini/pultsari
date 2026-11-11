@@ -161,6 +161,7 @@ BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
             printer->print(level);
             common::sleep(800);
             player->damage(1);
+            player->maybeDropPocket();
             balance = 0.0f;
 
             if (common::random(40)) {
