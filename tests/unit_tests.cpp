@@ -3092,3 +3092,119 @@ TEST(comrades_at_the_front_do_not_send_the_player_to_the_front)
     CHECK(!w.player.inJail);
     CHECK(w.player.stats.health == hp);
 }
+
+// ---- hands ----
+TEST(hands_give_fills_left_then_right_then_refuses)
+{
+    Inventory inv;
+    inv.left = Held();
+    inv.right = Held();
+    CHECK(inv.give(Thing::Kalja));
+    CHECK(inv.give(Thing::Kalja));
+    CHECK(!inv.give(Thing::Kalja));
+    CHECK(inv.count(Thing::Kalja) == 2);
+    CHECK(inv.left.what == Thing::Kalja && inv.right.what == Thing::Kalja);
+}
+
+TEST(hands_vodka_starts_with_six_sips)
+{
+    Inventory inv;
+    inv.left = Held();
+    CHECK(inv.give(Thing::Vodka));
+    CHECK(inv.left.what == Thing::Vodka);
+    CHECK(inv.left.fill == VODKA_SIPS);
+    CHECK(inv.left.fill == 6);
+}
+
+TEST(hands_pistol_goes_to_belt_only_with_belt)
+{
+    Inventory a;
+    a.left = Held();
+    a.right = Held();
+    CHECK(a.give(Thing::Pistooli));
+    CHECK(a.belt.empty());
+    CHECK(a.right.what == Thing::Pistooli);
+    CHECK(a.right.rounds == MAKAROV_ROUNDS);
+
+    Inventory b;
+    b.left = Held();
+    b.right = Held();
+    b.hasBelt = true;
+    CHECK(b.give(Thing::Pistooli));
+    CHECK(b.belt.what == Thing::Pistooli);
+    CHECK(b.belt.rounds == 8);
+    CHECK(b.freeHands() == 2);
+}
+
+TEST(hands_second_ak_is_refused)
+{
+    Inventory inv;
+    CHECK(inv.give(Thing::Rynkky));
+    CHECK(inv.back.what == Thing::Rynkky);
+    CHECK(inv.back.rounds == AK_ROUNDS);
+    inv.left = Held();
+    CHECK(!inv.give(Thing::Rynkky));
+    CHECK(inv.count(Thing::Rynkky) == 1);
+    CHECK(inv.left.empty());
+}
+
+TEST(hands_lipas_prefers_pocket)
+{
+    Inventory inv;
+    inv.left = Held();
+    inv.right = Held();
+    CHECK(inv.give(Thing::Lipas));
+    CHECK(inv.pocket.what == Thing::Lipas);
+    CHECK(inv.freeHands() == 2);
+    CHECK(inv.give(Thing::Lipas));
+    CHECK(inv.left.what == Thing::Lipas);
+}
+
+TEST(hands_small_item_overflows_to_pocket)
+{
+    Inventory inv; // both hands full in the default kit
+    CHECK(inv.freeHands() == 0);
+    CHECK(inv.give(Thing::Veitsi));
+    CHECK(inv.pocket.what == Thing::Veitsi);
+    CHECK(!inv.give(Thing::Granata));
+    CHECK(!inv.give(Thing::Kivi));
+}
+
+TEST(hands_take_on_empty_is_false)
+{
+    Inventory inv;
+    CHECK(!inv.take(Thing::Vodka));
+    CHECK(inv.take(Thing::Kalja));
+    CHECK(inv.left.empty());
+    CHECK(!inv.take(Thing::Kalja));
+    CHECK(inv.find(Thing::Lenkki) == &inv.right);
+    CHECK(inv.find(Thing::Kalja) == nullptr);
+}
+
+TEST(hands_default_kit_is_beer_and_sausage)
+{
+    Inventory inv;
+    CHECK(inv.left.what == Thing::Kalja);
+    CHECK(inv.right.what == Thing::Lenkki);
+    CHECK(inv.count(Thing::Kalja) == 1);
+    CHECK(inv.count(Thing::Lenkki) == 1);
+    CHECK(inv.freeHands() == 0);
+    CHECK(isSmall(Thing::Lipas) && isSmall(Thing::Granata) && isSmall(Thing::Veitsi));
+    CHECK(isDrink(Thing::Vodka) && !isDrink(Thing::Lenkki));
+    CHECK(isWeapon(Thing::Rynkky) && isWeapon(Thing::Pistooli));
+    CHECK(string(thingName(Thing::Kalja)) == "PIVO");
+    CHECK(inv.pocket.empty());
+}
+
+TEST(hands_give_held_keeps_fill_and_seller)
+{
+    Inventory inv;
+    inv.left = Held();
+    Held h;
+    h.what = Thing::Vodka;
+    h.fill = 2;
+    h.pissSeller = "Vasja";
+    CHECK(inv.give(h));
+    CHECK(inv.left.fill == 2 && inv.left.pissSeller == "Vasja");
+    CHECK(stealableThing(2) == Thing::Vodka);
+}
