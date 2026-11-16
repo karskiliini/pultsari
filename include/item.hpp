@@ -43,7 +43,8 @@ enum ItemType {
     ELipas,
     ETakki,
     EVyo,
-    ERuumis
+    ERuumis,
+    ESirpaleet
 };
 
 class Level;
@@ -404,5 +405,23 @@ public:
 private:
     const char* msg;
 };
+
+// Broken glass from a smashed shop window. It stays where it fell, and every step on it
+// may cut you.
+class Sirpaleet : public Item {
+public:
+    Sirpaleet(const Coord& c);
+    virtual std::string typeToChar() const { return glyph; }
+    virtual std::string getMsg() const;
+    // never picked up: false keeps the glass on the ground
+    virtual bool interact(PlayerNS::Player* player);
+    // tests: -1 rolls SHARD_CUT_PERCENT, 0 never cuts, 1 always cuts
+    static int cutOverride;
+private:
+    const char* glyph;
+};
+
+// how likely a step on broken glass cuts you (percent)
+constexpr int SHARD_CUT_PERCENT = 35;
 
 #endif

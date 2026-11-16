@@ -399,6 +399,8 @@
 
     function play(name, vol) {
         if (!ctx || muted) return;
+        // breaking glass sounds best as the real recording, once it has loaded
+        if (name === 'glass' && intro['glass-break']) name = 'glass-break';
         if (!sounds[name]) { if (intro[name]) cue(name, vol); return; }   // a recording the game asks for by name
         const now = performance.now();
         const gap = minGapMs[name] ?? 80;

@@ -905,10 +905,14 @@ void Level::alertCops(Person* source, uint32_t range)
     if (firstWitness) callForHelp(firstWitness, source, true);
 }
 
-void Level::callForHelp(Person* caller, Person* target, bool hostile)
+void Level::callForHelp(Person* caller, Person* target, bool hostile, bool overRadio)
 {
-    const bool radio = caller->hasRadio && caller->type == vartija;
-    if (radio) {
+    const bool radio = caller->hasRadio && (caller->type == vartija || overRadio);
+    if (radio && overRadio) {
+        caller->say("*r\xC3\xA4tin\xC3\xA4* Ep\xC3\xA4ilty pakenee! Lis\xC3\xA4\xC3\xA4 miehi\xC3\xA4!");
+        audio.addSound(caller->coord, SoundType::WalkieTalkie,
+            "Miliisi huutaa radioon", "Radiokutsu", "...radion r\xC3\xA4tin\xC3\xA4\xC3\xA4...", 15);
+    } else if (radio) {
         caller->say("Kaikki yksik\xC3\xB6t, apua!");
         audio.addSound(caller->coord, SoundType::WalkieTalkie,
             "Vartija huutaa radioon", "Radiokutsu", "...radion r\xC3\xA4tin\xC3\xA4\xC3\xA4...", 15);
@@ -940,6 +944,36 @@ void Level::callForHelp(Person* caller, Person* target, bool hostile)
                 "Radiopuhelin r\xC3\xA4tisee", "Radion r\xC3\xA4tin\xC3\xA4\xC3\xA4", "...r\xC3\xA4tin\xC3\xA4\xC3\xA4...", 8);
         }
     }
+}
+
+int Level::sendPatrol(Person* target, int count, bool radios)
+{
+    int came = 0;
+    for (int k = 0; k < count; ++k) {
+        for (int tries = 0; tries < 30; ++tries) {
+            const int dx = (std::rand() % 2 ? 1 : -1) * (14 + std::rand() % 6);
+            const int dy = (int)(std::rand() % 9) - 4;
+            const int x = (int)target->coord.x + dx, y = (int)target->coord.y + dy;
+            if (x < 1 || y < 1 || x >= (int)common::SIZEX - 1 || y >= (int)common::SIZEY - 1) continue;
+            const Coord at { (uint32_t)x, (uint32_t)y };
+            if (hit(at)) continue;
+            Person* cop = createPerson(at, poliisi);
+            if (!cop) break;
+            cop->chaseTarget = target;
+            cop->alerted = true;
+            cop->lastKnownPos = target->coord;
+            cop->alertCooldown = 40;
+            if (Cop* c = dynamic_cast<Cop*>(cop)) {
+                c->hasRadio = radios && common::random(50);
+                c->callsBackup = c->hasRadio;
+                c->arrests = true;
+            }
+            cop->say(k ? "Murtoh\xC3\xA4lytys! Seis!" : "Tuolla se on!");
+            ++came;
+            break;
+        }
+    }
+    return came;
 }
 
 void Level::witnessPutinDeath(const Coord& where)
@@ -1077,7 +1111,8 @@ bool Level::hitItem(const Coord& c) const
 {
     for (const auto& i : items)
     {
-        if (i->coord == c && i->type != ERuumis)
+        // a body and broken glass are stepped over, not walked around
+        if (i->coord == c && i->type != ERuumis && i->type != ESirpaleet)
             return true;
     }
     return false;

@@ -110,7 +110,18 @@ public:
     virtual bool interactpuke(Person* source);
     Item* dropItem();
     virtual std::string typeToChar() const { return "C"; };
+    // sent by a burglar alarm: grabs the burglar when next to him
+    bool arrests = false;
+    // radios in a patrol if the chase drags on past COP_BACKUP_TURNS (once)
+    bool callsBackup = false;
+    bool backupCalled = false;
+    uint32_t chaseTurns = 0;
 };
+
+// turns a radio cop chases without laying hands on the target before calling for backup
+constexpr uint32_t COP_BACKUP_TURNS = 6;
+// how likely an alarm cop next to the burglar gets him in cuffs this turn (percent)
+constexpr int COP_ARREST_PERCENT = 40;
 
 class Varas : public Person {
 public:

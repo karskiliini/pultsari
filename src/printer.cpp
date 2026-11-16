@@ -342,6 +342,7 @@ const char* itemColor(ItemType t)
         case EKartta:      return "1;33";
         case ERoska:       return "38;5;94";
         case ENeula:       return "2;37";
+        case ESirpaleet:   return "96";
         case ERuumis:      return "31";
         default:           return "1;97";
     }

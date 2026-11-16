@@ -462,11 +462,27 @@ void Cop::npcAct()
 
             if (seesTarget && coord.distance(target->coord) == 1)
             {
-                if (random(35)) {
+                chaseTurns = 0;
+                Player* burglar = target == p ? p : nullptr;
+                if (arrests && burglar && !burglar->inJail && random(COP_ARREST_PERCENT)) {
+                    static const char* cuffs[] = {
+                        "Murtovaras! K\xC3\xA4""det selk\xC3\xA4\xC3\xA4n!",
+                        "Kiinni j\xC3\xA4it! Rintamalla on tilaa kaltaisillesi.",
+                        "Rauhoitu. SIZOssa ehdit miettim\xC3\xA4\xC3\xA4n.",
+                    };
+                    say(cuffs[std::rand() % 3]);
+                    burglar->inJail = true;
+                } else if (random(35)) {
                     say("Pamppu maistuu!");
                     target->damage(rand()%2+1);
                 }
             } else {
+                // the burglar keeps getting away: a cop with a radio calls in more men
+                if (callsBackup && hasRadio && !backupCalled && ++chaseTurns >= COP_BACKUP_TURNS) {
+                    backupCalled = true;
+                    level->callForHelp(this, target, true, true);
+                    level->sendPatrol(target, 2, false);
+                }
                 Direction d = getMoveDirection(chasePos);
                 move(d, msg);
             }

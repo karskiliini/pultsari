@@ -108,7 +108,10 @@ public:
     // security forces who see or hear `source` (within `range`) start chasing it
     void alertCops(Person* source, uint32_t range = 12);
     // `caller` shouts (or radios) for help with `target`; hostile makes responders attack it
-    void callForHelp(Person* caller, Person* target, bool hostile);
+    void callForHelp(Person* caller, Person* target, bool hostile, bool overRadio = false);
+    // a militia patrol of `count` arrives on foot just out of sight of `target` and chases it;
+    // `radios` gives each a coin-flip radio for calling in more. Returns how many came.
+    int sendPatrol(Person* target, int count, bool radios);
     // people who know Putin is dead shout it; whoever hears them learns it too
     void spreadNews();
     void witnessPutinDeath(const Coord& where);
