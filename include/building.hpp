@@ -3,6 +3,7 @@
 
 #include "direction.hpp"
 #include "coord.hpp"
+#include "hands.hpp"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -242,10 +243,19 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+    // the seller caught you stealing: no more sales here on this level
+    bool sellerHostile = false;
+    Person* seller = nullptr;
+    // tests: -1 rolls SHOPLIFT_NOTICE_PERCENT, 0 never notices, 1 always notices
+    static int noticeOverride;
 private:
+    void shoplift(PlayerNS::Player* player, Thing t, std::string& msg);
     std::string name;
     Kind kind;
 };
+
+// how likely a seller is to notice a shoplift (percent)
+constexpr int SHOPLIFT_NOTICE_PERCENT = 70;
 
 // A metro station entrance. The fare is 60 roubles, or you jump the turnstile and hope
 // nobody saw. Every trip to the next station is a mini-game (metro.hpp): this only takes

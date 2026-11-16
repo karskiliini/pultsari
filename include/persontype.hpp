@@ -30,7 +30,8 @@ enum PersonType {
     rotta,
     pankkirosvo,
     rekryytti,      // recruited from Africa with the promise of a civilian job
-    korealainen     // a North Korean soldier, told it was an exercise
+    korealainen,    // a North Korean soldier, told it was an exercise
+    myyja           // a shopkeeper who caught you stealing: fanatical
 };
 
 #endif

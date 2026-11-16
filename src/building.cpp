@@ -976,8 +976,15 @@ Kauppa::Kauppa(const std::string& name, Kind kind)
     windows.push_back({11, wallBot});
 }
 
+int Kauppa::noticeOverride = -1;
+
 bool Kauppa::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
+    if (sellerHostile) {
+        msg = level->isAlive(seller) ? "Kauppa on kiinni. Myyj\xC3\xA4 jahtaa sinua jossain."
+                                     : "Kauppa on hiljainen. Kukaan ei myy mit\xC3\xA4\xC3\xA4n.";
+        return false;
+    }
     static const char* lines[] = {
         "Ovikello kilahtaa. Myyj\xC3\xA4 katsoo sinua kuin rottaa.",
         "Myyj\xC3\xA4 ei nosta katsettaan puhelimesta. 'Mit\xC3\xA4?'",
@@ -990,12 +997,12 @@ bool Kauppa::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 bool Kauppa::getInteractMsg(PlayerNS::Player* player, std::string& msg) const
 {
     if (kind == Kind::Produkty)
-        msg = "MYYJ\xC3\x84: 1) Makkara 6\xE2\x82\xBD  2) Vobla 4\xE2\x82\xBD  3) Antonovka 2\xE2\x82\xBD  4) Baltika 10\xE2\x82\xBD  muu) ulos";
+        msg = "MYYJ\xC3\x84: 1) Makkara 6\xE2\x82\xBD  2) Vobla 4\xE2\x82\xBD  3) Antonovka 2\xE2\x82\xBD  4) Baltika 10\xE2\x82\xBD  muu) ulos  v+nro) varasta";
     else if (kind == Kind::Oruzhie)
         msg = "MYYJ\xC3\x84: 1) Veitsi 8\xE2\x82\xBD  2) Makarov + 8 panosta 35\xE2\x82\xBD  3) Lipas 10\xE2\x82\xBD  "
-              "4) Granaatti 25\xE2\x82\xBD  5) Kalashnikov + 30 panosta 90\xE2\x82\xBD  muu) ulos";
+              "4) Granaatti 25\xE2\x82\xBD  5) Kalashnikov + 30 panosta 90\xE2\x82\xBD  muu) ulos  v+nro) varasta";
     else
-        msg = "MYYJ\xC3\x84: 1) Baltika 10\xE2\x82\xBD  2) Banaani 5\xE2\x82\xBD  3) Jaguar 15\xE2\x82\xBD  4) Vodka 25\xE2\x82\xBD  muu) ulos";
+        msg = "MYYJ\xC3\x84: 1) Baltika 10\xE2\x82\xBD  2) Banaani 5\xE2\x82\xBD  3) Jaguar 15\xE2\x82\xBD  4) Vodka 25\xE2\x82\xBD  muu) ulos  v+nro) varasta";
     return true;
 }
 
@@ -1005,7 +1012,18 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
     static const int foodPrice[] = { 6, 4, 2, 10 };
     static const int kioskPrice[] = { 10, 5, 15, 25 };
     static const int gunPrice[] = { 8, 35, 10, 25, 90 };
+    static const Thing food[] = { Thing::Lenkki, Thing::Kala, Thing::Omppo, Thing::Kalja };
+    static const Thing guns[] = { Thing::Veitsi, Thing::Pistooli, Thing::Lipas, Thing::Granata, Thing::Rynkky };
+    static const Thing kiosk[] = { Thing::Kalja, Thing::Bansku, Thing::Lonkka, Thing::Vodka };
     const char last = kind == Kind::Oruzhie ? '5' : '4';
+    if (c == 'v' || c == 'V') {
+        // v + number: take it off the counter; any other key thinks better of it
+        const char d = InputNS::Input::getMenuKey();
+        if (d < '1' || d > last) return;
+        const int k = d - '1';
+        shoplift(player, kind == Kind::Produkty ? food[k] : kind == Kind::Oruzhie ? guns[k] : kiosk[k], msg);
+        return;
+    }
     if (c < '1' || c > last) {
         static const char* bye[] = {
             "Myyj\xC3\xA4: 'Ei ostoksia? Ulos sitten. T\xC3\xA4m\xC3\xA4 ei ole museo.'",
@@ -1018,9 +1036,6 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
     }
     const int k = c - '1';
     const int price = kind == Kind::Produkty ? foodPrice[k] : kind == Kind::Oruzhie ? gunPrice[k] : kioskPrice[k];
-    static const Thing food[] = { Thing::Lenkki, Thing::Kala, Thing::Omppo, Thing::Kalja };
-    static const Thing guns[] = { Thing::Veitsi, Thing::Pistooli, Thing::Lipas, Thing::Granata, Thing::Rynkky };
-    static const Thing kiosk[] = { Thing::Kalja, Thing::Bansku, Thing::Lonkka, Thing::Vodka };
     const Thing bought = kind == Kind::Produkty ? food[k] : kind == Kind::Oruzhie ? guns[k] : kiosk[k];
     if (!player->inventory.fits(bought)) {
         msg = HINT_HANDS_FULL;   // no room, no sale: the money stays
@@ -1062,6 +1077,57 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
         }
     }
     queueRage(this, player, msg, 35);
+}
+
+// the seller comes out of the door; if someone stands in it, out of the next door cell
+static Person* sellerOut(Building* b, Person* m)
+{
+    const Coord door = b->getDoor();
+    const bool across = b->door == DirectionNS::up || b->door == DirectionNS::down;
+    const Coord spots[] = {
+        door,
+        across ? Coord{ door.x - 1, door.y } : Coord{ door.x, door.y - 1 },
+        across ? Coord{ door.x + 1, door.y } : Coord{ door.x, door.y + 1 },
+        b->getSpawn(),
+    };
+    for (const auto& c : spots) {
+        m->coord = c;
+        if (b->level->addPerson(m)) return m;
+    }
+    delete m;
+    return nullptr;
+}
+
+void Kauppa::shoplift(PlayerNS::Player* player, Thing t, std::string& msg)
+{
+    if (!player->inventory.give(t)) {
+        msg = HINT_HANDS_FULL;   // no room in your hands: it stays on the counter
+        return;
+    }
+    const bool noticed = noticeOverride >= 0 ? noticeOverride == 1 : std::rand() % 100 < SHOPLIFT_NOTICE_PERCENT;
+    if (!noticed) {
+        static const char* lucky[] = {
+            "Sujautat tavaran takin alle. Myyj\xC3\xA4 tuijottaa puhelintaan.",
+            "Nappaat tavaran tiskilt\xC3\xA4. Kukaan ei n\xC3\xA4hnyt mit\xC3\xA4\xC3\xA4n.",
+            "Tavara katoaa k\xC3\xA4teesi. Myyj\xC3\xA4 laskee vaihtorahoja.",
+        };
+        msg = lucky[std::rand() % 3];
+        return;
+    }
+    sellerHostile = true;
+    const SellerWeapon w = rollSellerWeapon();
+    Person* m = new Myyja(getDoor(), w);
+    m->printer = level->printer;
+    seller = sellerOut(this, m);
+    static const char* shouts[] = { "VARAS! Seis!", "Minun kauppani! Minun!" };
+    if (seller) {
+        seller->chaseTarget = player;
+        seller->alerted = true;
+        seller->lastKnownPos = player->coord;
+        seller->say(shouts[std::rand() % 2]);
+    }
+    static const char* arms[] = { "nitoja", "veitsi", "pistooli" };
+    msg = string("Myyj\xC3\xA4 rynt\xC3\xA4\xC3\xA4 per\xC3\xA4\xC3\xA4si ") + arms[(int)w] + " k\xC3\xA4""dess\xC3\xA4!";
 }
 
 std::string Kauppa::getWalkMsg() const

@@ -3689,3 +3689,122 @@ bool Pankkirosvo::interactThrow(Item* item, Person* source, std::string& msg)
     msg = "Osuit ryöstäjään!";
     return true;
 }
+
+// ============ Myyja (the fanatical shopkeeper) ============
+
+SellerWeapon rollSellerWeapon()
+{
+    const int r = std::rand() % 100;
+    if (r < 75) return SellerWeapon::Nitoja;
+    if (r < 95) return SellerWeapon::Veitsi;
+    return SellerWeapon::Pistooli;
+}
+
+Myyja::Myyja(const Coord& pos, SellerWeapon weapon) : Person(myyja, pos), weapon(weapon)
+{
+    stats.health = 4;
+    visionRange = 8;
+}
+
+bool Myyja::move(Direction d, std::string& msg)
+{
+    Coord check = coord;
+    switch (d) {
+        case DirectionNS::up:    --check.y; break;
+        case DirectionNS::right: ++check.x; break;
+        case DirectionNS::down:  ++check.y; break;
+        case DirectionNS::left:  --check.x; break;
+        default: return false;
+    }
+    if (level->hit(check)) return false;
+    coord = check;
+    common::checkBounds(coord);
+    return true;
+}
+
+void Myyja::npcAct()
+{
+    Player* p = level->getPlayer();
+    if (!p || level->playerDead) return;
+    // he never lets the thief out of his mind: he knows which way you ran
+    chaseTarget = p;
+    alerted = true;
+    lastKnownPos = p->coord;
+
+    static const char* curses[] = {
+        "VARAS! Seis!",
+        "Minun kauppani! Minun!",
+        "Maksa tai kuole!",
+        "Kolmekymment\xC3\xA4 vuotta tiskin takana! Ei yht\xC3\xA4\xC3\xA4n varasta!",
+        "Min\xC3\xA4 l\xC3\xB6yd\xC3\xA4n sinut!",
+    };
+    string msg;
+    const uint32_t dist = coord.distance(p->coord);
+    const bool sees = canSeeTarget(p->coord);
+    if (weapon == SellerWeapon::Pistooli && ammo > 0 && sees && dist <= 6 && (dist <= 1 || random(30))) {
+        --ammo;
+        if (random(60)) {
+            p->damage(2);
+            msg = "Myyj\xC3\xA4 ampuu sinua pistoolilla!";
+        } else {
+            msg = "Myyj\xC3\xA4 ampuu mutta menee ohi!";
+        }
+        level->audio.addSound(coord, SoundType::Gunshot,
+            "PAM! Pistooli pamahtaa!", "Pistoolinlaukaus", "...pamaus kaukaa...", 25);
+    } else if (dist <= 1) {
+        if (random(60)) {
+            switch (weapon) {
+                case SellerWeapon::Nitoja:
+                    p->damage(1);
+                    msg = "Myyj\xC3\xA4 iskee sinua nitojalla! *KLIK KLIK*";
+                    break;
+                case SellerWeapon::Veitsi:
+                    p->damage(2);
+                    msg = "Myyj\xC3\xA4 viilt\xC3\xA4\xC3\xA4 sinua veitsell\xC3\xA4!";
+                    break;
+                case SellerWeapon::Pistooli:
+                    p->damage(1);
+                    msg = "Myyj\xC3\xA4 ly\xC3\xB6 sinua tyhj\xC3\xA4n pistoolin per\xC3\xA4ll\xC3\xA4!";
+                    break;
+            }
+        } else {
+            say(curses[std::rand() % 5]);
+        }
+    } else {
+        PathNS::PathMask mask(level);
+        Direction d = mask.firstStep(coord, p->coord);
+        if (!move(d, msg)) move(getMoveDirection(p->coord), msg);
+        if (random(10)) say(curses[std::rand() % 5]);
+    }
+    report(msg);
+}
+
+bool Myyja::interact(std::string& msg, Person* source)
+{
+    if (source->type != pelaaja) return true;
+    damage(1);
+    if (stats.health == 0) {
+        msg = "Myyj\xC3\xA4 kaatuu kadulle. Kauppa j\xC3\xA4\xC3\xA4 ilman myyj\xC3\xA4\xC3\xA4.";
+        ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    } else {
+        msg = "Ly\xC3\xB6t myyj\xC3\xA4\xC3\xA4! H\xC3\xA4n ei edes hidasta.";
+    }
+    return true;
+}
+
+bool Myyja::interactThrow(Item* item, Person* source, std::string& msg)
+{
+    damage(1);
+    msg = stats.health == 0 ? "Myyj\xC3\xA4 kaatuu kadulle." : "Osuit myyj\xC3\xA4\xC3\xA4n! H\xC3\xA4n karjuu ja jatkaa.";
+    if (stats.health == 0 && source->type == pelaaja) ++dynamic_cast<Player*>(source)->scoreBoard.kaikki;
+    return true;
+}
+
+Item* Myyja::dropItem()
+{
+    switch (weapon) {
+        case SellerWeapon::Veitsi:   return new Veitsi(coord);
+        case SellerWeapon::Pistooli: return new Pistooli(coord);
+        default:                     return nullptr;
+    }
+}

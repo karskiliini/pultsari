@@ -499,4 +499,28 @@ private:
     void sprayFire();
 };
 
+// what a shopkeeper grabs when he sees you steal: a stapler mostly, a knife now and
+// then, rarely the pistol from under the counter
+enum class SellerWeapon { Nitoja, Veitsi, Pistooli };
+// 75 / 20 / 5 %
+SellerWeapon rollSellerWeapon();
+
+// the fanatical shopkeeper: he runs after a thief down the street until one of them
+// is dead (or the level changes), and uses whatever he has in his hand without mercy
+class Myyja : public Person {
+public:
+    Myyja(const Coord& pos, SellerWeapon weapon);
+    virtual ~Myyja() = default;
+
+    bool move(DirectionNS::Direction d, std::string& msg);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "m"; };
+    // the knife or the pistol stays on the street; a stapler is not worth picking up
+    Item* dropItem();
+    SellerWeapon weapon;
+    uint32_t ammo = 8;
+};
+
 #endif

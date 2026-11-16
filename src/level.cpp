@@ -982,7 +982,7 @@ void Level::cleanDead()
                     witnessPutinDeath(p->coord);
                 }
                 if (p->type == pankkirosvo && common::random(70)) items.push_back(new Rynkky(p->coord));
-                if (p->type == sotilas) {
+                if (p->type == sotilas || p->type == myyja) {
                     if (Item* loot = p->dropItem()) items.push_back(loot);
                 }
                 // a person stays where he fell (after the loot, so the loot is picked first); rats do not
@@ -1326,6 +1326,7 @@ std::string Level::nameOf(const Person* p) const
         case pankkirosvo:  return "Pankkiry\xC3\xB6st\xC3\xA4j\xC3\xA4";
         case rekryytti:    return "Värvätty";
         case korealainen:  return "Pohjoiskorealainen";
+        case myyja:        return "Myyj\xC3\xA4";
         default:           return "Joku";
     }
 }

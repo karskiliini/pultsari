@@ -989,6 +989,8 @@ bool Player::move(DirectionNS::Direction d, Level* level)
                 msg.clear();
                 b->interact(this, msg);
                 if (!msg.empty()) printer->showMessage(msg, level, false);
+                // a seller who caught you stealing now stands in the doorway
+                if (level->getPerson(check)) return ret;
             }
             coord = check;
             return ret;

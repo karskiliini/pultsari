@@ -259,6 +259,188 @@ TEST(shop_without_customers_has_no_rage)
     CHECK(w.player.stats.health == 1000);
 }
 
+// ---- shoplifting ----
+
+// the notice roll, forced for one shoplift: 0 = the seller is on his phone, 1 = he sees it all
+static string shoplift(World& w, Kauppa* k, const string& keys, int notice)
+{
+    Kauppa::noticeOverride = notice;
+    feedKeys(keys);
+    string msg;
+    k->interact(&w.player, msg);
+    Kauppa::noticeOverride = -1;
+    return msg;
+}
+
+static Myyja* sellerOf(World& w)
+{
+    for (auto p : w.level.persons) if (p->type == myyja && p->stats.health > 0) return dynamic_cast<Myyja*>(p);
+    return nullptr;
+}
+
+TEST(shop_menu_offers_shoplifting)
+{
+    World w;
+    for (auto kind : { Kauppa::Kind::Produkty, Kauppa::Kind::Kioski, Kauppa::Kind::Oruzhie }) {
+        auto* k = w.add(new Kauppa("TEST", kind), 10, 10);
+        string msg;
+        k->getInteractMsg(&w.player, msg);
+        const string tail = "  v+nro) varasta";
+        CHECK(msg.size() > tail.size() && msg.compare(msg.size() - tail.size(), tail.size(), tail) == 0);
+    }
+}
+
+TEST(shoplift_puts_item_in_hand_without_paying)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.stats.money = 20;
+    w.player.inventory.right = Held();
+    const uint32_t had = w.player.inventory.count(Thing::Lenkki);
+    shoplift(w, k, "v1", 0);
+    CHECK(w.player.stats.money == 20);
+    CHECK(w.player.inventory.count(Thing::Lenkki) == had + 1);
+    CHECK(w.player.inventory.right.what == Thing::Lenkki);
+    CHECK(w.count(myyja) == 0);
+    CHECK(!k->sellerHostile);
+}
+
+TEST(shoplift_cancelled_by_any_other_key)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.stats.money = 20;
+    w.player.inventory.right = Held();
+    shoplift(w, k, "vx", 1);
+    CHECK(w.player.stats.money == 20);
+    CHECK(w.player.inventory.right.empty());
+    CHECK(w.count(myyja) == 0);
+    CHECK(!k->sellerHostile);
+}
+
+TEST(shoplift_with_full_hands_takes_nothing)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    hold(w.player.inventory, Thing::Kalja, Thing::Kala);
+    w.player.inventory.pocket = Inventory::heldOf(Thing::Lipas);
+    const uint32_t had = w.player.inventory.count(Thing::Lenkki);
+    const string msg = shoplift(w, k, "v1", 1);
+    CHECK(msg == HINT_HANDS_FULL);
+    CHECK(w.player.inventory.count(Thing::Lenkki) == had);
+    CHECK(w.count(myyja) == 0);
+    CHECK(!k->sellerHostile);
+}
+
+TEST(noticed_shoplift_spawns_armed_seller_who_chases)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Kioski), 10, 10);
+    w.player.inventory.right = Held();
+    const string msg = shoplift(w, k, "v2", 1);
+    CHECK(w.player.inventory.right.what == Thing::Bansku); // the loot is yours, for now
+    CHECK(k->sellerHostile);
+    Myyja* m = sellerOf(w);
+    CHECK(m != nullptr);
+    if (!m) return;
+    CHECK(m->coord == k->getDoor());
+    CHECK(m->alerted);
+    CHECK(m->chaseTarget == &w.player);
+    CHECK(w.said(m, "VARAS! Seis!") || w.said(m, "Minun kauppani! Minun!"));
+    CHECK(contains(msg, "Myyj\xC3\xA4 ryntää perääsi "));
+    CHECK(contains(msg, " kädessä!"));
+    // he chases you down the street, whether he sees you or not
+    const uint32_t start = m->coord.distance(w.player.coord);
+    for (int i = 0; i < 10; ++i) m->npcAct();
+    CHECK(m->coord.distance(w.player.coord) < start);
+    CHECK(m->alerted);
+}
+
+TEST(seller_weapon_odds)
+{
+    int n[3] = { 0, 0, 0 };
+    for (int i = 0; i < 10000; ++i) ++n[(int)rollSellerWeapon()];
+    CHECK(n[(int)SellerWeapon::Nitoja] >= 7000 && n[(int)SellerWeapon::Nitoja] <= 8000);
+    CHECK(n[(int)SellerWeapon::Veitsi] >= 1500 && n[(int)SellerWeapon::Veitsi] <= 2500);
+    CHECK(n[(int)SellerWeapon::Pistooli] >= 200 && n[(int)SellerWeapon::Pistooli] <= 800);
+}
+
+TEST(hostile_shop_is_closed)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.inventory.right = Held();
+    shoplift(w, k, "v1", 1);
+    string msg;
+    CHECK(!k->getEnterMsg(&w.player, msg));
+    CHECK(msg == "Kauppa on kiinni. Myyj\xC3\xA4 jahtaa sinua jossain.");
+    Myyja* m = sellerOf(w);
+    CHECK(m != nullptr);
+    if (!m) return;
+    m->damage(m->stats.health);
+    w.level.cleanDead();
+    CHECK(!k->getEnterMsg(&w.player, msg));
+    CHECK(msg == "Kauppa on hiljainen. Kukaan ei myy mit\xC3\xA4\xC3\xA4n.");
+}
+
+TEST(seller_strikes_with_his_weapon)
+{
+    const uint32_t dmg[] = { 1, 2 };
+    const SellerWeapon arms[] = { SellerWeapon::Nitoja, SellerWeapon::Veitsi };
+    for (int a = 0; a < 2; ++a) {
+        World w;
+        common::realtimeEnabled = false;   // no breather after an earlier hit on the player
+        auto* m = w.spawn(new Myyja(Coord{ 51, 50 }, arms[a]));
+        m->chaseTarget = &w.player;
+        m->alerted = true;
+        bool hit = false;
+        for (int i = 0; i < 200 && !hit; ++i) {
+            w.player.stats.health = 100;
+            m->coord = Coord{ 51, 50 };
+            m->npcAct();
+            if (w.player.stats.health < 100) {
+                hit = true;
+                CHECK(w.player.stats.health == 100 - dmg[a]);
+            }
+        }
+        CHECK(hit);
+    }
+}
+
+TEST(seller_shoots_his_pistol_from_afar)
+{
+    World w;
+    common::realtimeEnabled = false;   // no breather after an earlier hit on the player
+    auto* m = w.spawn(new Myyja(Coord{ 54, 50 }, SellerWeapon::Pistooli));
+    m->chaseTarget = &w.player;
+    m->alerted = true;
+    bool hit = false;
+    for (int i = 0; i < 300 && !hit; ++i) {
+        w.player.stats.health = 100;
+        m->coord = Coord{ 54, 50 };
+        m->npcAct();
+        if (w.player.stats.health < 100) {
+            hit = true;
+            CHECK(w.player.stats.health == 98);
+        }
+    }
+    CHECK(hit);
+}
+
+TEST(dead_seller_drops_knife_or_pistol_but_no_stapler)
+{
+    const SellerWeapon arms[] = { SellerWeapon::Nitoja, SellerWeapon::Veitsi, SellerWeapon::Pistooli };
+    for (auto arm : arms) {
+        World w;
+        auto* m = w.spawn(new Myyja(Coord{ 60, 50 }, arm));
+        m->damage(m->stats.health);
+        w.level.cleanDead();
+        CHECK(itemAt(w.level, EVeitsi) == (arm == SellerWeapon::Veitsi));
+        CHECK(itemAt(w.level, EPistooli) == (arm == SellerWeapon::Pistooli));
+        CHECK(itemAt(w.level, ERuumis));
+    }
+}
+
 // ---- Alko ----
 
 TEST(alko_lets_everyone_in)
