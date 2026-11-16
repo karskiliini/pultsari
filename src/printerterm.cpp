@@ -147,8 +147,8 @@ static string armRow(const ArmPictures& a, bool left, uint32_t row)
 {
     const string& r = (left ? a.left : a.right)[row];
     const string& mask = (left ? a.leftColours : a.rightColours)[row];
-    static const string letters = "JSGVALCMWR";
-    static const char* codes[] = { "101", "180", "108", "195", "178", "255", "250", "245", "94", "160" };
+    static const string letters = "JSGVALCMWRYK";
+    static const char* codes[] = { "101", "180", "108", "195", "178", "255", "250", "245", "94", "160", "220", "64" };
     string out;
     char current = ' ';
     for (size_t i = 0; i < r.size(); ++i) {

@@ -301,6 +301,237 @@ SSSSSSSSSSSSS
  SSSSSSSSSS
 )";
 
+// ---- things held in the fist, rows 13-21 under the fist (rows 9-12 of HAND_BOTTLE) ----
+
+const char* ITEM_PAMPPU = R"(
+   |##|
+   |##|
+   |--|
+   |  |
+   |  |
+   |  |
+   |  |
+   |  |
+   (__)
+)";
+const char* ITEM_PAMPPU_C = R"(
+   MMMM
+   MMMM
+   MMMM
+   M  M
+   M  M
+   M  M
+   M  M
+   M  M
+   MMMM
+)";
+
+const char* ITEM_KETJUT = R"(
+    (_)
+    |=|
+    (_)
+    |=|
+    (_)
+    |=|
+    (_)
+    |=|
+     V
+)";
+const char* ITEM_KETJUT_C = R"(
+    CCC
+    CCC
+    CCC
+    CCC
+    CCC
+    CCC
+    CCC
+    CCC
+     C
+)";
+
+const char* ITEM_VEITSI = R"(
+   |##|
+   |##|
+  <====>
+   |  \
+   |   |
+   |   |
+   |   /
+   |  /
+   | /
+)";
+const char* ITEM_VEITSI_C = R"(
+   CWWC
+   CWWC
+  CCCCCC
+   C  C
+   C   C
+   C   C
+   C   C
+   C  C
+   C C
+)";
+
+const char* ITEM_KIVI = R"(
+  .-~~~~-.
+ / .  '   \
+|   ,   .  |
+| '   .   ,|
+ \  .   ' /
+  '-.__.-'
+)";
+const char* ITEM_KIVI_C = R"(
+  MMMMMMMM
+ M M  M   M
+M   M   M  M
+M M   M   MM
+ M  M   M M
+  MMMMMMMM
+)";
+
+const char* ITEM_BOOTSIT = R"(
+   \/   \/
+  |##| |##|
+  |  | |  |
+  |  | |  |
+  |  | |  |
+  |  '-|  '--.
+  |____|_____|
+)";
+const char* ITEM_BOOTSIT_C = R"(
+   MM   MM
+  MMMM MMMM
+  M  M M  M
+  M  M M  M
+  M  M M  M
+  M  MMM  MMMM
+  MMMMMMMMMMMM
+)";
+
+const char* ITEM_GRANATA = R"(
+   o=||=
+   .-==-.
+  /|-|-|-\
+ |-+-+-+-+|
+ |-+-+-+-+|
+ |-+-+-+-+|
+  \|-|-|-/
+   '-..-'
+)";
+const char* ITEM_GRANATA_C = R"(
+   MMKKM
+   KKMMKK
+  KKKKKKKK
+ KKKKKKKKKK
+ KKKKKKKKKK
+ KKKKKKKKKK
+  KKKKKKKK
+   KKKKKK
+)";
+
+const char* ITEM_LIPAS = R"(
+   |====|
+   |    |
+   |=   |
+   |     \
+   \=     \
+    \      \
+     \  =   \
+      \______\
+)";
+const char* ITEM_LIPAS_C = R"(
+   MMMMMM
+   M    M
+   MM   M
+   M     M
+   MM     M
+    M      M
+     M  M   M
+      MMMMMMMM
+)";
+
+const char* ITEM_LENKKI = R"(
+   _(  )_
+  /  \/  \
+ /  .--.  \
+|  /    \  |
+|  \    /  |
+ \  '--'  /
+  '------'
+)";
+const char* ITEM_LENKKI_C = R"(
+   WW  WW
+  W  WW  W
+ W  WWWW  W
+W  W    W  W
+W  W    W  W
+ W  WWWW  W
+  WWWWWWWW
+)";
+
+const char* ITEM_KALA = R"(
+    \  /
+     \/
+     /\
+    /  \
+   |'.'.|
+   |.'.'|
+   | o  |
+    \ =/
+     \/
+)";
+const char* ITEM_KALA_C = R"(
+    C  C
+     CC
+     CC
+    C  C
+   CCCCCC
+   CCCCCC
+   C M  C
+    C CC
+     CC
+)";
+
+const char* ITEM_OMPPO = R"(
+    )~
+  .-'`'-.
+ /  '    \
+|  '      |
+|         |
+ \       /
+  '-._.-'
+)";
+const char* ITEM_OMPPO_C = R"(
+    WW
+  RRRRRRR
+ R  R    R
+R  R      R
+R         R
+ R       R
+  RRRRRRR
+)";
+
+const char* ITEM_BANSKU = R"(
+     ||
+     ||
+    /  )
+   /  /
+  /  /
+ (  (
+  \  \
+   \__)
+)";
+const char* ITEM_BANSKU_C = R"(
+     WW
+     WW
+    Y  Y
+   Y  Y
+  Y  Y
+ Y  Y
+  Y  Y
+   YYYY
+)";
+
 // the bottle body: 6 liquid rows inside columns 2-7, the label on the second
 const int GLASS_TOP = 15, LABEL_ROW = 16, GLASS_ROWS = 6;
 
@@ -362,6 +593,14 @@ Art bottleRows(int fill, const std::string& label, char liquidColour)
     return out;
 }
 
+// the fist (the top of HAND_BOTTLE) with a thing hanging under it
+Art inFist(const char* item, const char* itemColours)
+{
+    Art hand = artOf(HAND_BOTTLE, HAND_BOTTLE_C, 4);
+    hand.add(artOf(item, itemColours, 9));
+    return hand;
+}
+
 // rows 9-21 of the left arm's hand
 Art leftHand(const Held& held)
 {
@@ -378,6 +617,17 @@ Art leftHand(const Held& held)
         case Thing::Lonkka: return artOf(HAND_CAN, HAND_CAN_C, 13);
         case Thing::Pistooli: hand = artOf(HAND_PISTOL, HAND_PISTOL_C, 13); break;
         case Thing::Rynkky: return artOf(HAND_AK_FORE, HAND_AK_FORE_C, 13);
+        case Thing::Pamppu: return inFist(ITEM_PAMPPU, ITEM_PAMPPU_C);
+        case Thing::Ketjut: return inFist(ITEM_KETJUT, ITEM_KETJUT_C);
+        case Thing::Veitsi: return inFist(ITEM_VEITSI, ITEM_VEITSI_C);
+        case Thing::Kivi: return inFist(ITEM_KIVI, ITEM_KIVI_C);
+        case Thing::Bootsit: return inFist(ITEM_BOOTSIT, ITEM_BOOTSIT_C);
+        case Thing::Granata: return inFist(ITEM_GRANATA, ITEM_GRANATA_C);
+        case Thing::Lipas: return inFist(ITEM_LIPAS, ITEM_LIPAS_C);
+        case Thing::Lenkki: return inFist(ITEM_LENKKI, ITEM_LENKKI_C);
+        case Thing::Kala: return inFist(ITEM_KALA, ITEM_KALA_C);
+        case Thing::Omppo: return inFist(ITEM_OMPPO, ITEM_OMPPO_C);
+        case Thing::Bansku: return inFist(ITEM_BANSKU, ITEM_BANSKU_C);
         default: {
             hand = artOf(HAND_FIST, HAND_FIST_C, 13);
             // the name is shown in the caption under the picture, not in it

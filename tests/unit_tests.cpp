@@ -4133,7 +4133,9 @@ TEST(arm_right_sleeve_mirrors_the_left)
 
 TEST(arm_hands_differ_by_what_they_hold)
 {
-    const std::vector<Thing> kinds = { Thing::None, Thing::Vodka, Thing::Pistooli, Thing::Rynkky, Thing::Kivi };
+    // every thing that fits in a hand has its own picture
+    std::vector<Thing> kinds;
+    for (int t = (int)Thing::None; t <= (int)Thing::Lipas; ++t) kinds.push_back((Thing)t);
     for (size_t i = 0; i < kinds.size(); ++i)
         for (size_t j = i + 1; j < kinds.size(); ++j)
             CHECK(armPicture(true, heldOf(kinds[i], 6), 0) != armPicture(true, heldOf(kinds[j], 6), 0));
@@ -4271,7 +4273,7 @@ TEST(arm_colours_match_picture_shape)
                             std::cerr << "    uncoloured '" << pic[r][c] << "' row " << r << " col " << c
                                       << " thing " << (int)h.what << " stage " << stage << (left ? " left" : " right") << "\n";
                         }
-                        CHECK(string(" JSGVALCMWR").find(mask[r][c]) != string::npos);
+                        CHECK(string(" JSGVALCMWRYK").find(mask[r][c]) != string::npos);
                     }
                 }
             }

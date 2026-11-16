@@ -16,7 +16,7 @@ std::string mirrorRow(const std::string& row);     // reverse + swap / \ ( ) < >
 bool armRowBloody(int stage, int row);             // rows with blood on them at stage 3
 // the picture's colours, one letter per cell, composed and mirrored like armPicture: J jacket,
 // S skin, G bottle glass, V vodka, A beer, L label text, C can metal, M gun metal, W wood,
-// R blood, space none
+// R blood, Y banana yellow, K grenade green, space none
 std::vector<std::string> armColours(bool leftArm, const Held& held, int stage);
 
 #endif
