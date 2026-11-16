@@ -2105,11 +2105,14 @@ Item* Veteraani::dropItem()
 }
 
 // ============ Sotilas (Soldier) ============
+// The rank and file (s) were swept up from prison camps and gutters: untrained, drunk, high,
+// quick to lash out, heavily armed and with nothing to lose. The officer (S) keeps his head.
 
 Sotilas::Sotilas(const Coord& pos, bool officer) : Person(sotilas, pos), officer(officer)
 {
     stats.health = officer ? 22 : 15;
     visionRange = 11;
+    ammo = officer ? 8 : 12;
 }
 
 bool Sotilas::move(Direction d, std::string& msg)
@@ -2140,6 +2143,122 @@ bool Sotilas::move(Direction d, std::string& msg)
     return true;
 }
 
+void Sotilas::fire(Person* target, std::string& msg)
+{
+    const uint32_t rounds = officer ? 1 : 2 + std::rand() % 2;
+    uint32_t hurt = 0, fired = 0;
+    for (; fired < rounds && ammo > 0; ++fired) {
+        --ammo;
+        if (random(officer ? 60 : 35)) {
+            hurt += officer ? std::rand() % 3 + 3 : std::rand() % 3 + 2;
+            continue;
+        }
+        // a wild round: now and then it finds someone standing near the target
+        if (!random(30)) continue;
+        for (Person* other : level->persons) {
+            if (other == this || other == target || other->stats.health == 0) continue;
+            if (other->coord.distance(target->coord) > 2) continue;
+            other->damage(std::rand() % 2 + 2);
+            other->say("Aaargh!");
+            break;
+        }
+    }
+    if (!fired) return;
+    // one sum: the player's moment-to-react guard would swallow all but the first round
+    if (hurt) target->damage(hurt);
+    if (target->type == pelaaja)
+        msg = hurt ? who() + (fired > 1 ? " ampuu sarjan, osuu sinuun!" : " ampuu sinua!")
+                   : who() + (fired > 1 ? " ampuu sarjan ohi!" : " ampuu mutta menee ohi!");
+    level->audio.addSound(coord, SoundType::Gunshot,
+        officer ? "PAM! Pistoolin laukaus!" : "RÄKÄKÄKÄ! Rynnäkkökivääri!",
+        officer ? "Laukaus!" : "Sarjatulta!", "...laukauksia kaukaa...", 30);
+}
+
+// an officer close by barks a raging soldier back into line
+void Sotilas::calmedByOfficer()
+{
+    if (!rage) return;
+    for (Person* other : level->persons) {
+        if (other == this || other->type != sotilas || other->stats.health == 0) continue;
+        auto* o = static_cast<Sotilas*>(other);
+        if (!o->officer || o->coord.distance(coord) > 6 || !random(25)) continue;
+        o->say("Rauhoitu, sotilas! Ase alas!");
+        say(random(50) ? "...da, tovarishch..." : "*mutisee*");
+        rage = 0;
+        return;
+    }
+}
+
+// the player's vodka (or beer) in a hand: he wants it, walks up and takes it, and is happy for a
+// while; bump into him to get back what is left
+bool Sotilas::wantsBottle(Player* p, std::string& msg)
+{
+    if (officer || satisfied) return false;
+    Held* h = p->inventory.inHand(Thing::Vodka);
+    if (!h) h = p->inventory.inHand(Thing::Kalja);
+    if (!h || coord.distance(p->coord) > 4 || !canSeeTarget(p->coord)) return false;
+    if (coord.distance(p->coord) <= 1) {
+        stolenItems.push_back(*h);
+        *h = Held();
+        satisfied = 40;
+        rage = 0;
+        demanded = false;
+        say("Spasibo, svinya! *glug glug*");
+        msg = who() + " vie pullon kädestäsi!";
+        return true;
+    }
+    if (!demanded) {
+        demanded = true;
+        say(random(50) ? "Anna pullo, svinya!" : "Hei! Pullo tänne!");
+    }
+    move(getMoveDirection(p->coord), msg);
+    return true;
+}
+
+// a drunk's turn: sleeping it off, staggering, shooting at the sky, babbling; true if it used
+// the turn
+bool Sotilas::drunkAct(std::string& msg)
+{
+    if (officer) return false;
+    if (passedOut) {
+        if (--passedOut == 0) say("*herää* Kuka... vei... mun kiväärin? Ai, tässä.");
+        else if (random(10)) say("Zzz...");
+        return true;
+    }
+    // drinking the bottle he took off you
+    if (satisfied) {
+        --satisfied;
+        if (!stolenItems.empty() && stolenItems.back().what == Thing::Vodka && random(25)) {
+            Held& b = stolenItems.back();
+            if (b.fill > 0) --b.fill;
+            if (b.fill == 0) b = Inventory::heldOf(Thing::Tyhja);
+            say("*glug*");
+        }
+    }
+    if (!rage && random(1)) {
+        passedOut = 8 + std::rand() % 12;
+        say("*kaatuu kumoon ja alkaa kuorsata*");
+        msg = who() + " sammuu kadulle.";
+        return true;
+    }
+    if (random(8)) {
+        move(randomDirection(), msg);
+        if (random(25)) {
+            static const char* slur[] = { "*hik*", "Mä oon... ihan selvä...", "Kuka käänsi kadun?", "*röyh*" };
+            say(slur[std::rand() % 4]);
+        }
+        return true;
+    }
+    if (!level->isWarLevel && ammo > 4 && random(2)) {
+        --ammo;
+        say(random(50) ? "Ura-a-a! *PAM*" : "Hahaa! *PAM PAM*");
+        level->audio.addSound(coord, SoundType::Gunshot,
+            "PAM! Sotilas ampuu ilmaan!", "Laukaus!", "...laukaus kaukaa...", 30);
+        return true;
+    }
+    return false;
+}
+
 void Sotilas::npcAct()
 {
     if (firstMove) {
@@ -2149,6 +2268,12 @@ void Sotilas::npcAct()
 
     string msg = "";
     Player* p = level->getPlayer();
+
+    if (passedOut) {
+        drunkAct(msg);
+        report(msg);
+        return;
+    }
 
     // rages only if it knows Putin is dead and who did it
     Person* killer = knowsPutinDead ? currentTarget() : nullptr;
@@ -2166,13 +2291,10 @@ void Sotilas::npcAct()
         const bool sees = canSeeTarget(killer->coord);
         if (sees) lastKnownPos = killer->coord;
         if (sees && ammo > 0 && coord.distance(killer->coord) <= 8) {
-            --ammo;
-            if (random(50)) {
-                killer->damage(std::rand()%4 + 3);
-                say("Огонь!");
-            }
-            level->audio.addSound(coord, SoundType::Gunshot,
-                "PAKPAKPAKPAK! Konekivääri jyskyttää!", "Konekiväärin tulitusta!", "...jyskytystä kaukaa...", 40);
+            string shot;
+            fire(killer, shot);
+            if (killer->type == pelaaja) msg = shot;
+            say("Огонь!");
         } else {
             move(getMoveDirection(lastKnownPos), msg);
         }
@@ -2200,8 +2322,15 @@ void Sotilas::npcAct()
         return;
     }
 
+    calmedByOfficer();
+    if (rage) --rage;
+
     // at the front the player is already where they wanted him: a comrade, not a catch
     if (level->isWarLevel) {
+        if (drunkAct(msg)) {
+            report(msg);
+            return;
+        }
         if (random(40)) move(randomDirection(), msg);
         if (officer && random(4)) {
             static const char* orders[] = {
@@ -2211,7 +2340,7 @@ void Sotilas::npcAct()
                 "Kuka tuo juoppo on? No, rynnäkköön sekin.",
             };
             say(orders[std::rand() % 4]);
-        } else if (random(4)) {
+        } else if (!officer && random(4)) {
             static const char* lines[] = {
                 "Taas niitä FPV:itä... kuuletko sen ulinan?",
                 "Kuka vei verkon kaivannon päältä?",
@@ -2219,32 +2348,50 @@ void Sotilas::npcAct()
                 "Minulle luvattiin kolmen viikon erikoisoperaatio.",
                 "Pysy erossa minusta, sinua ne jahtaavat!",
                 "Polttaisitko? Viimeinen. Huomenna ei tarvita.",
+                "Minut värvättiin suoraan leiriltä. Puoli vuotta tätä ja tuomio on kuitattu.",
+                "Karkasin kerran. Toisella kerralla ne ampuvat.",
+                "Onko sulla mitään... vahvempaa? Pillereitä?",
+                "Kaikki mun kaverit on jo kuolleet. Mitä väliä.",
             };
-            say(lines[std::rand() % 6]);
+            say(lines[std::rand() % 10]);
         }
         report(msg);
         return;
     }
 
+    if (drunkAct(msg) || wantsBottle(p, msg)) {
+        report(msg);
+        return;
+    }
+
+    // short fuse: whoever stands too close gets the rifle butt
+    if (!officer) {
+        for (Person* other : level->persons) {
+            if (other == this || other == p || other->stats.health == 0) continue;
+            if (other->type == sotilas || other->type == poliisi || other->type == fsb) continue;
+            if (other->coord.distance(coord) > 1 || !random(10)) continue;
+            static const char* snap[] = { "Mitä tuijotat?!", "Mitä sä siinä?!", "Painu helvettiin!" };
+            say(snap[std::rand() % 3]);
+            other->damage(std::rand() % 3 + 2);
+            rage = 10;
+            break;
+        }
+    }
+
     bool seesPlayer = canSeeTarget(p->coord);
 
-    if (seesPlayer && coord.distance(p->coord) <= visionRange) {
+    if (!satisfied && seesPlayer && coord.distance(p->coord) <= visionRange) {
         if (coord.distance(p->coord) <= 1) {
+            if (rage) {
+                p->damage(std::rand() % 3 + 3);
+                msg = who() + " hakkaa sinua kiväärin perällä!";
+            }
             say("Rintamalle, svinya!");
             p->damage(2);
             dynamic_cast<Player*>(p)->inJail = true;
-        } else if (ammo > 0 && coord.distance(p->coord) <= 6 && random(30)) {
-            --ammo;
-            uint32_t dmg = std::rand()%3 + 3;
-            if (random(60)) {
-                p->damage(dmg);
-                msg = who() + " ampuu sinua!";
-            } else {
-                msg = who() + " ampuu mutta menee ohi!";
-            }
+        } else if (ammo > 0 && coord.distance(p->coord) <= 6 && random(rage ? 70 : 30)) {
+            fire(p, msg);
             level->alertCops(this);
-            level->audio.addSound(coord, SoundType::Gunshot,
-                "RÄKÄKÄKÄ! Rynnäkkökivääri!", "Sarjatulta!", "...sarjatulta kaukaa...", 30);
         } else {
             Direction d = getMoveDirection(p->coord);
             move(d, msg);
@@ -2262,14 +2409,18 @@ void Sotilas::npcAct()
                 "Ryhdikkäästi, svinya!",
             };
             say(orders[std::rand()%4]);
-        } else if (random(5)) {
+        } else if (!officer && random(5)) {
             static const char* lines[] = {
-                "Stoi!",
-                "Paperit!",
+                "Stoi! ...hik!",
+                "Paperit! ...tai pullo.",
                 "Käänny takaisin!",
                 "Alue kielletty!",
+                "Kuusi vuotta leirillä, nyt tämä. Mitä väliä.",
+                "Kuka vei mun pillerit?!",
+                "Älä tuijota, tai ammun!",
+                "*nuuhkaisee jotain kämmenseltään*",
             };
-            say(lines[std::rand()%4]);
+            say(lines[std::rand()%8]);
         }
     }
     if (random(8)) {
@@ -2307,6 +2458,10 @@ bool Sotilas::interact(std::string& msg, Person* source)
         source->damage(dmg);
         dynamic_cast<Player*>(source)->inJail = true;
         level->alertCops(source);
+        if (!officer) {
+            rage = 15;
+            passedOut = 0;
+        }
     }
     return true;
 }
@@ -2319,6 +2474,10 @@ bool Sotilas::interactThrow(Item* item, Person* source, std::string& msg)
     }
     msg = who() + " väistää ja ampuu!";
     damage(1);
+    if (!officer) {
+        rage = 15;
+        passedOut = 0;
+    }
     if (source->type == pelaaja) {
         source->damage(std::rand()%3 + 2);
         dynamic_cast<Player*>(source)->inJail = true;

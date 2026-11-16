@@ -13,6 +13,10 @@
 
 class Level;
 
+namespace PlayerNS {
+    class Player;
+}
+
 namespace PathNS {
     class PathMask;
 }
@@ -306,10 +310,22 @@ public:
     std::string who() const { return officer ? "Upseeri" : "Sotilas"; }
     // the corpse's belt (sometimes a coat; an officer's pistol), once
     Item* dropItem();
+    // a rank-and-file soldier is drunk, high and has nothing to lose; an officer keeps his head
+    virtual uint32_t height() const { return passedOut ? HEIGHT_FLAT : Person::height(); }
+    // a burst of 2-3 badly aimed rounds (an officer: one aimed shot); misses may find a bystander
+    void fire(Person* target, std::string& msg);
     bool looted = false;
     bool firstMove = true;
     bool officer = false;
-    uint32_t ammo = 4;
+    uint32_t ammo = 12;
+    uint32_t rage = 0;        // hit, pushed or stared at: hits and shoots for a while
+    uint32_t passedOut = 0;   // actions left lying in a stupor
+    uint32_t satisfied = 0;   // actions left busy with the player's bottle
+    bool demanded = false;    // has asked for the bottle
+private:
+    bool wantsBottle(PlayerNS::Player* p, std::string& msg);
+    bool drunkAct(std::string& msg);
+    void calmedByOfficer();
 };
 
 class ITYksikko : public Person {

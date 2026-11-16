@@ -3803,6 +3803,96 @@ TEST(officer_corpse_leaves_a_pistol_or_a_belt)
     CHECK(belts > 40);
 }
 
+TEST(soldier_takes_the_vodka_from_your_hand_and_lets_you_go)
+{
+    World w;
+    hold(w.player.inventory, Thing::Vodka, Thing::None);
+    auto* s = w.spawn(new Sotilas(Coord{ 51, 50 }));
+    s->firstMove = false;
+    bool taken = false;
+    for (int i = 0; i < 300 && !taken; ++i) {
+        s->coord = Coord{ 51, 50 };
+        s->passedOut = 0;
+        s->npcAct();
+        taken = !w.player.inventory.inHand(Thing::Vodka);
+    }
+    CHECK(taken);
+    CHECK(!w.player.inJail);                         // a bottle buys you off
+    CHECK(s->stolenItems.size() == 1);               // bump him to get back what is left of it
+    for (int i = 0; i < 20; ++i) {
+        s->coord = Coord{ 51, 50 };
+        s->passedOut = 0;
+        s->npcAct();
+    }
+    CHECK(!w.player.inJail);                         // busy with the bottle
+}
+
+TEST(officer_does_not_take_your_bottle)
+{
+    World w;
+    hold(w.player.inventory, Thing::Vodka, Thing::None);
+    auto* o = w.spawn(new Sotilas(Coord{ 51, 50 }, true));
+    o->firstMove = false;
+    for (int i = 0; i < 50; ++i) {
+        o->coord = Coord{ 51, 50 };
+        o->npcAct();
+    }
+    CHECK(w.player.inventory.inHand(Thing::Vodka) != nullptr);
+    CHECK(w.player.inJail);
+}
+
+TEST(soldier_sprays_bursts_officer_aims)
+{
+    World w;
+    auto* s = w.spawn(new Sotilas(Coord{ 54, 50 }));
+    auto* o = w.spawn(new Sotilas(Coord{ 46, 50 }, true));
+    CHECK(s->ammo == 12);
+    CHECK(o->ammo == 8);
+    string msg;
+    s->fire(&w.player, msg);
+    CHECK(s->ammo == 9 || s->ammo == 10);            // two or three rounds
+    o->fire(&w.player, msg);
+    CHECK(o->ammo == 7);                             // one aimed shot
+}
+
+TEST(hit_soldier_rages_until_an_officer_calms_him)
+{
+    World w(Coord{ 20, 20 });
+    auto* s = w.spawn(new Sotilas(Coord{ 150, 100 }));
+    auto* o = w.spawn(new Sotilas(Coord{ 153, 100 }, true));
+    s->firstMove = false;
+    string msg;
+    s->interact(msg, &w.player);
+    CHECK(s->rage > 0);
+    bool calmed = false;
+    for (int i = 0; i < 300 && !calmed; ++i) {
+        s->rage = 15;
+        s->passedOut = 0;
+        s->coord = Coord{ 150, 100 };
+        s->npcAct();
+        calmed = s->rage == 0;
+    }
+    CHECK(calmed);
+    CHECK(w.said(o, "Rauhoitu"));
+}
+
+TEST(soldiers_drink_and_pass_out_officers_do_not)
+{
+    World w(Coord{ 20, 20 });
+    auto* s = w.spawn(new Sotilas(Coord{ 150, 100 }));
+    auto* o = w.spawn(new Sotilas(Coord{ 150, 110 }, true));
+    s->firstMove = o->firstMove = false;
+    bool out = false, officerOut = false;
+    for (int i = 0; i < 2000; ++i) {
+        s->npcAct();
+        o->npcAct();
+        out = out || s->passedOut > 0;
+        officerOut = officerOut || o->passedOut > 0;
+    }
+    CHECK(out);
+    CHECK(!officerOut);
+}
+
 TEST(ak_needs_both_hands_empty_and_hints)
 {
     World w;
