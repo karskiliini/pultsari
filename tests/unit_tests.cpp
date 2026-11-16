@@ -10,6 +10,7 @@
 #include "common.hpp"
 #include "events.hpp"
 #include "fpv.hpp"
+#include "gamestate.hpp"
 #include "gaze.hpp"
 #include "disease.hpp"
 #include "item.hpp"
@@ -4426,4 +4427,44 @@ TEST(stare_limiter_resets_on_new_level)
     // a new level: allowed right away (10 % per turn, so within a few dozen tries)
     w.player.onNewLevel();
     CHECK(!stareTurns(w, mummo, 39).empty());
+}
+
+// ---- the front ----
+
+TEST(three_war_levels_lead_back_to_moscow)
+{
+    GameState gs;
+    gs.sendToWar();
+    CHECK(gs.phase == GamePhase::War && gs.warStage == 1);
+    gs.advanceLevel();
+    gs.advanceLevel();
+    CHECK(gs.phase == GamePhase::War && gs.warStage == 3);
+    CHECK(!gs.hasBeenToWar);
+    gs.advanceLevel();
+    CHECK(gs.phase == GamePhase::ReturnMoscow);
+    CHECK(gs.hasBeenToWar);
+    CHECK(gs.moscowStage == 1);
+}
+
+TEST(rear_opens_after_a_shift_at_the_front)
+{
+    World w(Coord{ 6, 153 });
+    w.level.isWarLevel = true;
+    for (uint32_t i = 1; i < Level::WAR_SHIFT_TICKS; ++i) w.level.warTick();
+    CHECK(!w.level.rearOpen);
+    CHECK(!w.level.reachedRear(Coord{ 0, 153 }));
+    CHECK(w.printer.saw("Vuorovaihto tulee pian"));
+    w.level.warTick();
+    CHECK(w.level.rearOpen);
+    CHECK(w.printer.saw("VUOROVAIHTO"));
+    CHECK(w.level.reachedRear(Coord{ Level::REAR_X, 153 }));
+    CHECK(!w.level.reachedRear(Coord{ 6, 153 }));
+}
+
+TEST(no_shift_change_in_moscow)
+{
+    World w;
+    for (uint32_t i = 0; i < Level::WAR_SHIFT_TICKS * 2; ++i) w.level.warTick();
+    CHECK(!w.level.rearOpen);
+    CHECK(!w.level.reachedRear(Coord{ 0, 50 }));
 }
