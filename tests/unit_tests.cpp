@@ -4,6 +4,7 @@
 #include "aagun.hpp"
 #include "patrol.hpp"
 #include "animation.hpp"
+#include "armart.hpp"
 #include "building.hpp"
 #include "input.hpp"
 #include "common.hpp"
@@ -3818,4 +3819,128 @@ TEST(divari_used_coat_gives_three_hp)
     CHECK(w.player.stats.money == 40);
     CHECK(!w.player.usedCoat);
     CHECK(contains(msg, "Et tarvitse"));
+}
+
+// ---- arm pictures ----
+
+static Held heldOf(Thing t, uint8_t fill = 0) { Held h; h.what = t; h.fill = fill; return h; }
+
+static std::vector<Held> allHeldVariants()
+{
+    std::vector<Held> v;
+    for (int t = (int)Thing::None; t <= (int)Thing::Lipas; ++t) v.push_back(heldOf((Thing)t));
+    for (uint8_t f = 0; f <= VODKA_SIPS; ++f) v.push_back(heldOf(Thing::Vodka, f));
+    return v;
+}
+
+static bool plainAsciiRow(const string& r)
+{
+    if ((int)r.size() != ARM_W) return false;
+    for (char c : r) if (c < 0x20 || c > 0x7e) return false;
+    return true;
+}
+
+// the inside of the bottle body: rows 15-20, columns 2-7
+static string bottleInside(const std::vector<string>& pic, int row) { return pic[row].substr(2, 6); }
+
+TEST(arm_pictures_are_14_by_22)
+{
+    for (const Held& h : allHeldVariants())
+        for (int stage = 0; stage <= 3; ++stage)
+            for (bool left : { true, false }) {
+                const auto pic = armPicture(left, h, stage);
+                CHECK((int)pic.size() == ARM_H);
+                for (const auto& r : pic) {
+                    CHECK(plainAsciiRow(r));
+                    CHECK(plainAsciiRow(mirrorRow(r)));
+                }
+            }
+}
+
+TEST(arm_right_sleeve_mirrors_the_left)
+{
+    for (int stage = 0; stage <= 3; ++stage) {
+        const auto l = armPicture(true, Held(), stage), r = armPicture(false, Held(), stage);
+        for (int row = 0; row < ARM_H; ++row) CHECK(r[row] == mirrorRow(l[row]));
+    }
+    // a pistol is drawn for the right hand and mirrored into the left
+    const auto pl = armPicture(true, heldOf(Thing::Pistooli), 0), pr = armPicture(false, heldOf(Thing::Pistooli), 0);
+    for (int row = 9; row < ARM_H; ++row) CHECK(pl[row] == mirrorRow(pr[row]));
+}
+
+TEST(arm_hands_differ_by_what_they_hold)
+{
+    const std::vector<Thing> kinds = { Thing::None, Thing::Vodka, Thing::Pistooli, Thing::Rynkky, Thing::Kivi };
+    for (size_t i = 0; i < kinds.size(); ++i)
+        for (size_t j = i + 1; j < kinds.size(); ++j)
+            CHECK(armPicture(true, heldOf(kinds[i], 6), 0) != armPicture(true, heldOf(kinds[j], 6), 0));
+    // the sleeve does not depend on the hand
+    const auto a = armPicture(true, Held(), 2), b = armPicture(true, heldOf(Thing::Pistooli), 2);
+    for (int row = 0; row < 9; ++row) CHECK(a[row] == b[row]);
+    // other things show their name under the fist
+    CHECK(contains(armPicture(true, heldOf(Thing::Kivi), 0)[21], "KIVI"));
+    CHECK(contains(armPicture(false, heldOf(Thing::Lenkki), 1)[21], "MAKKARA"));
+}
+
+TEST(arm_vodka_fill_three_shows_three_liquid_rows)
+{
+    const auto pic = armPicture(true, heldOf(Thing::Vodka, 3), 0);
+    for (int row = 15; row <= 17; ++row) CHECK(bottleInside(pic, row) == "      ");
+    CHECK(bottleInside(pic, 18) == "~~~~~~");
+    CHECK(bottleInside(pic, 19) == "######");
+    CHECK(bottleInside(pic, 20) == "######");
+    // full: the label stays on its row
+    const auto full = armPicture(true, heldOf(Thing::Vodka, 6), 0);
+    CHECK(bottleInside(full, 15) == "~~~~~~");
+    CHECK(contains(bottleInside(full, 16), "VODKA"));
+    CHECK(bottleInside(full, 20) == "######");
+    const auto five = armPicture(true, heldOf(Thing::Vodka, 5), 0);
+    CHECK(bottleInside(five, 15) == "      ");
+    CHECK(contains(bottleInside(five, 16), "VODKA"));
+    CHECK(bottleInside(five, 16)[0] == '~');
+}
+
+TEST(arm_empty_bottle_has_no_liquid)
+{
+    for (const Held& h : { heldOf(Thing::Tyhja), heldOf(Thing::Vodka, 0) }) {
+        const auto pic = armPicture(true, h, 0);
+        for (int row = 15; row <= 20; ++row) CHECK(bottleInside(pic, row) == "      ");
+    }
+}
+
+TEST(arm_sleeve_stage_thresholds)
+{
+    CHECK(sleeveStage(10, false) == 0);
+    CHECK(sleeveStage(8, false) == 0);
+    CHECK(sleeveStage(7, false) == 1);
+    CHECK(sleeveStage(5, false) == 1);
+    CHECK(sleeveStage(4, false) == 2);
+    CHECK(sleeveStage(2, false) == 2);
+    CHECK(sleeveStage(1, false) == 3);
+    CHECK(sleeveStage(0, false) == 3);
+    CHECK(sleeveStage(10, true) == 1);
+    CHECK(sleeveStage(3, true) == 2);
+}
+
+TEST(arm_mirror_swaps_slashes)
+{
+    CHECK(mirrorRow("ab/(<[{`") == "'}]>)\\ba");
+    CHECK(mirrorRow("\\)>]}'xy") == "yx`{[<(/");
+    const string row = " |~,/`\\(o) _ .";
+    CHECK(mirrorRow(mirrorRow(row)) == row);
+}
+
+TEST(arm_blood_only_at_stage_three)
+{
+    int bloody = 0;
+    for (int row = 0; row < ARM_H; ++row) {
+        for (int stage = 0; stage < 3; ++stage) CHECK(!armRowBloody(stage, row));
+        if (armRowBloody(3, row)) ++bloody;
+    }
+    CHECK(bloody > 0);
+    const auto pic = armPicture(true, Held(), 3);
+    bool specks = false;
+    for (int row = 9; row < ARM_H; ++row)
+        if (armRowBloody(3, row) && pic[row].find_first_of("',.") != string::npos) specks = true;
+    CHECK(specks);
 }
