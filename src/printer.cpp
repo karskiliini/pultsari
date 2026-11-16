@@ -11,6 +11,7 @@
 #include "level.hpp"
 #include "vehicle.hpp"
 #include "aagun.hpp"
+#include "armart.hpp"
 #include "events.hpp"
 #include <vector>
 #include <iostream>
@@ -659,7 +660,9 @@ void Printer::print(Level* level)
         printVBorder(level);
 
         // BUG: sometimes right border gets drawn shifter by 1, clean it up from terminal
-        printChar(" \n");
+        printChar(" ");
+        printRightColumn(y);
+        printChar("\n");
     }
 
     printBorder(level, false);
@@ -707,6 +710,22 @@ std::vector<OverlayItem> overlayItems(const Inventory* inventory)
                          thingToThrowNum(h.what) != 0, useLabel(h.what) });
     }
     return rows;
+}
+
+ArmPictures playerArms(const PlayerNS::Player* player)
+{
+    ArmPictures a;
+    const Inventory& inv = player->inventory;
+    const Held& l = inv.akRaised ? inv.back : inv.left;
+    const Held& r = inv.akRaised ? inv.back : inv.right;
+    const int stage = sleeveStage(player->stats.health, player->usedCoat);
+    a.left = armPicture(true, l, stage);
+    a.right = armPicture(false, r, stage);
+    a.leftColours = armColours(true, l, stage);
+    a.rightColours = armColours(false, r, stage);
+    a.leftText = l.empty() ? std::string() : heldText(l);
+    a.rightText = r.empty() ? std::string() : heldText(r);
+    return a;
 }
 
 // visible columns of a UTF-8 string, padded or cut to `width`

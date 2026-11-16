@@ -20,6 +20,17 @@
         #inv { list-style: none; }
         #inv li { display: flex; justify-content: space-between; color: #cfcfcf; line-height: 1.5; }
         #inv li.empty { color: var(--muted); }
+        #sideR { width: 130px; font-size: 13px; padding-top: 48px; }
+        .arm { font-family: var(--mono); font-size: 13px; line-height: 1.15; color: #cfcfcf; white-space: pre; margin-top: 10px; }
+        /* the arm pictures' colour mask letters (armColours in src/armart.cpp) */
+        :root { --arm-j: #7a6a3a; --arm-s: #c8a07a; --arm-g: #8fb3a0; --arm-v: #dff1ff; --arm-a: #e0a030;
+                --arm-l: #f0f0f0; --arm-c: #b0b8c0; --arm-m: #8a9099; --arm-w: #8b5a2b; --arm-r: #d02020; }
+        .arm .c-J { color: var(--arm-j); } .arm .c-S { color: var(--arm-s); } .arm .c-G { color: var(--arm-g); }
+        .arm .c-V { color: var(--arm-v); } .arm .c-A { color: var(--arm-a); } .arm .c-L { color: var(--arm-l); }
+        .arm .c-C { color: var(--arm-c); } .arm .c-M { color: var(--arm-m); } .arm .c-W { color: var(--arm-w); }
+        .arm .c-R { color: var(--arm-r); }
+        .hand { font-size: 12px; color: #cfcfcf; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .hand b { color: var(--muted); font-weight: normal; }
         #main { display: flex; flex-direction: column; gap: 4px; max-width: 100%; }
         #msg { min-height: 1.3em; font-weight: bold; font-size: 14px; overflow-wrap: anywhere; }
         #frame { border: 2px solid var(--red); position: relative; background: #000; overflow: hidden; max-width: 100%; }
@@ -68,7 +79,7 @@
         .controls { margin-top: 10px; color: var(--muted); font-size: 0.78em; text-align: center; line-height: 2; max-width: 820px; }
         kbd { background: #1d1d1d; border: 1px solid #444; border-radius: 3px; padding: 1px 5px; color: #ddd; }
         #mute { margin-left: 8px; background: #1d1d1d; color: #ddd; border: 1px solid #444; border-radius: 3px; padding: 2px 8px; font: inherit; font-size: 0.9em; cursor: pointer; }
-        @media (max-width: 1000px) { #side { display: none; } }
+        @media (max-width: 1000px) { #side, #sideR { display: none; } }
     </style>
 </head>
 <body>
@@ -76,7 +87,7 @@
     <div class="subtitle">Russki Mir · Гранд Тырь Москва · Русский Мир</div>
     <div id="status">Paina näppäintä aloittaaksesi.</div>
     <div id="game">
-        <aside id="side"><h2>ТОВАРЫ</h2><ul id="inv"></ul></aside>
+        <aside id="side"><h2>ТОВАРЫ</h2><ul id="inv"></ul><pre id="armL" class="arm"></pre><div id="handL" class="hand"></div></aside>
         <div id="main">
             <div id="msg"></div>
             <div id="framebar"><span class="title">GRAND TYR MOSCOW · Русский Мир</span><span id="level"></span></div>
@@ -113,6 +124,7 @@
             </div>
             <div id="sounds"></div>
         </div>
+        <aside id="sideR"><pre id="armR" class="arm"></pre><div id="handR" class="hand"></div></aside>
     </div>
     <div class="controls">
         <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> liiku (kävele päin = lyö / poimi / avaa) ·
@@ -139,7 +151,7 @@
 
         Game.setup({
             canvas: $('map'), msg: $('msg'), level: $('level'), money: $('money'), hp: $('hp'),
-            prom: $('prom'), belly: $('belly'), sick: $('sick'), sickBox: $('sickBox'), drv: $('drv'), gear: $('gear'), rpm: $('rpm'), kmh: $('kmh'), wheel: $('wheel'), drvflags: $('drvflags'), sounds: $('sounds'), inv: $('inv'), menu: $('menu'), text: $('text'),
+            prom: $('prom'), belly: $('belly'), sick: $('sick'), sickBox: $('sickBox'), drv: $('drv'), gear: $('gear'), rpm: $('rpm'), kmh: $('kmh'), wheel: $('wheel'), drvflags: $('drvflags'), sounds: $('sounds'), inv: $('inv'), armL: $('armL'), armR: $('armR'), handL: $('handL'), handR: $('handR'), menu: $('menu'), text: $('text'),
             death: $('death'), deathCause: $('deathCause'), deathComfort: $('deathComfort'), deathScore: $('deathScore'),
             // the camera has zoomed all the way out: play the intro, then start the next drunk
             onRestart: () => {

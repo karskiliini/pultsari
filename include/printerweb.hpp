@@ -25,6 +25,7 @@ public:
 private:
     void sendCityMap(Level* level);
     uint32_t framesSinceMap = 1000;
+    std::string lastArms;   // the arm pictures last sent: the page keeps them until they change
 };
 
 #endif

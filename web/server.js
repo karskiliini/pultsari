@@ -96,9 +96,10 @@ function flush(s) {
     const res = s.waiter;
     s.waiter = null;
     clearTimeout(res.timer);
-    // a slow poller only needs the latest frame, plus every non-frame message
+    // a slow poller only needs the latest frame, plus every non-frame message and every frame
+    // carrying the arm pictures (they are sent only when they change)
     const lastFrame = s.queue.map((m) => m.startsWith('{"t":"frame"')).lastIndexOf(true);
-    const out = s.queue.filter((m, i) => i === lastFrame || !m.startsWith('{"t":"frame"'));
+    const out = s.queue.filter((m, i) => i === lastFrame || !m.startsWith('{"t":"frame"') || m.includes('"arms":'));
     s.queue = [];
     res.writeHead(200, { 'Content-Type': 'application/json', 'Cache-Control': 'no-store' });
     res.end(JSON.stringify({ messages: out, done: s.done }));

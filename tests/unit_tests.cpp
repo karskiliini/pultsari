@@ -3944,3 +3944,136 @@ TEST(arm_blood_only_at_stage_three)
         if (armRowBloody(3, row) && pic[row].find_first_of("',.") != string::npos) specks = true;
     CHECK(specks);
 }
+
+// ---- arms in the browser ----
+
+// the frames a real web printer sends for the World, captured instead of written to stdout
+static std::vector<string> webFramesOf(World& w, PrinterWeb& web, int n)
+{
+    std::vector<string> sent, frames;
+    common::webCapture = &sent;
+    for (int i = 0; i < n; ++i) web.print(&w.level);
+    common::webCapture = nullptr;
+    for (const auto& s : sent) if (contains(s, "\"t\":\"frame\"")) frames.push_back(s);
+    return frames;
+}
+
+TEST(web_frame_sends_arms_once_per_change)
+{
+    World w;
+    PrinterWeb web;
+    web.player = &w.player;
+    web.mask = &w.mask;
+    hold(w.player.inventory, Thing::Vodka, Thing::Lenkki);
+    w.player.inventory.pocket = Inventory::heldOf(Thing::Lipas);
+
+    auto frames = webFramesOf(w, web, 2);
+    CHECK(frames.size() == 2);
+    CHECK(contains(frames[0], "\"arms\":[["));
+    CHECK(contains(frames[0], "\"armc\":[["));
+    CHECK(!contains(frames[1], "\"arms\""));     // nothing changed: not sent again
+    CHECK(!contains(frames[1], "\"armc\""));
+    // the hands are read from their captions, the rest of the slots from the list
+    CHECK(contains(frames[1], "\"slots\":[[\"TASKU\",\"LIPAS\"]"));
+    CHECK(!contains(frames[1], "\"inv\""));
+    CHECK(contains(frames[1], "\"hands\":[\"VODKA 6/6\",\"MAKKARA\"]"));
+
+    // a sip lowers the liquid: the pictures go again
+    w.player.inventory.left.fill = 5;
+    frames = webFramesOf(w, web, 2);
+    CHECK(frames.size() == 2);
+    CHECK(contains(frames[0], "\"arms\":[["));
+    CHECK(!contains(frames[1], "\"arms\""));
+
+    // torn sleeves at stage 3: the blood comes as R cells in the colour masks
+    w.player.stats.health = 1;
+    frames = webFramesOf(w, web, 1);
+    CHECK(frames.size() == 1);
+    const size_t at = frames.empty() ? string::npos : frames[0].find("\"armc\":");
+    CHECK(at != string::npos && frames[0].find('R', at) != string::npos);
+}
+
+TEST(arm_colours_match_picture_shape)
+{
+    for (const Held& h : allHeldVariants())
+        for (int stage = 0; stage <= 3; ++stage)
+            for (bool left : { true, false }) {
+                const auto pic = armPicture(left, h, stage), mask = armColours(left, h, stage);
+                CHECK(mask.size() == pic.size());
+                for (size_t r = 0; r < pic.size() && r < mask.size(); ++r) {
+                    CHECK(mask[r].size() == pic[r].size());
+                    for (size_t c = 0; c < pic[r].size() && c < mask[r].size(); ++c) {
+                        if (pic[r][c] != ' ' && mask[r][c] == ' ') {
+                            CHECK(false);
+                            std::cerr << "    uncoloured '" << pic[r][c] << "' row " << r << " col " << c
+                                      << " thing " << (int)h.what << " stage " << stage << (left ? " left" : " right") << "\n";
+                        }
+                        CHECK(string(" JSGVALCMWR").find(mask[r][c]) != string::npos);
+                    }
+                }
+            }
+    // the liquid is vodka or beer by its colour, an empty bottle has none
+    auto cellsOf = [](const std::vector<string>& pic, const std::vector<string>& mask, char liquid, char colour) {
+        int n = 0, wrong = 0;
+        for (size_t r = 0; r < pic.size(); ++r)
+            for (size_t c = 0; c < pic[r].size(); ++c)
+                if (pic[r][c] == liquid) (mask[r][c] == colour ? n : wrong)++;
+        return wrong ? -1 : n;
+    };
+    for (bool left : { true, false }) {
+        const Held vodka = heldOf(Thing::Vodka, 4), beer = heldOf(Thing::Kalja), empty = heldOf(Thing::Vodka, 0);
+        CHECK(cellsOf(armPicture(left, vodka, 0), armColours(left, vodka, 0), '#', 'V') > 0);
+        CHECK(cellsOf(armPicture(left, vodka, 0), armColours(left, vodka, 0), '~', 'V') == 6);
+        CHECK(cellsOf(armPicture(left, beer, 0), armColours(left, beer, 0), '#', 'A') > 0);
+        for (const auto& r : armColours(left, beer, 0)) CHECK(r.find('V') == string::npos);
+        for (const auto& r : armColours(left, empty, 0)) CHECK(r.find('V') == string::npos);
+        // mirroring keeps the letters: the label stays L, the sleeve J
+        const auto vm = armColours(left, vodka, 0);
+        CHECK(vm[0].find('J') != string::npos && vm[0].find_first_not_of(" J") == string::npos);
+        CHECK(cellsOf(armPicture(left, heldOf(Thing::Vodka, 6), 0), armColours(left, heldOf(Thing::Vodka, 6), 0), 'K', 'L') == 1);
+    }
+    // stage 3 blood is R, and only there
+    for (int stage = 0; stage <= 3; ++stage) {
+        bool red = false;
+        for (const auto& r : armColours(true, Held(), stage)) if (r.find('R') != string::npos) red = true;
+        CHECK(red == (stage == 3));
+    }
+    // the rifle: wood and metal on both sides
+    for (bool left : { true, false }) {
+        string all;
+        for (const auto& r : armColours(left, heldOf(Thing::Rynkky), 0)) all += r;
+        CHECK(all.find('W') != string::npos && all.find('M') != string::npos);
+    }
+}
+
+TEST(arm_art_rows_fit_before_padding)
+{
+    // every picture is built through rowsOf, which asserts no art row is wider than ARM_W:
+    // build all of them, the rifle in both hands included
+    for (const Held& h : allHeldVariants())
+        for (int stage = 0; stage <= 3; ++stage)
+            for (bool left : { true, false }) CHECK((int)armPicture(left, h, stage).size() == ARM_H);
+    // the rifle grip's fist row keeps its closing edge
+    const auto grip = armPicture(false, heldOf(Thing::Rynkky), 0);
+    bool closed = false;
+    for (const auto& r : grip) if (contains(r, "(__(__(__)|")) closed = true;
+    CHECK(closed);
+}
+
+TEST(arm_rifle_magazine_sticks_out_to_the_map_side)
+{
+    // the right hand holds the grip: the long magazine reaches the map-side edge (column 0) on
+    // the rows under the fist, in gun metal, and bends down towards the muzzle at its tip
+    const auto pic = armPicture(false, heldOf(Thing::Rynkky), 0), mask = armColours(false, heldOf(Thing::Rynkky), 0);
+    int reach = 0;
+    for (int row = 13; row < ARM_H; ++row) if (pic[row][0] != ' ' && mask[row][0] == 'M') ++reach;
+    CHECK(reach >= 3);
+    CHECK(contains(pic[14], "_____|"));    // it leaves the receiver level
+    CHECK(pic[17].substr(0, 3) == "\\_/"); // and ends in a rounded tip
+    // the stock rises in wood along the outer side of the forearm
+    for (int row = 9; row <= 12; ++row) CHECK(mask[row].find('W') != string::npos && mask[row].find('W') > 9);
+    // the left hand holds the wooden handguard, the metal barrel below it
+    const auto lm = armColours(true, heldOf(Thing::Rynkky), 0);
+    CHECK(lm[13].find('W') != string::npos && lm[20].find('M') != string::npos);
+    CHECK(lm[13].find('M') == string::npos);
+}

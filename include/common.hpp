@@ -4,6 +4,7 @@
 #include "coord.hpp"
 #include <cstdint>
 #include <string>
+#include <vector>
 
 // enable features by defining these flags
 #define ANIMATIONS_ENABLED
@@ -34,6 +35,8 @@ void frameSleep(uint32_t ms);
 // one per line, each starting with an ASCII record separator (0x1E).
 bool webMode();
 void webSend(const std::string& json);
+// tests point this at a list to collect what webSend would write, web mode or not
+extern std::vector<std::string>* webCapture;
 std::string jsonString(const std::string& s);
 
 // Ask the browser client to play a synthesized sound effect (volume 0..1).

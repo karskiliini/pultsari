@@ -8,6 +8,7 @@
 #include "player.hpp"
 #include "scoreboard.hpp"
 #include "inventory.hpp"
+#include "armart.hpp"
 #include "common.hpp"
 #include "version.hpp"
 #include <string>
@@ -92,16 +93,35 @@ void PrinterWeb::print(Level* l)
         }
         j += "]";
 
-        j += ",\"inv\":[";
+        // the slots beside the hands: [slot, thing], "" when empty; the hands come with the arms
+        j += ",\"slots\":[";
         first = true;
-        // what each slot holds: [slot, thing]
-        for (const auto& item : overlayItems(&player->inventory)) {
-            if (item.count == 0) continue;
-            j += string(first ? "" : ",") + "[" + jsonString(item.name) + "," + jsonString(item.thing) + "]";
+        const auto slots = overlayItems(&player->inventory);
+        for (size_t i = 2; i < slots.size(); ++i) {
+            j += string(first ? "" : ",") + "[" + jsonString(slots[i].name) + "," + jsonString(slots[i].thing) + "]";
             first = false;
         }
-        if (player->inventory.propusk) j += string(first ? "" : ",") + "[\"PROPUSK\"," + to_string(player->inventory.propusk) + "]";
+        if (player->inventory.propusk) j += string(first ? "" : ",") + "[\"PROPUSK\"," + jsonString(to_string(player->inventory.propusk)) + "]";
         j += "]";
+
+        // the forearms beside the map: 22 rows each, sent again only when a picture changes
+        const ArmPictures arms = playerArms(player);
+        j += ",\"hands\":[" + jsonString(arms.leftText) + "," + jsonString(arms.rightText) + "]";
+        auto pair = [](const std::vector<string>& a, const std::vector<string>& b) {
+            string out = "[";
+            for (const auto* pic : { &a, &b }) {
+                out += pic == &a ? "[" : ",[";
+                for (size_t r = 0; r < pic->size(); ++r) out += string(r ? "," : "") + jsonString((*pic)[r]);
+                out += "]";
+            }
+            return out + "]";
+        };
+        // the colour masks go with the pictures: one letter per cell, the page's c-X classes
+        const string pics = ",\"arms\":" + pair(arms.left, arms.right) + ",\"armc\":" + pair(arms.leftColours, arms.rightColours);
+        if (pics != lastArms) {
+            lastArms = pics;
+            j += pics;
+        }
     }
 
     // map rows as runs of glyphs sharing an SGR colour

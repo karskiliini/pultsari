@@ -37,6 +37,14 @@ struct OverlayItem {
 };
 // the inventory overlay rows: the slots, in the order the game's inventory keys expect
 std::vector<OverlayItem> overlayItems(const Inventory* inventory);
+// the player's two forearms as drawn beside the map, with what each hand holds as text; a raised
+// rifle fills both hands
+struct ArmPictures {
+    std::vector<std::string> left, right;   // ARM_H rows of ARM_W each
+    std::vector<std::string> leftColours, rightColours;  // their armColours masks
+    std::string leftText, rightText;        // "" for an empty hand; vodka n/6, guns their rounds
+};
+ArmPictures playerArms(const PlayerNS::Player* player);
 // viewport cells of the aiming line
 std::vector<std::pair<int, int>> aimCells(Level* level, uint32_t px, uint32_t py, float angle, int maxSteps = 20);
 
@@ -53,6 +61,8 @@ public:
     virtual void printBorder(Level* l, bool top) = 0;
     virtual void printVBorder(Level* l) = 0;
     virtual void printInventory(uint32_t y, Inventory* inventory) = 0;
+    // what goes right of the map's right border on map row y (the terminal's arm pictures)
+    virtual void printRightColumn(uint32_t /* y */) { }
     virtual void printStats(Level* l, Stats* stats) = 0;
     virtual void printChar(std::string c) = 0;
     virtual void printScore(const ScoreBoard* scoreBoard) = 0;

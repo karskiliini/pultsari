@@ -13,6 +13,10 @@ constexpr int ARM_W = 14, ARM_H = 22;
 int sleeveStage(uint32_t health, bool usedCoat);   // 0 whole jacket .. 3 sleeve gone, bloody
 std::vector<std::string> armPicture(bool leftArm, const Held& held, int stage);  // ARM_H rows of ARM_W
 std::string mirrorRow(const std::string& row);     // reverse + swap / \ ( ) < > [ ] { } ` '
-bool armRowBloody(int stage, int row);             // rows the web colours red at stage 3
+bool armRowBloody(int stage, int row);             // rows with blood on them at stage 3
+// the picture's colours, one letter per cell, composed and mirrored like armPicture: J jacket,
+// S skin, G bottle glass, V vodka, A beer, L label text, C can metal, M gun metal, W wood,
+// R blood, space none
+std::vector<std::string> armColours(bool leftArm, const Held& held, int stage);
 
 #endif

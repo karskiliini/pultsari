@@ -49,8 +49,11 @@ bool webMode()
     return web;
 }
 
+std::vector<std::string>* webCapture = nullptr;
+
 void webSend(const std::string& json)
 {
+    if (webCapture) webCapture->push_back(json);
     if (!webMode()) return;
     cout << '\x1e' << json << '\n' << std::flush;
 }

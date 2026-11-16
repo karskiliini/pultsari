@@ -132,8 +132,11 @@
     function fit() {
         const dpr = window.devicePixelRatio || 1;
         const frameEl = canvas.closest('#frame') || canvas.parentElement;
-        const side = document.getElementById('side');
-        const sideW = side && side.offsetParent ? side.offsetWidth + 10 : 0;
+        // the panels left and right of the map (hidden on narrow screens) take their share first
+        const sideW = ['side', 'sideR'].reduce((w, id) => {
+            const el = document.getElementById(id);
+            return w + (el && el.offsetParent ? el.offsetWidth + 10 : 0);
+        }, 0);
         const availW = Math.max(200, document.documentElement.clientWidth - 32 - sideW - 4);
         const top = frameEl.getBoundingClientRect().top + window.scrollY;
         const below = 64; // HUD and sound line under the map
@@ -310,15 +313,49 @@
             if (loud) s.className = 'loud';
             ui.sounds.appendChild(s);
         }
-        ui.inv.innerHTML = '';
-        if (!m.inv || !m.inv.length) ui.inv.innerHTML = '<li class="empty">(tyhjä)</li>';
-        for (const [name, count] of (m.inv || [])) {
-            const li = document.createElement('li');
-            li.innerHTML = `<span></span><b></b>`;
-            li.firstChild.textContent = name;
-            li.lastChild.textContent = count;
-            ui.inv.appendChild(li);
+        // pocket, belt and back; the hands are read under the arm pictures
+        if (ui.inv && m.slots) {
+            ui.inv.innerHTML = '';
+            for (const [name, thing] of m.slots) {
+                const li = document.createElement('li');
+                li.innerHTML = `<span></span><b></b>`;
+                li.firstChild.textContent = name;
+                li.lastChild.textContent = thing || '–';
+                if (!thing) li.className = 'empty';
+                ui.inv.appendChild(li);
+            }
         }
+        if (m.hands) {
+            [[ui.handL, 'VASEN'], [ui.handR, 'OIKEA']].forEach(([el, slot], k) => {
+                if (el) el.innerHTML = `<b>${slot}</b> ${escapeHtml(m.hands[k] || '–')}`;
+            });
+        }
+        // the arm pictures come only when they change, each cell coloured by its mask letter
+        if (m.arms) {
+            [ui.armL, ui.armR].forEach((el, k) => {
+                if (!el) return;
+                const masks = (m.armc && m.armc[k]) || [];
+                el.innerHTML = m.arms[k].map((row, r) => colourRow(row, masks[r] || '')).join('\n');
+            });
+        }
+    }
+
+    // runs of cells sharing a mask letter become one <span class="c-X">; spaces stay plain
+    function colourRow(row, mask) {
+        let html = '';
+        for (let i = 0; i < row.length; ) {
+            const c = mask[i] && mask[i] !== ' ' ? mask[i] : '';
+            let j = i + 1;
+            while (j < row.length && (mask[j] && mask[j] !== ' ' ? mask[j] : '') === c) j++;
+            const text = escapeHtml(row.slice(i, j));
+            html += /^[A-Z]$/.test(c) ? `<span class="c-${c}">${text}</span>` : text;
+            i = j;
+        }
+        return html;
+    }
+
+    function escapeHtml(s) {
+        return s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
     }
 
     // ---------- drawing ----------

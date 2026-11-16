@@ -20,6 +20,7 @@ public:
     virtual void printBorder(Level* l, bool top);
     virtual void printVBorder(Level* l);
     virtual void printInventory(uint32_t y, Inventory* inventory);
+    virtual void printRightColumn(uint32_t y);
     virtual void printStats(Level* l, Stats* stats);
     virtual void printChar(std::string c);
     virtual void printScore(const ScoreBoard* scoreBoard);
@@ -27,6 +28,9 @@ public:
     virtual void emptyLine(uint32_t textLen = 0);
     virtual void emptyTitleLine(uint32_t textLen = 0);
     virtual void printerRefresh();
+private:
+    ArmPictures arms;       // this frame's forearms, when the terminal has room for them
+    uint32_t armsShown = 0; // 0 none, 1 the right arm, 2 both
 };
 
 #endif

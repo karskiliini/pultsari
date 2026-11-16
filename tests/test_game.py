@@ -116,6 +116,20 @@ def test_q_drinks_in_realtime():
     check('q_drinks_in_realtime', any(any(d in m for d in drank) for m in msgs) and not menus, f'menus {len(menus)}')
 
 
+def test_arms_come_with_the_first_frame_and_only_on_change():
+    g = Game()
+    time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
+    fr = g.frames()
+    g.close()
+    first = fr[0] if fr else {}
+    arms = first.get('arms') or []
+    shaped = len(arms) == 2 and all(len(a) == 22 and all(len(r) == 14 for r in a) for a in arms)
+    sent = sum(1 for f in fr if 'arms' in f)
+    slots = all('slots' in f and 'inv' not in f and len(f.get('hands', [])) == 2 for f in fr)
+    check('arms_come_with_the_first_frame_and_only_on_change', shaped and slots and len(fr) > 10 and sent <= len(fr) // 2,
+          f'frames {len(fr)} with arms {sent} shaped {shaped} slots {slots}')
+
+
 def test_random_play_does_not_crash():
     g = Game()
     time.sleep(1); g.keys(' ', 0)
@@ -139,6 +153,7 @@ if __name__ == '__main__':
     test_city_is_built_up()
     test_player_starts_on_leninski()
     test_q_drinks_in_realtime()
+    test_arms_come_with_the_first_frame_and_only_on_change()
     test_random_play_does_not_crash()
-    print(f'{6 - len(failures)}/6 game tests passed')
+    print(f'{7 - len(failures)}/7 game tests passed')
     sys.exit(1 if failures else 0)

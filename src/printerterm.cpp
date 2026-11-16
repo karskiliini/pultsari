@@ -6,9 +6,12 @@
 #include "common.hpp"
 #include "inventory.hpp"
 #include "version.hpp"
+#include "armart.hpp"
 #include <cstdio>
 #include <iostream>
 #include <string>
+#include <sys/ioctl.h>
+#include <unistd.h>
 
 using std::cout;
 using std::endl;
@@ -137,6 +140,48 @@ void PrinterTerm::printInventory(uint32_t y, Inventory* inventory)
         return;
     }
     printLeftBorderSpaces();
+}
+
+// an arm row in the 256 colours of its mask letters (see armColours)
+static string armRow(const ArmPictures& a, bool left, uint32_t row)
+{
+    const string& r = (left ? a.left : a.right)[row];
+    const string& mask = (left ? a.leftColours : a.rightColours)[row];
+    static const string letters = "JSGVALCMWR";
+    static const char* codes[] = { "101", "180", "108", "195", "178", "255", "250", "245", "94", "160" };
+    string out;
+    char current = ' ';
+    for (size_t i = 0; i < r.size(); ++i) {
+        const char m = i < mask.size() ? mask[i] : ' ';
+        if (m != current) {
+            const size_t k = letters.find(m);
+            out += k == string::npos ? string(RESET) : string("\033[0;38;5;") + codes[k] + "m";
+            current = m;
+        }
+        out += r[i];
+    }
+    return out + RESET;
+}
+
+void PrinterTerm::printRightColumn(uint32_t y)
+{
+    // the forearms right of the map, only when the terminal is wide enough: the right arm
+    // needs 15 more columns, both arms 30
+    if (y == 0) {
+        winsize ws{};
+        const uint32_t cols = ioctl(STDOUT_FILENO, TIOCGWINSZ, &ws) == 0 ? ws.ws_col : 0;
+        armsShown = !player || cols < LINE_W + 1 + ARM_W ? 0 : cols < LINE_W + 2 * (1 + ARM_W) ? 1 : 2;
+        if (armsShown) arms = playerArms(player);
+    }
+    if (armsShown && y < (uint32_t)ARM_H) {
+        if (armsShown == 2) cout << armRow(arms, true, y) << ' ';
+        cout << armRow(arms, false, y);
+    } else if (armsShown && y == (uint32_t)ARM_H) {
+        // what each hand holds, under its picture
+        if (armsShown == 2) cout << "\033[37m" << pad(arms.leftText.empty() ? "-" : arms.leftText, ARM_W) << ' ';
+        cout << "\033[37m" << pad(arms.rightText.empty() ? "-" : arms.rightText, ARM_W) << RESET;
+    }
+    cout << "\033[K";
 }
 
 void PrinterTerm::printStats(Level* l, Stats* stats)
