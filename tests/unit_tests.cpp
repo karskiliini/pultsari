@@ -4077,3 +4077,52 @@ TEST(arm_rifle_magazine_sticks_out_to_the_map_side)
     CHECK(lm[13].find('W') != string::npos && lm[20].find('M') != string::npos);
     CHECK(lm[13].find('M') == string::npos);
 }
+
+// ---- passers-by comment on the drunk ----
+
+TEST(drunk_stare_gets_a_comment)
+{
+    std::srand(7);
+    World w;
+    w.mask.enable();
+    auto* mummo = w.spawn(new Mummo(Coord{ 53, 50 }));
+    w.player.stats.promilles = 20;
+    bool said = false;
+    for (int i = 0; i < 200 && !said; ++i) {
+        w.mask.init();
+        w.player.updateTurn();
+        said = w.said(mummo, "katsoo kuin");
+    }
+    CHECK(said);
+}
+
+TEST(sober_stare_gets_no_comment)
+{
+    std::srand(7);
+    World w;
+    w.mask.enable();
+    auto* mummo = w.spawn(new Mummo(Coord{ 53, 50 }));
+    w.player.stats.promilles = 5;
+    bool said = false;
+    for (int i = 0; i < 200; ++i) {
+        w.mask.init();
+        w.player.updateTurn();
+        if (w.said(mummo, "katsoo kuin")) said = true;
+    }
+    CHECK(!said);
+}
+
+TEST(stagger_comment_from_onlooker)
+{
+    std::srand(7);
+    World w;
+    auto* mummo = w.spawn(new Mummo(Coord{ 53, 50 }));
+    w.player.stats.promilles = 20;
+    bool said = false;
+    for (int i = 0; i < 100 && !said; ++i) {
+        w.player.coord = Coord{ 50, 50 };
+        w.player.stagger(&w.level);
+        said = w.said(mummo, "Anttilassa");
+    }
+    CHECK(said);
+}

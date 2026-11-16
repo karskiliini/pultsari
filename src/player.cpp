@@ -10,6 +10,7 @@
 #include "animation.hpp"
 #include "vehicle.hpp"
 #include "aagun.hpp"
+#include "mask.hpp"
 #include <algorithm>
 #include <iostream>
 #include <string>
@@ -152,6 +153,7 @@ void Player::updateTurn()
     if (pocketNoticeTurns > 0 && --pocketNoticeTurns == 0 && printer)
         printer->showMessage("Hetkinen... tasku tuntuu kevyelt\xC3\xA4!", level, false);
     updateCrawling();
+    drunkStareComment();
 
     if (common::realtimeEnabled) {
         // turns tick 2.5x per second in real-time: lose 0.1 promille every 50 s
@@ -880,9 +882,45 @@ static Item* checkItems(Level* level, const Coord& c)
     return nullptr;
 }
 
+void Player::drunkStareComment()
+{
+    static const uint32_t STARE_COMMENT_GAP = 40;
+    if (!level || !printer || !printer->mask) return;
+    // the limiter is per level: a new level starts fresh
+    if (stareCommentLevel != level) {
+        stareCommentLevel = level;
+        lastStareCommentTurn = 0;
+    }
+    if (stats.promilles < 15 || stats.health == 0) return;
+    // the remembered person may be gone: only trust one still in the level's list
+    const Person* who = printer->mask->staredAt;
+    if (!who || who == this) return;
+    if (std::find(level->persons.begin(), level->persons.end(), who) == level->persons.end()) return;
+    if (who->stats.health == 0 || who->coord.distance(coord) > 6) return;
+    if (lastStareCommentTurn != 0 && stats.turn - lastStareCommentTurn < STARE_COMMENT_GAP) return;
+    if (!common::random(10)) return;
+    lastStareCommentTurn = stats.turn;
+    const_cast<Person*>(who)->say("Seh\xC3\xA4n katsoo kuin ryss\xC3\xA4 rahaa.");
+}
+
 bool Player::stagger(Level* level)
 {
     printer->showMessage("Horjahtelet...", level, false);
+
+    // the nearest onlooker who can see you remarks on it
+    if (common::random(15)) {
+        Person* onlooker = nullptr;
+        uint32_t best = 9;
+        for (auto o : level->persons) {
+            if (o == this || o->stats.health == 0) continue;
+            const uint32_t d = o->coord.distance(coord);
+            if (d > 8 || d >= best) continue;
+            if (!o->canSeeTarget(coord)) continue;
+            onlooker = o;
+            best = d;
+        }
+        if (onlooker) onlooker->say("Seh\xC3\xA4n py\xC3\xB6rii kuin ryss\xC3\xA4 Anttilassa.");
+    }
 
     DirectionNS::Direction d;
     if (common::random(50)) {

@@ -70,6 +70,7 @@ Vec Mask::gazeDirection(const Vec& walk)
             if (std::rand() % 2) glanceAngle = -glanceAngle;
         }
     }
+    staredAt = nullptr;
     if (glanceTurns > 0) {
         return rotate(walk, glanceAngle);
     }
@@ -91,6 +92,7 @@ Vec Mask::gazeDirection(const Vec& walk)
         nearestDist = dist;
     }
 
+    staredAt = nearest;
     if (nearest) return toVec(c, nearest->coord);
     return walk;
 }

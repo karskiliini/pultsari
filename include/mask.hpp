@@ -8,6 +8,7 @@
 #include <string>
 
 class Level;
+class Person;
 
 namespace VisionNS {
 
@@ -31,6 +32,9 @@ public:
     float maxTurn = 180.f;
     std::vector<std::string> mask;
     Level* level;
+    // the person the eyes were last fixed on (nullptr: nobody, or a sideways glance);
+    // may dangle after a death or removal: validate against level->persons before use
+    const Person* staredAt = nullptr;
 
 private:
     // where the eyes point this turn

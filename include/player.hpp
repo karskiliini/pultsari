@@ -57,6 +57,8 @@ public:
     virtual void npcAct() { }
 
     bool stagger(Level* level);
+    // passers-by remark on a drunk who stares at them (called every turn)
+    void drunkStareComment();
     virtual bool move(DirectionNS::Direction d, Level* level);
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
@@ -148,6 +150,10 @@ public:
     Metro* metroFrom = nullptr;
     Metro* metroTrip = nullptr;     // the station the trip is to
     bool metroDodged = false;       // jumped the turnstiles
+
+    // limiter for the stare comment: the turn of the last one, and on which level
+    uint32_t lastStareCommentTurn = 0;
+    const Level* stareCommentLevel = nullptr;
 };
 
 }
