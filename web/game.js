@@ -332,12 +332,114 @@
         }
         // the arm pictures come only when they change, each cell coloured by its mask letter
         if (m.arms) {
-            [ui.armL, ui.armR].forEach((el, k) => {
-                if (!el) return;
-                const masks = (m.armc && m.armc[k]) || [];
-                el.innerHTML = m.arms[k].map((row, r) => colourRow(row, masks[r] || '')).join('\n');
-            });
+            armPic = m.arms;
+            armMask = m.armc || [];
+            armShown = ['', ''];
+            drawArms();
         }
+        armEvents(m);
+    }
+
+    // ---------- arm life: sway, jolt and slosh (pure client animation) ----------
+    const reduceMotion = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+    let armPic = null, armMask = [], armShown = ['', ''];
+    let armPrev = null, armSteps = 0, armJolt = null, armSlosh = null, armRaf = 0;
+    const SLOSH = ['~~~~~~', '~^~~^~', '-~~-~~', '~~^~~^', '~~~~~~'];
+
+    function armEvents(m) {
+        if (reduceMotion || !armPic) { armPrev = { pos: m.pos, hp: m.hud && m.hud[1], msg: m.msg }; return; }
+        const now = performance.now();
+        const prev = armPrev;
+        armPrev = { pos: m.pos, hp: m.hud && m.hud[1], msg: m.msg };
+        if (!prev) return;
+        const stagger = m.msg && m.msg !== prev.msg && m.msg.indexOf('Horjahtelet') >= 0;
+        const hurt = prev.hp != null && m.hud && m.hud[1] < prev.hp;
+        const moved = m.pos && prev.pos && (m.pos[0] !== prev.pos[0] || m.pos[1] !== prev.pos[1]);
+        if (stagger || hurt) {
+            armJolt = { t0: now, side: Math.random() < 0.5 ? 1 : -1 };
+            armSlosh = { t0: now, jolt: armJolt.side };
+        } else if (moved && !m.drv) {
+            armSteps++;
+            armWalk = { t0: now, leg: armSteps & 1 };
+            armSlosh = { t0: now, jolt: 0 };
+        } else return;
+        if (!armRaf) armRaf = requestAnimationFrame(armTick);
+    }
+    let armWalk = null;
+
+    // one frame of the animation: transforms for the panels and the liquid surface row
+    function armTick() {
+        armRaf = 0;
+        const now = performance.now();
+        let busy = false;
+        [ui.armL, ui.armR].forEach((el, k) => {
+            if (!el) return;
+            let dy = 0, rot = 0;
+            if (armWalk && now - armWalk.t0 < 300) {
+                const e = 1 - (now - armWalk.t0) / 300;
+                const mine = (armWalk.leg === 0) === (k === 0);      // the arm opposite the leading foot swings
+                dy = (mine ? 3 : 1) * e;
+                rot = (mine ? 1.5 : -1) * e;
+                busy = true;
+            }
+            if (armJolt && now - armJolt.t0 < 250) {
+                const e = 1 - (now - armJolt.t0) / 250;
+                dy += 5 * e * Math.sin(e * 12);
+                rot += 4 * armJolt.side * (k ? -1 : 1) * e * Math.cos(e * 10);
+                busy = true;
+            }
+            el.style.transform = dy || rot ? `translateY(${dy.toFixed(1)}px) rotate(${rot.toFixed(1)}deg)` : '';
+        });
+        if (armSlosh && now - armSlosh.t0 < 600) busy = true;
+        else armSlosh = null;
+        drawArms(now);
+        if (busy) armRaf = requestAnimationFrame(armTick);
+    }
+
+    // the liquid surface row: the first row whose V/A cells hold '~'
+    function surfaceRow(k) {
+        const pic = armPic[k], mask = armMask[k] || [];
+        for (let r = 0; r < pic.length; r++) {
+            const cells = [];
+            for (let i = 0; i < pic[r].length; i++) if ('VA'.indexOf((mask[r] || '')[i]) >= 0 && pic[r][i] === '~') cells.push(i);
+            if (cells.length) return { r, cells };
+        }
+        return null;
+    }
+
+    function sloshText(now, cells, k) {
+        const t = now - armSlosh.t0;
+        let pat = SLOSH[Math.min(SLOSH.length - 1, Math.floor(t / 120))];
+        if (armSlosh.jolt && t < 480) {
+            const left = (armSlosh.jolt > 0) === (Math.floor(t / 160) % 2 === 0);
+            pat = left ? '_-~~~~' : '~~~~-_';
+        }
+        return cells.map((c, i) => pat[i % pat.length]);
+    }
+
+    // draws both pictures; only the surface row changes while sloshing
+    function drawArms(now) {
+        if (!armPic) return;
+        [ui.armL, ui.armR].forEach((el, k) => {
+            if (!el || !armPic[k]) return;
+            const masks = armMask[k] || [];
+            const rows = armPic[k].slice();
+            let key = '';
+            if (armSlosh && !reduceMotion) {
+                const sf = surfaceRow(k);
+                if (sf) {
+                    const chars = sloshText(now || performance.now(), sf.cells, k);
+                    const arr = rows[sf.r].split('');
+                    sf.cells.forEach((c, i) => { arr[c] = chars[i]; });
+                    rows[sf.r] = arr.join('');
+                    key = rows[sf.r];
+                }
+            }
+            const sig = key || '=';
+            if (armShown[k] === sig) return;
+            armShown[k] = sig;
+            el.innerHTML = rows.map((row, r) => colourRow(row, masks[r] || '')).join('\n');
+        });
     }
 
     // runs of cells sharing a mask letter become one <span class="c-X">; spaces stay plain

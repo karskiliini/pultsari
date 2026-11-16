@@ -3877,9 +3877,9 @@ TEST(arm_hands_differ_by_what_they_hold)
     // the sleeve does not depend on the hand
     const auto a = armPicture(true, Held(), 2), b = armPicture(true, heldOf(Thing::Pistooli), 2);
     for (int row = 0; row < 9; ++row) CHECK(a[row] == b[row]);
-    // other things show their name under the fist
-    CHECK(contains(armPicture(true, heldOf(Thing::Kivi), 0)[21], "KIVI"));
-    CHECK(contains(armPicture(false, heldOf(Thing::Lenkki), 1)[21], "MAKKARA"));
+    // other things do not print their name in the picture (the caption has it)
+    CHECK(!contains(armPicture(true, heldOf(Thing::Kivi), 0)[21], "KIVI"));
+    CHECK(!contains(armPicture(false, heldOf(Thing::Lenkki), 1)[21], "MAKKARA"));
 }
 
 TEST(arm_vodka_fill_three_shows_three_liquid_rows)

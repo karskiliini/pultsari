@@ -362,19 +362,6 @@ Art bottleRows(int fill, const std::string& label, char liquidColour)
     return out;
 }
 
-// thing names are ASCII but for the A-umlaut; never let anything else into a picture
-std::string asciiName(const char* name)
-{
-    std::string out;
-    for (const char* p = name; *p; ++p) {
-        const unsigned char c = *p;
-        if (c == 0xC3 && (p[1] == '\x84' || p[1] == '\xA4')) { out += 'A'; ++p; }
-        else if (c == 0xC3 && (p[1] == '\x96' || p[1] == '\xB6')) { out += 'O'; ++p; }
-        else if (c >= 0x20 && c < 0x7f) out += (char)c;
-    }
-    return out.substr(0, ARM_W);
-}
-
 // rows 9-21 of the left arm's hand
 Art leftHand(const Held& held)
 {
@@ -393,12 +380,7 @@ Art leftHand(const Held& held)
         case Thing::Rynkky: return artOf(HAND_AK_FORE, HAND_AK_FORE_C, 13);
         default: {
             hand = artOf(HAND_FIST, HAND_FIST_C, 13);
-            const std::string name = asciiName(thingName(held.what));
-            const size_t at = (ARM_W - name.size()) / 2;
-            hand.pic[12] = std::string(at, ' ') + name;
-            hand.mask[12] = std::string(at, ' ') + std::string(name.size(), 'L');
-            hand.pic[12].resize(ARM_W, ' ');
-            hand.mask[12].resize(ARM_W, ' ');
+            // the name is shown in the caption under the picture, not in it
             return hand;
         }
     }
