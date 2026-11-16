@@ -4126,3 +4126,45 @@ TEST(stagger_comment_from_onlooker)
     }
     CHECK(said);
 }
+
+// a drunk player staring at a granny; returns the turns on which she spoke
+static std::vector<uint32_t> stareTurns(World& w, Mummo* m, int turns, int resetAt = -1)
+{
+    std::vector<uint32_t> out;
+    for (int i = 0; i < turns; ++i) {
+        if (i == resetAt) w.player.onNewLevel();
+        w.level.animations.clear();
+        w.mask.init();
+        w.player.updateTurn();
+        if (w.said(m, "katsoo kuin")) out.push_back(w.player.stats.turn);
+    }
+    return out;
+}
+
+TEST(stare_comment_waits_40_turns)
+{
+    std::srand(3);
+    World w;
+    w.mask.enable();
+    auto* mummo = w.spawn(new Mummo(Coord{ 53, 50 }));
+    w.player.stats.promilles = 30;
+    const auto t = stareTurns(w, mummo, 120);
+    CHECK(t.size() >= 2);
+    for (size_t i = 1; i < t.size(); ++i) CHECK(t[i] - t[i - 1] >= 40);
+}
+
+TEST(stare_limiter_resets_on_new_level)
+{
+    std::srand(3);
+    World w;
+    w.mask.enable();
+    auto* mummo = w.spawn(new Mummo(Coord{ 53, 50 }));
+    w.player.stats.promilles = 30;
+    // pretend a comment was just made: nothing within 40 turns
+    w.player.stats.turn = 100;
+    w.player.lastStareCommentTurn = 100;
+    CHECK(stareTurns(w, mummo, 30).empty());
+    // a new level: allowed right away (10 % per turn, so within a few dozen tries)
+    w.player.onNewLevel();
+    CHECK(!stareTurns(w, mummo, 39).empty());
+}

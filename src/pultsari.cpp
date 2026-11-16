@@ -1041,6 +1041,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
     while (!quit && gameState.phase != GamePhase::Victory) {
         player.resetPosition();
+        player.onNewLevel();
         stage = gameState.getEffectiveStage();
         player.returnedFromWar = gameState.hasBeenToWar;
         Level level(stage);
@@ -1831,6 +1832,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 printer->print(&level);
             }
         }
+        // the mask dies with this iteration: never leave the printer pointing at it
+        printer->mask = nullptr;
     }
 
     if (gameState.phase == GamePhase::Victory) {

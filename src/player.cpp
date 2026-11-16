@@ -233,6 +233,12 @@ bool Player::interactThrow(Item* item, Person* source, std::string& msg)
     return true;
 }
 
+void Player::onNewLevel()
+{
+    // the stare-comment limiter is per level
+    lastStareCommentTurn = 0;
+}
+
 void Player::resetPosition()
 {
     coord = {common::PLAYER_START_X, common::PLAYER_START_Y};
@@ -886,11 +892,6 @@ void Player::drunkStareComment()
 {
     static const uint32_t STARE_COMMENT_GAP = 40;
     if (!level || !printer || !printer->mask) return;
-    // the limiter is per level: a new level starts fresh
-    if (stareCommentLevel != level) {
-        stareCommentLevel = level;
-        lastStareCommentTurn = 0;
-    }
     if (stats.promilles < 15 || stats.health == 0) return;
     // the remembered person may be gone: only trust one still in the level's list
     const Person* who = printer->mask->staredAt;

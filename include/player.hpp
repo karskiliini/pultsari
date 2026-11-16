@@ -151,9 +151,10 @@ public:
     Metro* metroTrip = nullptr;     // the station the trip is to
     bool metroDodged = false;       // jumped the turnstiles
 
-    // limiter for the stare comment: the turn of the last one, and on which level
+    // limiter for the stare comment: the turn of the last one (0: none yet on this level)
     uint32_t lastStareCommentTurn = 0;
-    const Level* stareCommentLevel = nullptr;
+    // call when a new level begins
+    void onNewLevel();
 };
 
 }
