@@ -978,7 +978,9 @@ bool Player::move(DirectionNS::Direction d, Level* level)
     }
 
     string msg;
-    Building* b = checkDoor(level, check);
+    // someone standing in a doorway is bumped (punched), not the door
+    const bool someoneThere = level->hitPerson(check);
+    Building* b = someoneThere ? nullptr : checkDoor(level, check);
     if (b && b->walkable) {
         // walkable buildings are entered through the door; the way out is always open
         const bool leaving = b->hitBuilding(coord);
@@ -990,7 +992,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
                 b->interact(this, msg);
                 if (!msg.empty()) printer->showMessage(msg, level, false);
                 // a seller who caught you stealing now stands in the doorway
-                if (level->getPerson(check)) return ret;
+                if (level->hitPerson(check)) return ret;
             }
             coord = check;
             return ret;
@@ -1016,7 +1018,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
     }
 
     if (!blocked) {
-        if (!b) {
+        if (!b && !someoneThere) {
             b = checkWalls(level, check);
             if (b)
             {

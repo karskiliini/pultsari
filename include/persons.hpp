@@ -521,6 +521,7 @@ public:
     Item* dropItem();
     SellerWeapon weapon;
     uint32_t ammo = 8;
+    bool looted = false;
 };
 
 #endif

@@ -981,7 +981,7 @@ int Kauppa::noticeOverride = -1;
 bool Kauppa::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
     if (sellerHostile) {
-        msg = level->isAlive(seller) ? "Kauppa on kiinni. Myyj\xC3\xA4 jahtaa sinua jossain."
+        msg = seller && seller->stats.health > 0 ? "Kauppa on kiinni. Myyj\xC3\xA4 jahtaa sinua jossain."
                                      : "Kauppa on hiljainen. Kukaan ei myy mit\xC3\xA4\xC3\xA4n.";
         return false;
     }
@@ -1018,6 +1018,7 @@ void Kauppa::interact(PlayerNS::Player* player, std::string& msg)
     const char last = kind == Kind::Oruzhie ? '5' : '4';
     if (c == 'v' || c == 'V') {
         // v + number: take it off the counter; any other key thinks better of it
+        player->printer->showMessage("Mit\xC3\xA4 varastat? (nro)", level, false);
         const char d = InputNS::Input::getMenuKey();
         if (d < '1' || d > last) return;
         const int k = d - '1';
@@ -1104,7 +1105,15 @@ void Kauppa::shoplift(PlayerNS::Player* player, Thing t, std::string& msg)
         msg = HINT_HANDS_FULL;   // no room in your hands: it stays on the counter
         return;
     }
-    const bool noticed = noticeOverride >= 0 ? noticeOverride == 1 : std::rand() % 100 < SHOPLIFT_NOTICE_PERCENT;
+    bool noticed = noticeOverride >= 0 ? noticeOverride == 1 : std::rand() % 100 < SHOPLIFT_NOTICE_PERCENT;
+    const SellerWeapon w = rollSellerWeapon();
+    if (noticed) {
+        Person* m = new Myyja(getDoor(), w);
+        m->printer = level->printer;
+        seller = sellerOut(this, m);
+        // the doorway is packed with customers: he cannot get out from behind the counter
+        noticed = seller != nullptr;
+    }
     if (!noticed) {
         static const char* lucky[] = {
             "Sujautat tavaran takin alle. Myyj\xC3\xA4 tuijottaa puhelintaan.",
@@ -1115,17 +1124,11 @@ void Kauppa::shoplift(PlayerNS::Player* player, Thing t, std::string& msg)
         return;
     }
     sellerHostile = true;
-    const SellerWeapon w = rollSellerWeapon();
-    Person* m = new Myyja(getDoor(), w);
-    m->printer = level->printer;
-    seller = sellerOut(this, m);
     static const char* shouts[] = { "VARAS! Seis!", "Minun kauppani! Minun!" };
-    if (seller) {
-        seller->chaseTarget = player;
-        seller->alerted = true;
-        seller->lastKnownPos = player->coord;
-        seller->say(shouts[std::rand() % 2]);
-    }
+    seller->chaseTarget = player;
+    seller->alerted = true;
+    seller->lastKnownPos = player->coord;
+    seller->say(shouts[std::rand() % 2]);
     static const char* arms[] = { "nitoja", "veitsi", "pistooli" };
     msg = string("Myyj\xC3\xA4 rynt\xC3\xA4\xC3\xA4 per\xC3\xA4\xC3\xA4si ") + arms[(int)w] + " k\xC3\xA4""dess\xC3\xA4!";
 }

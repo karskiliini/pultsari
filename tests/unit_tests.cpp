@@ -441,6 +441,83 @@ TEST(dead_seller_drops_knife_or_pistol_but_no_stapler)
     }
 }
 
+TEST(player_can_punch_seller_in_doorway)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.coord = k->getSpawn();
+    auto* m = w.spawn(new Myyja(k->getDoor(), SellerWeapon::Nitoja));
+    const uint32_t had = m->stats.health;
+    feedKeys("x"); // should the shop menu open after all, it must not wait for a key
+    w.player.move(k->door == DirectionNS::down ? DirectionNS::up : DirectionNS::down, &w.level);
+    CHECK(m->stats.health < had);
+    CHECK(w.player.coord == k->getSpawn());
+    CHECK(!w.printer.saw("Kauppa on kiinni"));
+}
+
+TEST(seller_leaves_doorway_even_with_item_outside)
+{
+    World w(Coord{ 17, 40 });
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.level.addItem(new Ruumis(k->getSpawn()));
+    auto* m = w.spawn(new Myyja(k->getDoor(), SellerWeapon::Nitoja));
+    m->npcAct();
+    CHECK(!(m->coord == k->getDoor()));
+    CHECK(!w.level.hitBuilding(m->coord));
+}
+
+TEST(shoplift_prompts_for_the_number)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.inventory.right = Held();
+    shoplift(w, k, "v1", 0);
+    CHECK(w.printer.saw("Mit\xC3\xA4 varastat? (nro)"));
+}
+
+TEST(no_room_for_the_seller_means_nobody_noticed)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.inventory.right = Held();
+    // customers stand in every doorway cell and outside it
+    const Coord door = k->getDoor();
+    for (auto c : { door, Coord{ door.x - 1, door.y }, Coord{ door.x + 1, door.y }, k->getSpawn() })
+        w.spawn(new Juoppo(c));
+    const string msg = shoplift(w, k, "v1", 1);
+    CHECK(w.count(myyja) == 0);
+    CHECK(!k->sellerHostile);
+    CHECK(!contains(msg, "rynt"));
+    CHECK(w.player.inventory.right.what == Thing::Lenkki);
+}
+
+TEST(dead_seller_is_forgotten_by_his_shop)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    w.player.inventory.right = Held();
+    shoplift(w, k, "v1", 1);
+    Myyja* m = sellerOf(w);
+    CHECK(m != nullptr);
+    if (!m) return;
+    m->damage(m->stats.health);
+    w.level.cleanDead();
+    CHECK(k->seller == nullptr);
+}
+
+TEST(punched_dead_seller_drops_his_knife_once)
+{
+    World w;
+    common::realtimeEnabled = false;
+    auto* m = w.spawn(new Myyja(Coord{ 51, 50 }, SellerWeapon::Veitsi));
+    m->stats.health = 1;
+    w.player.move(DirectionNS::right, &w.level);
+    w.level.cleanDead();
+    size_t knives = 0;
+    for (auto i : w.level.items) if (i->type == EVeitsi) ++knives;
+    CHECK(knives == 1);
+}
+
 // ---- Alko ----
 
 TEST(alko_lets_everyone_in)

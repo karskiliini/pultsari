@@ -3716,7 +3716,8 @@ bool Myyja::move(Direction d, std::string& msg)
         case DirectionNS::left:  --check.x; break;
         default: return false;
     }
-    if (level->hit(check)) return false;
+    // he runs over whatever lies in the street, a corpse included
+    if (level->hitBuilding(check) || level->hitPerson(check)) return false;
     coord = check;
     common::checkBounds(coord);
     return true;
@@ -3802,6 +3803,8 @@ bool Myyja::interactThrow(Item* item, Person* source, std::string& msg)
 
 Item* Myyja::dropItem()
 {
+    if (looted) return nullptr;
+    looted = true;
     switch (weapon) {
         case SellerWeapon::Veitsi:   return new Veitsi(coord);
         case SellerWeapon::Pistooli: return new Pistooli(coord);

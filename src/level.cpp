@@ -985,6 +985,13 @@ void Level::cleanDead()
                 if (p->type == sotilas || p->type == myyja) {
                     if (Item* loot = p->dropItem()) items.push_back(loot);
                 }
+                // his shop forgets him, so the pointer is never read again
+                if (p->type == myyja) {
+                    for (auto b : buildings) {
+                        Kauppa* k = dynamic_cast<Kauppa*>(b);
+                        if (k && k->seller == p) k->seller = nullptr;
+                    }
+                }
                 // a person stays where he fell (after the loot, so the loot is picked first); rats do not
                 if (p->type != rotta) items.push_back(new Ruumis(p->coord));
                 delete p;
