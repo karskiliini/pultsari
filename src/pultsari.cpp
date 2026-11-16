@@ -1143,8 +1143,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             float aimAngle = 0.0f;
             float aimNow = 0.0f;        // aimAngle plus the wobble, where the weapon really points
             uint32_t aimClockMs = 0;
-            // the pistol: holstered, in hand (lowered, laser on the ground) or aimed
-            bool gunDrawn = false;
+            // the pistol: holstered, in hand (lowered, laser on the ground) or aimed; a pistol
+            // still in hand from the last level is still drawn
+            bool gunDrawn = player.inventory.inHand(Thing::Pistooli) != nullptr;
             bool rifleRaised = false;   // the weapon in hand is the assault rifle
             uint32_t msSinceShot = 1000;
             float facing = 0.0f; // direction of the last step, for raising the gun
@@ -1200,10 +1201,14 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             };
             // overlay row -> Player::decrementInventory / Item::createItem index (0: nothing to throw)
             auto invIndexToThrowNum = [&](int idx) -> uint32_t { return thingToThrowNum(rowThing(idx)); };
-            // the item leaves the hand only when it is actually thrown, so cancelling keeps it
+            // the item leaves the hand only when it is actually thrown, so cancelling keeps it;
+            // what cannot fly (a gun, a magazine) is put down at once
             auto startThrowAim = [&](Held* slot) {
                 const uint32_t throwNum = slot ? thingToThrowNum(slot->what) : 0;
-                if (throwNum > 0) {
+                if (throwNum == 0 && slot && !slot->empty()) {
+                    player.dropHeld(*slot);
+                    mode = Mode::Normal;
+                } else if (throwNum > 0) {
                     aimItemNum = throwNum;
                     aimSlot = slot;
                     aimAngle = -M_PI / 2.0f;
@@ -1213,11 +1218,6 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 } else {
                     printer->showMessage("Ei tavaraa heitett\xC3\xA4v\xC3\xA4ksi.", &level, false);
                 }
-            };
-
-            auto feedHunger = [&](uint32_t amount) {
-                player.stats.hunger += amount;
-                if (player.stats.hunger > 100) player.stats.hunger = 100;
             };
 
             // eat, drink or raise a gun: the thing in a slot
@@ -1320,11 +1320,21 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 'd': case 'l': queuedMove = InputNS::right; break;
                                 case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
                                 case 'q': player.drink(&level); break;   // a sip or the beer in one go
+                                case 'e': {  // the food in a hand; asks which when both hold some
+                                    Held* h = player.foodHand(&level);
+                                    if (h) player.eatHeld(*h, &level);
+                                    else if (!isFood(player.inventory.left.what) && !isFood(player.inventory.right.what))
+                                        printer->showMessage("Ei sy\xC3\xB6t\xC3\xA4v\xC3\xA4\xC3\xA4 k\xC3\xA4""dess\xC3\xA4.", &level, false);
+                                    break;
+                                }
                                 case 'f': {
-                                    // F asks what to throw: the menu opens on the first throwable thing carried
+                                    // F asks what to throw: the menu opens on the first throwable thing carried,
+                                    // else on the first thing at all (a gun or a magazine is put down)
                                     int first = -1;
                                     for (int r = 0; r < invItems() && first < 0; ++r)
                                         if (invIndexToThrowNum(r) > 0) first = r;
+                                    for (int r = 0; r < invItems() && first < 0; ++r)
+                                        if (rowThing(r) != Thing::None) first = r;
                                     if (first < 0) {
                                         printer->showMessage("Ei mit\xC3\xA4\xC3\xA4n heitett\xC3\xA4v\xC3\xA4\xC3\xA4.", &level, false);
                                     } else {

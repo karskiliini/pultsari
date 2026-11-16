@@ -61,11 +61,14 @@ Item* Item::createThing(Thing t, Coord coord)
     }
 }
 
-// into a free hand (or the pocket); with full hands it stays on the ground
-static bool pickUp(PlayerNS::Player* player, Thing t)
+// into a free hand (or the pocket); with full hands it stays on the ground. Something the player
+// put down comes back as it was (the rounds left, the sips left)
+static bool pickUp(const Item* item, PlayerNS::Player* player, Thing t)
 {
-    if (player->inventory.give(t)) return true;
-    if (player->printer) player->printer->showMessage(HINT_HANDS_FULL, player->level, false);
+    const Held h = item->held.what == t ? item->held : Inventory::fresh(t);
+    if (player->inventory.give(h)) return true;
+    const bool backTaken = t == Thing::Rynkky && !player->inventory.back.empty();
+    if (player->printer) player->printer->showMessage(backTaken ? HINT_AK_ON_BACK : HINT_HANDS_FULL, player->level, false);
     return false;
 }
 
@@ -91,7 +94,7 @@ std::string Kalja::getMsg() const {
 }
 bool Kalja::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Kalja);
+    return pickUp(this, player, Thing::Kalja);
 }
 
 // lonkka
@@ -102,7 +105,7 @@ std::string Lonkka::getMsg() const {
 }
 bool Lonkka::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Lonkka);
+    return pickUp(this, player, Thing::Lonkka);
 }
 
 // lenkki
@@ -113,7 +116,7 @@ std::string Lenkki::getMsg() const {
 }
 bool Lenkki::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Lenkki);
+    return pickUp(this, player, Thing::Lenkki);
 }
 
 // pamppu
@@ -124,7 +127,7 @@ std::string Pamppu::getMsg() const {
 }
 bool Pamppu::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Pamppu);
+    return pickUp(this, player, Thing::Pamppu);
 }
 
 // veitset
@@ -135,7 +138,7 @@ std::string Veitsi::getMsg() const {
 }
 bool Veitsi::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Veitsi);
+    return pickUp(this, player, Thing::Veitsi);
 }
 
 // ketjut
@@ -146,7 +149,7 @@ std::string Ketjut::getMsg() const {
 }
 bool Ketjut::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Ketjut);
+    return pickUp(this, player, Thing::Ketjut);
 }
 
 // kivi
@@ -157,7 +160,7 @@ std::string Kivi::getMsg() const {
 }
 bool Kivi::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Kivi);
+    return pickUp(this, player, Thing::Kivi);
 }
 
 // Bootsit
@@ -168,7 +171,7 @@ std::string Bootsit::getMsg() const {
 }
 bool Bootsit::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Bootsit);
+    return pickUp(this, player, Thing::Bootsit);
 }
 
 // Kala
@@ -179,7 +182,7 @@ std::string Kala::getMsg() const {
 }
 bool Kala::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Kala);
+    return pickUp(this, player, Thing::Kala);
 }
 
 // omppo
@@ -190,7 +193,7 @@ std::string Omppo::getMsg() const {
 }
 bool Omppo::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Omppo);
+    return pickUp(this, player, Thing::Omppo);
 }
 
 // banaani
@@ -201,7 +204,7 @@ std::string Banaani::getMsg() const {
 }
 bool Banaani::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Bansku);
+    return pickUp(this, player, Thing::Bansku);
 }
 
 // Raha
@@ -325,7 +328,7 @@ std::string Pistooli::getMsg() const {
     return "Löysit pistoolin! Vaarallinen kapistus.";
 }
 bool Pistooli::interact(PlayerNS::Player* player) {
-    return pickUp(player, Thing::Pistooli); // loaded: its own eight rounds
+    return pickUp(this, player, Thing::Pistooli); // loaded: its own eight rounds
 }
 
 // bus stop
@@ -444,7 +447,7 @@ std::string Granata::getMsg() const {
     return "Kranaatti! Vaarallinen löytö.";
 }
 bool Granata::interact(PlayerNS::Player* player) {
-    return pickUp(player, Thing::Granata);
+    return pickUp(this, player, Thing::Granata);
 }
 
 // vodka
@@ -454,7 +457,7 @@ std::string Vodka::getMsg() const {
     return "Vodka! Venäjän vesijohtovettä.";
 }
 bool Vodka::interact(PlayerNS::Player* player) {
-    return pickUp(player, Thing::Vodka);
+    return pickUp(this, player, Thing::Vodka);
 }
 
 // viina kellari (wine cellar door - victory item)
@@ -499,12 +502,12 @@ bool PutinPoyta::interact(PlayerNS::Player* player) {
 // assault rifle
 bool Rynkky::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Rynkky); // on the back, with its own magazine
+    return pickUp(this, player, Thing::Rynkky); // on the back, with its own magazine
 }
 
 bool Lipas::interact(PlayerNS::Player* player)
 {
-    return pickUp(player, Thing::Lipas);
+    return pickUp(this, player, Thing::Lipas);
 }
 
 // war map
@@ -563,6 +566,11 @@ bool Roska::interact(PlayerNS::Player* player)
 // a new coat is worn at once: it takes no hand
 bool Takki::interact(PlayerNS::Player* player)
 {
+    // your own is still whole: it stays on the ground for later
+    if (player->stats.health >= player->coatCap()) {
+        if (player->printer) player->printer->showMessage("Et tarvitse uutta takkia.", player->level, false);
+        return false;
+    }
     player->wearCoat(PlayerNS::INITIAL_HP);
     return true;
 }

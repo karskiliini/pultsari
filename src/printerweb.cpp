@@ -40,7 +40,7 @@ void PrinterWeb::printHelp()
     printChar("GRAND TYR MOSCOW · Русский Мир\n");
 }
 
-// buildings and streets for the overview map (Tab in the browser)
+// buildings and streets for the overview map (M in the browser)
 void PrinterWeb::sendCityMap(Level* l)
 {
     string j = "{\"t\":\"map\",\"w\":" + to_string(common::SIZEX) + ",\"h\":" + to_string(common::SIZEY) + ",\"b\":[";

@@ -20,6 +20,7 @@ struct Held {
 bool isSmall(Thing t);  // Lipas, Granata, Veitsi
 bool isDrink(Thing t);  // Kalja, Lonkka, Vodka
 bool isWeapon(Thing t); // Pistooli, Rynkky
+bool isFood(Thing t);   // Lenkki, Kala, Omppo, Bansku
 const char* thingName(Thing t);
 
 // the throw numbers of Player::decrementInventory / Item::createItem: 1 Kalja, 2 Lonkka, 3 Lenkki,

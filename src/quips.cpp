@@ -24,4 +24,6 @@ const std::string VODKA_SIP_LINES[6] = {
 const std::string HINT_HANDS_FULL = "Kädet ovat täynnä. Juo tai heitä jotain pois.";
 const std::string HINT_AK_HANDS = "AK roikkuu selässä, mutta kädet ovat varattuina. Juo pullo tyhjäksi ja heitä se pois.";
 const std::string HINT_PISTOL_BOTTLE = "Pistooli on vyöllä, mutta kädessä on pullo.";
+const std::string HINT_PISTOL_HANDS = "Pistooli on vyöllä, mutta kädet ovat täynnä. Heitä jotain pois.";
+const std::string HINT_AK_ON_BACK = "Selässä on jo rynkky.";
 const std::string KICK_BONA_MSG = "Kädet täynnä — potkaiset pullon rikki.";

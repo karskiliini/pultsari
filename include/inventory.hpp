@@ -53,7 +53,8 @@ struct Inventory {
         *s = Held();
         return true;
     }
-    bool give(Thing t, const std::string& pissSeller = "")
+    // a new one, as found or bought: a full bottle, a loaded gun
+    static Held fresh(Thing t, const std::string& pissSeller = "")
     {
         Held h;
         h.what = t;
@@ -61,7 +62,11 @@ struct Inventory {
         if (t == Thing::Pistooli) h.rounds = MAKAROV_ROUNDS;
         if (t == Thing::Rynkky) h.rounds = AK_ROUNDS;
         h.pissSeller = pissSeller;
-        return give(h);
+        return h;
+    }
+    bool give(Thing t, const std::string& pissSeller = "")
+    {
+        return give(fresh(t, pissSeller));
     }
     bool give(const Held& h)
     {
@@ -107,7 +112,7 @@ struct Inventory {
     }
 };
 
-// what a bottle thief can grab besides bottles, by index (see stolenItems in Person)
+// what a bottle thief can grab besides bottles, by index
 constexpr int STEALABLE_COUNT = 7;
 inline Thing stealableThing(int i)
 {
@@ -125,6 +130,12 @@ inline const char* stealableName(int i)
 {
     static const char* names[] = { "Baltikan", "Jaguarin", "vodkan", "makkaran", "voblan", "omenan", "banaanin" };
     return names[i < 0 || i >= STEALABLE_COUNT ? STEALABLE_COUNT - 1 : i];
+}
+inline const char* stealableName(Thing t)
+{
+    for (int i = 0; i < STEALABLE_COUNT; ++i)
+        if (stealableThing(i) == t) return stealableName(i);
+    return t == Thing::Tyhja ? "pullon" : "";
 }
 
 #endif

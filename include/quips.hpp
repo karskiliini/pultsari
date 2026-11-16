@@ -14,6 +14,10 @@ extern const std::string VODKA_SIP_LINES[6];
 extern const std::string HINT_HANDS_FULL;
 extern const std::string HINT_AK_HANDS;
 extern const std::string HINT_PISTOL_BOTTLE;
+// the hands hold something other than a bottle
+extern const std::string HINT_PISTOL_HANDS;
+// a second rifle found: the back holds only one
+extern const std::string HINT_AK_ON_BACK;
 extern const std::string KICK_BONA_MSG;
 
 #endif

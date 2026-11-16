@@ -70,6 +70,8 @@ public:
     void drinkHeld(Held& h, Level* level);
     // which hand a throw or use is meant for: the only full hand, or ask (v/o) when both are; null = none/cancel
     Held* chooseHand(Level* level);
+    // the hand real-time "e" eats from: the only one with food, or ask (v/o) when both have some
+    Held* foodHand(Level* level);
     // eat what the hand holds (the overlay row and "e" share this)
     void eatHeld(Held& h, Level* level);
     // the hand lets go of what it holds, to be thrown: its throw number (0 and untouched if it cannot fly)
@@ -106,6 +108,8 @@ public:
     bool receive(Thing t, const std::string& pissSeller = "");
     bool receive(const Held& h);
     void dropNear(Item* item);
+    // throwing what cannot fly: it is put down next to you as it is (rounds kept); false if empty
+    bool dropHeld(Held& h);
     bool executeThrow(uint32_t itemNum, DirectionNS::Direction dir);
     bool executeThrowAt(uint32_t itemNum, float angle);
     bool shoot(DirectionNS::Direction dir);
@@ -118,7 +122,7 @@ public:
     // the rifle off the back to the shoulder: both hands must be empty (false + a hint otherwise)
     bool shoulderAk();
     void lowerAk();
-    // the pocket's spare magazine fills a gun (None: the one in hand, else whichever needs it)
+    // a spare magazine (the pocket's, else one in a hand) fills a gun (None: the one in hand, else whichever needs it)
     bool reload(Thing gun = Thing::None);
     // the gun Space raises: the one in hand first; an empty rifle never blocks a loaded pistol
     Thing readyWeapon();

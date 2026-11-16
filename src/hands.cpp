@@ -15,6 +15,11 @@ bool isWeapon(Thing t)
     return t == Thing::Pistooli || t == Thing::Rynkky;
 }
 
+bool isFood(Thing t)
+{
+    return t == Thing::Lenkki || t == Thing::Kala || t == Thing::Omppo || t == Thing::Bansku;
+}
+
 const char* thingName(Thing t)
 {
     switch (t) {

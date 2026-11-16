@@ -43,8 +43,12 @@ class Game:
         self.p.kill(); self.p.wait()
 
 
+checked = []
+
+
 def check(name, ok, detail=''):
     print(('ok   ' if ok else 'FAIL ') + name + (f'  ({detail})' if detail and not ok else ''))
+    checked.append(name)
     if not ok: failures.append(name)
 
 
@@ -155,5 +159,5 @@ if __name__ == '__main__':
     test_q_drinks_in_realtime()
     test_arms_come_with_the_first_frame_and_only_on_change()
     test_random_play_does_not_crash()
-    print(f'{7 - len(failures)}/7 game tests passed')
+    print(f'{len(checked) - len(failures)}/{len(checked)} game tests passed')
     sys.exit(1 if failures else 0)

@@ -27,12 +27,14 @@ Then open http://localhost:3000.
 | Key | Action |
 | --- | --- |
 | W A S D or I J K L | Move. Walking into someone hits them; walking onto an item picks it up. |
-| Tab | City map (browser); in the terminal, the inventory |
-| Q | Open the inventory |
+| Tab | Open the inventory (Tab again closes it) |
+| M | City map (browser) |
+| Q | Drink (a sip of vodka, a beer in one go) |
+| E | Eat the food in a hand (asks which hand when both hold food) |
 | W / S (inventory) | Select an item |
 | E (inventory) | Use: drink, eat or draw the pistol |
 | F (inventory) | Throw: starts aiming |
-| F | Choose something to throw |
+| F | Choose something to throw; a gun or a magazine is put down at your feet, rounds kept |
 | Space | Aim the pistol (if you have one); Space again fires |
 | A / D (aiming) | Turn the aim |
 | Space (aiming) | Throw or shoot |

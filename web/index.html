@@ -128,7 +128,8 @@
     </div>
     <div class="controls">
         <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> liiku (kävele päin = lyö / poimi / avaa) ·
-        <kbd>Tab</kbd> tavarat (<kbd>E</kbd> käytä, <kbd>F</kbd> heitä) · <kbd>Q</kbd> juo · <kbd>F</kbd> heitä jotain ·
+        <kbd>Tab</kbd> tavarat (<kbd>E</kbd> käytä, <kbd>F</kbd> heitä) · <kbd>Q</kbd> juo · <kbd>E</kbd> syö ·
+        <kbd>F</kbd> heitä jotain (ase tai lipas lasketaan maahan) · <kbd>M</kbd> kaupungin kartta ·
         <kbd>Välilyönti</kbd> nosta ase / ammu · <kbd>Esc</kbd> laske ase / vyölle ·
         tähtäys: <kbd>A</kbd>/<kbd>D</kbd> käännä, <kbd>Välilyönti</kbd> heitä/ammu, <kbd>Esc</kbd> peru ·
         kävele seisovaan autoon = kaappaa ·
@@ -254,8 +255,10 @@
                 held.add(k);
             }
             let ch = null;
-            // Tab is the city map, drawn by the page; it never reaches the game
-            if (e.key === 'Tab') { e.preventDefault(); Game.toggleMap(); return; }
+            // M is the city map, drawn by the page; it never reaches the game. Tab goes to the game
+            // (the inventory) instead of moving the browser's focus
+            if (e.key === 'm' || e.key === 'M') { e.preventDefault(); Game.toggleMap(); return; }
+            if (e.key === 'Tab') ch = '\t';
             else if (e.key === 'Escape') ch = '\x1b';
             else if (e.key === 'Enter') ch = '\r';
             else if (e.key.length === 1) ch = e.key.toLowerCase();

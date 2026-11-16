@@ -343,6 +343,15 @@ void Player::eatHeld(Held& h, Level* level)
     }
 }
 
+// the hand "e" eats from: the only one with food, or ask (v/o) when both have some; null = none/cancel
+Held* Player::foodHand(Level* level)
+{
+    Held* l = &inventory.left;
+    Held* r = &inventory.right;
+    if (isFood(l->what) && isFood(r->what)) return chooseHand(level);
+    return isFood(l->what) ? l : isFood(r->what) ? r : nullptr;
+}
+
 Held* Player::chooseHand(Level* level)
 {
     Held* l = &inventory.left;
@@ -560,20 +569,35 @@ bool Player::decrementInventory(uint32_t index)
 
 bool Player::receive(Thing t, const std::string& pissSeller)
 {
-    Held h = Inventory::heldOf(t);
-    if (t == Thing::Vodka) h.fill = VODKA_SIPS;
-    if (t == Thing::Pistooli) h.rounds = MAKAROV_ROUNDS;
-    if (t == Thing::Rynkky) h.rounds = AK_ROUNDS;
-    h.pissSeller = pissSeller;
-    return receive(h);
+    return receive(Inventory::fresh(t, pissSeller));
+}
+
+// the map item for something carried, as it was in the hand (rounds, sips)
+static Item* heldItem(const Held& h, const Coord& c)
+{
+    Item* i = Item::createThing(h.what, c);
+    if (i) i->held = h;
+    return i;
 }
 
 bool Player::receive(const Held& h)
 {
     if (h.empty()) return false;
     if (inventory.give(h)) return true;
-    dropNear(Item::createThing(h.what, coord));
+    dropNear(heldItem(h, coord));
     return false;
+}
+
+// what cannot fly (a gun, a magazine) is put down next to you as it is, rounds and all
+bool Player::dropHeld(Held& h)
+{
+    if (h.empty()) return false;
+    const std::string name = thingName(h.what);
+    dropNear(heldItem(h, coord));
+    if (&h == &inventory.back) inventory.akRaised = false;
+    h = Held();
+    if (printer) printer->showMessage("Lasket maahan: " + name + ".", level, false);
+    return true;
 }
 
 // a free cell next to you, or your own if there is none
@@ -586,7 +610,8 @@ void Player::dropNear(Item* item)
     for (const auto& o : d) {
         const Coord c { (uint32_t)((int)coord.x + o[0]), (uint32_t)((int)coord.y + o[1]) };
         if (c.x >= common::SIZEX || c.y >= common::SIZEY) continue;
-        if (level->hit(c) || level->getVehicleAt(c)) continue;
+        // not on a corpse either: the body would be stepped on, not the thing
+        if (level->hit(c) || level->getItem(c) || level->getVehicleAt(c)) continue;
         item->coord = c;
         break;
     }
@@ -612,15 +637,16 @@ static Coordinate<int> dirToCoord(DirectionNS::Direction d) {
 bool Player::throwItem()
 {
     Held* hand = chooseHand(level);
+    // empty hands: a small thing from the pocket (a grenade, a knife) goes as well
+    if (!hand && inventory.left.empty() && inventory.right.empty() && !inventory.pocket.empty())
+        hand = &inventory.pocket;
     if (!hand) {
         printer->showMessage(inventory.freeHands() == 2 ? "Ei mit\xC3\xA4n heitett\xC3\xA4v\xC3\xA4\xC3\xA4." : "Et heit\xC3\xA4 mit\xC3\xA4\xC3\xA4n.", level, false);
         return false;
     }
+    // a gun or a magazine does not fly: it is put down, and the hand is free
+    if (thingToThrowNum(hand->what) == 0) return dropHeld(*hand);
     const uint32_t number = takeThrowable(*hand);
-    if (number == 0) {
-        printer->showMessage("T\xC3\xA4t\xC3\xA4 ei voi heitt\xC3\xA4\xC3\xA4.", level, false);
-        return false;
-    }
 
     auto dir = getDirection(level, printer);
     return executeThrow(number, dir);
@@ -725,7 +751,9 @@ bool Player::drawPistol()
     if (inventory.belt.what != Thing::Pistooli) return false;
     Held* hand = inventory.freeHands() == 0 ? nullptr : inventory.right.empty() ? &inventory.right : &inventory.left;
     if (!hand) {
-        if (printer) printer->showMessage(HINT_PISTOL_BOTTLE, level, false);
+        // a bottle can be drunk and thrown away; anything else, the hands are just full
+        const bool bottle = inventory.bottlesInHands() > 0;
+        if (printer) printer->showMessage(bottle ? HINT_PISTOL_BOTTLE : HINT_PISTOL_HANDS, level, false);
         return false;
     }
     *hand = inventory.belt;
@@ -760,7 +788,9 @@ void Player::lowerAk()
 
 bool Player::reload(Thing gun)
 {
-    if (inventory.pocket.what != Thing::Lipas) return false;
+    // the pocket's spare first, then one in a hand
+    Held* mag = inventory.pocket.what == Thing::Lipas ? &inventory.pocket : inventory.inHand(Thing::Lipas);
+    if (!mag) return false;
     Held* g = nullptr;
     if (gun == Thing::None) {
         // the gun in hand, else whichever is not full
@@ -779,14 +809,14 @@ bool Player::reload(Thing gun)
     const uint8_t full = g->what == Thing::Rynkky ? AK_ROUNDS : MAKAROV_ROUNDS;
     if (g->rounds >= full) return false;
     g->rounds = full;
-    inventory.pocket = Held();
+    *mag = Held();
     if (printer) printer->showMessage("Vaihdat lippaan.", level, false);
     return true;
 }
 
 Thing Player::readyWeapon()
 {
-    const bool spare = inventory.pocket.what == Thing::Lipas;
+    const bool spare = inventory.find(Thing::Lipas) != nullptr;
     auto canFire = [&](const Held* g) { return g && (g->rounds > 0 || spare); };
     const Held* inHand = inventory.inHand(Thing::Pistooli);
     const Held* pistol = inventory.find(Thing::Pistooli);
@@ -805,7 +835,7 @@ void Player::maybeDropPocket(bool force)
 {
     if (inventory.pocket.empty()) return;
     if (!force && !common::random(POCKET_DROP_PERCENT)) return;
-    Item* i = Item::createThing(inventory.pocket.what, coord);
+    Item* i = heldItem(inventory.pocket, coord);
     inventory.pocket = Held();
     if (i) {
         i->coord = coord;
@@ -828,6 +858,12 @@ void Player::wearCoat(uint32_t hp)
     usedCoat = false;
 }
 
+// these run after chaseTarget and arrest; a brawl would only stop them
+static bool chasesLikeCops(const Person* p)
+{
+    return p->type == poliisi || p->type == vartija || p->type == myyja || p->type == fsb || p->type == sotilas;
+}
+
 bool Player::stripCorpseCoat(Ruumis* corpse)
 {
     if (!corpse || corpse->coatTaken) return false;
@@ -843,7 +879,8 @@ bool Player::stripCorpseCoat(Ruumis* corpse)
         p->alerted = true;
         p->lastKnownPos = coord;
         p->alertCooldown = 15;
-        p->brawlActions = 15;   // the ones who do not chase like cops come at you with their fists
+        // the ones who do not chase like cops come at you with their fists
+        if (!chasesLikeCops(p)) p->brawlActions = 15;
         p->say(common::random(50) ? "Ruumiinry\xC3\xB6st\xC3\xA4j\xC3\xA4!" : "Paskiainen!");
     }
     return true;
@@ -878,14 +915,16 @@ static Building* checkWalls(Level* level, const Coord& c)
     return nullptr;
 }
 
+// what lies on a corpse is picked up before the body is looked at
 static Item* checkItems(Level* level, const Coord& c)
 {
+    Item* corpse = nullptr;
     for (auto& i : level->items) {
-        if (i->coord == c) {
-            return i;
-        }
+        if (i->coord != c) continue;
+        if (i->type != ERuumis) return i;
+        if (!corpse) corpse = i;
     }
-    return nullptr;
+    return corpse;
 }
 
 void Player::drunkStareComment()
@@ -1070,11 +1109,11 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             msg = "Sait kiinni! Otat takaisin:";
             if (p->stolenMoney > 0) msg += " " + std::to_string(p->stolenMoney) + " ruplaa,";
             if (p->stolenBottles > 0) msg += " " + std::to_string(p->stolenBottles) + (p->stolenBottles == 1 ? " pullon," : " pulloa,");
-            for (int k : p->stolenItems) msg += string(" ") + stealableName(k) + ",";
+            for (const Held& h : p->stolenItems) msg += string(" ") + stealableName(h.what) + ",";
             msg.back() = '.';
             // what does not fit the hands is dropped next to you
             for (uint32_t k = 0; k < p->stolenBottles; ++k) receive(Thing::Tyhja);
-            for (int k : p->stolenItems) receive(stealableThing(k));
+            for (const Held& h : p->stolenItems) receive(h);
             stats.money += p->stolenMoney;
             p->stolenMoney = 0;
             p->stolenBottles = 0;

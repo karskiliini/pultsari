@@ -73,6 +73,8 @@ public:
     float fx = 0, fy = 0, fdx = 0, fdy = 0;
     uint32_t flight = 0;
     bool blocksLOS = false;
+    // put down by the player: what it was in the hand (rounds, sips); empty means a fresh one
+    Held held;
 };
 
 class Bona : public Item {

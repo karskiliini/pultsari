@@ -708,7 +708,7 @@ std::vector<OverlayItem> overlayItems(const Inventory* inventory)
         const Held& h = *s.second;
         rows.push_back({ s.first, h.empty() ? std::string() : heldText(h), h.what, h.empty() ? 0u : 1u,
                          useLabel(h.what)[0] == '[',
-                         thingToThrowNum(h.what) != 0, useLabel(h.what) });
+                         !h.empty(), useLabel(h.what) });   // what cannot fly is put down with F
     }
     return rows;
 }

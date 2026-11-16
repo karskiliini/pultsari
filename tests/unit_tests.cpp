@@ -1,5 +1,6 @@
 // Unit tests for game logic: shops, break-ins, drones, exhaust, vision.
 // Build and run with `make test`.
+#include <csignal>
 #include "quips.hpp"
 #include "aagun.hpp"
 #include "patrol.hpp"
@@ -1864,7 +1865,7 @@ TEST(catching_a_bottle_thief_gets_everything_back)
     World w;
     auto* j = w.spawn(new Juoppo(Coord{ 51, 50 }));
     j->stolenBottles = 1;
-    j->stolenItems = { 0, 3 };   // a Baltika and a sausage
+    j->stolenItems = { Inventory::heldOf(Thing::Kalja), Inventory::heldOf(Thing::Lenkki) };
     j->stolenMoney = 5;
     hold(w.player.inventory, Thing::None, Thing::None);
     const uint32_t money = w.player.stats.money;
@@ -2467,6 +2468,8 @@ TEST(driving_a_bullet_can_kill_the_driver)
 int main(int argc, char** argv)
 {
     const string only = argc > 1 ? argv[1] : "";
+    // a feedKeysLater() key nobody read may be written after the next test swapped stdin
+    std::signal(SIGPIPE, SIG_IGN);
     int ran = 0;
     for (const auto& t : tests()) {
         if (!only.empty() && !contains(t.name, only)) continue;
@@ -4467,4 +4470,189 @@ TEST(no_shift_change_in_moscow)
     for (uint32_t i = 0; i < Level::WAR_SHIFT_TICKS * 2; ++i) w.level.warTick();
     CHECK(!w.level.rearOpen);
     CHECK(!w.level.reachedRear(Coord{ 0, 50 }));
+}
+
+// ---- final review fixes: dropping, reloading from hand, corpses, the thief's loot ----
+
+static Item* firstItem(const Level& level, ItemType t)
+{
+    for (auto i : level.items) if (i->type == t) return i;
+    return nullptr;
+}
+
+TEST(two_pistols_one_can_be_dropped)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    inv.left = loaded(Thing::Pistooli);
+    inv.right = loaded(Thing::Pistooli);
+    CHECK(inv.freeHands() == 0);
+    feedKeys("o");                                  // the right hand
+    CHECK(w.player.throwItem());
+    CHECK(inv.right.empty());
+    CHECK(inv.left.what == Thing::Pistooli);
+    CHECK(itemAt(w.level, EPistooli));              // at your feet, not flying
+    CHECK(inv.give(Thing::Kalja));                  // a hand is free again
+}
+
+TEST(dropped_pistol_keeps_its_rounds)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::None);
+    inv.right = loaded(Thing::Pistooli);
+    inv.right.rounds = 3;
+    CHECK(w.player.throwItem());                    // the only full hand: no question
+    CHECK(inv.right.empty());
+    Item* gun = firstItem(w.level, EPistooli);
+    CHECK(gun != nullptr);
+    if (!gun) return;
+    CHECK(gun->coord.distance(w.player.coord) <= 1);
+    w.player.coord = Coord{ gun->coord.x - 1, gun->coord.y };
+    w.player.move(DirectionNS::right, &w.level);
+    Held* h = inv.inHand(Thing::Pistooli);
+    CHECK(h && h->rounds == 3);                     // the same gun, not a fresh one
+    CHECK(!itemAt(w.level, EPistooli));
+
+    // a magazine is dropped too, a rifle in hand as well
+    World v;
+    hold(v.player.inventory, Thing::Lipas, Thing::None);
+    CHECK(v.player.throwItem());
+    CHECK(v.player.inventory.left.empty());
+    CHECK(itemAt(v.level, ELipas));
+}
+
+TEST(reload_from_hand_held_lipas)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::Lipas, Thing::None);
+    inv.right = Inventory::heldOf(Thing::Pistooli);   // no rounds
+    CHECK(inv.pocket.empty());
+    CHECK(w.player.reload(Thing::Pistooli));
+    CHECK(inv.right.rounds == MAKAROV_ROUNDS);
+    CHECK(inv.left.empty());
+    CHECK(w.player.readyWeapon() == Thing::Pistooli);
+
+    // the pocket's magazine goes first
+    inv.right.rounds = 0;
+    inv.left = Inventory::heldOf(Thing::Lipas);
+    inv.pocket = Inventory::heldOf(Thing::Lipas);
+    CHECK(w.player.reload());
+    CHECK(inv.pocket.empty());
+    CHECK(inv.left.what == Thing::Lipas);
+
+    // a spare in hand counts for Space too
+    inv.right.rounds = 0;
+    CHECK(w.player.readyWeapon() == Thing::Pistooli);
+    CHECK(w.player.shootAt(0.0f));
+    CHECK(inv.left.empty());
+}
+
+TEST(npc_walks_over_corpse)
+{
+    World w(Coord{ 10, 10 });
+    auto* m = w.spawn(new Mummo(Coord{ 60, 60 }));
+    w.level.addItem(new Ruumis(Coord{ 61, 60 }));
+    CHECK(!w.level.hit(Coord{ 61, 60 }));
+    std::string msg;
+    m->move(DirectionNS::right, msg);
+    CHECK(m->coord == (Coord{ 61, 60 }));
+    w.level.addItem(new Kivi(Coord{ 62, 60 }));
+    m->move(DirectionNS::right, msg);
+    CHECK(m->coord == (Coord{ 61, 60 }));            // other things still block
+}
+
+TEST(a_caught_thief_gives_back_the_same_bottle)
+{
+    World w;
+    auto* j = w.spawn(new Juoppo(Coord{ 51, 50 }));
+    Held vodka = Inventory::heldOf(Thing::Vodka);
+    vodka.fill = 2;
+    vodka.pissSeller = "Igor";
+    j->stolenItems = { vodka };
+    hold(w.player.inventory, Thing::None, Thing::None);
+    w.player.move(DirectionNS::right, &w.level);
+    Held* h = w.player.inventory.find(Thing::Vodka);
+    CHECK(h && h->fill == 2 && h->pissSeller == "Igor");
+    CHECK(w.printer.saw("vodkan"));
+}
+
+TEST(cops_who_see_a_coat_stripped_chase_and_do_not_brawl)
+{
+    World w;
+    w.player.stats.health = 2;
+    auto* corpse = new Ruumis(Coord{ 51, 50 });
+    w.level.addItem(corpse);
+    auto* cop = w.spawn(new Cop(Coord{ 55, 50 }));
+    auto* passer = w.spawn(new Kansalainen(Coord{ 51, 53 }));
+    CHECK(w.player.stripCorpseCoat(corpse));
+    CHECK(cop->chaseTarget == &w.player);
+    CHECK(cop->brawlActions == 0);
+    CHECK(passer->brawlActions > 0);
+}
+
+TEST(coat_on_the_ground_stays_at_full_health)
+{
+    World w;
+    w.player.stats.health = PlayerNS::INITIAL_HP;
+    w.level.addItem(new Takki(Coord{ 51, 50 }));
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(itemAt(w.level, ETakki));
+    CHECK(w.printer.saw("Et tarvitse uutta takkia."));
+
+    w.player.stats.health = 3;
+    w.player.coord = Coord{ 50, 50 };
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(!itemAt(w.level, ETakki));
+    CHECK(w.player.stats.health == PlayerNS::INITIAL_HP);
+}
+
+TEST(second_ak_says_the_back_is_taken)
+{
+    World w;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    w.player.inventory.back = loaded(Thing::Rynkky);
+    w.level.addItem(new Rynkky(Coord{ 51, 50 }));
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(itemAt(w.level, ERynkky));
+    CHECK(w.printer.saw("Sel\xC3\xA4ss\xC3\xA4 on jo rynkky."));
+    CHECK(!w.printer.saw(HINT_HANDS_FULL));
+}
+
+TEST(pistol_hint_says_hands_full_without_a_bottle)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    inv.hasBelt = true;
+    hold(inv, Thing::Lenkki, Thing::Kivi);
+    inv.belt = loaded(Thing::Pistooli);
+    CHECK(!w.player.drawPistol());
+    CHECK(w.printer.saw(HINT_PISTOL_HANDS));
+    CHECK(!w.printer.saw(HINT_PISTOL_BOTTLE));
+}
+
+TEST(e_eats_the_food_in_a_hand)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::Kalja, Thing::Lenkki);
+    CHECK(w.player.foodHand(&w.level) == &inv.right);   // the only food: no question
+    hold(inv, Thing::Kalja, Thing::Kivi);
+    CHECK(w.player.foodHand(&w.level) == nullptr);
+    hold(inv, Thing::Omppo, Thing::Lenkki);
+    feedKeys("v");
+    CHECK(w.player.foodHand(&w.level) == &inv.left);    // both: asked
+    CHECK(w.printer.saw("Kummalla"));
+}
+
+TEST(empty_hands_throw_from_the_pocket)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::None);
+    inv.pocket = Inventory::heldOf(Thing::Veitsi);
+    feedKeys("s");                                    // down
+    CHECK(w.player.throwItem());
+    CHECK(inv.pocket.empty());
 }

@@ -32,7 +32,7 @@ struct OverlayItem {
     Thing what;
     uint32_t count;       // 1 when the slot holds something
     bool canUse;
-    bool canThrow;
+    bool canThrow;        // F does something: throws it, or puts down what cannot fly
     const char* useLabel;
 };
 // the inventory overlay rows: the slots, in the order the game's inventory keys expect

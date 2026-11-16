@@ -1072,11 +1072,12 @@ bool Level::hitPerson(const Coord& c) const
     return false;
 }
 
+// a corpse lies flat: it never blocks the way
 bool Level::hitItem(const Coord& c) const
 {
     for (const auto& i : items)
     {
-        if (i->coord == c)
+        if (i->coord == c && i->type != ERuumis)
             return true;
     }
     return false;
@@ -1451,18 +1452,22 @@ static void approachStep(Level* level, Person* p, const Coord& target)
     p->coord = best;
 }
 
-// one bottle out of the hands, an empty one first: -1 for an empty, the stealableThing() index of a
-// drink, or -2 if there was none
-static int takeBottle(Inventory& inv)
+// one bottle out of the hands, an empty one first, as it was (sips, seller); empty if there was none
+static Held takeBottle(Inventory& inv)
 {
-    if (inv.take(Thing::Tyhja)) return -1;
+    Held taken;
+    if (inv.take(Thing::Tyhja)) return Inventory::heldOf(Thing::Tyhja);
     for (int k = 0; k < STEALABLE_COUNT; ++k) {
         const Thing t = stealableThing(k);
         if (!isDrink(t)) continue;
-        if (inv.left.what == t) { inv.left = Held(); return k; }
-        if (inv.right.what == t) { inv.right = Held(); return k; }
+        for (Held* h : { &inv.left, &inv.right }) {
+            if (h->what != t) continue;
+            taken = *h;
+            *h = Held();
+            return taken;
+        }
     }
-    return -2;
+    return taken;
 }
 
 static void stealBottles(Level* level, Person* p, Player* player)
@@ -1484,9 +1489,9 @@ static void stealBottles(Level* level, Person* p, Player* player)
 
     // the poor grab every bottle in your hands, full or empty
     uint32_t bottles = 0;
-    for (int k; (k = takeBottle(inv)) != -2; ++bottles) {
-        if (k == -1) ++p->stolenBottles;
-        else p->stolenItems.push_back(k);
+    for (Held h; !(h = takeBottle(inv)).empty(); ++bottles) {
+        if (h.what == Thing::Tyhja) ++p->stolenBottles;
+        else p->stolenItems.push_back(h);
     }
     string msg = name + " kahmaisi sinulta " + std::to_string(bottles) + (bottles == 1 ? " pullon" : " pulloa");
 
@@ -1494,8 +1499,10 @@ static void stealBottles(Level* level, Person* p, Player* player)
     for (int tries = 0; tries < 2; ++tries) {
         if (!common::random(45)) continue;
         const int k = std::rand() % STEALABLE_COUNT;
-        if (!inv.take(stealableThing(k))) continue;
-        p->stolenItems.push_back(k);
+        Held* h = inv.find(stealableThing(k));
+        if (!h) continue;
+        p->stolenItems.push_back(*h);
+        *h = Held();
         msg += string(", ") + stealableName(k);
     }
     if (player->stats.money > 0 && common::random(25)) {

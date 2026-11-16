@@ -110,7 +110,7 @@
         ctx.textAlign = 'center';
         ctx.fillStyle = '#777';
         ctx.font = '11px ui-monospace, Menlo, monospace';
-        ctx.fillText('Tab sulkee kartan', W / 2, H - 8);
+        ctx.fillText('M sulkee kartan', W / 2, H - 8);
     }
 
     // colour mood follows the promilles: near a hangover the world goes dark and
