@@ -257,7 +257,7 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
                 p = new Juoppo(coord);
                 break;
             case sotilas:
-                p = new Sotilas(coord);
+                p = new Sotilas(coord, common::random(20));   // one in five commands the rest
                 break;
             case ilmatorjunta:
                 p = new ITYksikko(coord);
@@ -1319,7 +1319,7 @@ std::string Level::nameOf(const Person* p) const
         case diileri:      return "Diileri";
         case veteraani:    return dynamic_cast<const Veteraani*>(p)->oneLegged ? "Jalkapuoli veteraani" : "Veteraani";
         case fsb:          return "FSB-agentti";
-        case sotilas:      return "Sotilas";
+        case sotilas:      return dynamic_cast<const Sotilas*>(p)->who();
         case ilmatorjunta: return "Ilmatorjuntamies";
         case vartija:      return "Vartija";
         case putin:        return "Vova";

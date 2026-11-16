@@ -302,8 +302,10 @@ const char* personColor(const Person* p)
         case gerasimov:    return "1;38;5;71";          // general's green with gold
         case fsb:          return "1;38;5;245";         // black suit, grey in the dark
         case poliisi:      return "1;38;5;68";          // politsija blue-grey
-        case sotilas:
-        case ilmatorjunta: return "38;5;64";            // camouflage green
+        case sotilas:      return static_cast<const Sotilas*>(p)->officer
+                               ? "1;38;5;106"           // officer: brighter green, bold
+                               : "38;5;64";             // camouflage green
+        case ilmatorjunta: return "38;5;64";
         case veteraani:    return "38;5;143";           // old khaki
         case vartija:      return "38;5;250";           // grey security uniform
         case mummo:        return "38;5;168";           // pink headscarf

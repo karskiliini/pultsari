@@ -2106,9 +2106,9 @@ Item* Veteraani::dropItem()
 
 // ============ Sotilas (Soldier) ============
 
-Sotilas::Sotilas(const Coord& pos) : Person(sotilas, pos)
+Sotilas::Sotilas(const Coord& pos, bool officer) : Person(sotilas, pos), officer(officer)
 {
-    stats.health = 15;
+    stats.health = officer ? 22 : 15;
     visionRange = 11;
 }
 
@@ -2132,7 +2132,7 @@ bool Sotilas::move(Direction d, std::string& msg)
         // at the front the player is one of them: a comrade just squeezes past
         if (p && p->type != sotilas && p->type != poliisi && p->type != fsb &&
             !(level->isWarLevel && p->type == pelaaja)) {
-            msg = "Sotilas tönäisee tieltään!";
+            msg = who() + " tönäisee tieltään!";
             p->damage(std::rand()%2 + 1);
         }
     }
@@ -2203,7 +2203,15 @@ void Sotilas::npcAct()
     // at the front the player is already where they wanted him: a comrade, not a catch
     if (level->isWarLevel) {
         if (random(40)) move(randomDirection(), msg);
-        if (random(4)) {
+        if (officer && random(4)) {
+            static const char* orders[] = {
+                "Eteenpäin, rotat! Takaisin ei ole tietä!",
+                "Kuka käski istua? Kaivakaa!",
+                "Seuraava aalto lähtee kymmenen minuutin päästä.",
+                "Kuka tuo juoppo on? No, rynnäkköön sekin.",
+            };
+            say(orders[std::rand() % 4]);
+        } else if (random(4)) {
             static const char* lines[] = {
                 "Taas niitä FPV:itä... kuuletko sen ulinan?",
                 "Kuka vei verkon kaivannon päältä?",
@@ -2230,9 +2238,9 @@ void Sotilas::npcAct()
             uint32_t dmg = std::rand()%3 + 3;
             if (random(60)) {
                 p->damage(dmg);
-                msg = "Sotilas ampuu sinua!";
+                msg = who() + " ampuu sinua!";
             } else {
-                msg = "Sotilas ampuu mutta menee ohi!";
+                msg = who() + " ampuu mutta menee ohi!";
             }
             level->alertCops(this);
             level->audio.addSound(coord, SoundType::Gunshot,
@@ -2246,7 +2254,15 @@ void Sotilas::npcAct()
             Direction d = randomDirection();
             move(d, msg);
         }
-        if (random(5)) {
+        if (officer && random(5)) {
+            static const char* orders[] = {
+                "Sotilas! Ota tuo juoppo kiinni!",
+                "Paperit! Nopeasti!",
+                "Rintamalle tarvitaan miehiä, sinäkin kelpaat.",
+                "Ryhdikkäästi, svinya!",
+            };
+            say(orders[std::rand()%4]);
+        } else if (random(5)) {
             static const char* lines[] = {
                 "Stoi!",
                 "Paperit!",
@@ -2264,11 +2280,16 @@ void Sotilas::npcAct()
     report(msg);
 }
 
-// a fallen soldier's belt (30 %), now and then his coat; only once
+// a fallen soldier's belt (30 %), now and then his coat; an officer's Makarov (half the time) or
+// his belt; only once
 Item* Sotilas::dropItem()
 {
     if (looted) return nullptr;
     looted = true;
+    if (officer) {
+        if (common::random(50)) return new Pistooli(coord);
+        return common::random(60) ? static_cast<Item*>(new Vyo(coord)) : new Takki(coord);
+    }
     if (common::random(30)) return new Vyo(coord);
     if (common::random(10)) return new Takki(coord);
     return nullptr;
@@ -2277,11 +2298,11 @@ Item* Sotilas::dropItem()
 bool Sotilas::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja && level->isWarLevel) {
-        msg = "Sotilas tuuppaa takaisin: 'Mene omaan kuoppaasi, juoppo!'";
+        msg = who() + " tuuppaa takaisin: 'Mene omaan kuoppaasi, juoppo!'";
         return true;
     }
     if (source->type == pelaaja) {
-        msg = "Sotilas iskee takaisin kiväärin perällä!";
+        msg = officer ? "Upseeri iskee takaisin pistoolin perällä!" : "Sotilas iskee takaisin kiväärin perällä!";
         uint32_t dmg = std::rand()%4 + 4;
         source->damage(dmg);
         dynamic_cast<Player*>(source)->inJail = true;
@@ -2293,10 +2314,10 @@ bool Sotilas::interact(std::string& msg, Person* source)
 bool Sotilas::interactThrow(Item* item, Person* source, std::string& msg)
 {
     if (source->type == pelaaja && level->isWarLevel) {
-        msg = "Sotilas väistää: 'Heitä ukropeja, älä minua!'";
+        msg = who() + " väistää: 'Heitä ukropeja, älä minua!'";
         return true;
     }
-    msg = "Sotilas väistää ja ampuu!";
+    msg = who() + " väistää ja ampuu!";
     damage(1);
     if (source->type == pelaaja) {
         source->damage(std::rand()%3 + 2);

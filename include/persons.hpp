@@ -294,18 +294,21 @@ public:
 
 class Sotilas : public Person {
 public:
-    Sotilas(const Coord& pos);
+    // an officer (S) is a soldier (s) with more to lose: tougher, a pistol on his belt
+    Sotilas(const Coord& pos, bool officer = false);
     virtual ~Sotilas() = default;
 
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
-    virtual std::string typeToChar() const { return "S"; };
-    // the corpse's belt (sometimes a coat), once
+    virtual std::string typeToChar() const { return officer ? "S" : "s"; };
+    std::string who() const { return officer ? "Upseeri" : "Sotilas"; }
+    // the corpse's belt (sometimes a coat; an officer's pistol), once
     Item* dropItem();
     bool looted = false;
     bool firstMove = true;
+    bool officer = false;
     uint32_t ammo = 4;
 };
 

@@ -3765,6 +3765,44 @@ TEST(soldier_corpse_sometimes_leaves_a_belt)
     CHECK(belts > 60 && belts < 130);
 }
 
+TEST(soldiers_are_small_s_officers_big_S)
+{
+    World w;
+    auto* s = w.spawn(new Sotilas(Coord{ 60, 50 }));
+    auto* o = w.spawn(new Sotilas(Coord{ 62, 50 }, true));
+    CHECK(s->typeToChar() == "s");
+    CHECK(o->typeToChar() == "S");
+    CHECK(o->type == sotilas);                       // still a soldier to everyone else
+    CHECK(o->stats.health > s->stats.health);
+    CHECK(w.level.nameOf(s) == "Sotilas");
+    CHECK(w.level.nameOf(o) == "Upseeri");
+    // now and then a soldier the level makes is an officer
+    int officers = 0, soldiers = 0;
+    for (int n = 0; n < 200; ++n) {
+        Person* p = w.level.createPerson(w.level.freePosition(), sotilas);
+        if (!p) continue;
+        ++soldiers;
+        if (p->typeToChar() == "S") ++officers;
+    }
+    CHECK(soldiers > 150);
+    CHECK(officers > soldiers / 20 && officers < soldiers / 2);
+}
+
+TEST(officer_corpse_leaves_a_pistol_or_a_belt)
+{
+    int pistols = 0, belts = 0;
+    for (int n = 0; n < 300; ++n) {
+        Sotilas o(Coord{ 10, 10 }, true);
+        Item* i = o.dropItem();
+        if (i && i->type == EPistooli) ++pistols;
+        if (i && i->type == EVyo) ++belts;
+        CHECK(o.dropItem() == nullptr);
+        delete i;
+    }
+    CHECK(pistols > 100 && pistols < 200);
+    CHECK(belts > 40);
+}
+
 TEST(ak_needs_both_hands_empty_and_hints)
 {
     World w;
