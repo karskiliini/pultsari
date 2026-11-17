@@ -1104,6 +1104,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         if (gameState.phase != GamePhase::War) populateRoads(level);
         populateBuildings(level, gameState);
         populatePersons(level, gameState);
+        // the last level of the front: an officer who holds, and our own guns behind us
+        if (gameState.phase == GamePhase::War && gameState.warStage >= 3) level.prepareHold();
         populateItems(level, gameState);
         populateVehicles(level);
         if (startByCar && !gameState.hasBeenToWar) parkCarByPlayer(level, player.coord);

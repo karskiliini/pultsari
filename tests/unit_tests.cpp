@@ -7,6 +7,7 @@
 #include "animation.hpp"
 #include "armart.hpp"
 #include "building.hpp"
+#include "bradley.hpp"
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
@@ -5562,6 +5563,7 @@ TEST(riflemen_never_shoot_a_player_in_the_trench)
 TEST(riflemen_shoot_a_player_in_the_open)
 {
     World* w = trenchStrip(30, 30);
+    common::realtimeEnabled = false;
     w->player.stats.health = 200;
     auto* u = rifleman(*w, Coord{ 50, 30 });
     for (int i = 0; i < 300; ++i) { w->player.exposure = 80; u->npcAct(); }
@@ -5688,5 +5690,115 @@ TEST(meat_assault_goes_over_the_top_to_the_east)
     CHECK(w->level.inOwnTrench(waiting->coord));
     CHECK(charging->coord.x > 30);
     CHECK(w->player.stats.health == 30);
+    delete w;
+}
+
+// ---- the third front level: barrage, the Bradleys, the officer who holds and our own guns ----
+
+static World* holdWorld()
+{
+    std::srand(4242);
+    World* w = new World(Coord{ 6, 153 });
+    w->level.isWarLevel = true;
+    w->level.warStage = 3;
+    generateTrenches(w->level);
+    w->player.coord = nearestTrench(w->level, w->player.coord, Trench::Own);
+    w->player.stats.health = 100000;
+    w->level.prepareHold();
+    return w;
+}
+
+static size_t bradleys(const Level& l)
+{
+    size_t n = 0;
+    for (auto v : l.vehicles) if (dynamic_cast<const Bradley*>(v)) ++n;
+    return n;
+}
+
+TEST(third_level_barrage_then_assault)
+{
+    World* w = holdWorld();
+    CHECK(w->level.holdOfficer != nullptr);
+    CHECK(w->level.mgNests.size() >= 2);
+    while (w->level.warTicks < 29) w->level.warTick();
+    CHECK(w->level.assaultPhase == AssaultPhase::Quiet);
+    w->level.warTick();
+    CHECK(w->level.assaultPhase == AssaultPhase::Barrage);
+    CHECK(w->printer.saw("TYKIST\xC3\x96KESKITYS"));
+    while (w->level.warTicks < 55) w->level.warTick();
+    CHECK(w->level.assaultPhase == AssaultPhase::Assault);
+    CHECK(bradleys(w->level) >= 2 && bradleys(w->level) <= 3);
+    delete w;
+}
+
+TEST(bradley_stops_short_of_the_trench_and_unloads)
+{
+    World* w = holdWorld();
+    const uint32_t y = w->player.coord.y;
+    auto* b = new Bradley(Coord{ 85, y }, bradleyStopX(w->level, y));
+    w->level.addVehicle(b);
+    for (int i = 0; i < 80; ++i) w->level.updateVehicles();
+    const int gap = (int)b->coord.x - ownTrenchEastX(w->level, y);
+    CHECK(gap >= 6 && gap <= 10);
+    CHECK(b->unloaded);
+    size_t assault = 0;
+    for (auto p : w->level.persons)
+        if (p->type == ukrainalainen && static_cast<Ukrainalainen*>(p)->mode == Ukrainalainen::Mode::Assault) ++assault;
+    CHECK(assault >= 4 && assault <= 6);
+    // a grenade beside it finishes it
+    w->level.explode(Coord{ b->coord.x, b->coord.y + 2 }, 2, 3, nullptr);
+    CHECK(b->wrecked);
+    delete w;
+}
+
+TEST(rear_stays_shut_while_the_officer_lives)
+{
+    World* w = holdWorld();
+    w->level.warTicks = 200;
+    w->level.warTick();
+    CHECK(!w->level.rearOpen);
+    w->level.holdOfficer->stats.health = 0;
+    w->level.warTick();
+    CHECK(w->level.rearOpen);
+    CHECK(w->printer.saw("Upseeri kaatui"));
+    delete w;
+}
+
+TEST(own_machine_guns_fire_on_a_player_behind_the_officer)
+{
+    World* w = holdWorld();
+    common::realtimeEnabled = false;    // no moment-to-react guard between hits (it is shared across tests)
+    w->player.stats.health = 200;
+    w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };    // well behind him, at the rear
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health < 200);
+    CHECK(w->printer.saw("konekiv"));
+    delete w;
+}
+
+TEST(no_barrier_fire_once_the_officer_is_dead)
+{
+    World* w = holdWorld();
+    w->player.stats.health = 200;
+    w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };
+    w->level.holdOfficer->stats.health = 0;
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health == 200);
+    // nor while the player stays up at the line beside him
+    World* v = holdWorld();
+    v->player.stats.health = 200;
+    v->player.coord = Coord{ v->level.holdOfficer->coord.x - 3, v->level.holdOfficer->coord.y };
+    for (int i = 0; i < 200; ++i) v->level.barrierFireTick();
+    CHECK(v->player.stats.health == 200);
+    delete w;
+    delete v;
+}
+
+TEST(third_level_without_officer_opens_after_shift)
+{
+    World* w = holdWorld();
+    w->level.holdOfficer = nullptr;            // he never made it up to the line
+    while (w->level.warTicks < Level::WAR_SHIFT_TICKS + 1) w->level.warTick();
+    CHECK(w->level.rearOpen);
     delete w;
 }

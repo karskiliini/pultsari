@@ -14,6 +14,9 @@
 class Vehicle;
 class EnvironmentEvents;
 
+// the third front level: a quiet start, the barrage, then the Bradleys and the infantry
+enum class AssaultPhase { Quiet, Barrage, Assault };
+
 class Person;
 class Building;
 class Item;
@@ -208,6 +211,23 @@ public:
     void fireSalvo(uint32_t shells);
     // a shell bursting: down in a trench only a hit right beside you does harm; a crater is left
     void shellBurst(const Coord& at, uint32_t radius, uint32_t maxDamage, const char* who);
+    // --- the third level ---
+    static constexpr uint32_t BARRAGE_TICK = 30;
+    static constexpr uint32_t ASSAULT_TICK = 55;
+    static constexpr uint32_t DESERTER_GAP = 6;     // this far behind the officer is running away
+    AssaultPhase assaultPhase = AssaultPhase::Quiet;
+    // the officer who holds the line: nobody falls back while he lives
+    Person* holdOfficer = nullptr;
+    bool officerFell = false;
+    // our own machine guns at the rear edge, for anyone who runs
+    std::vector<Coord> mgNests;
+    uint32_t barrierCooldown = 0;
+    uint32_t barrierShoutCooldown = 0;
+    // the officer up at the line and the machine guns at the rear
+    void prepareHold();
+    void assaultTick();
+    void barrierFireTick();
+    bool isMgNest(const Coord& c) const;
     bool reachedRear(const Coord& c) const;
     // the front's trench layer (empty everywhere but at the front)
     std::vector<uint8_t> trench;

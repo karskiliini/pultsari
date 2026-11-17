@@ -171,7 +171,7 @@ Käyttäjä puhui lopputuloksesta, joten toteutustapa on Clauden valinta.
   pelaajan haudassa on upseeri (`Sotilas`, `officer = true`, `S`), joka pitää asemaa
   oman haudan itäisimmässä osassa eikä peräänny.
   - Niin kauan kuin upseeri elää, selusta ei aukea (`WAR_SHIFT_TICKS` ei avaa sitä
-    tasolla 3). Jos pelaaja on yli 12 ruutua upseerista länteen, upseeri huutaa
+    tasolla 3). Jos pelaaja on yli 6 ruutua upseerista länteen (pääasema on vain ~12 ruutua selustasta, eli käytännössä yhteyshaudassa), upseeri huutaa
     radioon ("Ei askeltakaan taaksepäin!"), ja **omat konekiväärit ampuvat häntä
     kentän länsilaidalta** (käyttäjä). Kyse on sulkuosastosta: 2–3 konekivääripesäkettä
     (`KK`, punainen) kohdassa x=0–2, yhteyshautojen suilla ja niiden välissä. Ne ampuvat

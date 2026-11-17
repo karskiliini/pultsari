@@ -2385,6 +2385,22 @@ void Sotilas::npcAct()
             report(msg);
             return;
         }
+        // a Ukrainian in sight and in reach: fire
+        for (Person* o : level->persons) {
+            if (o->type != ukrainalainen || o->stats.health == 0 || o->hiddenFromView() || ammo == 0) continue;
+            if (coord.distance(o->coord) > 10 || level->wallsBetween(coord, o->coord)) continue;
+            string shot;
+            fire(o, shot);
+            if (random(30)) say(random(50) ? "Ogon!" : "Ukropit tulevat!");
+            report(msg);
+            return;
+        }
+        // the officer holding the line does not budge; the rest shuffle along the trench
+        if (this == level->holdOfficer) {
+            if (random(6)) say(random(50) ? "Pit\xC3\xA4k\xC3\xA4\xC3\xA4 asemat!" : "Ei askeltakaan taaksep\xC3\xA4in!");
+            report(msg);
+            return;
+        }
         if (random(40)) move(randomDirection(), msg);
         if (officer && random(4)) {
             static const char* orders[] = {

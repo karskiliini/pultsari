@@ -88,6 +88,8 @@ void Ukrainalainen::npcAct()
     string msg;
 
     if (mode == Mode::Lurk) {
+        // heads down while their own guns pound our line
+        if (level->assaultPhase == AssaultPhase::Barrage) { report(msg); return; }
         // shift along the trench now and then, never out of it
         if (random(10)) {
             const Direction d = randomDirection();

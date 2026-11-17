@@ -649,6 +649,13 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 
         const bool groundVisible = mask->visible(coord);
         string col = color;
+        // our own machine guns at the rear edge, pointing the wrong way
+        if (!found && l->isMgNest(coord)) {
+            c = "K";
+            color = "1;38;5;196;48;5;52";
+            found = true;
+        }
+
         if (!found) {
             if (!trenchCell(l, coord, c, color)) roadCell(l, coord, c, color);
             col = color;

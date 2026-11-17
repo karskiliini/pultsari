@@ -1,4 +1,7 @@
 #include "animation.hpp"
+#include "bradley.hpp"
+#include "fpv.hpp"
+#include "persons.hpp"
 #include "common.hpp"
 #include "level.hpp"
 #include "player.hpp"
@@ -103,13 +106,124 @@ void Level::artilleryTick()
     Subtitles::say("[Kranaattien ulvonta l\xC3\xA4hestyy. Haudan pohjalle!]", "artillery");
 }
 
+void Level::prepareHold()
+{
+    const PlayerNS::Player* player = getPlayer();
+    const uint32_t y = player ? player->coord.y : common::PLAYER_START_Y;
+    // the officer: on the eastern lip of the main line (not out in a listening post), on the new man's row
+    int lip = -1;
+    for (int x = (int)TrenchNS::OWN_X + 4; x >= 0 && lip < 0; --x) if (inOwnTrench(Coord{ (uint32_t)x, y })) lip = x;
+    const Coord want { (uint32_t)std::max(0, lip), y };
+    const Coord at = nearestTrench(*this, want, Trench::Own);
+    Sotilas* officer = new Sotilas(at, true);
+    officer->printer = printer;
+    officer->pathFinding = pathFinding;
+    if (inOwnTrench(at) && addPerson(officer)) holdOfficer = officer;
+    else delete officer;
+
+    // the machine guns: at the mouth of every communication trench on the rear edge, and between
+    mgNests.clear();
+    for (uint32_t row = 0; row < common::SIZEY; ++row) {
+        if (!inOwnTrench(Coord{ 0, row })) continue;
+        if (mgNests.empty() || row > mgNests.back().y + 3) mgNests.push_back(Coord{ 0, row });
+    }
+    const size_t mouths = mgNests.size();
+    for (size_t i = 0; i + 1 < mouths; ++i)
+        mgNests.push_back(Coord{ 0, (mgNests[i].y + mgNests[i + 1].y) / 2 });
+    if (mgNests.size() < 2) {
+        mgNests.push_back(Coord{ 0, y > 20 ? y - 20 : 0 });
+        mgNests.push_back(Coord{ 0, std::min(common::SIZEY - 1, y + 20) });
+    }
+}
+
+bool Level::isMgNest(const Coord& c) const
+{
+    for (const auto& n : mgNests) if (n.y == c.y && c.x <= n.x + 1) return true;
+    return false;
+}
+
+void Level::barrierFireTick()
+{
+    if (!holdOfficer || !isAlive(holdOfficer) || mgNests.empty()) return;
+    if (barrierShoutCooldown) --barrierShoutCooldown;
+    if (barrierCooldown && --barrierCooldown) return;
+    barrierCooldown = 2;
+    const uint32_t line = holdOfficer->coord.x;
+    const PlayerNS::Player* player = getPlayer();
+    for (Person* p : persons) {
+        if (p == holdOfficer || p->stats.health == 0 || !isRussianSoldier(*this, p)) continue;
+        if (p->coord.x + DESERTER_GAP >= line) continue;
+        const bool isPlayer = p == player;
+        if (isPlayer && !barrierShoutCooldown) {
+            barrierShoutCooldown = 10;
+            holdOfficer->say("Ei askeltakaan taaksep\xC3\xA4in!");
+            if (printer) printer->showMessage("Upseeri radiossa: 'Ei askeltakaan taaksep\xC3\xA4in! Sulkuosasto, tulta karkureihin!'", this, false);
+        }
+        // the nearest gun opens up; the trench is no help, the fire comes along it from behind
+        const Coord* nest = &mgNests.front();
+        for (const auto& n : mgNests) if (n.distance(p->coord) < nest->distance(p->coord)) nest = &n;
+        addAnimation(new Animation(Coord{ nest->x + 2, nest->y }, "*", 2));
+        audio.addSound(*nest, SoundType::Gunshot,
+            "TATATATA! Omat konekiv\xC3\xA4\xC3\xA4rit ampuvat!", "Konekiv\xC3\xA4\xC3\xA4rin sarja!", "...konekiv\xC3\xA4\xC3\xA4rin tulta...", 60);
+        HurtBy who(this, "oma konekiv\xC3\xA4\xC3\xA4ri (sulkuosasto)");
+        const bool hit = common::random(40);
+        if (hit) p->damage(2 + std::rand() % 3);
+        if (isPlayer && printer)
+            printer->showMessage(hit ? "Omat konekiv\xC3\xA4\xC3\xA4rit ampuvat sinua! Sulkuosasto ei kysele."
+                                     : "Omien konekiv\xC3\xA4\xC3\xA4rien luodit p\xC3\xB6lytt\xC3\xA4v\xC3\xA4t maata vieress\xC3\xA4si!", this, false);
+        else if (hit) p->say("Omat ampuvat!");
+    }
+}
+
+void Level::assaultTick()
+{
+    if (warStage < 3) return;
+    if (warTicks == BARRAGE_TICK) {
+        assaultPhase = AssaultPhase::Barrage;
+        if (printer) printer->showMessage("TYKIST\xC3\x96KESKITYS! Koko linja on tulen alla! Haudan pohjalle!", this, false);
+        Subtitles::say("[Maa j\xC3\xA4risee. Taivas on t\xC3\xA4ynn\xC3\xA4 ulvontaa.]", "barrage");
+    }
+    if (assaultPhase == AssaultPhase::Barrage) {
+        fireSalvo(2 + std::rand() % 3);
+        if (warTicks + 1 >= ASSAULT_TICK) {
+            assaultPhase = AssaultPhase::Assault;
+            if (printer) printer->showMessage("Keskitys taukoaa... TELAKETJUJEN KOLINAA! Bradleyt tulevat!", this, false);
+            Subtitles::say("[Keskityksen j\xC3\xA4lkeen hiljaisuus. Sitten moottorit.]", "assault");
+            const PlayerNS::Player* player = getPlayer();
+            const uint32_t y = player ? player->coord.y : common::PLAYER_START_Y;
+            const uint32_t n = 2 + std::rand() % 2;
+            for (uint32_t i = 0; i < n; ++i) {
+                const int row = std::max(1, std::min((int)common::SIZEY - 3, (int)y - 12 + (int)i * 12 + std::rand() % 5 - 2));
+                addVehicle(new Bradley(Coord{ TrenchNS::FRONT_W - 5, (uint32_t)row }, bradleyStopX(*this, (uint32_t)row)));
+            }
+        }
+    }
+}
+
 void Level::warTick()
 {
     if (!isWarLevel || playerDead) return;
     ++warTicks;
     exposureTick();
     artilleryTick();
+    assaultTick();
     PlayerNS::Player* player = getPlayer();
+
+    // the third level: nobody falls back while the officer holds the line
+    if (warStage >= 3 && !rearOpen) {
+        if (holdOfficer && !isAlive(holdOfficer)) { holdOfficer = nullptr; officerFell = true; }
+        if (holdOfficer) {
+            barrierFireTick();
+            if (warTicks == WAR_SHIFT_TICKS && printer)
+                printer->showMessage("Radio: 'Vuorovaihto peruttu. Pit\xC3\xA4k\xC3\xA4\xC3\xA4 asemat, kunnes upseeri toisin k\xC3\xA4skee.'", this, false);
+            return;
+        }
+        if (officerFell) {
+            if (printer) printer->showMessage("Radio: 'Upseeri kaatui! Vet\xC3\xA4ytyk\xC3\xA4\xC3\xA4! Kaikki selustaan!'", this, false);
+            rearOpen = true;
+            if (warTicks < WAR_SHIFT_TICKS) warTicks = WAR_SHIFT_TICKS;
+        }
+    }
 
     if (!rearOpen) {
         if (warTicks == WAR_SHIFT_TICKS / 2 && printer) {

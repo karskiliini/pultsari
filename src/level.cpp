@@ -1,5 +1,6 @@
 
 #include "level.hpp"
+#include "bradley.hpp"
 #include "fpv.hpp"
 #include "item.hpp"
 #include "persons.hpp"
@@ -204,6 +205,18 @@ void Level::explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person*
     for (auto& p : persons) {
         if (p->stats.health > 0 && p->coord.distance(c) <= radius) {
             p->damage(std::rand() % maxDamage + 1);
+        }
+    }
+    // armour close enough to the blast is knocked out
+    for (auto v : vehicles) {
+        Bradley* b = dynamic_cast<Bradley*>(v);
+        if (!b || b->wrecked) continue;
+        for (const auto& cell : b->cells()) {
+            if (cell.distance(c) > radius) continue;
+            b->wrecked = true;
+            if (printer) printer->showMessage("Bradley sai osuman ja syttyy palamaan!", this, false);
+            if (events) events->addFiresAround(cell);
+            break;
         }
     }
     uint32_t x = c.x > 4 ? c.x - 4 : 0;
@@ -1031,6 +1044,7 @@ void Level::cleanDead()
                 }
                 // a person stays where he fell (after the loot, so the loot is picked first); rats do not
                 if (p->type != rotta) items.push_back(new Ruumis(p->coord, coatOf(p->type)));
+                if (p == holdOfficer) { holdOfficer = nullptr; officerFell = true; }
                 delete p;
                 p = nullptr;
 
