@@ -1,13 +1,16 @@
+#include "aagun.hpp"
 #include "animation.hpp"
 #include "bradley.hpp"
 #include "fpv.hpp"
 #include "persons.hpp"
 #include "common.hpp"
+#include "events.hpp"
 #include "level.hpp"
 #include "player.hpp"
 #include "printer.hpp"
 #include "subtitles.hpp"
 #include <algorithm>
+#include <cmath>
 
 // How often the open rear is announced again, in world ticks.
 static constexpr uint32_t REAR_REMINDER = 25;
@@ -17,7 +20,8 @@ void Level::exposureTick()
     PlayerNS::Player* p = getPlayer();
     if (!isWarLevel || playerDead || !p) return;
     const Trench t = trenchAt(p->coord);
-    const bool down = t == Trench::Own || t == Trench::Enemy;
+    // behind a gun up on the lip he is in plain sight, trench or no trench
+    const bool down = (t == Trench::Own || t == Trench::Enemy) && !p->manning;
 
     if (down) p->exposure = p->exposure > 2 ? p->exposure - 2 : 0;
     else p->exposure = std::min<uint32_t>(100, p->exposure + (t == Trench::Crater ? 2 : 4));
@@ -68,6 +72,19 @@ void Level::shellBurst(const Coord& at, uint32_t radius, uint32_t maxDamage, con
         const uint32_t dmg = std::rand() % maxDamage + 1;
         p->damage(covered ? (dmg + 1) / 2 : dmg);
         if (p == player && printer) printer->showMessage("Kranaatin sirpale osuu!", this, false);
+    }
+    // a gun standing in the open is knocked out by a shell landing on it
+    for (auto v : vehicles) {
+        AAGun* g = dynamic_cast<AAGun*>(v);
+        if (!g || g->wrecked) continue;
+        bool near = false;
+        for (const auto& c : g->cells()) near = near || c.distance(at) <= radius;
+        if (!near) continue;
+        const bool manned = g->gunner != nullptr;
+        g->wrecked = true;
+        g->leave();
+        addSmoke(g->centre());
+        if (manned && printer) printer->showMessage("Kranaatti osuu tykkiin! IT-tykki on romuna, sinkoudut hiekkas\xC3\xA4kkien taakse.", this, false);
     }
     // the ground is torn up; a trench is a trench still, just a deeper one
     for (int dy = -1; dy <= 1; ++dy) {
@@ -148,7 +165,8 @@ bool Level::isMgNest(const Coord& c) const
 void Level::barrierFireTick()
 {
     // the guns are told to fire once the barrage starts and the line has to hold
-    if (!holdOfficer || !isAlive(holdOfficer) || mgNests.empty() || assaultPhase == AssaultPhase::Quiet) return;
+    // they stand from the start: before the barrage too, a man could otherwise just walk out
+    if (!holdOfficer || !isAlive(holdOfficer) || mgNests.empty()) return;
     if (barrierShoutCooldown) --barrierShoutCooldown;
     if (barrierCooldown && --barrierCooldown) return;
     barrierCooldown = 2;
@@ -157,14 +175,16 @@ void Level::barrierFireTick()
         if (p == holdOfficer || p->stats.health == 0 || !isRussianSoldier(*this, p)) continue;
         if (!behindTheLine(p->coord)) continue;
         const bool isPlayer = p == player;
+        // the nearest gun in reach opens up; the trench is no help, the fire comes along it from behind
+        const Coord* nest = nullptr;
+        for (const auto& n : mgNests)
+            if (n.distance(p->coord) <= MG_RANGE && (!nest || n.distance(p->coord) < nest->distance(p->coord))) nest = &n;
+        if (!nest) continue;    // a gap in the barrier: their guns are gone
         if (isPlayer && !barrierShoutCooldown) {
             barrierShoutCooldown = 10;
             holdOfficer->say("Ei askeltakaan taaksep\xC3\xA4in!");
             if (printer) printer->showMessage("Upseeri radiossa: 'Ei askeltakaan taaksep\xC3\xA4in! Sulkuosasto, tulta karkureihin!'", this, false);
         }
-        // the nearest gun opens up; the trench is no help, the fire comes along it from behind
-        const Coord* nest = &mgNests.front();
-        for (const auto& n : mgNests) if (n.distance(p->coord) < nest->distance(p->coord)) nest = &n;
         addAnimation(new Animation(Coord{ nest->x + 2, nest->y }, "*", 2));
         audio.addSound(*nest, SoundType::Gunshot,
             "TATATATA! Omat konekiv\xC3\xA4\xC3\xA4rit ampuvat!", "Konekiv\xC3\xA4\xC3\xA4rin sarja!", "...konekiv\xC3\xA4\xC3\xA4rin tulta...", 60);
@@ -251,5 +271,27 @@ void Level::warTick()
 
 bool Level::reachedRear(const Coord& c) const
 {
-    return isWarLevel && rearOpen && c.x <= REAR_X;
+    return isWarLevel && c.x <= REAR_X && (rearOpen || deserting(c));
+}
+
+bool Level::deserting(const Coord& c) const
+{
+    return isWarLevel && warStage >= 3 && !rearOpen && holdOfficer && isAlive(holdOfficer) && c.x <= REAR_X;
+}
+
+uint32_t Level::silenceMgNests(const Coord& at, float radius)
+{
+    uint32_t silenced = 0;
+    for (size_t i = 0; i < mgNests.size();) {
+        const Coord& n = mgNests[i];
+        if (std::hypot(n.x + 0.5f - at.x, (float)n.y - at.y) > radius) { ++i; continue; }
+        addSmoke(n);
+        if (events) events->addFiresAround(n);
+        mgNests.erase(mgNests.begin() + i);
+        ++silenced;
+    }
+    if (silenced && printer)
+        printer->showMessage(silenced == 1 ? "Sulkuosaston konekiv\xC3\xA4\xC3\xA4ripes\xC3\xA4ke vaikeni! Aukko selustaan."
+                                           : "Sulkuosaston pes\xC3\xA4kkeet vaikenivat! Aukko selustaan.", this, false);
+    return silenced;
 }

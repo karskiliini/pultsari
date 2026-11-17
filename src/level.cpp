@@ -209,6 +209,8 @@ void Level::explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person*
             p->damage(std::rand() % maxDamage + 1);
         }
     }
+    // a barrier machine gun nest caught in it is silenced
+    if (isWarLevel) silenceMgNests(c, radius + 0.5f);
     // armour close enough to the blast is knocked out
     for (auto v : vehicles) {
         Bradley* b = dynamic_cast<Bradley*>(v);

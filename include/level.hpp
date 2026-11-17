@@ -238,6 +238,13 @@ public:
     void barrierFireTick();
     bool isMgNest(const Coord& c) const;
     bool reachedRear(const Coord& c) const;
+    // at the map's rear edge on the third level while the officer still holds: a deserter
+    // who got through a gap in the barrier
+    bool deserting(const Coord& c) const;
+    // a barrier gun nest within `radius` of a blast is silenced for good; the count of them
+    uint32_t silenceMgNests(const Coord& at, float radius);
+    // how far a barrier machine gun reaches: knock out the nearest ones and there is a gap
+    static constexpr uint32_t MG_RANGE = 20;
     // the front's trench layer (empty everywhere but at the front)
     std::vector<uint8_t> trench;
     std::vector<int> ownLineX;      // the centre column of our main line on each row

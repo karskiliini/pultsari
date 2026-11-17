@@ -889,6 +889,17 @@ static bool conscriptionGoesToWar(const GameState& gs)
 static void leaveFront(Level& level, Printer* printer, GameState& gs)
 {
     const char* msg;
+    const PlayerNS::Player* player = level.getPlayer();
+    if (player && level.deserting(player->coord)) {
+        // through the gap the gun blew in the barrier, while the officer still holds the line
+        msg = "KARKURI! Livahdit sulkuosaston aukosta selustaan ja hypp\xC3\xA4\xC3\xA4t Moskovan junaan. Kukaan ei kysele, eik\xC3\xA4 kukaan kirjoita.";
+        gs.advanceLevel();
+        printer->setMessage(msg);
+        printer->print(&level);
+        if (common::realtimeEnabled) common::sleep(3000);
+        else InputNS::Input::waitKey();
+        return;
+    }
     switch (gs.warStage) {
         case 1:
             msg = "Selustassa sinut lastataan Uralin lavalle. Vuorovaihto tarkoittaa uutta kuoppaa: Ei-kenenk\xC3\xA4\xC3\xA4n-maa.";

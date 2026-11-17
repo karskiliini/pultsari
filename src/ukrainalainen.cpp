@@ -110,7 +110,7 @@ void Ukrainalainen::npcAct()
         // the player first: a man who just popped up is gone before the rifle is on him; the
         // longer he stays up there, the more of them have him in their sights
         Player* p = level->getPlayer();
-        if (p && !level->playerDead && p->stats.health > 0 && !level->inCover(p->coord) &&
+        if (p && !level->playerDead && p->stats.health > 0 && (!level->inCover(p->coord) || p->manning) &&
             clearShot(*level, coord, p->coord, RIFLE_RANGE) && random(p->exposure / 10)) {
             snipe(p, msg);
             // he never sees the rifleman, but he knows when a bullet comes for him

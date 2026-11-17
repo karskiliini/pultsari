@@ -89,7 +89,7 @@ uint32_t fpvPlayerShare(const Level& level)
 {
     const PlayerNS::Player* p = level.getPlayer();
     if (!p) return 0;
-    const uint32_t share = level.inCover(p->coord) ? 50 + p->trenchPressure / 2 : 10 + p->exposure * 8 / 10;
+    const uint32_t share = level.inCover(p->coord) && !p->manning ? 50 + p->trenchPressure / 2 : 10 + p->exposure * 8 / 10;
     return std::min<uint32_t>(90, share);
 }
 

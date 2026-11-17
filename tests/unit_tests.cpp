@@ -5771,9 +5771,7 @@ TEST(own_machine_guns_fire_on_a_player_behind_the_officer)
     common::realtimeEnabled = false;    // no moment-to-react guard between hits (it is shared across tests)
     w->player.stats.health = 200;
     w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };    // well behind him, at the rear
-    for (int i = 0; i < 50; ++i) w->level.barrierFireTick();
-    CHECK(w->player.stats.health == 200);                           // before the barrage nobody is told to fire
-    w->level.assaultPhase = AssaultPhase::Assault;
+    // the barrier stands from the start: otherwise the new man could just walk out before the barrage
     for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
     CHECK(w->player.stats.health < 200);
     CHECK(w->printer.saw("konekiv"));
@@ -6114,4 +6112,143 @@ TEST(melee_no_weapon_swing_at_a_harmless_passer_by)
     const uint32_t before = k->stats.health;
     w.player.move(DirectionNS::right, &w.level);
     CHECK(k->stats.health == before);
+}
+
+// ---------- anti-aircraft guns at the front ----------
+
+static World* frontWorld(uint32_t stage)
+{
+    World* w = holdWorld();
+    w->level.warStage = stage;
+    populateAAGuns(w->level, 1);
+    return w;
+}
+
+static std::vector<AAGun*> guns(const Level& l)
+{
+    std::vector<AAGun*> out;
+    for (auto v : l.vehicles) if (AAGun* g = dynamic_cast<AAGun*>(v)) out.push_back(g);
+    return out;
+}
+
+TEST(front_guns_stand_just_before_our_line_from_the_second_level)
+{
+    World* w = frontWorld(2);
+    const auto gs = guns(w->level);
+    CHECK(gs.size() >= 1 && gs.size() <= 2);
+    bool nearStart = false;
+    for (auto g : gs) {
+        const Coord c = g->centre();
+        const int line = w->level.ownLineX[c.y];
+        CHECK((int)c.x >= line + 2 && (int)c.x <= line + 7);
+        CHECK(!w->level.behindTheLine(c));
+        if (std::abs((int)c.y - (int)w->player.coord.y) <= 12) nearStart = true;
+        CHECK(g->crew().empty());                       // the crew lies dead behind the sandbags
+        CHECK(std::fabs(g->angle) < 0.01f);             // barrels pointing east, at them
+    }
+    CHECK(nearStart);
+    delete w;
+    World* v = frontWorld(1);
+    CHECK(guns(v->level).empty());
+    delete v;
+}
+
+TEST(front_gun_is_taken_without_raising_any_alarm)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    string msg;
+    CHECK(g->approach(&w->player, msg));
+    CHECK(w->player.manning == g);
+    CHECK(contains(msg, "kaatun"));
+    CHECK(!contains(msg, "eiv\xC3\xA4t ilahdu"));
+    delete w;
+}
+
+TEST(a_manned_gun_leaves_the_gunner_out_in_the_open)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    string msg;
+    w->player.coord = nearestTrench(w->level, g->centre(), Trench::Own);   // even down in a trench beside it
+    CHECK(g->approach(&w->player, msg));
+    w->player.exposure = 10;
+    w->level.exposureTick();
+    CHECK(w->player.exposure > 10);
+    CHECK(fpvPlayerShare(w->level) >= 10 + 11 * 8 / 10);
+    delete w;
+}
+
+TEST(a_bradley_takes_three_aa_shells)
+{
+    World* w = frontWorld(3);
+    const uint32_t y = w->player.coord.y;
+    auto* b = new Bradley(Coord{ 40, y }, 40);
+    w->level.addVehicle(b);
+    aaExplosion(w->level, b->coord, &w->player);
+    CHECK(!b->wrecked);
+    aaExplosion(w->level, b->coord, &w->player);
+    CHECK(!b->wrecked);
+    const string boom = aaExplosion(w->level, b->coord, &w->player);
+    CHECK(b->wrecked);
+    CHECK(contains(boom, "Bradley"));
+    delete w;
+}
+
+TEST(an_aa_shell_or_grenade_silences_a_barrier_nest)
+{
+    World* w = frontWorld(3);
+    const size_t before = w->level.mgNests.size();
+    const Coord nest = w->level.mgNests.front();
+    aaExplosion(w->level, Coord{ nest.x + 1, nest.y }, &w->player);
+    CHECK(w->level.mgNests.size() == before - 1);
+    CHECK(!w->level.isMgNest(nest));
+    const Coord other = w->level.mgNests.front();
+    w->level.explode(Coord{ other.x + 2, other.y }, 2, 3, &w->player);
+    CHECK(w->level.mgNests.size() == before - 2);
+    CHECK(w->printer.saw("pes\xC3\xA4ke"));
+    delete w;
+}
+
+TEST(barrier_nests_reach_only_twenty_cells)
+{
+    World* w = frontWorld(3);
+    common::realtimeEnabled = false;    // no moment-to-react guard between hits
+    w->level.mgNests = { Coord{ 0, 60 } };
+    w->player.stats.health = 200;
+    w->player.coord = Coord{ 2, 90 };   // behind the line, but out of that gun's reach
+    CHECK(w->level.behindTheLine(w->player.coord));
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health == 200);
+    w->player.coord = Coord{ 2, 70 };
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health < 200);
+    delete w;
+}
+
+TEST(a_deserter_through_the_gap_reaches_the_rear)
+{
+    World* w = frontWorld(3);
+    CHECK(w->level.holdOfficer != nullptr);
+    CHECK(!w->level.rearOpen);
+    CHECK(w->level.reachedRear(Coord{ Level::REAR_X, 100 }));
+    CHECK(w->level.deserting(Coord{ Level::REAR_X, 100 }));
+    CHECK(!w->level.reachedRear(Coord{ 6, 100 }));
+    // the first two levels have no barrier to slip through: the rear waits for the shift
+    World* v = frontWorld(2);
+    CHECK(!v->level.reachedRear(Coord{ Level::REAR_X, 100 }));
+    delete w;
+    delete v;
+}
+
+TEST(a_shell_landing_on_the_gun_wrecks_it)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    string msg;
+    CHECK(g->approach(&w->player, msg));
+    w->level.shellBurst(g->centre(), 1, 5, "Bradleyn konetykki");
+    CHECK(g->wrecked);
+    CHECK(w->player.manning == nullptr);
+    delete w;
 }
