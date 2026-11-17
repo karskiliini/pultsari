@@ -2456,10 +2456,10 @@ Item* Sotilas::dropItem()
     looted = true;
     if (officer) {
         if (common::random(50)) return new Pistooli(coord);
-        return common::random(60) ? static_cast<Item*>(new Vyo(coord)) : new Takki(coord);
+        return common::random(60) ? static_cast<Item*>(new Vyo(coord)) : new Takki(coord, Coat::Sotilas);
     }
     if (common::random(30)) return new Vyo(coord);
-    if (common::random(10)) return new Takki(coord);
+    if (common::random(10)) return new Takki(coord, Coat::Sotilas);
     return nullptr;
 }
 

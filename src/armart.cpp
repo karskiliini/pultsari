@@ -34,6 +34,54 @@ JJJJJJJJJ JJJ
  JJJJJJJJJJJ
 )";
 
+// 0 for a coat taken off someone else: whole, a seam down the arm, a buttoned cuff
+const char* SLEEVE_WHOLE = R"(
+|%%%%%%:%%%%|
+|%%%%%%:%%%%|
+|%%%%%%:%%%%|
+|%%%%%%:%%%%|
+ |%%%%%:%%%|
+ |%%%%%:%%%|
+ |%%%%%:%%%|
+ |_________|
+ |%%%%%%o%o|
+)";
+const char* SLEEVE_WHOLE_C = R"(
+JJJJJJJJJJJJJ
+JJJJJJJJJJJJJ
+JJJJJJJJJJJJJ
+JJJJJJJJJJJJJ
+ JJJJJJJJJJJ
+ JJJJJJJJJJJ
+ JJJJJJJJJJJ
+ JJJJJJJJJJJ
+ JJJJJJJMJMJ
+)";
+
+// the policeman's: the same, with a red stripe round the cuff
+const char* SLEEVE_POLICE = R"(
+|%%%%%%:%%%%|
+|%%%%%%:%%%%|
+|%%%%%%:%%%%|
+|%%%%%%:%%%%|
+ |%%%%%:%%%|
+ |%%%%%:%%%|
+ |=========|
+ |%%%%%%%%%|
+ |%%%%%%o%o|
+)";
+const char* SLEEVE_POLICE_C = R"(
+JJJJJJJJJJJJJ
+JJJJJJJJJJJJJ
+JJJJJJJJJJJJJ
+JJJJJJJJJJJJJ
+ JJJJJJJJJJJ
+ JJJJJJJJJJJ
+ JRRRRRRRRRJ
+ JJJJJJJJJJJ
+ JJJJJJJMJMJ
+)";
+
 // 1: bigger holes, rags hanging from the cuff
 const char* SLEEVE1 = R"(
 |%%/  \%;%%%|
@@ -669,13 +717,19 @@ void readable(std::string& row, std::string& mask)
     }
 }
 
-Art arm(bool leftArm, const Held& held, int stage)
+Art arm(bool leftArm, const Held& held, int stage, Coat coat)
 {
     static const char* SLEEVES[] = { SLEEVE0, SLEEVE1, SLEEVE2, SLEEVE3 };
     static const char* SLEEVE_COLOURS[] = { SLEEVE0_C, SLEEVE1_C, SLEEVE2_C, SLEEVE3_C };
     if (stage < 0) stage = 0;
     if (stage > 3) stage = 3;
-    Art art = artOf(SLEEVES[stage], SLEEVE_COLOURS[stage], 9);
+    // anyone else's coat starts whole; it tears like the poster's own
+    Art art = stage > 0 || coat == Coat::Oma ? artOf(SLEEVES[stage], SLEEVE_COLOURS[stage], 9)
+            : coat == Coat::Poliisi ? artOf(SLEEVE_POLICE, SLEEVE_POLICE_C, 9)
+            : artOf(SLEEVE_WHOLE, SLEEVE_WHOLE_C, 9);
+    // the cloth takes the coat's colour
+    const char cloth = coatColour(coat);
+    for (auto& r : art.mask) for (char& c : r) if (c == 'J') c = cloth;
     // the rifle shows its grip in the right hand, its handguard in the left
     if (!leftArm && held.what == Thing::Rynkky) {
         Art grip = artOf(HAND_AK_GRIP, HAND_AK_GRIP_C, 13);
@@ -719,12 +773,12 @@ bool armRowBloody(int stage, int row)
     return stage == 3 && row >= 2 && row <= 11;
 }
 
-std::vector<std::string> armPicture(bool leftArm, const Held& held, int stage)
+std::vector<std::string> armPicture(bool leftArm, const Held& held, int stage, Coat coat)
 {
-    return arm(leftArm, held, stage).pic;
+    return arm(leftArm, held, stage, coat).pic;
 }
 
-std::vector<std::string> armColours(bool leftArm, const Held& held, int stage)
+std::vector<std::string> armColours(bool leftArm, const Held& held, int stage, Coat coat)
 {
-    return arm(leftArm, held, stage).mask;
+    return arm(leftArm, held, stage, coat).mask;
 }

@@ -72,3 +72,25 @@ uint32_t thingToThrowNum(Thing t)
         if (t != Thing::None && throwNumToThing(n) == t) return n;
     return 0;
 }
+
+char coatColour(Coat c)
+{
+    switch (c) {
+        case Coat::Poliisi: return 'B';
+        case Coat::Sotilas: return 'O';
+        case Coat::Musta: return 'D';
+        case Coat::Siviili: return 'N';
+        default: return 'J';
+    }
+}
+
+const char* coatName(Coat c)
+{
+    switch (c) {
+        case Coat::Poliisi: return "poliisin takki";
+        case Coat::Sotilas: return "sotilaan takki";
+        case Coat::Musta: return "musta nahkatakki";
+        case Coat::Siviili: return "takki";
+        default: return "oma takki";
+    }
+}

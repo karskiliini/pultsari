@@ -607,8 +607,20 @@ bool Takki::interact(PlayerNS::Player* player)
         if (player->printer) player->printer->showMessage("Et tarvitse uutta takkia.", player->level, false);
         return false;
     }
-    player->wearCoat(PlayerNS::INITIAL_HP);
+    player->wearCoat(PlayerNS::INITIAL_HP, coat);
     return true;
+}
+
+Coat coatOf(PersonType t)
+{
+    switch (t) {
+        case poliisi: return Coat::Poliisi;
+        case sotilas: case ilmatorjunta: case rekryytti: case korealainen: case shoigu: case gerasimov:
+            return Coat::Sotilas;
+        case fsb: case vartija: case putin: case medvedev: case avustaja:
+            return Coat::Musta;
+        default: return Coat::Siviili;
+    }
 }
 
 std::string Ruumis::getMsg() const

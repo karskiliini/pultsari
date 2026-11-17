@@ -23,6 +23,12 @@ bool isWeapon(Thing t); // Pistooli, Rynkky
 bool isFood(Thing t);   // Lenkki, Kala, Omppo, Bansku
 const char* thingName(Thing t);
 
+// whose coat the player wears; it colours the sleeves of the arm pictures. Oma is the poster's
+// own ragged work jacket; the others come off corpses, the ground or the pawnshop and start whole.
+enum class Coat : uint8_t { Oma, Poliisi, Sotilas, Musta, Siviili };
+char coatColour(Coat c);       // the sleeve's colour mask letter: J, B, O, D, N
+const char* coatName(Coat c);  // genitive, for messages: "poliisin takki"
+
 // the throw numbers of Player::decrementInventory / Item::createItem: 1 Kalja, 2 Lonkka, 3 Lenkki,
 // 4 Ketjut, 5 Veitsi, 6 Kivi, 7 Pamppu, 8 Bootsit, 9 Kala, 10 Omppo, 11 Bansku, 13 Vodka,
 // 14 Granata, 15 Tyhja (an empty bottle); anything else is Thing::None
