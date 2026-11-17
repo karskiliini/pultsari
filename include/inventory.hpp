@@ -30,6 +30,9 @@ struct Inventory {
             if (s->what == t) ++n;
         return t == Thing::None ? 0 : n;
     }
+    // the rifle is in the hands: at the shoulder, or carried lowered while the hands hold nothing else.
+    // It does not take a hand from anything else: whatever wants a hand takes it and the rifle is on the back again.
+    bool akInHands() const { return back.what == Thing::Rynkky && (akRaised || (left.empty() && right.empty())); }
     int freeHands() const { return akRaised ? 0 : (left.empty() ? 1 : 0) + (right.empty() ? 1 : 0); }
     // the hand holding it, if either does
     Held* inHand(Thing t)

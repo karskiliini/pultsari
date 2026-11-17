@@ -4197,6 +4197,72 @@ TEST(ak_needs_both_hands_empty_and_hints)
     CHECK(inv.back.what == Thing::Rynkky);
 }
 
+TEST(ak_in_hands_is_derived_from_empty_hands)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::None);
+    CHECK(!inv.akInHands());                     // no rifle
+    inv.back = loaded(Thing::Rynkky);
+    CHECK(inv.akInHands());                      // empty hands, rifle on the back
+    CHECK(inv.freeHands() == 2);                 // carried, it takes no hand from anything
+    hold(inv, Thing::Kalja, Thing::None);
+    CHECK(!inv.akInHands());
+    hold(inv, Thing::None, Thing::None);
+    inv.akRaised = true;
+    CHECK(inv.akInHands());
+    inv.akRaised = false;
+    CHECK(w.player.meleeHand() == &inv.back);    // the butt strikes
+}
+
+TEST(take_ak_in_hands_empties_the_hands_without_aiming)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    inv.back = Held();
+    CHECK(!w.player.takeAkInHands());            // nothing on the back
+
+    inv.back = loaded(Thing::Rynkky);
+    hold(inv, Thing::None, Thing::None);
+    CHECK(w.player.takeAkInHands());             // already there: just says so
+    CHECK(!inv.akRaised);
+
+    inv.hasBelt = true;
+    inv.belt = Held();
+    inv.pocket = Held();
+    hold(inv, Thing::Pistooli, Thing::Granata);
+    CHECK(w.player.takeAkInHands());
+    CHECK(inv.belt.what == Thing::Pistooli);
+    CHECK(inv.pocket.what == Thing::Granata);
+    CHECK(inv.left.empty() && inv.right.empty());
+    CHECK(inv.akInHands() && !inv.akRaised);
+
+    hold(inv, Thing::Kalja, Thing::Lenkki);      // belt and pocket are taken: both are put down
+    CHECK(w.player.takeAkInHands());
+    CHECK(inv.left.empty() && inv.right.empty());
+    CHECK(inv.belt.what == Thing::Pistooli && inv.pocket.what == Thing::Granata);
+    CHECK(inv.back.what == Thing::Rynkky && !inv.akRaised);
+    int kalja = 0, lenkki = 0;                   // the put-down things reached the level
+    for (auto i : w.level.items) {
+        if (i->held.what == Thing::Kalja) ++kalja;
+        if (i->held.what == Thing::Lenkki) ++lenkki;
+    }
+    CHECK(kalja == 1 && lenkki == 1);
+
+    inv.hasBelt = false;                         // no belt: a pistol is not small, so it is put down
+    inv.pocket = Held();
+    hold(inv, Thing::Pistooli, Thing::None);
+    CHECK(w.player.takeAkInHands());
+    CHECK(inv.left.empty() && inv.right.empty() && inv.belt.what == Thing::Pistooli);
+    int pistols = 0;
+    for (auto i : w.level.items) if (i->held.what == Thing::Pistooli) ++pistols;
+    CHECK(pistols == 1);
+
+    CHECK(inv.akInHands());                      // a thing taken into a hand ends it
+    hold(inv, Thing::Kalja, Thing::None);
+    CHECK(!inv.akInHands());
+}
+
 TEST(front_puts_a_loaded_ak_in_your_hands)
 {
     World w;
