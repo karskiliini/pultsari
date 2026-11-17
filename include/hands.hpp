@@ -9,12 +9,17 @@ enum class Thing : uint8_t { None, Kalja, Lonkka, Vodka, Tyhja, Lenkki, Kala, Om
 
 constexpr uint8_t VODKA_SIPS = 6, MAKAROV_ROUNDS = 8, AK_ROUNDS = 30;
 
+// where a gun came from: the militia know their own Makarovs on sight, and a rifle the front
+// handed out is nobody's business. Muu is anything else: a shop, the street, a robber.
+enum class Origin : uint8_t { Muu, Poliisi, Rintama };
+
 struct Held {
     Thing what = Thing::None;
     uint8_t fill = 0;
     uint8_t rounds = 0;
     std::string pissSeller;
     uint8_t wear = 0;   // blows struck with it; at meleeDurability() it breaks
+    Origin origin = Origin::Muu;   // kept through every hand, pocket and drop it passes
     bool empty() const { return what == Thing::None; }
 };
 

@@ -6558,3 +6558,195 @@ TEST(front_guns_come_in_all_three_kinds)
     }
     CHECK(seen[0] && seen[1] && seen[2]);
 }
+
+// ---- police guns: where a gun came from, and what the militia make of it ----
+
+static Held policePistol(uint8_t rounds = MAKAROV_ROUNDS)
+{
+    Held h = Inventory::fresh(Thing::Pistooli);
+    h.rounds = rounds;
+    h.origin = Origin::Poliisi;
+    return h;
+}
+
+static Item* findItem(const Level& level, ItemType t)
+{
+    for (auto i : level.items) if (i->type == t) return i;
+    return nullptr;
+}
+
+TEST(gun_origin_survives_give_drop_and_pick_up)
+{
+    World w;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    CHECK(Inventory::fresh(Thing::Pistooli).origin == Origin::Muu);
+    CHECK(w.player.inventory.give(policePistol(5)));
+    Held* gun = w.player.inventory.find(Thing::Pistooli);
+    CHECK(gun && gun->origin == Origin::Poliisi && gun->rounds == 5);
+
+    // hands full: the second one is put down next to you as it was
+    hold(w.player.inventory, Thing::Kalja, Thing::Lenkki);
+    CHECK(!w.player.receive(policePistol(3)));
+    Item* dropped = findItem(w.level, EPistooli);
+    CHECK(dropped && dropped->held.origin == Origin::Poliisi && dropped->held.rounds == 3);
+    CHECK(dropped && contains(dropped->getMsg(), "Makarov"));
+
+    // and picked up again it is still the police gun, rounds and all
+    hold(w.player.inventory, Thing::None, Thing::None);
+    CHECK(dropped && dropped->interact(&w.player));
+    gun = w.player.inventory.find(Thing::Pistooli);
+    CHECK(gun && gun->origin == Origin::Poliisi && gun->rounds == 3);
+
+    // a pistol found in the street is nobody's
+    Pistooli street(Coord{ 70, 70 });
+    hold(w.player.inventory, Thing::None, Thing::None);
+    CHECK(street.interact(&w.player));
+    CHECK(w.player.inventory.find(Thing::Pistooli)->origin == Origin::Muu);
+    CHECK(!contains(street.getMsg(), "Makarov"));
+}
+
+TEST(front_rifle_is_issued_as_a_front_weapon)
+{
+    World w;
+    w.player.issueRifle();
+    CHECK(w.player.inventory.back.what == Thing::Rynkky);
+    CHECK(w.player.inventory.back.origin == Origin::Rintama);
+    // a rifle already on the back is reloaded and now counts as the front's too
+    w.player.inventory.back.origin = Origin::Muu;
+    w.player.issueRifle();
+    CHECK(w.player.inventory.back.origin == Origin::Rintama);
+}
+
+TEST(beaten_cop_sometimes_drops_his_makarov)
+{
+    World w;
+    int pistols = 0, rifles = 0, total = 0;
+    for (int i = 0; i < 300; ++i) {
+        auto* cop = w.spawn(new Cop(Coord{ (uint32_t)(10 + i % 100), (uint32_t)(10 + i / 100 * 3) }));
+        if (cop->gun == Thing::Rynkky) ++rifles;
+        cop->damage(cop->stats.health);
+        ++total;
+    }
+    w.level.cleanDead();
+    for (auto i : w.level.items) {
+        if (i->type == ERynkky) CHECK(false);   // a police rifle is not left lying
+        if (i->type != EPistooli) continue;
+        ++pistols;
+        CHECK(i->held.what == Thing::Pistooli && i->held.origin == Origin::Poliisi);
+        CHECK(i->held.rounds == MAKAROV_ROUNDS);
+    }
+    CHECK(rifles > 0 && rifles < total / 2);
+    CHECK(pistols > 0 && pistols < total - rifles);
+}
+
+TEST(police_react_only_to_a_police_gun_in_hand)
+{
+    Inventory inv;
+    inv.left = Held();
+    inv.right = Held();
+    CHECK(!showsPoliceGun(inv));
+    inv.right = Inventory::fresh(Thing::Pistooli);            // bought or found: fine
+    CHECK(!showsPoliceGun(inv));
+    inv.right = policePistol();
+    CHECK(showsPoliceGun(inv));
+    inv.left = inv.right;
+    inv.right = Held();
+    CHECK(showsPoliceGun(inv));
+    // holstered on the belt it is not held
+    inv.left = Held();
+    inv.hasBelt = true;
+    inv.belt = policePistol();
+    CHECK(!showsPoliceGun(inv));
+    // a front rifle up at the shoulder is not their business
+    inv.back = Inventory::fresh(Thing::Rynkky);
+    inv.back.origin = Origin::Rintama;
+    inv.akRaised = true;
+    CHECK(!showsPoliceGun(inv));
+    inv.akRaised = false;
+    CHECK(!showsPoliceGun(inv));
+}
+
+// a cop three steps away who sees the player; true once he has drawn blood
+static bool copShootsAt(World& w, Cop* cop, Thing gun)
+{
+    cop->gun = gun;
+    cop->ammo = 60;
+    for (int i = 0; i < 300; ++i) {
+        w.player.stats.health = 100;
+        cop->coord = Coord{ 53, 50 };
+        cop->npcAct();
+        if (w.player.stats.health < 100) return true;
+    }
+    return false;
+}
+
+TEST(cops_open_fire_on_a_police_pistol_with_whatever_they_carry)
+{
+    for (Thing gun : { Thing::Pistooli, Thing::Rynkky }) {
+        World w;
+        common::realtimeEnabled = false;   // no breather between hits
+        hold(w.player.inventory, Thing::None, Thing::None);
+        w.player.inventory.right = policePistol();
+        auto* cop = w.spawn(new Cop(Coord{ 53, 50 }));
+        CHECK(copShootsAt(w, cop, gun));
+        CHECK(cop->shoots);
+        CHECK(cop->chaseTarget == &w.player);
+        CHECK(cop->ammo < 60);
+        CHECK(w.printer.saw(gun == Thing::Rynkky ? "rynkyll" : "pistoolilla"));
+    }
+}
+
+TEST(cops_leave_front_rifles_and_other_guns_alone)
+{
+    World w;
+    common::realtimeEnabled = false;
+    w.player.issueRifle();                                  // the sergeant's AK, up at the shoulder
+    auto* cop = w.spawn(new Cop(Coord{ 53, 50 }));
+    CHECK(cop->canSeeTarget(w.player.coord));
+    CHECK(!copShootsAt(w, cop, Thing::Rynkky));
+    CHECK(!cop->shoots && cop->chaseTarget != &w.player);
+    CHECK(cop->ammo == 60);
+
+    // a shop pistol in hand is no colleague's either
+    w.player.inventory.akRaised = false;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    w.player.inventory.right = Inventory::fresh(Thing::Pistooli);
+    CHECK(!copShootsAt(w, cop, Thing::Pistooli));
+    CHECK(!cop->shoots && cop->ammo == 60);
+}
+
+TEST(cop_who_spots_a_police_gun_calls_colleagues_in)
+{
+    World w;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    w.player.inventory.right = policePistol();
+    auto* first = w.spawn(new Cop(Coord{ 53, 50 }));
+    auto* second = w.spawn(new Cop(Coord{ 56, 50 }));
+    second->visionRange = 1;                                // too far to see the gun himself
+    first->npcAct();
+    CHECK(first->shoots && first->chaseTarget == &w.player);
+    CHECK(second->chaseTarget == &w.player && second->alerted);
+}
+
+TEST(cop_shouts_about_the_police_gun_once_and_stops_shooting_when_sent_elsewhere)
+{
+    World w;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    w.player.inventory.right = policePistol();
+    auto* cop = w.spawn(new Cop(Coord{ 53, 50 }));
+    auto* gopnik = w.spawn(new Cop(Coord{ 70, 70 }));      // anyone alive to be sent after
+    cop->npcAct();
+    CHECK(cop->shoots);
+    // another alarm pulls him off the player while he still sees the gun: back on the player, no new shout
+    w.level.animations.clear();
+    cop->chaseTarget = gopnik;
+    cop->coord = Coord{ 53, 50 };
+    cop->npcAct();
+    CHECK(cop->shoots && cop->chaseTarget == &w.player);
+    CHECK(!w.said(cop, "Makarov") && !w.said(cop, "Poliisitappaja") && !w.said(cop, "SEIS"));
+    // gun holstered and sent after someone else: he is no longer out to shoot the player
+    w.player.inventory.right = Held();
+    cop->chaseTarget = gopnik;
+    cop->npcAct();
+    CHECK(!cop->shoots);
+}
