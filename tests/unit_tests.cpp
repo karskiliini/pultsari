@@ -5482,3 +5482,58 @@ TEST(trench_cell_draws_sandbags_and_dark_ground)
     CHECK(trenchCell(&w.level, Coord{ 41, 41 }, g, col) && (g == "#" || g == "x"));
     CHECK(!trenchCell(&w.level, Coord{ 60, 60 }, g, col));
 }
+
+// ---- exposure and trench pressure ----
+
+static World* trenchStrip(uint32_t px, uint32_t py)
+{
+    // a short trench along x 10..12, rows 10..60; the player wherever asked
+    World* w = new World(Coord{ px, py });
+    w->level.isWarLevel = true;
+    w->level.warStage = 1;
+    for (uint32_t y = 10; y <= 60; ++y)
+        for (uint32_t x = 10; x <= 12; ++x) w->level.setTrench(Coord{ x, y }, Trench::Own);
+    return w;
+}
+
+TEST(exposure_rises_outside_and_falls_in_the_trench)
+{
+    World* w = trenchStrip(30, 30);
+    w->level.exposureTick();
+    CHECK(w->player.exposure == 4);
+    for (int i = 0; i < 40; ++i) w->level.exposureTick();
+    CHECK(w->player.exposure == 100);                       // capped
+    w->player.coord = Coord{ 11, 30 };
+    w->level.exposureTick();
+    CHECK(w->player.exposure == 98);
+    for (int i = 0; i < 80; ++i) w->level.exposureTick();
+    CHECK(w->player.exposure == 0);                         // floored
+    w->level.setTrench(Coord{ 40, 40 }, Trench::Crater);
+    w->player.coord = Coord{ 40, 40 };
+    w->level.exposureTick();
+    CHECK(w->player.exposure == 2);                         // a crater is half cover
+    delete w;
+}
+
+TEST(trench_pressure_builds_when_standing_still_and_eases_when_moving)
+{
+    World* w = trenchStrip(11, 20);
+    for (int i = 0; i < 10; ++i) w->level.exposureTick();
+    CHECK(w->player.trenchPressure == 30);
+    w->player.coord = Coord{ 11, 40 };                      // down the trench to another stretch
+    w->level.exposureTick();
+    CHECK(w->player.trenchPressure == 28);
+    w->player.coord = Coord{ 30, 40 };                      // up and out: the pilots lose him
+    for (int i = 0; i < 20; ++i) w->level.exposureTick();
+    CHECK(w->player.trenchPressure == 0);
+    delete w;
+}
+
+TEST(exposure_is_announced_once_per_rise)
+{
+    Subtitles::reset();
+    World* w = trenchStrip(30, 30);
+    for (int i = 0; i < 7; ++i) w->level.exposureTick();    // 28: past the first mark
+    CHECK(contains(Subtitles::current(), "huomattu"));
+    delete w;
+}

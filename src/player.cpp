@@ -238,6 +238,10 @@ void Player::onNewLevel()
 {
     // the stare-comment limiter is per level
     lastStareCommentTurn = 0;
+    exposure = 0;
+    exposureMark = 0;
+    trenchPressure = 0;
+    pressureBlock = Coord{ UINT32_MAX, UINT32_MAX };
 }
 
 void Player::resetPosition()

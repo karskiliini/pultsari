@@ -199,6 +199,13 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
          << "   \033[2;37mVATSA\033[0;1;" << bellyColor << "m " << stats->hunger << "%";
     const uint32_t sick = player ? player->diseaseStage() : 0;
     if (sick) cout << "   \033[2;37mTERVEYS\033[0;1;91m " << Disease::hudLabel(sick);
+    if (l && l->isWarLevel && player) {
+        // five pips: how much of him the other side can see
+        const uint32_t pips = (player->exposure + 19) / 20;
+        const char* c = pips >= 4 ? "1;91" : pips >= 2 ? "1;93" : "92";
+        cout << "   \033[2;37mALTISTUS\033[0;" << c << "m ";
+        for (uint32_t i = 0; i < 5; ++i) cout << (i < pips ? "\xE2\x96\xAE" : "\xE2\x96\xAF");
+    }
     cout
          << RESET << "\033[K" << endl;
 

@@ -199,6 +199,8 @@ public:
     bool rearOpen = false;
     // world tick: counts the shift down and opens the rear when it is over
     void warTick();
+    // world tick at the front: the player's exposure on the open ground and pressure in the trench
+    void exposureTick();
     bool reachedRear(const Coord& c) const;
     // the front's trench layer (empty everywhere but at the front)
     std::vector<uint8_t> trench;

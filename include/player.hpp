@@ -89,6 +89,14 @@ public:
     // the FSB has pushed him into a black car: off to the front
     bool conscripted = false;
 
+    // --- at the front ---
+    // how long he has been up on the open ground: the riflemen and the drone pilots notice (0..100)
+    uint32_t exposure = 0;
+    uint32_t exposureMark = 0;      // the last mark (1..3) a caption has told about
+    // how long he has sat in the same stretch of trench: the pilots find him there too (0..100)
+    uint32_t trenchPressure = 0;
+    Coord pressureBlock { UINT32_MAX, UINT32_MAX };     // the 5x5 stretch he sits in
+
     // weighted walking direction, steers where the player looks on foot
     VisionNS::Heading heading;
 
