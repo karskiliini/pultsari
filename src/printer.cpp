@@ -111,7 +111,7 @@ void Printer::removeMessage()
 const Person* Printer::findPerson(const vector<const Person*>& row, uint32_t x) const
 {
     for (const auto& p : row) {
-        if (p->coord.x == x) return p;
+        if (p->coord.x == x && !p->hiddenFromView()) return p;
     }
 
     return nullptr;
@@ -193,6 +193,47 @@ string Printer::promilleAligned(uint32_t value) const
         ret += string(str);
     }
     return ret;
+}
+
+// The front: dug-out earth in the trenches with sandbags along the lips, craters and wire.
+bool trenchCell(const Level* l, const Coord& c, string& glyph, const char*& color)
+{
+    const Trench t = l->trenchAt(c);
+    switch (t) {
+        case Trench::None:
+            return false;
+        case Trench::Crater:
+            glyph = "o";
+            color = "38;5;94;48;5;235";
+            return true;
+        case Trench::Wire:
+            glyph = (c.x + c.y) % 2 ? "#" : "x";
+            color = "38;5;247";
+            return true;
+        case Trench::Own:
+        case Trench::Enemy: {
+            const bool own = t == Trench::Own;
+            // a lip: any side opens onto the ground above
+            bool lip = false;
+            const int dirs[4][2] = { {1, 0}, {-1, 0}, {0, 1}, {0, -1} };
+            for (const auto& d : dirs) {
+                const int x = (int)c.x + d[0], y = (int)c.y + d[1];
+                if (x < 0 || y < 0) continue;
+                const Trench n = l->trenchAt(Coord{ (uint32_t)x, (uint32_t)y });
+                if (n != Trench::Own && n != Trench::Enemy) { lip = true; break; }
+            }
+            if (lip) {
+                glyph = "\xE2\x96\x92";
+                color = own ? "38;5;144;48;5;58" : "38;5;101;48;5;237";
+            } else {
+                // duckboards along the bottom now and then
+                glyph = (c.x * 7 + c.y * 13) % 11 == 0 ? "=" : " ";
+                color = own ? "38;5;94;48;5;58" : "38;5;94;48;5;237";
+            }
+            return true;
+        }
+    }
+    return false;
 }
 
 namespace {
@@ -325,6 +366,7 @@ const char* personColor(const Person* p)
         case rekryytti:    return "38;5;101";  // a uniform that does not fit
         case korealainen:  return "38;5;65";   // dark green, pressed
         case myyja:        return "1;38;5;31"; // blue shop coat
+        case ukrainalainen: return "1;38;5;220";       // the yellow tape on a green sleeve
         default:           return "37";
     }
 }
@@ -522,8 +564,9 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             const Road* h = nullptr;
             const Road* v = nullptr;
             l->roadsAt(coord, h, v);
-            c = (h || v) ? " " : ".";
-            color = (h || v) ? "48;5;234" : "2;90";
+            const Trench tr = l->trenchAt(coord);
+            c = (h || v) ? " " : tr == Trench::Wire ? "x" : tr == Trench::Crater ? "o" : ".";
+            color = (h || v) ? "48;5;234" : (tr == Trench::Own || tr == Trench::Enemy) ? "38;5;238;48;5;234" : "2;90";
             found = true;
         }
 
@@ -606,8 +649,15 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
 
         const bool groundVisible = mask->visible(coord);
         string col = color;
+        // our own machine guns at the rear edge, pointing the wrong way
+        if (!found && l->isMgNest(coord)) {
+            c = "K";
+            color = "1;38;5;196;48;5;52";
+            found = true;
+        }
+
         if (!found) {
-            roadCell(l, coord, c, color);
+            if (!trenchCell(l, coord, c, color)) roadCell(l, coord, c, color);
             col = color;
             if (groundVisible && col.empty()) {
                 const Building* b = l->buildingAt(coord);
@@ -628,6 +678,8 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             const Road* v = nullptr;
             l->roadsAt(coord, h, v);
             if (h || v) col += col.empty() ? "48;5;236" : ";48;5;236";
+            else if (l->trenchAt(coord) == Trench::Own) col += col.empty() ? "48;5;58" : ";48;5;58";
+            else if (l->trenchAt(coord) == Trench::Enemy) col += col.empty() ? "48;5;237" : ";48;5;237";
         }
 
         if (droneShadow && groundVisible && col.find("48;") == string::npos) {

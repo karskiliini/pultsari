@@ -9,7 +9,7 @@ failures = []
 
 
 class Game:
-    def __init__(self, *extra):
+    def __init__(self, extra=()):
         env = dict(os.environ, PULTSARI_WEB='1')
         self.p = subprocess.Popen([BIN, '--rt', '--los', '--anims', '--path', *extra], stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
@@ -109,7 +109,7 @@ def test_player_starts_on_leninski():
 
 
 def test_front_starts_with_the_ak_up_and_held_space_fires_a_burst():
-    g = Game('--front')
+    g = Game(['--front'])
     time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
     up = [f for f in g.frames() if f.get('ak')]
     before = len(g.frames())
@@ -163,6 +163,25 @@ def test_random_play_does_not_crash():
           f'exit {code}')
 
 
+def test_front_trenches_and_the_assault():
+    # the third front level: trenches drawn, the barrage and the Bradleys come, nothing crashes
+    g = Game(['--front=3'])
+    time.sleep(1); g.keys(' ', 0)
+    random.seed(11)
+    end = time.time() + 30
+    while time.time() < end and g.p.poll() is None:
+        g.keys(random.choice('wwssad '), 0.1)
+    code = g.p.poll()
+    frames = g.frames()
+    text = g.buf.decode('utf-8', 'replace')
+    g.close()
+    rows = ''.join(run[0] for f in frames for row in f.get('rows', []) for run in row)
+    msgs = ' '.join(f.get('msg', '') for f in frames)
+    check('front_trenches_are_drawn', '\u2592' in rows)
+    check('front_level_three_brings_the_barrage', 'TYKISTÖKESKITYS' in msgs or 'Bradley' in msgs, msgs[-200:])
+    check('front_play_does_not_crash', code is None and 'Segmentation' not in text, f'exit {code}')
+
+
 def test_captions_and_the_hands_intro():
     g = Game()
     time.sleep(1); g.keys(' ', 0); time.sleep(2)
@@ -193,5 +212,6 @@ if __name__ == '__main__':
     test_arms_come_with_the_first_frame_and_only_on_change()
     test_captions_and_the_hands_intro()
     test_random_play_does_not_crash()
+    test_front_trenches_and_the_assault()
     print(f'{len(checked) - len(failures)}/{len(checked)} game tests passed')
     sys.exit(1 if failures else 0)

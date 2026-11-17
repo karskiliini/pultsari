@@ -7,11 +7,15 @@
 #include "common.hpp"
 #include "persontype.hpp"
 #include "audio.hpp"
+#include "trenches.hpp"
 #include <cstdint>
 #include <vector>
 
 class Vehicle;
 class EnvironmentEvents;
+
+// the third front level: a quiet start, the barrage, then the Bradleys and the infantry
+enum class AssaultPhase { Quiet, Barrage, Assault };
 
 class Person;
 class Building;
@@ -194,10 +198,47 @@ public:
     static constexpr uint32_t WAR_SHIFT_TICKS = 120;
     static constexpr uint32_t REAR_X = 1;
     uint32_t warTicks = 0;
+    uint32_t rearOpenedAt = 0;  // the tick the rear opened, for its reminders
+    uint32_t warStage = 0;      // 1..3 at the front: what the enemy throws at you grows with it
     bool rearOpen = false;
     // world tick: counts the shift down and opens the rear when it is over
     void warTick();
+    // world tick at the front: the player's exposure on the open ground and pressure in the trench
+    void exposureTick();
+    // the second and third levels: a howl from the east, then the shells come down on our line
+    uint32_t artilleryCooldown = 20;
+    uint32_t salvoIn = 0;           // world ticks until a warned salvo lands, 0 if none coming
+    void artilleryTick();
+    void fireSalvo(uint32_t shells);
+    // a shell bursting: down in a trench only a hit right beside you does harm; a crater is left
+    void shellBurst(const Coord& at, uint32_t radius, uint32_t maxDamage, const char* who);
+    // --- the third level ---
+    static constexpr uint32_t BARRAGE_TICK = 30;
+    static constexpr uint32_t ASSAULT_TICK = 55;
+    AssaultPhase assaultPhase = AssaultPhase::Quiet;
+    // the officer who holds the line: nobody falls back while he lives
+    Person* holdOfficer = nullptr;
+    bool officerFell = false;
+    // our own machine guns at the rear edge, for anyone who runs
+    std::vector<Coord> mgNests;
+    uint32_t barrierCooldown = 0;
+    uint32_t barrierShoutCooldown = 0;
+    // the officer up at the line and the machine guns at the rear
+    void prepareHold();
+    void assaultTick();
+    void barrierFireTick();
+    bool isMgNest(const Coord& c) const;
     bool reachedRear(const Coord& c) const;
+    // the front's trench layer (empty everywhere but at the front)
+    std::vector<uint8_t> trench;
+    std::vector<int> ownLineX;      // the centre column of our main line on each row
+    // west of our main line on this row: off down a communication trench towards the rear
+    bool behindTheLine(const Coord& c) const;
+    Trench trenchAt(const Coord& c) const;
+    void setTrench(const Coord& c, Trench t);
+    bool inOwnTrench(const Coord& c) const { return trenchAt(c) == Trench::Own; }
+    // down in a trench, ours or theirs: out of a rifleman's sight
+    bool inCover(const Coord& c) const { const Trench t = trenchAt(c); return t == Trench::Own || t == Trench::Enemy; }
     bool hasVehicle(const Vehicle* v) const;
     // the FSB man who has the player by the collar, if any
     FSBAgent* fsbHolder() const;

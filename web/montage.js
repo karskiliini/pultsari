@@ -26,11 +26,11 @@
     const scenes = [
         {
             who: 'PÄÄOSASSA', name: 'PULTSARI (SINÄ)',
-            line: 'Via dolorosalla El Doradoon: Vovan viinakellariin, jossa kalja virtaa kuin vodka.',
+            line: 'Via dolorosalla Eldoradoon: Vovan viinakellariin, jossa kalja virtaa kuin vodka.',
             color: '#c8c8a0',
             dur: 7.4 + READ_S,
             sfx: [[0.57, 'thud', 0.7], [1.2, 'hiccup', 0.5], [2.14, 'thud', 0.7], [3.71, 'thud', 0.7], [4.15, 'whistle', 0.6], [5.0, 'hiccup2', 0.5]],
-            // he staggers on towards El Dorado and walks straight through everyone in his way;
+            // he staggers on towards Eldorado and walks straight through everyone in his way;
             // each one he bumps topples over flat, and he never even notices. The camera stays
             // tight on his face the whole way; the pull-back at the end shows the ditch full of people
             render(ctx, W, H, t, fs) {
@@ -78,7 +78,7 @@
 
                 // the sign at the end of the road
                 text('  ______________', 56, -3, '#c9a96a');
-                text(' | EL DORADO  → |', 56, -2, '#f2d34a');
+                text(' | ELDORADO   → |', 56, -2, '#f2d34a');
                 text(' | ВОВА 1200 км |', 56, -1, '#c9a96a');
                 text(' |______________|', 56, 0, '#c9a96a');
                 text('        ||', 56, 1, '#8f7c50');

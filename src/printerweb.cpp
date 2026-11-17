@@ -152,6 +152,29 @@ void PrinterWeb::print(Level* l)
     }
     j += "]";
 
+    // shop signs: the page draws a shop's name in a bigger font across the building's inside,
+    // so shops stand out as buildings. [x, y, name, inside left, top, right, bottom] in view cells.
+    if (!scene) {
+        j += ",\"signs\":[";
+        bool firstSign = true;
+        for (const Building* b : l->buildings) {
+            if (!dynamic_cast<const Kauppa*>(b) && !dynamic_cast<const SuljettuLiike*>(b)) continue;
+            const string name = b->getName();
+            if (name.empty()) continue;
+            int len = 0;
+            for (const unsigned char ch : name) if ((ch & 0xC0) != 0x80) ++len;
+            const int row = ((int)b->wallTop + (int)b->wallBot) / 2 - l->cameraY;
+            if (row < 0 || row >= (int)viewH) continue;
+            const int left = ((int)b->wallRight + (int)b->wallLeft) / 2 - len / 2 - l->cameraX;
+            if (left + len <= 0 || left >= (int)viewW) continue;
+            j += string(firstSign ? "" : ",") + "[" + to_string(left) + "," + to_string(row) + "," + jsonString(name) + "," +
+                 to_string((int)b->wallLeft + 1 - l->cameraX) + "," + to_string((int)b->wallTop + 1 - l->cameraY) + "," +
+                 to_string((int)b->wallRight - 1 - l->cameraX) + "," + to_string((int)b->wallBot - 1 - l->cameraY) + "]";
+            firstSign = false;
+        }
+        j += "]";
+    }
+
     // speech bubbles: drawn by the page, translucent and fading, so people show through them
     bubblesAsOverlay = true;
     if (common::animsEnabled && !scene) {
@@ -208,7 +231,7 @@ void PrinterWeb::printAimLine(Level* level, uint32_t px, uint32_t py, float angl
 {
     // the browser draws a laser from the player along the angle, as far as the cells reach
     string j = "{\"t\":\"aim\",\"risk\":" + to_string(aimRisk) + ",\"low\":" + (aimLength < 20 ? "1" : "0") +
-               (gunAmmo >= 0 ? ",\"gun\":" + to_string(gunAmmo) : string()) +
+               (aimThrow ? ",\"throw\":1" : "") + (gunAmmo >= 0 ? ",\"gun\":" + to_string(gunAmmo) : string()) +
                ",\"a\":" + to_string(angle) + ",\"p\":[" + to_string((int)px - level->cameraX) + "," +
                to_string((int)py - level->cameraY) + "],\"cells\":[";
     bool first = true;

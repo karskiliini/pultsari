@@ -1,5 +1,6 @@
 
 #include "level.hpp"
+#include "bradley.hpp"
 #include "fpv.hpp"
 #include "item.hpp"
 #include "persons.hpp"
@@ -206,6 +207,18 @@ void Level::explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person*
             p->damage(std::rand() % maxDamage + 1);
         }
     }
+    // armour close enough to the blast is knocked out
+    for (auto v : vehicles) {
+        Bradley* b = dynamic_cast<Bradley*>(v);
+        if (!b || b->wrecked) continue;
+        for (const auto& cell : b->cells()) {
+            if (cell.distance(c) > radius) continue;
+            b->wrecked = true;
+            if (printer) printer->showMessage("Bradley sai osuman ja syttyy palamaan!", this, false);
+            if (events) events->addFiresAround(cell);
+            break;
+        }
+    }
     uint32_t x = c.x > 4 ? c.x - 4 : 0;
     addAnimation(new Animation(Coord{ x, c.y }, "***BOOM***", 8));
     audio.addSound(c, SoundType::Explosion,
@@ -277,6 +290,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case rekryytti:
             case korealainen:
                 p = new Varvatty(coord, type);
+                break;
+            case ukrainalainen:
+                p = new Ukrainalainen(coord);
                 break;
             default:
                 break;
@@ -1028,6 +1044,7 @@ void Level::cleanDead()
                 }
                 // a person stays where he fell (after the loot, so the loot is picked first); rats do not
                 if (p->type != rotta) items.push_back(new Ruumis(p->coord, coatOf(p->type)));
+                if (p == holdOfficer) { holdOfficer = nullptr; officerFell = true; }
                 delete p;
                 p = nullptr;
 
@@ -1294,6 +1311,7 @@ static uint32_t baseSpeed(PersonType t)
         case pankkirosvo:  return 26;
         case rekryytti:    return 19;
         case korealainen:  return 23;
+        case ukrainalainen: return 24;
         default:           return 20;
     }
 }

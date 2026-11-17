@@ -2,7 +2,7 @@
 #define FPV_HPP
 
 // FPV suicide drones: small quadcopters with a grenade strapped on. At the front the
-// sky is full of them. Each one picks a Russian soldier out in the open, chases him,
+// sky is full of them. Each one picks a Russian soldier under the open sky (a trench has no roof), chases him,
 // and when it is close enough locks on and dives in. Soldiers shoot at them (see
 // antiDroneFire); the ones that miss hit whoever stands in the way.
 
@@ -27,6 +27,14 @@ Person* fpvPickPrey(const Level& level, float x, float y);
 
 // a new FPV drone at (x, y) heading for `prey` (picked on the way if null)
 void launchFpv(Level& level, float x, float y, Person* prey);
+
+// how many may be in the air at once: the front's sky is fuller than Moscow's
+uint32_t fpvMax(const Level& level);
+
+// the percent chance a new drone is sent for the player rather than someone else in the
+// open: down in the trench the pilots look for him (more so the longer he sits in one
+// stretch); just out of it they lose him for a moment, until he has been up there a while
+uint32_t fpvPlayerShare(const Level& level);
 
 // world tick: at the front new drones come in from the Ukrainian side, and all of them whine
 void fpvTick(Level& level);

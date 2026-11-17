@@ -104,6 +104,8 @@ public:
     uint32_t viewW = 80;
     uint32_t viewH = 28;
     int aimLength = 20;
+    // the aim is for a throw, not a gun: the browser marks it with tiny x's instead of a laser
+    bool aimThrow = false;
     // shells left in the anti-aircraft gun the player mans, or negative when not on a gun
     int gunAmmo = -1;     // a lowered pistol's laser only reaches a few steps
 
@@ -120,5 +122,10 @@ public:
     VisionNS::Mask* mask = nullptr;
     PathNS::PathMask* pathmask = nullptr;
 };
+
+template <class T> class Coordinate;
+// the front's ground: a trench (sandbags on its lips), a shell crater or a coil of wire;
+// false where there is none
+bool trenchCell(const Level* l, const Coordinate<uint32_t>& c, std::string& glyph, const char*& color);
 
 #endif

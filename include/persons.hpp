@@ -43,6 +43,8 @@ public:
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
     virtual bool throwItem() { return false; };
+    // not drawn at all: a rifleman lying low in his trench far across no man's land
+    virtual bool hiddenFromView() const { return false; }
     void setLevel(Level* level) { Person::level = level; }
 
     bool canSeeTarget(const Coord& target) const;
@@ -170,6 +172,10 @@ public:
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "O"; };
     bool firstMove = true;
+    // at the front: sent over the top in a meat assault, running east until he drops
+    bool charging = false;
+private:
+    void frontAct();
 };
 
 class Yka : public Person {
@@ -367,6 +373,29 @@ private:
     DirectionNS::Direction march = DirectionNS::right;
     uint32_t marchLeft = 0;
     bool gaveRation = false;
+};
+
+// A Ukrainian soldier across no man's land. Lying low in his trench (Lurk) he is never seen,
+// only his muzzle flash; he takes his time over a shot at anyone up on the open ground, and
+// the longer the man has been up there the readier he is. In the assault he comes over the
+// top with his AK, jumps into our trench and rolls it up.
+class Ukrainalainen : public Person {
+public:
+    enum class Mode { Lurk, Assault };
+    Ukrainalainen(const Coord& pos, Mode mode = Mode::Lurk);
+    virtual void npcAct();
+    virtual bool interact(std::string& msg, Person* source);
+    virtual bool interactThrow(Item* item, Person* source, std::string& msg);
+    virtual std::string typeToChar() const { return "u"; }
+    virtual bool hiddenFromView() const { return mode == Mode::Lurk && flash == 0 && stats.health > 0; }
+    // one aimed rifle shot at `target` from the trench; `msg` for the player
+    void snipe(Person* target, std::string& msg);
+    // a short AK burst at close range
+    void burst(Person* target, std::string& msg);
+    Mode mode;
+    uint32_t flash = 0;         // NPC turns the muzzle flash still shows
+    bool firstMove = true;
+    uint32_t ammo = 60;
 };
 
 class Vartija : public Person {

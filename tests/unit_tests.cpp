@@ -7,6 +7,7 @@
 #include "animation.hpp"
 #include "armart.hpp"
 #include "building.hpp"
+#include "bradley.hpp"
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
@@ -3645,7 +3646,7 @@ TEST(fpv_drones_swarm_the_front_but_not_moscow)
     front.spawn(new Sotilas(Coord{ 130, 110 }));
     for (int i = 0; i < 200; ++i) fpvTick(front.level);
     CHECK(fpvCount(front.level) >= 3);
-    CHECK(fpvCount(front.level) <= FPV_MAX);
+    CHECK(fpvCount(front.level) <= fpvMax(front.level));
 
     World moscow(Coord{ 100, 100 });
     moscow.spawn(new Sotilas(Coord{ 130, 110 }));
@@ -5408,4 +5409,491 @@ TEST(hands_intro_runs_over_the_map_and_gives_the_game_back)
     HandsIntroNS::run(&quick, &w.level);
     CHECK(quick.titles.empty());
     CHECK(quick.player == &w.player && quick.scene == nullptr);
+}
+
+// ---- trenches at the front ----
+
+static bool ownTrenchReachesRear(const Level& l, const Coord& from)
+{
+    // flood through our own trench cells from `from` and see whether x = 0 is reached
+    std::vector<uint8_t> seen(common::SIZEX * common::SIZEY, 0);
+    std::vector<Coord> todo { from };
+    while (!todo.empty()) {
+        const Coord c = todo.back(); todo.pop_back();
+        if (c.x >= common::SIZEX || c.y >= common::SIZEY || seen[c.y * common::SIZEX + c.x]) continue;
+        if (!l.inOwnTrench(c)) continue;
+        seen[c.y * common::SIZEX + c.x] = 1;
+        if (c.x == 0) return true;
+        todo.push_back(Coord{ c.x + 1, c.y });
+        todo.push_back(Coord{ c.x - 1, c.y });
+        todo.push_back(Coord{ c.x, c.y + 1 });
+        todo.push_back(Coord{ c.x, c.y - 1 });
+    }
+    return false;
+}
+
+TEST(trenches_main_line_runs_the_whole_height)
+{
+    for (int seed = 1; seed <= 6; ++seed) {
+        std::srand(seed);
+        World w(Coord{ 6, 153 });
+        w.level.isWarLevel = true;
+        generateTrenches(w.level);
+        bool everyRow = true;
+        for (uint32_t y = 0; y < common::SIZEY; ++y) {
+            bool row = false;
+            for (uint32_t x = 6; x <= 22; ++x) row = row || w.level.inOwnTrench(Coord{ x, y });
+            everyRow = everyRow && row;
+        }
+        CHECK(everyRow);
+    }
+}
+
+TEST(trenches_a_communication_trench_reaches_the_rear)
+{
+    for (int seed = 1; seed <= 6; ++seed) {
+        std::srand(seed);
+        World w(Coord{ 6, 153 });
+        w.level.isWarLevel = true;
+        generateTrenches(w.level);
+        const Coord start = nearestTrench(w.level, Coord{ common::PLAYER_START_X, common::PLAYER_START_Y }, Trench::Own);
+        CHECK(w.level.inOwnTrench(start));
+        CHECK(start.distance(Coord{ common::PLAYER_START_X, common::PLAYER_START_Y }) <= 10);
+        CHECK(ownTrenchReachesRear(w.level, start));
+    }
+}
+
+TEST(trenches_enemy_line_is_east)
+{
+    std::srand(7);
+    World w(Coord{ 6, 153 });
+    w.level.isWarLevel = true;
+    generateTrenches(w.level);
+    uint32_t enemy = 0, misplaced = 0;
+    for (uint32_t y = 0; y < common::SIZEY; ++y)
+        for (uint32_t x = 0; x < common::SIZEX; ++x)
+            if (w.level.trenchAt(Coord{ x, y }) == Trench::Enemy) { ++enemy; if (x < 60 || x > 80) ++misplaced; }
+    CHECK(enemy > common::SIZEY * 2);
+    CHECK(misplaced == 0);
+    // no man's land between them: craters and wire, but no trench of either side
+    uint32_t craters = 0;
+    for (uint32_t y = 0; y < common::SIZEY; ++y)
+        for (uint32_t x = 30; x < 55; ++x) if (w.level.trenchAt(Coord{ x, y }) == Trench::Crater) ++craters;
+    CHECK(craters > 0);
+}
+
+TEST(trenches_lookup_off_the_map_is_none)
+{
+    World w(Coord{ 6, 153 });
+    CHECK(w.level.trenchAt(Coord{ 10, 10 }) == Trench::None);     // no layer outside the front
+    w.level.isWarLevel = true;
+    generateTrenches(w.level);
+    CHECK(w.level.trenchAt(Coord{ common::SIZEX, 5 }) == Trench::None);
+    CHECK(w.level.trenchAt(Coord{ 5, common::SIZEY + 3 }) == Trench::None);
+    CHECK(!w.level.inCover(Coord{ 99999, 99999 }));
+    CHECK(ownTrenchEastX(w.level, common::SIZEY + 1) == -1);
+    CHECK(ownTrenchEastX(w.level, 100) >= 8);
+}
+
+TEST(trench_cell_draws_sandbags_and_dark_ground)
+{
+    World w(Coord{ 6, 153 });
+    w.level.isWarLevel = true;
+    for (uint32_t x = 10; x <= 12; ++x)
+        for (uint32_t y = 20; y <= 30; ++y) w.level.setTrench(Coord{ x, y }, Trench::Own);
+    w.level.setTrench(Coord{ 40, 40 }, Trench::Crater);
+    w.level.setTrench(Coord{ 41, 41 }, Trench::Wire);
+    string g; const char* col = "";
+    CHECK(trenchCell(&w.level, Coord{ 11, 25 }, g, col));
+    CHECK(contains(col, "48;5;"));                        // dug-out ground underneath
+    CHECK(trenchCell(&w.level, Coord{ 10, 25 }, g, col));
+    CHECK(g == "\xE2\x96\x92");                           // the edge: a row of sandbags
+    CHECK(trenchCell(&w.level, Coord{ 40, 40 }, g, col) && g == "o");
+    CHECK(trenchCell(&w.level, Coord{ 41, 41 }, g, col) && (g == "#" || g == "x"));
+    CHECK(!trenchCell(&w.level, Coord{ 60, 60 }, g, col));
+}
+
+// ---- exposure and trench pressure ----
+
+static World* trenchStrip(uint32_t px, uint32_t py)
+{
+    // a short trench along x 10..12, rows 10..60; the player wherever asked
+    World* w = new World(Coord{ px, py });
+    w->level.isWarLevel = true;
+    w->level.warStage = 1;
+    for (uint32_t y = 10; y <= 60; ++y)
+        for (uint32_t x = 10; x <= 12; ++x) w->level.setTrench(Coord{ x, y }, Trench::Own);
+    return w;
+}
+
+TEST(exposure_rises_outside_and_falls_in_the_trench)
+{
+    World* w = trenchStrip(30, 30);
+    w->level.exposureTick();
+    CHECK(w->player.exposure == 4);
+    for (int i = 0; i < 40; ++i) w->level.exposureTick();
+    CHECK(w->player.exposure == 100);                       // capped
+    w->player.coord = Coord{ 11, 30 };
+    w->level.exposureTick();
+    CHECK(w->player.exposure == 98);
+    for (int i = 0; i < 80; ++i) w->level.exposureTick();
+    CHECK(w->player.exposure == 0);                         // floored
+    w->level.setTrench(Coord{ 40, 40 }, Trench::Crater);
+    w->player.coord = Coord{ 40, 40 };
+    w->level.exposureTick();
+    CHECK(w->player.exposure == 2);                         // a crater is half cover
+    delete w;
+}
+
+TEST(trench_pressure_builds_when_standing_still_and_eases_when_moving)
+{
+    World* w = trenchStrip(11, 20);
+    for (int i = 0; i < 10; ++i) w->level.exposureTick();
+    CHECK(w->player.trenchPressure == 30);
+    w->player.coord = Coord{ 11, 40 };                      // down the trench to another stretch
+    w->level.exposureTick();
+    CHECK(w->player.trenchPressure == 28);
+    w->player.coord = Coord{ 30, 40 };                      // up and out: the pilots lose him
+    for (int i = 0; i < 20; ++i) w->level.exposureTick();
+    CHECK(w->player.trenchPressure == 0);
+    delete w;
+}
+
+TEST(exposure_is_announced_once_per_rise)
+{
+    Subtitles::reset();
+    World* w = trenchStrip(30, 30);
+    for (int i = 0; i < 7; ++i) w->level.exposureTick();    // 28: past the first mark
+    CHECK(contains(Subtitles::current(), "huomattu"));
+    delete w;
+}
+
+// ---- Ukrainian riflemen in their trench ----
+
+static Ukrainalainen* rifleman(World& w, Coord at)
+{
+    w.level.setTrench(at, Trench::Enemy);
+    auto* u = w.spawn(new Ukrainalainen(at));
+    u->firstMove = false;
+    return u;
+}
+
+TEST(riflemen_never_shoot_a_player_in_the_trench)
+{
+    World* w = trenchStrip(11, 30);
+    w->player.stats.health = 50;
+    w->player.exposure = 100;           // even a man they have seen before is safe down there
+    auto* u = rifleman(*w, Coord{ 60, 30 });
+    for (int i = 0; i < 1000; ++i) u->npcAct();
+    CHECK(w->player.stats.health == 50);
+    delete w;
+}
+
+TEST(riflemen_shoot_a_player_in_the_open)
+{
+    World* w = trenchStrip(30, 30);
+    common::realtimeEnabled = false;
+    w->player.stats.health = 200;
+    auto* u = rifleman(*w, Coord{ 50, 30 });
+    for (int i = 0; i < 300; ++i) { w->player.exposure = 80; u->npcAct(); }
+    CHECK(w->player.stats.health < 200);
+    CHECK(w->printer.saw("Luoti viuhuu ohi") || w->printer.saw("osuu sinuun"));
+    delete w;
+}
+
+TEST(lurking_rifleman_is_hidden_until_he_fires)
+{
+    World* w = trenchStrip(30, 30);
+    w->player.stats.health = 200;
+    auto* u = rifleman(*w, Coord{ 50, 30 });
+    CHECK(u->hiddenFromView());
+    bool shown = false;
+    for (int i = 0; i < 300 && !shown; ++i) { w->player.exposure = 100; u->npcAct(); shown = !u->hiddenFromView(); }
+    CHECK(shown);                       // the muzzle flash gives him away for a moment
+    CHECK(!isRussianSoldier(w->level, u));
+    delete w;
+}
+
+TEST(soldiers_at_the_front_stay_down_in_the_trench)
+{
+    World* w = trenchStrip(40, 40);
+    auto* s = w->spawn(new Sotilas(Coord{ 11, 30 }));
+    s->firstMove = false;
+    for (int i = 0; i < 400; ++i) s->npcAct();
+    CHECK(w->level.inOwnTrench(s->coord));
+    delete w;
+}
+
+// ---- the drones' see-saw: the trench swarms with them, the open ground has the riflemen ----
+
+TEST(fpv_player_share_is_high_in_the_trench_low_when_just_out)
+{
+    World* w = trenchStrip(11, 30);
+    CHECK(fpvPlayerShare(w->level) == 50);
+    w->player.trenchPressure = 80;
+    CHECK(fpvPlayerShare(w->level) == 90);
+    w->player.coord = Coord{ 30, 30 };
+    w->player.exposure = 0;
+    CHECK(fpvPlayerShare(w->level) == 10);  // the pilots are watching the trenches
+    w->player.exposure = 100;
+    CHECK(fpvPlayerShare(w->level) == 90);
+    CHECK(fpvMax(w->level) == 7);
+    World moscow;
+    CHECK(fpvMax(moscow.level) == FPV_MAX);
+    delete w;
+}
+
+TEST(fpv_drones_come_from_the_east)
+{
+    World w(Coord{ 100, 100 });
+    w.level.isWarLevel = true;
+    for (int i = 0; i < 300 && w.level.drones.empty(); ++i) fpvTick(w.level);
+    CHECK(!w.level.drones.empty());
+    bool east = true;
+    for (const auto& d : w.level.drones) if (d.fpv) east = east && d.x > 100.0f;
+    CHECK(east);
+}
+
+// ---- artillery (second and third front levels) and the meat assault ----
+
+static bool animated(const Level& l, const string& text)
+{
+    for (auto a : l.animations) if (contains(a->text, text)) return true;
+    return false;
+}
+
+TEST(no_artillery_on_the_first_front_level)
+{
+    World* w = trenchStrip(11, 30);
+    w->player.stats.health = 1000;
+    w->level.events = new EnvironmentEvents(&w->level, false);
+    for (int i = 0; i < 300; ++i) { w->level.warTick(); w->level.events->update(); }
+    CHECK(!w->printer.saw("TYKIST"));
+    CHECK(!w->printer.saw("Ulvontaa"));
+    delete w;
+}
+
+TEST(artillery_warns_before_it_lands)
+{
+    World* w = trenchStrip(11, 30);
+    w->player.stats.health = 1000;
+    w->level.warStage = 2;
+    w->level.artilleryCooldown = 1;
+    w->level.artilleryTick();
+    CHECK(w->printer.saw("Ulvontaa"));
+    CHECK(!animated(w->level, "KRUMP"));
+    w->level.artilleryTick();
+    CHECK(!animated(w->level, "KRUMP"));
+    w->level.artilleryTick();
+    CHECK(animated(w->level, "KRUMP"));
+    delete w;
+}
+
+TEST(shell_burst_spares_the_trench_beyond_one_cell)
+{
+    World* w = trenchStrip(40, 60);
+    auto* deep = w->spawn(new Sotilas(Coord{ 11, 30 }));     // in the trench, two cells off
+    auto* close = w->spawn(new Sotilas(Coord{ 11, 31 }));    // in the trench, right beside it
+    auto* open = w->spawn(new Sotilas(Coord{ 14, 32 }));     // up on the open ground
+    w->level.shellBurst(Coord{ 11, 32 }, 3, 6, "tykist\xC3\xB6");
+    CHECK(deep->stats.health == 15);
+    CHECK(close->stats.health < 15);
+    CHECK(open->stats.health < 15);
+    // a hit leaves a crater in the open, but a trench stays a trench
+    w->level.shellBurst(Coord{ 30, 30 }, 1, 1, "tykist\xC3\xB6");
+    CHECK(w->level.trenchAt(Coord{ 30, 30 }) == Trench::Crater);
+    CHECK(w->level.inOwnTrench(Coord{ 11, 32 }));
+    delete w;
+}
+
+TEST(meat_assault_goes_over_the_top_to_the_east)
+{
+    World* w = trenchStrip(40, 60);
+    auto* waiting = w->spawn(new Skinhead(Coord{ 11, 20 }));
+    auto* charging = w->spawn(new Skinhead(Coord{ 11, 25 }));
+    waiting->firstMove = charging->firstMove = false;
+    charging->charging = true;
+    w->player.coord = Coord{ 12, 20 };                      // right beside a comrade: no beating
+    w->player.stats.health = 30;
+    for (int i = 0; i < 40; ++i) { waiting->npcAct(); charging->npcAct(); }
+    CHECK(w->level.inOwnTrench(waiting->coord));
+    CHECK(charging->coord.x > 30);
+    CHECK(w->player.stats.health == 30);
+    delete w;
+}
+
+// ---- the third front level: barrage, the Bradleys, the officer who holds and our own guns ----
+
+static World* holdWorld()
+{
+    std::srand(4242);
+    World* w = new World(Coord{ 6, 153 });
+    w->level.isWarLevel = true;
+    w->level.warStage = 3;
+    generateTrenches(w->level);
+    w->player.coord = nearestTrench(w->level, w->player.coord, Trench::Own);
+    w->player.stats.health = 100000;
+    w->level.prepareHold();
+    return w;
+}
+
+static size_t bradleys(const Level& l)
+{
+    size_t n = 0;
+    for (auto v : l.vehicles) if (dynamic_cast<const Bradley*>(v)) ++n;
+    return n;
+}
+
+TEST(third_level_barrage_then_assault)
+{
+    World* w = holdWorld();
+    CHECK(w->level.holdOfficer != nullptr);
+    CHECK(w->level.mgNests.size() >= 2);
+    while (w->level.warTicks < 29) w->level.warTick();
+    CHECK(w->level.assaultPhase == AssaultPhase::Quiet);
+    w->level.warTick();
+    CHECK(w->level.assaultPhase == AssaultPhase::Barrage);
+    CHECK(w->printer.saw("TYKIST\xC3\x96KESKITYS"));
+    while (w->level.warTicks < 55) w->level.warTick();
+    CHECK(w->level.assaultPhase == AssaultPhase::Assault);
+    CHECK(bradleys(w->level) >= 2 && bradleys(w->level) <= 3);
+    delete w;
+}
+
+TEST(bradley_stops_short_of_the_trench_and_unloads)
+{
+    World* w = holdWorld();
+    const uint32_t y = w->player.coord.y;
+    auto* b = new Bradley(Coord{ 85, y }, bradleyStopX(w->level, y));
+    w->level.addVehicle(b);
+    for (int i = 0; i < 80; ++i) w->level.updateVehicles();
+    const int gap = (int)b->coord.x - ownTrenchEastX(w->level, y);
+    CHECK(gap >= 6 && gap <= 10);
+    CHECK(b->unloaded);
+    size_t assault = 0;
+    for (auto p : w->level.persons)
+        if (p->type == ukrainalainen && static_cast<Ukrainalainen*>(p)->mode == Ukrainalainen::Mode::Assault) ++assault;
+    CHECK(assault >= 4 && assault <= 6);
+    // a grenade beside it finishes it
+    w->level.explode(Coord{ b->coord.x, b->coord.y + 2 }, 2, 3, nullptr);
+    CHECK(b->wrecked);
+    delete w;
+}
+
+TEST(rear_stays_shut_while_the_officer_lives)
+{
+    World* w = holdWorld();
+    w->level.warTicks = 200;
+    w->level.warTick();
+    CHECK(!w->level.rearOpen);
+    w->level.holdOfficer->stats.health = 0;
+    w->level.warTick();
+    CHECK(w->level.rearOpen);
+    CHECK(w->printer.saw("Upseeri kaatui"));
+    delete w;
+}
+
+TEST(own_machine_guns_fire_on_a_player_behind_the_officer)
+{
+    World* w = holdWorld();
+    common::realtimeEnabled = false;    // no moment-to-react guard between hits (it is shared across tests)
+    w->player.stats.health = 200;
+    w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };    // well behind him, at the rear
+    for (int i = 0; i < 50; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health == 200);                           // before the barrage nobody is told to fire
+    w->level.assaultPhase = AssaultPhase::Assault;
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health < 200);
+    CHECK(w->printer.saw("konekiv"));
+    delete w;
+}
+
+TEST(no_barrier_fire_once_the_officer_is_dead)
+{
+    World* w = holdWorld();
+    w->player.stats.health = 200;
+    w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };
+    w->level.holdOfficer->stats.health = 0;
+    w->level.assaultPhase = AssaultPhase::Assault;
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health == 200);
+    // nor while the player stays up at the line beside him
+    World* v = holdWorld();
+    v->player.stats.health = 200;
+    v->player.coord = Coord{ v->level.holdOfficer->coord.x - 3, v->level.holdOfficer->coord.y };
+    v->level.assaultPhase = AssaultPhase::Assault;
+    for (int i = 0; i < 200; ++i) v->level.barrierFireTick();
+    CHECK(v->player.stats.health == 200);
+    delete w;
+    delete v;
+}
+
+TEST(third_level_without_officer_opens_after_shift)
+{
+    World* w = holdWorld();
+    w->level.holdOfficer = nullptr;            // he never made it up to the line
+    while (w->level.warTicks < Level::WAR_SHIFT_TICKS + 1) w->level.warTick();
+    CHECK(w->level.rearOpen);
+    delete w;
+}
+
+TEST(a_new_man_starts_on_the_main_line_not_behind_it)
+{
+    for (int seed = 1; seed <= 6; ++seed) {
+        std::srand(seed);
+        World w(Coord{ 6, 153 });
+        w.level.isWarLevel = true;
+        generateTrenches(w.level);
+        const uint32_t y = common::PLAYER_START_Y;
+        const Coord start = nearestTrench(w.level, Coord{ (uint32_t)w.level.ownLineX[y], y }, Trench::Own);
+        CHECK(w.level.inOwnTrench(start));
+        CHECK(!w.level.behindTheLine(start));
+    }
+}
+
+// ---- review fixes ----
+
+TEST(officer_dies_before_the_barrage_and_the_assault_still_comes)
+{
+    World* w = holdWorld();
+    while (w->level.warTicks < 5) w->level.warTick();
+    w->level.holdOfficer->stats.health = 0;      // a drone found him in the trench
+    w->level.cleanDead();
+    while (w->level.warTicks < 60) w->level.warTick();
+    CHECK(w->level.rearOpen);
+    CHECK(w->level.assaultPhase == AssaultPhase::Assault);
+    CHECK(bradleys(w->level) >= 2);
+    delete w;
+}
+
+TEST(assault_man_at_the_west_edge_never_wraps_off_the_map)
+{
+    World w(Coord{ 50, 50 });
+    w.level.isWarLevel = true;
+    auto* s = w.spawn(new Sotilas(Coord{ 1, 20 }));
+    s->stats.health = 100000;
+    s->firstMove = false;
+    auto* u = w.spawn(new Ukrainalainen(Coord{ 0, 20 }, Ukrainalainen::Mode::Assault));
+    u->firstMove = false;
+    bool onMap = true;
+    for (int i = 0; i < 300 && onMap; ++i) { u->npcAct(); onMap = u->coord.x < common::SIZEX; s->coord = Coord{ u->coord.x + 1, u->coord.y }; }
+    CHECK(onMap);
+}
+
+TEST(comrades_never_wander_behind_the_line)
+{
+    World* w = holdWorld();
+    std::vector<Person*> men;
+    for (int i = 0; i < 6; ++i) {
+        const uint32_t y = 140 + i * 4;
+        const Coord at = nearestTrench(w->level, Coord{ (uint32_t)w->level.ownLineX[y], y }, Trench::Own);
+        Person* p = i % 2 ? (Person*)w->spawn(new Sotilas(at)) : (Person*)w->spawn(new Skinhead(at));
+        if (i % 2) static_cast<Sotilas*>(p)->firstMove = false; else static_cast<Skinhead*>(p)->firstMove = false;
+        men.push_back(p);
+    }
+    bool behind = false;
+    for (int t = 0; t < 1500; ++t)
+        for (auto p : men) { p->npcAct(); behind = behind || w->level.behindTheLine(p->coord); }
+    CHECK(!behind);
+    delete w;
 }

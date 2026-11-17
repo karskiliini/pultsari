@@ -163,17 +163,8 @@ static void spawnQueue(Level& level, Building* b, int count)
 
 static void populateBuildings(Level& level, const GameState& gs)
 {
-    if (gs.phase == GamePhase::War) {
-        Building* b = new Seina();
-        b->setOffset(30, 80);
-        level.addBuilding(b);
-        if (random(50)) {
-            b = new Seina();
-            b->setOffset(100, 60);
-            level.addBuilding(b);
-        }
-        return;
-    }
+    // the front is open ground and trenches (dug in generateTrenches), no buildings
+    if (gs.phase == GamePhase::War) return;
 
     Building* b = nullptr;
 
@@ -423,22 +414,27 @@ static void spawnVeteran(Level& level)
 static void populatePersons(Level& level, const GameState& gs)
 {
     if (gs.phase == GamePhase::War) {
-        // war levels: skinheads as enemy soldiers, vankis as POWs
+        // war levels: our soldiers and the meat-assault conscripts in our trench, their riflemen in theirs
+        const Coord start { level.ownLineX.empty() ? common::PLAYER_START_X : (uint32_t)level.ownLineX[common::PLAYER_START_Y], common::PLAYER_START_Y };
+        // our men sit on the main line, never back in a communication trench
+        auto onLine = [&](uint32_t rx, uint32_t ry) {
+            const Coord c = randomTrenchCell(level, Trench::Own, start, rx, ry);
+            return level.behindTheLine(c) && c.y < level.ownLineX.size() ? nearestTrench(level, Coord{ (uint32_t)level.ownLineX[c.y], c.y }, Trench::Own) : c;
+        };
+        // the conscripts of the meat assaults wait their turn down in our trench
         for (int i = 0; i < 3 + (int)gs.warStage * 2; ++i) {
-            level.createPerson(level.freePosition(), skinhead);
+            level.createPerson(onLine(5, 40), skinhead);
         }
         if (random(40)) level.createPerson(level.freePosition(), vanki);
+        // their riflemen, lying low across no man's land, most of them facing our stretch
+        for (int i = 0; i < 6 + (int)gs.warStage * 2; ++i)
+            level.createPerson(randomTrenchCell(level, Trench::Enemy, Coord{ TrenchNS::ENEMY_X, start.y }, 6, 45), ukrainalainen);
         for (int i = 0; i < (int)gs.warStage; ++i) {
             if (random(50)) spawnVeteran(level);
         }
         // comrades in the trenches around the player: they shoot at the FPV drones, and the drones hunt them
         for (int i = 0; i < 4 + (int)gs.warStage * 2; ++i) {
-            Coord c = level.freePosition();
-            for (int tries = 0; tries < 30; ++tries) {
-                const Coord near { common::PLAYER_START_X + std::rand() % 41 - 20, common::PLAYER_START_Y + std::rand() % 17 - 8 };
-                if (near.x < common::SIZEX && near.y < common::SIZEY && !level.hit(near)) { c = near; break; }
-            }
-            level.createPerson(c, sotilas);
+            level.createPerson(onLine(5, 12), sotilas);
         }
         return;
     }
@@ -786,6 +782,7 @@ static bool restartedByZ = false;
 static bool startByCar = false;
 // --front: start at the front, for trying out the war levels
 static bool startAtFront = false;
+static uint32_t frontStartStage = 1;   // --front=2 / --front=3: straight to a later front level
 
 static void parkCarByPlayer(Level& level, const Coord& at)
 {
@@ -1068,7 +1065,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
     GameState gameState;
     gameState.moscowStage = stage;
-    if (startAtFront) gameState.sendToWar();
+    if (startAtFront) { gameState.sendToWar(); gameState.warStage = frontStartStage; }
 
     bool quit = false;
     bool skipWaitKey = false;
@@ -1098,6 +1095,11 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
         if (gameState.phase == GamePhase::War) {
             level.isWarLevel = true;
+            level.warStage = gameState.warStage;
+            generateTrenches(level);
+            // a new man arrives down in the trench, not on the open ground beside it
+            const uint32_t y = player.coord.y;
+            player.coord = nearestTrench(level, Coord{ (uint32_t)level.ownLineX[y], y }, Trench::Own);
         }
         if (gameState.getLandmark() == MoscowLandmark::Bolshoi) {
             level.isBolshoi = true;
@@ -1110,6 +1112,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         if (gameState.phase != GamePhase::War) populateRoads(level);
         populateBuildings(level, gameState);
         populatePersons(level, gameState);
+        // the last level of the front: an officer who holds, and our own guns behind us
+        if (gameState.phase == GamePhase::War && gameState.warStage >= 3) level.prepareHold();
         populateItems(level, gameState);
         populateVehicles(level);
         if (startByCar && !gameState.hasBeenToWar) parkCarByPlayer(level, player.coord);
@@ -1132,7 +1136,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             printer->showMessage(gameState.getLevelName(), &level, false);
         }
         // the first level of the front: a loaded rifle, every time; it comes home with you too
-        if (gameState.phase == GamePhase::War && gameState.warStage == 1) player.issueRifle();
+        if (gameState.phase == GamePhase::War && (gameState.warStage == 1 || (startAtFront && gameState.warStage == frontStartStage)))
+            player.issueRifle();
 
         level.updateCamera();
         mask.init();
@@ -1691,7 +1696,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     } else if (mode == Mode::Aim) {
                         printer->aimRisk = aimIsShooting ? aimRisk : -1.0f;
                         printer->aimLength = 20;
+                        printer->aimThrow = !aimIsShooting;
                         printer->printAimLine(&level, player.coord.x, player.coord.y, aimNow);
+                        printer->aimThrow = false;
                     } else if (gunDrawn) {
                         // laser from the lowered pistol, a few steps ahead on the ground
                         printer->aimRisk = -1.0f;
@@ -1990,6 +1997,9 @@ int init(int argc, char *argv[], Printer* printer)
             startByCar = true;
         } else if (a == "--front") {
             startAtFront = true;
+        } else if (a.rfind("--front=", 0) == 0) {
+            startAtFront = true;
+            frontStartStage = std::max(1, std::min(3, std::atoi(a.c_str() + 8)));
         } else if (a == "--path") {
             pathFinding = true;
         } else if ((a == "--realtime") || (a == "--rt")) {

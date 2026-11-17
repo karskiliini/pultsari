@@ -80,6 +80,19 @@ void launchFpv(Level& level, float x, float y, Person* prey)
     level.drones.push_back(d);
 }
 
+uint32_t fpvMax(const Level& level)
+{
+    return level.isWarLevel ? 7 : FPV_MAX;
+}
+
+uint32_t fpvPlayerShare(const Level& level)
+{
+    const PlayerNS::Player* p = level.getPlayer();
+    if (!p) return 0;
+    const uint32_t share = level.inCover(p->coord) ? 50 + p->trenchPressure / 2 : 10 + p->exposure * 8 / 10;
+    return std::min<uint32_t>(90, share);
+}
+
 void fpvTick(Level& level)
 {
     if (!level.isWarLevel) return;
@@ -93,7 +106,9 @@ void fpvTick(Level& level)
     }
     // the whine overhead gets a caption now and then, like the hum of a film's soundtrack
     if (flying > 0) Subtitles::say("[FPV-droonien p\xC3\xB6rin\xC3\xA4\xC3\xA4 taivaalla. Joku niist\xC3\xA4 etsii sinua.]", "drones", 25000);
-    if (flying >= FPV_MAX || !random(12)) return;   // a new one every few seconds
+    // a new one every few seconds over the trenches, more once he has been seen up top
+    const PlayerNS::Player* seen = level.getPlayer();
+    if (flying >= fpvMax(level) || !random(12 + (seen ? seen->exposure / 4 : 0))) return;
 
     // the pilots go for whoever is out in the open, the drunk new recruit as much as anyone
     std::vector<Person*> open;
@@ -101,10 +116,10 @@ void fpvTick(Level& level)
     if (open.empty()) return;
     Person* prey = open[std::rand() % open.size()];
     const PlayerNS::Player* player = level.getPlayer();
-    if (player && !level.playerDead && fairGame(level, player) && random(25)) prey = const_cast<PlayerNS::Player*>(player);
+    if (player && !level.playerDead && fairGame(level, player) && random(fpvPlayerShare(level))) prey = const_cast<PlayerNS::Player*>(player);
 
-    // they come in from the west, the Ukrainian side, out of sight
-    const float a = 3.14159f + ((std::rand() % 161) - 80) / 100.0f;
+    // they come in from the east, the Ukrainian side, out of sight
+    const float a = ((std::rand() % 161) - 80) / 100.0f;
     const float dist = 38.0f + std::rand() % 12;
     const float x = std::max(-6.0f, prey->coord.x + std::cos(a) * dist);
     const float y = std::max(-6.0f, std::min(common::SIZEY + 6.0f, prey->coord.y + std::sin(a) * dist * 0.6f));
