@@ -420,6 +420,9 @@ static void populatePersons(Level& level, const GameState& gs)
             level.createPerson(randomTrenchCell(level, Trench::Own, start, 8, 40), skinhead);
         }
         if (random(40)) level.createPerson(level.freePosition(), vanki);
+        // their riflemen, lying low across no man's land, most of them facing our stretch
+        for (int i = 0; i < 6 + (int)gs.warStage * 2; ++i)
+            level.createPerson(randomTrenchCell(level, Trench::Enemy, Coord{ TrenchNS::ENEMY_X, start.y }, 6, 45), ukrainalainen);
         for (int i = 0; i < (int)gs.warStage; ++i) {
             if (random(50)) spawnVeteran(level);
         }

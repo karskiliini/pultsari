@@ -111,7 +111,7 @@ void Printer::removeMessage()
 const Person* Printer::findPerson(const vector<const Person*>& row, uint32_t x) const
 {
     for (const auto& p : row) {
-        if (p->coord.x == x) return p;
+        if (p->coord.x == x && !p->hiddenFromView()) return p;
     }
 
     return nullptr;
@@ -366,6 +366,7 @@ const char* personColor(const Person* p)
         case rekryytti:    return "38;5;101";  // a uniform that does not fit
         case korealainen:  return "38;5;65";   // dark green, pressed
         case myyja:        return "1;38;5;31"; // blue shop coat
+        case ukrainalainen: return "1;38;5;220";       // the yellow tape on a green sleeve
         default:           return "37";
     }
 }

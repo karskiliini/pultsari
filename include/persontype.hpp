@@ -31,7 +31,8 @@ enum PersonType {
     pankkirosvo,
     rekryytti,      // recruited from Africa with the promise of a civilian job
     korealainen,    // a North Korean soldier, told it was an exercise
-    myyja           // a shopkeeper who caught you stealing: fanatical
+    myyja,          // a shopkeeper who caught you stealing: fanatical
+    ukrainalainen   // a Ukrainian soldier at the front: a rifleman in his trench, or in the assault
 };
 
 #endif

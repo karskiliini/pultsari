@@ -2149,6 +2149,9 @@ bool Sotilas::move(Direction d, std::string& msg)
         default: return false;
     }
 
+    // at the front a soldier keeps his head down: he moves along the trench, never out of it
+    if (level->isWarLevel && level->inOwnTrench(coord) && !level->inOwnTrench(check)) return false;
+
     if (!level->hit(check))
     {
         coord = check;

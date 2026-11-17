@@ -5537,3 +5537,58 @@ TEST(exposure_is_announced_once_per_rise)
     CHECK(contains(Subtitles::current(), "huomattu"));
     delete w;
 }
+
+// ---- Ukrainian riflemen in their trench ----
+
+static Ukrainalainen* rifleman(World& w, Coord at)
+{
+    w.level.setTrench(at, Trench::Enemy);
+    auto* u = w.spawn(new Ukrainalainen(at));
+    u->firstMove = false;
+    return u;
+}
+
+TEST(riflemen_never_shoot_a_player_in_the_trench)
+{
+    World* w = trenchStrip(11, 30);
+    w->player.stats.health = 50;
+    w->player.exposure = 100;           // even a man they have seen before is safe down there
+    auto* u = rifleman(*w, Coord{ 60, 30 });
+    for (int i = 0; i < 1000; ++i) u->npcAct();
+    CHECK(w->player.stats.health == 50);
+    delete w;
+}
+
+TEST(riflemen_shoot_a_player_in_the_open)
+{
+    World* w = trenchStrip(30, 30);
+    w->player.stats.health = 200;
+    auto* u = rifleman(*w, Coord{ 50, 30 });
+    for (int i = 0; i < 300; ++i) { w->player.exposure = 80; u->npcAct(); }
+    CHECK(w->player.stats.health < 200);
+    CHECK(w->printer.saw("Luoti viuhuu ohi") || w->printer.saw("osuu sinuun"));
+    delete w;
+}
+
+TEST(lurking_rifleman_is_hidden_until_he_fires)
+{
+    World* w = trenchStrip(30, 30);
+    w->player.stats.health = 200;
+    auto* u = rifleman(*w, Coord{ 50, 30 });
+    CHECK(u->hiddenFromView());
+    bool shown = false;
+    for (int i = 0; i < 300 && !shown; ++i) { w->player.exposure = 100; u->npcAct(); shown = !u->hiddenFromView(); }
+    CHECK(shown);                       // the muzzle flash gives him away for a moment
+    CHECK(!isRussianSoldier(w->level, u));
+    delete w;
+}
+
+TEST(soldiers_at_the_front_stay_down_in_the_trench)
+{
+    World* w = trenchStrip(40, 40);
+    auto* s = w->spawn(new Sotilas(Coord{ 11, 30 }));
+    s->firstMove = false;
+    for (int i = 0; i < 400; ++i) s->npcAct();
+    CHECK(w->level.inOwnTrench(s->coord));
+    delete w;
+}

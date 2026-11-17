@@ -278,6 +278,9 @@ Person* Level::createPerson(const Coord& coord, PersonType type)
             case korealainen:
                 p = new Varvatty(coord, type);
                 break;
+            case ukrainalainen:
+                p = new Ukrainalainen(coord);
+                break;
             default:
                 break;
         }
@@ -1294,6 +1297,7 @@ static uint32_t baseSpeed(PersonType t)
         case pankkirosvo:  return 26;
         case rekryytti:    return 19;
         case korealainen:  return 23;
+        case ukrainalainen: return 24;
         default:           return 20;
     }
 }
