@@ -1027,7 +1027,7 @@ void Level::cleanDead()
                     }
                 }
                 // a person stays where he fell (after the loot, so the loot is picked first); rats do not
-                if (p->type != rotta) items.push_back(new Ruumis(p->coord));
+                if (p->type != rotta) items.push_back(new Ruumis(p->coord, coatOf(p->type)));
                 delete p;
                 p = nullptr;
 

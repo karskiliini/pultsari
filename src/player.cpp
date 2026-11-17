@@ -851,11 +851,12 @@ uint32_t Player::coatCap() const
     return stage > 0 ? std::min(INITIAL_HP, Disease::maxHealth(stage)) : INITIAL_HP;
 }
 
-void Player::wearCoat(uint32_t hp)
+void Player::wearCoat(uint32_t hp, Coat kind)
 {
     const uint32_t to = std::min(hp, coatCap());
     if (stats.health < to) stats.health = to;
     usedCoat = false;
+    coat = kind;
 }
 
 // these run after chaseTarget and arrest; a brawl would only stop them
@@ -868,8 +869,10 @@ bool Player::stripCorpseCoat(Ruumis* corpse)
 {
     if (!corpse || corpse->coatTaken) return false;
     corpse->coatTaken = true;
-    wearCoat(INITIAL_HP);
-    if (printer) printer->showMessage("Riisut ruumiin takin ja puet sen p\xC3\xA4\xC3\xA4llesi. Viel\xC3\xA4 l\xC3\xA4mmin.", level, false);
+    wearCoat(INITIAL_HP, corpse->coat);
+    if (printer) printer->showMessage(corpse->coat == Coat::Poliisi
+            ? "Riisut poliisin takin ja puet sen p\xC3\xA4\xC3\xA4llesi. Ehj\xC3\xA4 ja sininen, viel\xC3\xA4 l\xC3\xA4mmin."
+            : "Riisut ruumiin takin ja puet sen p\xC3\xA4\xC3\xA4llesi. Viel\xC3\xA4 l\xC3\xA4mmin.", level, false);
     if (!level) return true;
     // a disgrace: everyone who saw it comes for you
     for (auto p : level->persons) {

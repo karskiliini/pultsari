@@ -133,13 +133,16 @@ public:
     // the most a coat can bring the strength to: full, or less with the disease
     uint32_t coatCap() const;
     // a coat restores strength up to `hp` (never above coatCap(), never down)
-    void wearCoat(uint32_t hp);
+    // the coat is worn from then on: `kind` colours the sleeves beside the map
+    void wearCoat(uint32_t hp, Coat kind = Coat::Siviili);
     // the coat off a corpse: full strength, and everyone who sees it goes for you
     bool stripCorpseCoat(Ruumis* corpse);
     // walking onto a corpse: "Riisutko takin? (k/e)", only if a coat would help
     void offerCorpseCoat(Ruumis* corpse);
     // the last coat was a worn one from the pawnshop: the sleeves stay ragged
     bool usedCoat = false;
+    // whose coat is on: the poster's own until another is put on
+    Coat coat = Coat::Oma;
 
     bool sentToWar = false;
     bool returnedFromWar = false;
