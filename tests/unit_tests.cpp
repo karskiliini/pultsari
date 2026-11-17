@@ -4589,6 +4589,61 @@ TEST(arm_sleeve_stage_thresholds)
     CHECK(sleeveStage(3, true) == 2);
 }
 
+TEST(police_coat_off_a_corpse_shows_blue_and_whole_in_the_arms)
+{
+    World w;
+    w.player.stats.health = 2;
+    auto* corpse = new Ruumis(Coord{ 51, 50 }, Coat::Poliisi);
+    w.level.addItem(corpse);
+    feedKeysLater("", "k");
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(corpse->coatTaken);
+    CHECK(w.player.coat == Coat::Poliisi);
+    CHECK(w.printer.saw("poliisin takin"));
+    const int stage = sleeveStage(w.player.stats.health, w.player.usedCoat);
+    CHECK(stage == 0);
+    for (bool left : { true, false }) {
+        const auto pic = armPicture(left, Held(), stage, w.player.coat);
+        const auto mask = armColours(left, Held(), stage, w.player.coat);
+        int blue = 0;
+        for (int r = 0; r < 9; ++r) {
+            CHECK(mask[r].find('J') == string::npos);           // none of the poster's own jacket
+            blue += (int)std::count(mask[r].begin(), mask[r].end(), 'B');
+            CHECK(pic[r].find("( )") == string::npos);          // whole: no holes
+            CHECK(pic[r].find("/ \\") == string::npos);
+        }
+        CHECK(blue > 40);
+        CHECK(pic != armPicture(left, Held(), 0, Coat::Oma));
+    }
+    // it tears like any coat as the strength goes, and stays blue
+    const auto torn = armColours(true, Held(), 2, Coat::Poliisi);
+    CHECK(torn[0].find('B') != string::npos && torn[0].find('J') == string::npos);
+    CHECK(armPicture(true, Held(), 2, Coat::Poliisi) == armPicture(true, Held(), 2, Coat::Oma));
+}
+
+TEST(coats_differ_by_who_wore_them)
+{
+    CHECK(coatOf(poliisi) == Coat::Poliisi);
+    CHECK(coatOf(sotilas) == Coat::Sotilas);
+    CHECK(coatOf(fsb) == Coat::Musta);
+    CHECK(coatOf(kansalainen) == Coat::Siviili);
+    CHECK(coatColour(Coat::Oma) == 'J' && coatColour(Coat::Poliisi) == 'B');
+    // each other coat colours the whole sleeve its own way
+    const auto police = armColours(true, Held(), 0, Coat::Poliisi), soldier = armColours(true, Held(), 0, Coat::Sotilas);
+    CHECK(police != soldier);
+    CHECK(armPicture(true, Held(), 0, Coat::Poliisi) != armPicture(true, Held(), 0, Coat::Sotilas));  // the cuff stripe
+    // a coat off the ground is a civilian one; a soldier's drop is olive
+    World w;
+    w.player.stats.health = 3;
+    w.level.addItem(new Takki(Coord{ 51, 50 }));
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.coat == Coat::Siviili);
+    w.player.stats.health = 3;
+    Takki olive(Coord{ 0, 0 }, Coat::Sotilas);
+    CHECK(olive.interact(&w.player));
+    CHECK(w.player.coat == Coat::Sotilas);
+}
+
 TEST(arm_mirror_swaps_slashes)
 {
     CHECK(mirrorRow("ab/(<[{`") == "'}]>)\\ba");
@@ -4662,10 +4717,11 @@ TEST(web_frame_sends_arms_once_per_change)
 
 TEST(arm_colours_match_picture_shape)
 {
+    for (Coat coat : { Coat::Oma, Coat::Poliisi, Coat::Sotilas, Coat::Musta, Coat::Siviili })
     for (const Held& h : allHeldVariants())
         for (int stage = 0; stage <= 3; ++stage)
             for (bool left : { true, false }) {
-                const auto pic = armPicture(left, h, stage), mask = armColours(left, h, stage);
+                const auto pic = armPicture(left, h, stage, coat), mask = armColours(left, h, stage, coat);
                 CHECK(mask.size() == pic.size());
                 for (size_t r = 0; r < pic.size() && r < mask.size(); ++r) {
                     CHECK(mask[r].size() == pic[r].size());
@@ -4675,7 +4731,7 @@ TEST(arm_colours_match_picture_shape)
                             std::cerr << "    uncoloured '" << pic[r][c] << "' row " << r << " col " << c
                                       << " thing " << (int)h.what << " stage " << stage << (left ? " left" : " right") << "\n";
                         }
-                        CHECK(string(" JSGVALCMWRYK").find(mask[r][c]) != string::npos);
+                        CHECK(string(" JSGVALCMWRYKBODN").find(mask[r][c]) != string::npos);
                     }
                 }
             }

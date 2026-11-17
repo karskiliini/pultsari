@@ -723,10 +723,11 @@ ArmPictures playerArms(const PlayerNS::Player* player)
     const Held& l = inv.akRaised ? inv.back : inv.left;
     const Held& r = inv.akRaised ? inv.back : inv.right;
     const int stage = sleeveStage(player->stats.health, player->usedCoat);
-    a.left = armPicture(true, l, stage);
-    a.right = armPicture(false, r, stage);
-    a.leftColours = armColours(true, l, stage);
-    a.rightColours = armColours(false, r, stage);
+    const Coat coat = player->coat;
+    a.left = armPicture(true, l, stage, coat);
+    a.right = armPicture(false, r, stage, coat);
+    a.leftColours = armColours(true, l, stage, coat);
+    a.rightColours = armColours(false, r, stage, coat);
     a.leftText = l.empty() ? std::string() : heldText(l);
     a.rightText = r.empty() ? std::string() : heldText(r);
     return a;

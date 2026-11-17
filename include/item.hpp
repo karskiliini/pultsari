@@ -3,6 +3,7 @@
 
 #include "coord.hpp"
 #include "hands.hpp"
+#include "persontype.hpp"
 #include <string>
 
 namespace PlayerNS {
@@ -369,10 +370,11 @@ public:
 // A coat to put on at once: full strength again. It takes no hand.
 class Takki : public Item {
 public:
-    Takki(const Coord& c) : Item(c, ETakki) { }
+    Takki(const Coord& c, Coat coat = Coat::Siviili) : Item(c, ETakki), coat(coat) { }
     virtual std::string typeToChar() const { return "["; }
     virtual std::string getMsg() const { return "Uusi takki! Vain v\xC3\xA4h\xC3\xA4n verta kauluksessa."; }
     virtual bool interact(PlayerNS::Player* player);
+    Coat coat;
 };
 
 // A soldier's belt: the pistol rides on it and the hand is free.
@@ -388,12 +390,16 @@ public:
 // block the way; his coat can be taken off once ("Riisutko takin? (k/e)").
 class Ruumis : public Item {
 public:
-    Ruumis(const Coord& c) : Item(c, ERuumis) { }
+    Ruumis(const Coord& c, Coat coat = Coat::Siviili) : Item(c, ERuumis), coat(coat) { }
     virtual std::string typeToChar() const { return "\xE2\x80\xA0"; }
     virtual std::string getMsg() const;
     virtual bool interact(PlayerNS::Player* player);
     bool coatTaken = false;
+    Coat coat;   // whose coat it is: a policeman's is blue
 };
+
+// the coat a person of this type wears, for his corpse
+Coat coatOf(PersonType t);
 
 // A used syringe on the ground: stepping on it may give you HIV, and you will not know.
 class Neula : public Item {
