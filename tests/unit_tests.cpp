@@ -4192,6 +4192,47 @@ TEST(ak_needs_both_hands_empty_and_hints)
     CHECK(inv.back.what == Thing::Rynkky);
 }
 
+TEST(front_puts_a_loaded_ak_in_your_hands)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::Kalja, Thing::Lenkki);
+    w.player.issueRifle();
+    CHECK(inv.back.what == Thing::Rynkky);
+    CHECK(inv.back.rounds == AK_ROUNDS);
+    CHECK(inv.akRaised);
+    CHECK(inv.left.empty() && inv.right.empty());
+    // what was in the hands lies on the ground next to you
+    int kalja = 0, lenkki = 0;
+    for (auto i : w.level.items) {
+        if (i->held.what == Thing::Kalja) ++kalja;
+        if (i->held.what == Thing::Lenkki) ++lenkki;
+    }
+    CHECK(kalja == 1 && lenkki == 1);
+    CHECK(w.printer.saw(AK_ISSUED_MSG));
+}
+
+TEST(front_refills_the_ak_you_already_carry_and_it_stays_after)
+{
+    World w;
+    auto& inv = w.player.inventory;
+    hold(inv, Thing::None, Thing::None);
+    inv.back = loaded(Thing::Rynkky);
+    inv.back.rounds = 3;
+    w.player.issueRifle();
+    CHECK(inv.count(Thing::Rynkky) == 1);
+    CHECK(inv.back.rounds == AK_ROUNDS);
+
+    // back home from the front the rifle comes along
+    GameState gs;
+    gs.sendToWar();
+    gs.returnFromWar();
+    w.player.resetPosition();
+    w.player.onNewLevel();
+    CHECK(gs.phase == GamePhase::ReturnMoscow);
+    CHECK(inv.back.what == Thing::Rynkky);
+}
+
 TEST(makarov_has_eight_rounds_and_reloads_from_pocket)
 {
     World w;

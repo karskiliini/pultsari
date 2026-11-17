@@ -122,6 +122,9 @@ public:
     // the rifle off the back to the shoulder: both hands must be empty (false + a hint otherwise)
     bool shoulderAk();
     void lowerAk();
+    // sent to the front: a loaded AK at the shoulder (the one on the back refilled, if any);
+    // whatever was in the hands is put down next to you. Nothing takes it away on the way back.
+    void issueRifle();
     // a spare magazine (the pocket's, else one in a hand) fills a gun (None: the one in hand, else whichever needs it)
     bool reload(Thing gun = Thing::None);
     // the gun Space raises: the one in hand first; an empty rifle never blocks a loaded pistol

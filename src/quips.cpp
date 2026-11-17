@@ -26,4 +26,5 @@ const std::string HINT_AK_HANDS = "AK roikkuu selässä, mutta kädet ovat varat
 const std::string HINT_PISTOL_BOTTLE = "Pistooli on vyöllä, mutta kädessä on pullo.";
 const std::string HINT_PISTOL_HANDS = "Pistooli on vyöllä, mutta kädet ovat täynnä. Heitä jotain pois.";
 const std::string HINT_AK_ON_BACK = "Selässä on jo rynkky.";
+const std::string AK_ISSUED_MSG = "Kersantti tyÃ¶ntÃ¤Ã¤ kÃ¤siisi Kalashnikovin ja tÃ¤yden lippaan.";
 const std::string KICK_BONA_MSG = "Kädet täynnä — potkaiset pullon rikki.";

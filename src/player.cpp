@@ -786,6 +786,20 @@ void Player::lowerAk()
     inventory.akRaised = false;
 }
 
+void Player::issueRifle()
+{
+    const bool hadSomething = !inventory.left.empty() || !inventory.right.empty();
+    for (Held* h : { &inventory.left, &inventory.right }) {
+        if (h->empty()) continue;
+        dropNear(heldItem(*h, coord));
+        *h = Held();
+    }
+    if (inventory.back.what == Thing::Rynkky) inventory.back.rounds = AK_ROUNDS;
+    else inventory.back = Inventory::fresh(Thing::Rynkky);
+    inventory.akRaised = true;
+    if (printer) printer->showMessage(hadSomething ? AK_ISSUED_MSG + " KÃ¤sistÃ¤ putosi kaikki muu." : AK_ISSUED_MSG, level, false);
+}
+
 bool Player::reload(Thing gun)
 {
     // the pocket's spare first, then one in a hand

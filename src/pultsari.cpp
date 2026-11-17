@@ -1122,6 +1122,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
         } else {
             printer->showMessage(gameState.getLevelName(), &level, false);
         }
+        // the first level of the front: a loaded rifle, every time; it comes home with you too
+        if (gameState.phase == GamePhase::War && gameState.warStage == 1) player.issueRifle();
 
         level.updateCamera();
         mask.init();

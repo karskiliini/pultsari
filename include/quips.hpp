@@ -19,5 +19,7 @@ extern const std::string HINT_PISTOL_HANDS;
 // a second rifle found: the back holds only one
 extern const std::string HINT_AK_ON_BACK;
 extern const std::string KICK_BONA_MSG;
+// sent to the front: the sergeant shoves a loaded rifle into your hands
+extern const std::string AK_ISSUED_MSG;
 
 #endif
