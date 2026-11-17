@@ -26,19 +26,16 @@ Then open http://localhost:3000.
 
 | Key | Action |
 | --- | --- |
-| W A S D or I J K L | Move. Walking into someone hits them; walking onto an item picks it up. |
-| Tab | Open the inventory (Tab again closes it) |
-| M | City map (browser) |
-| Q | Drink (a sip of vodka, a beer in one go) |
-| E | Eat the food in a hand (asks which hand when both hold food) |
-| W / S (inventory) | Select an item |
-| E (inventory) | Use: drink, eat or draw the pistol |
-| F (inventory) | Throw: starts aiming |
+| W A S D | Move (arrow keys too in the browser). Walking into someone hits them; walking onto an item picks it up. |
+| Q / E | Use what is in the left / right hand: drink, eat, raise a gun |
 | F | Choose something to throw; a gun or a magazine is put down at your feet, rounds kept |
 | Space | Aim the pistol (if you have one); Space again fires |
+| Tab | Inventory: W/S select, E use, F throw, Tab or Esc closes |
 | A / D (aiming) | Turn the aim |
 | Space (aiming) | Throw or shoot |
-| ESC | Cancel or close |
+| M | City map (browser) |
+| H | Help: the hands and the keys |
+| Esc | Cancel aiming, put a drawn pistol away; otherwise quit (Enter confirms) |
 
 ### Driving
 
@@ -54,15 +51,14 @@ and some floor it, try to run you over and then make off. Cars turn in 72 direct
 | --- | --- |
 | W | Throttle (hold) |
 | Shift | Clutch to the floor: the engine revs freely. In the terminal hold Shift with W/A/S/D |
-| Space | Up a gear (R N 1 2 3 4). Every change crunches the gearbox |
-| S | Brake; S then Space goes down a gear |
+| Space / C | Up / down a gear (R N 1 2 3 4). Every change crunches the gearbox |
+| S | Brake |
 | A / D | Turn the wheel further left / right |
-| E | Get out (at speed you jump) |
+| F | Get out (at speed you jump) |
 
 Start off by holding Shift+W to rev, then let go of Shift. Let the clutch out at idle in a high
 gear, or brake to a stop in gear, and the engine stalls; W starts it again in neutral or with the
 clutch down. The drunker you are, the more your eyes wander from the road.
-| Z | Quit |
 
 ## Layout
 

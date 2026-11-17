@@ -536,8 +536,7 @@ void gunnerKey(char c, Player& player, Level& level, Printer& printer, uint32_t&
     if (!gun) return;
     switch (c) {
         // 45 degrees a press, like every other weapon
-        case 'a': case 'j': case 'd': case 'l':
-        case 'w': case 'i': case 's': case 'k':
+        case 'a': case 'd': case 'w': case 's':
             gun->angle = common::aimStep(gun->angle, c);
             break;
         case ' ': {
@@ -549,7 +548,7 @@ void gunnerKey(char c, Player& player, Level& level, Printer& printer, uint32_t&
             if (!player.manning) printer.showMessage(msg + " Tykki on romuna, hypp\xC3\xA4\xC3\xA4t pois.", &level, false);
             break;
         }
-        case 27: case 'e': case 'q':
+        case 27: case 'f':
             gun->leave();
             printer.showMessage("Nouset tykin takaa. Korvat soivat viel\xC3\xA4 pitk\xC3\xA4\xC3\xA4n.", &level, false);
             break;

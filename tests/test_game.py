@@ -74,14 +74,15 @@ def test_visibility_mask_is_sent():
     check('visibility_mask_is_sent', bool(ok) and flat.strip('0') != '' and flat.strip('f') != '')
 
 
-def test_z_restarts():
+def test_esc_enter_restarts():
     g = Game()
     time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
-    g.keys('ddd'); g.keys('z', 0); time.sleep(2)
+    g.keys('\x1b', 0); time.sleep(0.3)
+    g.keys('\r', 0); time.sleep(2)
     alive = g.p.poll() is None
     msgs = [f.get('msg', '') for f in g.frames()]
     g.close()
-    check('z_restarts_the_game', alive and any('Uusi pultsari' in m for m in msgs))
+    check('esc_enter_restarts_the_game', alive and any('Uusi pultsari' in m for m in msgs))
 
 
 def test_city_is_built_up():
@@ -130,8 +131,8 @@ def test_q_drinks_in_realtime():
     msgs = [f.get('msg', '') for f in g.frames()]
     menus = [e for e in g.events() if e.get('t') == 'invmenu']
     g.close()
-    # a beggar may have taken the starting beer: then Player::drink says there is nothing to drink
-    drank = ('Olutpullo meni', 'Baltika katosi', 'Ei oo ehtaa tavaraa')
+    # Q uses the left hand; a beggar may have taken the starting beer
+    drank = ('Olutpullo meni', 'Baltika katosi', 'Vasen käsi on tyhjä')
     check('q_drinks_in_realtime', any(any(d in m for d in drank) for m in msgs) and not menus, f'menus {len(menus)}')
 
 
@@ -210,7 +211,7 @@ if __name__ == '__main__':
         sys.exit('build the game first: make')
     test_frame_rate()
     test_visibility_mask_is_sent()
-    test_z_restarts()
+    test_esc_enter_restarts()
     test_city_is_built_up()
     test_player_starts_on_leninski()
     test_q_drinks_in_realtime()

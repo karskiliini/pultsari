@@ -5330,8 +5330,8 @@ TEST(hands_intro_key_is_free_and_opens_the_intro)
     CHECK(InputNS::HANDS_INTRO_KEY == 'h');
     feedKeys(string(1, InputNS::HANDS_INTRO_KEY));
     CHECK(InputNS::Input::getInput() == InputNS::handsIntro);
-    feedKeys("i");
-    CHECK(InputNS::Input::getInput() == InputNS::up);   // i still walks up
+    feedKeys("ijklw");
+    CHECK(InputNS::Input::getInput() == InputNS::up);   // IJKL do nothing any more, W walks up
 }
 
 TEST(hands_intro_shows_inventory_pickup_damage_captions_and_rifle)
@@ -6379,6 +6379,8 @@ TEST(aim_turns_45_degrees_toward_the_key_by_the_shortest_way)
     CHECK(near(common::aimStep(Q, 's'), 2 * Q));            // down-right -> down
     CHECK(near(common::aimStep(2 * Q, 'w'), 3 * Q));        // straight opposite: clockwise
     CHECK(near(common::aimStep(0.0f, 'x'), 0.0f));          // any other key leaves it be
+    CHECK(near(common::aimStep(0.0f, 'i'), 0.0f));          // IJKL no longer aim
+    CHECK(near(common::aimStep(0.0f, 'k'), 0.0f));
     float a = 0.0f;
     for (int i = 0; i < 4; ++i) a = common::aimStep(a, 'a');
     CHECK(near(a, 4 * Q));
