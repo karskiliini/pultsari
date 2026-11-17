@@ -51,7 +51,9 @@ void Ukrainalainen::snipe(Person* target, string& msg)
     int chance = 60 - (int)(45 * std::min(d, RIFLE_RANGE) / RIFLE_RANGE);
     if (level->trenchAt(target->coord) == Trench::Crater) chance /= 2;
     const bool isPlayer = target->type == pelaaja;
-    if (random(chance)) {
+    const bool hit = random(chance);
+    level->addTracer(coord, target->coord, hit);
+    if (hit) {
         HurtBy who(level, "ukrainalainen tarkka-ampuja");
         target->damage(2 + std::rand() % 3);
         if (isPlayer) msg = "PAM! Tarkka-ampujan luoti osuu sinuun!";
@@ -67,7 +69,9 @@ void Ukrainalainen::burst(Person* target, string& msg)
     uint32_t hurt = 0, fired = 0;
     for (; fired < rounds && ammo > 0; ++fired) {
         --ammo;
-        if (random(35)) hurt += 2 + std::rand() % 3;
+        const bool hit = random(35);
+        if (hit) hurt += 2 + std::rand() % 3;
+        level->addTracer(coord, target->coord, hit, TracerKind::Bullet, fired * 80);
     }
     if (!fired) return;
     flash = 2;

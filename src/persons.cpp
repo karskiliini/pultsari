@@ -1366,6 +1366,7 @@ void Ryostaja::npcAct()
                     msg = "Ryöstäjä vie " + std::to_string(take) + " ruplaa aseella uhaten!";
                 } else {
                     p->damage(std::rand()%3+2);
+                    level->addTracer(coord, p->coord, true);
                     msg = "Ryöstäjä ampuu sinua kun ei ole rahaa!";
                 }
                 level->alertCops(this);
@@ -1377,6 +1378,7 @@ void Ryostaja::npcAct()
             }
         } else if (seesPlayer && coord.distance(p->coord) <= 4 && armed && random(20)) {
             p->damage(std::rand()%2+1);
+            level->addTracer(coord, p->coord, true);
             msg = "Ryöstäjä ampuu sinua kaukaa!";
             level->alertCops(this);
             level->audio.addSound(coord, SoundType::Gunshot,
@@ -1661,8 +1663,10 @@ void Veteraani::npcAct()
             if (random(blind ? 25 : 60)) {
                 msg = "Veteraani ampuu sinua!";
                 p->damage(std::rand()%4 + 2);
+                level->addTracer(coord, p->coord, true);
             } else {
                 msg = "Veteraani ampuu mutta menee ohi!";
+                level->addTracer(coord, p->coord, false);
             }
             level->audio.addSound(coord, SoundType::Gunshot,
                 "RÄKÄKÄKÄ! Rynnäkkökivääri laulaa!", "Sarjatulta!", "...sarjatulta kaukaa...", 30);
@@ -1676,6 +1680,11 @@ void Veteraani::npcAct()
             if (blind && ammo > 0 && random(8)) {
                 --ammo;
                 say("Kuka siell\xC3\xA4?! KUKA SIELL\xC3\xA4?!");
+                {
+                    // blind fire: anywhere at all
+                    const float a = (std::rand() % 628) / 100.0f, r = 6 + std::rand() % 8;
+                    level->addTracer((float)coord.x, (float)coord.y, coord.x + std::cos(a) * r, coord.y + std::sin(a) * r);
+                }
                 level->audio.addSound(coord, SoundType::Gunshot,
                     "R\xC3\x84K\xC3\x84K\xC3\x84! Joku ampuu sokkona!", "Sarjatulta!", "...sarjatulta kaukaa...", 30);
             }
@@ -2207,8 +2216,10 @@ void Sotilas::fire(Person* target, std::string& msg)
         --ammo;
         if (random(officer ? 60 : 35)) {
             hurt += officer ? std::rand() % 3 + 3 : std::rand() % 3 + 2;
+            level->addTracer(coord, target->coord, true, TracerKind::Bullet, fired * 90);
             continue;
         }
+        level->addTracer(coord, target->coord, false, TracerKind::Bullet, fired * 90);
         // a wild round: now and then it finds someone standing near the target
         if (!random(30)) continue;
         for (Person* other : level->persons) {
@@ -2308,6 +2319,7 @@ bool Sotilas::drunkAct(std::string& msg)
     if (!level->isWarLevel && ammo > 4 && random(2)) {
         --ammo;
         say(random(50) ? "Ura-a-a! *PAM*" : "Hahaa! *PAM PAM*");
+        level->addTracer((float)coord.x, (float)coord.y, coord.x + ((std::rand() % 7) - 3), (float)coord.y - 9);
         level->audio.addSound(coord, SoundType::Gunshot,
             "PAM! Sotilas ampuu ilmaan!", "Laukaus!", "...laukaus kaukaa...", 30);
         return true;
@@ -2584,6 +2596,9 @@ void ITYksikko::npcAct()
 
     level->audio.addSound(coord, SoundType::Gunshot,
         "BUUM BUUM! Ilmatorjunta jyrisee!", "Ilmatorjuntatulta!", "...jyrinää kaukaa...", 45);
+    for (uint32_t k = 0; k < 3; ++k)
+        level->addTracer((float)coord.x, (float)coord.y, coord.x + ((std::rand() % 9) - 4), (float)coord.y - 14,
+                         TracerKind::Cannon, k * 110);
 
     Animation* anim = new Animation(coord, "***", 5);
     anim->coordMove = Coordinate<int>(0, -1);
@@ -3998,8 +4013,10 @@ void Myyja::npcAct()
         --ammo;
         if (random(60)) {
             p->damage(2);
+            level->addTracer(coord, p->coord, true);
             msg = "Myyj\xC3\xA4 ampuu sinua pistoolilla!";
         } else {
+            level->addTracer(coord, p->coord, false);
             msg = "Myyj\xC3\xA4 ampuu mutta menee ohi!";
         }
         level->audio.addSound(coord, SoundType::Gunshot,

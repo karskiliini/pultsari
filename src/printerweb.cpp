@@ -175,6 +175,7 @@ void PrinterWeb::print(Level* l)
 
     // speech bubbles: drawn by the page, translucent and fading, so people show through them
     bubblesAsOverlay = true;
+    tracersAsOverlay = true;
     if (common::animsEnabled && !scene) {
         j += ",\"bub\":[";
         bool firstBub = true;

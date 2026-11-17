@@ -507,6 +507,30 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         }
     }
 
+    // tracers: tiny braille dots, 2x4 to a cell; a cell takes the colour of its hottest dot
+    struct TracerCell { int x; uint8_t bits; uint32_t k; TracerKind kind; };
+    vector<TracerCell> rowTracers;
+    if (common::animsEnabled && !tracersAsOverlay) {
+        static const uint8_t DOT[2][4] = { { 0x01, 0x02, 0x04, 0x40 }, { 0x08, 0x10, 0x20, 0x80 } };
+        for (const auto& t : l->tracers) {
+            for (uint32_t k = 0; k < TRACER_DOTS; ++k) {
+                float fx, fy;
+                if (!tracerDot(t, k, fx, fy)) continue;
+                const long cx = std::lround(fx), cy = std::lround(fy);
+                if (cx < 0 || cy != (long)worldY) continue;
+                const int col = fx - (cx - 0.5f) >= 0.5f ? 1 : 0;
+                const int row = std::max(0, std::min(3, (int)((fy - (cy - 0.5f)) * 4)));
+                auto it = std::find_if(rowTracers.begin(), rowTracers.end(), [&](const TracerCell& tc) { return tc.x == (int)cx; });
+                if (it == rowTracers.end()) rowTracers.push_back(TracerCell{ (int)cx, DOT[col][row], k, t.kind });
+                else {
+                    it->bits |= DOT[col][row];
+                    if (k < it->k) { it->k = k; it->kind = t.kind; }
+                }
+            }
+        }
+    }
+    string tracerColor;
+
     for (uint32_t vx = 0; vx < viewW; ++vx) {
         uint32_t x = vx + (uint32_t)l->cameraX;
         Coord coord { x, worldY };
@@ -521,6 +545,18 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             c = g;
             color = fpv == 2 ? "1;38;5;196" : fpv ? "1;38;5;214" : "1;38;5;250";
             found = true;
+        }
+
+        if (!found && !rowTracers.empty() && mask->visible(coord)) {
+            for (const auto& tc : rowTracers) {
+                if (tc.x != (int)x) continue;
+                const uint32_t cp = 0x2800 + tc.bits;
+                c = string{ (char)(0xE0 | (cp >> 12)), (char)(0x80 | ((cp >> 6) & 0x3F)), (char)(0x80 | (cp & 0x3F)) };
+                tracerColor = "1;38;5;" + std::to_string(tracerColour(tc.k, tc.kind));
+                color = tracerColor.c_str();
+                found = true;
+                break;
+            }
         }
 
         for (auto it = rowAnims.rbegin(); it != rowAnims.rend(); ++it) {

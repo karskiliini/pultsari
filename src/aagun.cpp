@@ -491,6 +491,7 @@ void antiDroneFire(Level& level)
         level.audio.addSound(p->coord, SoundType::Gunshot,
             "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Sotilaat ampuvat droonia!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
         if (common::random(d.fpv ? 10 : 15)) {   // a small, darting FPV is harder to hit
+            level.addTracer((float)p->coord.x, (float)p->coord.y, d.x, d.y);
             downDrone(level, target);
             continue;
         }

@@ -47,6 +47,8 @@ void hitEvent(const Coord& at, uint32_t damage);
 void boomEvent(const Coord& at, uint32_t radius);
 // an anti-aircraft shell streaks from `from` to where it bursts
 void shellEvent(const Coord& from, const Coord& to);
+// a tracer for the browser page: world cell centres, kind 0 bullet / 1 cannon, delay in ms
+void tracerEvent(float x0, float y0, float x1, float y1, int kind, uint32_t delayMs);
 // someone throws up at `at`, spraying towards (dx, dy) (0, 0 = all around)
 void vomitEvent(const Coord& at, int dx, int dy);
 // direction of the next hit (e.g. a bullet), so the blood sprays the right way

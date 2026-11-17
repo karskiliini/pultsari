@@ -8,6 +8,7 @@
 #include "armart.hpp"
 #include "building.hpp"
 #include "bradley.hpp"
+#include "tracer.hpp"
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
@@ -5867,4 +5868,143 @@ TEST(comrades_never_wander_behind_the_line)
         for (auto p : men) { p->npcAct(); behind = behind || w->level.behindTheLine(p->coord); }
     CHECK(!behind);
     delete w;
+}
+
+// ---------- tracers: a streak of light for every shot ----------
+
+static size_t braille(const string& s)
+{
+    // U+2800..U+28FF: E2 A0..A3 xx
+    size_t n = 0;
+    for (size_t i = 0; i + 2 < s.size(); ++i)
+        if ((unsigned char)s[i] == 0xE2 && ((unsigned char)s[i + 1] & 0xFC) == 0xA0) ++n;
+    return n;
+}
+
+TEST(tracer_flies_fast_and_stops_at_a_hit)
+{
+    World w;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true);
+    CHECK(w.level.tracers.size() == 1);
+    w.level.tracerFrame(50);
+    float x = 0, y = 0;
+    CHECK(tracerDot(w.level.tracers[0], 0, x, y));
+    CHECK(x > 12.5f && x < 13.5f);             // 60 cells a second: three cells a frame
+    CHECK(std::fabs(y - 10.0f) < 0.01f);
+    float maxX = 0;
+    for (int f = 0; f < 20 && !w.level.tracers.empty(); ++f) {
+        for (uint32_t k = 0; k < TRACER_DOTS; ++k)
+            if (tracerDot(w.level.tracers[0], k, x, y)) maxX = std::max(maxX, x);
+        w.level.tracerFrame(50);
+    }
+    CHECK(maxX <= 30.01f);                      // never through the man it hit
+    CHECK(maxX > 28.0f);
+    CHECK(w.level.tracers.empty());             // and gone once the tail arrives
+}
+
+TEST(tracer_miss_flies_on_past_the_target)
+{
+    World w;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, false);
+    CHECK(w.level.tracers.size() == 1);
+    CHECK(w.level.tracers[0].x1 >= 35.5f);
+    CHECK(w.level.tracers[0].x1 <= 40.5f);
+}
+
+TEST(tracer_later_rounds_of_a_burst_wait_their_turn)
+{
+    World w;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true, TracerKind::Bullet, 120);
+    w.level.tracerFrame(50);
+    float x, y;
+    CHECK(!tracerDot(w.level.tracers[0], 0, x, y));
+    w.level.tracerFrame(50);
+    w.level.tracerFrame(50);
+    CHECK(tracerDot(w.level.tracers[0], 0, x, y));
+}
+
+TEST(tracer_none_without_animations_or_in_turns)
+{
+    World w;
+    common::animsEnabled = false;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true);
+    CHECK(w.level.tracers.empty());
+    common::animsEnabled = true;
+    common::realtimeEnabled = false;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true);
+    CHECK(w.level.tracers.empty());
+    common::realtimeEnabled = true;
+}
+
+TEST(tracer_colours_run_from_white_hot_to_dark_red)
+{
+    CHECK(tracerColour(0, TracerKind::Bullet) == 231);
+    CHECK(tracerColour(TRACER_DOTS - 1, TracerKind::Bullet) == 88);
+    for (uint32_t k = 0; k < TRACER_DOTS; ++k) CHECK(tracerColour(k, TracerKind::Bullet) != tracerColour(k + 1, TracerKind::Bullet));
+}
+
+TEST(tracer_from_every_fired_bullet)
+{
+    World w;
+    Sotilas* s = w.spawn(new Sotilas(Coord{ 60, 50 }));
+    w.level.fireBullet(s, 0.0f, 10, 1, 0);       // east, nobody there: flies its full range
+    CHECK(w.level.tracers.size() == 1);
+    CHECK(w.level.tracers[0].x0 > 59.5f && w.level.tracers[0].x0 < 60.5f);
+    CHECK(w.level.tracers[0].x1 > 68.0f);
+}
+
+TEST(tracer_for_each_round_of_a_soldiers_burst)
+{
+    World w;
+    Sotilas* s = w.spawn(new Sotilas(Coord{ 60, 50 }));
+    string msg;
+    const uint32_t before = s->ammo;
+    s->fire(&w.player, msg);
+    CHECK(w.level.tracers.size() == before - s->ammo);
+    CHECK(w.level.tracers.size() >= 2);
+}
+
+TEST(tracer_from_ukrainian_rifles_and_bradley_cannon)
+{
+    World w;
+    w.level.isWarLevel = true;
+    Ukrainalainen* u = w.spawn(new Ukrainalainen(Coord{ 70, 50 }));
+    string msg;
+    u->snipe(&w.player, msg);
+    CHECK(w.level.tracers.size() == 1);
+    u->burst(&w.player, msg);
+    CHECK(w.level.tracers.size() >= 3);
+    w.level.tracers.clear();
+    Bradley* b = new Bradley(Coord{ 58, 50 }, 58);
+    b->level = &w.level;
+    b->unloaded = true;
+    b->gunCooldown = 1;
+    w.level.vehicles.push_back(b);
+    b->update();
+    CHECK(!w.level.tracers.empty());
+    CHECK(w.level.tracers.back().kind == TracerKind::Cannon);
+}
+
+TEST(tracer_drawn_as_tiny_dots_in_the_terminal)
+{
+    World w;
+    w.level.updateCamera();
+    w.level.addTracer(Coord{ 40, 50 }, Coord{ 49, 50 }, true);
+    w.level.tracerFrame(50);
+    string row;
+    for (const auto& cell : w.printer.rowCells(&w.level, 50 - (uint32_t)w.level.cameraY)) row += cell.first + cell.second;
+    CHECK(braille(row) >= 1);
+    CHECK(contains(row, "38;5;231"));             // the white-hot head
+}
+
+TEST(tracer_left_to_the_browser_page_to_draw)
+{
+    World w;
+    w.level.updateCamera();
+    w.printer.tracersAsOverlay = true;
+    w.level.addTracer(Coord{ 40, 50 }, Coord{ 49, 50 }, true);
+    w.level.tracerFrame(50);
+    string row;
+    for (const auto& cell : w.printer.rowCells(&w.level, 50 - (uint32_t)w.level.cameraY)) row += cell.first;
+    CHECK(braille(row) == 0);
 }

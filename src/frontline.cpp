@@ -170,6 +170,7 @@ void Level::barrierFireTick()
             "TATATATA! Omat konekiv\xC3\xA4\xC3\xA4rit ampuvat!", "Konekiv\xC3\xA4\xC3\xA4rin sarja!", "...konekiv\xC3\xA4\xC3\xA4rin tulta...", 60);
         HurtBy who(this, "oma konekiv\xC3\xA4\xC3\xA4ri (sulkuosasto)");
         const bool hit = common::random(40);
+        for (uint32_t k = 0; k < 4; ++k) addTracer(Coord{ nest->x + 1, nest->y }, p->coord, hit && k == 3, TracerKind::Bullet, k * 70);
         if (hit) p->damage(2 + std::rand() % 3);
         if (isPlayer && printer)
             printer->showMessage(hit ? "Omat konekiv\xC3\xA4\xC3\xA4rit ampuvat sinua! Sulkuosasto ei kysele."

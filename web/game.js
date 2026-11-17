@@ -53,6 +53,7 @@
     const stains = [];
     const flashes = [];
     const shells = [];   // anti-aircraft tracers: {x0, y0, x1, y1, t}
+    const tracers = [];  // every other shot: {x0, y0, x1, y1, len, speed, delay, k, t}
     const MAX_STAINS = 4000;
     let lastTime = performance.now();
     let mood = { b: 1, s: 1 };
@@ -256,6 +257,13 @@
             case 'hit': blood(m); break;
             case 'vomit': vomit(m); break;
             case 'boom': boom(m); break;
+            case 'tracer': {
+                const len = Math.hypot(m.x1 - m.x0, m.y1 - m.y0);
+                if (len < 0.5) break;
+                if (tracers.length > 80) tracers.shift();
+                tracers.push({ x0: m.x0, y0: m.y0, x1: m.x1, y1: m.y1, len, speed: m.k ? 45 : 60, delay: (m.d || 0) / 1000, k: m.k || 0, t: 0 });
+                break;
+            }
             case 'shell':
                 shells.push({ x0: m.x0, y0: m.y0, x1: m.x1, y1: m.y1, t: 0 });
                 flashes.push({ wx: m.x0 + 0.5, wy: m.y0 + 0.5, r: CW * 1.6, t: 0 }); // muzzle flash
@@ -648,6 +656,38 @@
             ctx.strokeStyle = `rgba(255,245,190,${fade})`;
             ctx.lineWidth = 1.5 * scale;
             ctx.beginPath(); ctx.moveTo(lx(tail), ly(tail)); ctx.lineTo(lx(head), ly(head)); ctx.stroke();
+        }
+
+        // tracers: five tiny x's a quarter of the letters' size racing from the muzzle,
+        // white-hot at the head and fading through yellow and orange to a dark red tail
+        if (tracers.length) {
+            const DOTS = 5, GAP = 0.45;
+            const COLOURS = [['#ffffff', '#ffff87', '#ffaf00', '#ff5f00', '#870000'],
+                             ['#ffffd7', '#ffd75f', '#ff8700', '#d75f00', '#875f00']];
+            const px = Math.max(3, Math.round(ch * 0.83 / 4));
+            ctx.save();
+            ctx.font = `bold ${px}px ui-monospace, Menlo, Consolas, monospace`;
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            for (let i = tracers.length - 1; i >= 0; i--) {
+                const tr = tracers[i];
+                tr.t += dt;
+                const head = (tr.t - tr.delay) * tr.speed;
+                if (head - (DOTS - 1) * GAP > tr.len) { tracers.splice(i, 1); continue; }
+                for (let k = DOTS - 1; k >= 0; k--) {
+                    const d = head - k * GAP;
+                    if (d < 0 || d > tr.len) continue;
+                    const wx = tr.x0 + (tr.x1 - tr.x0) * d / tr.len, wy = tr.y0 + (tr.y1 - tr.y0) * d / tr.len;
+                    if (!seen(wx, wy)) continue;
+                    const [sx, sy] = toScreen(wx, wy);
+                    const c = COLOURS[tr.k ? 1 : 0][k];
+                    ctx.shadowColor = c;
+                    ctx.shadowBlur = (k === 0 ? 6 : 3) * scale;
+                    ctx.fillStyle = c;
+                    ctx.fillText('x', sx, sy);
+                }
+            }
+            ctx.restore();
         }
 
         // aiming line, and the accidental-discharge meter while a pistol is cocked
