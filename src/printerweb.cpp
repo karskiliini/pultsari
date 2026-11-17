@@ -80,6 +80,8 @@ void PrinterWeb::print(Level* l)
         j += ",\"hud\":[" + to_string(s.money) + "," + to_string(s.health) + "," +
              to_string(s.promilles) + "," + to_string(s.hunger) + "," + to_string(s.kopecks) + "," + to_string(player->diseaseStage()) + "]";
         j += ",\"pos\":[" + to_string(player->coord.x) + "," + to_string(player->coord.y) + "]";
+        // the rifle is up at the shoulder: the page keeps sending Space while it is held (full auto)
+        if (player->inventory.akRaised) j += ",\"ak\":1";
         if (const Car* car = player->driving) {
             // gauges: gear, rpm, km/h, wheel (-100..100), clutch, engine running, gearbox crunching, bearing
             j += ",\"drv\":[" + jsonString(Car::gearName(car->gear)) + "," + to_string((int)car->rpm) + "," +

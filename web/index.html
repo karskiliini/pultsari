@@ -251,7 +251,16 @@
             if (e.key === 'Shift') { if (transport && Game.isDriving()) send('\x0f'); return; }
             if (e.key.length === 1) held.delete(e.key.toLowerCase());
         });
-        window.addEventListener('blur', () => { held.clear(); if (transport && Game.isDriving()) send('\x0f'); });
+        window.addEventListener('blur', () => { held.clear(); spaceHeld = false; if (transport && Game.isDriving()) send('\x0f'); });
+
+        // Space is the trigger. The browser's own key repeat never reaches the game: a pistol fires
+        // once per press, however long it is held. With the rifle up the page sends Space itself
+        // for as long as the key is down: full auto (the game keeps the rate).
+        let spaceHeld = false;
+        window.addEventListener('keyup', (e) => { if (e.key === ' ') spaceHeld = false; });
+        setInterval(() => {
+            if (transport && spaceHeld && !introPlaying && Game.akUp()) send(' ');
+        }, 60);
 
         // keys go to the game as the characters it expects
         function onGameKey(e) {
@@ -265,6 +274,11 @@
                     return;
                 }
                 held.add(k);
+            }
+            if (e.key === ' ' && !Game.isDriving()) {
+                e.preventDefault();
+                if (e.repeat) return;
+                spaceHeld = true;
             }
             let ch = null;
             // M is the city map, drawn by the page; it never reaches the game. Tab goes to the game

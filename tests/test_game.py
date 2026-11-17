@@ -9,9 +9,9 @@ failures = []
 
 
 class Game:
-    def __init__(self):
+    def __init__(self, *extra):
         env = dict(os.environ, PULTSARI_WEB='1')
-        self.p = subprocess.Popen([BIN, '--rt', '--los', '--anims', '--path'], stdin=subprocess.PIPE,
+        self.p = subprocess.Popen([BIN, '--rt', '--los', '--anims', '--path', *extra], stdin=subprocess.PIPE,
                                   stdout=subprocess.PIPE, stderr=subprocess.STDOUT, env=env)
         self.buf = b''
         threading.Thread(target=self._read, daemon=True).start()
@@ -108,6 +108,21 @@ def test_player_starts_on_leninski():
           f"pos {first.get('pos')} lvl {first.get('lvl')}")
 
 
+def test_front_starts_with_the_ak_up_and_held_space_fires_a_burst():
+    g = Game('--front')
+    time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
+    up = [f for f in g.frames() if f.get('ak')]
+    before = len(g.frames())
+    # Space held: the page sends it every 60 ms while the rifle is up
+    g.keys(' ' * 25, 0.06); time.sleep(0.5)
+    after = g.frames()[before:]
+    g.close()
+    rounds = [f.get('hands', [''])[0] for f in after]
+    shots = sum(1 for f in after for s in f.get('snd', []) if 'Rynn' in s[0] or 'Sarjatulta' in s[0])
+    check('front_starts_with_the_ak_up_and_held_space_fires_a_burst', bool(up) and shots >= 3,
+          f'ak frames {len(up)} shot frames {shots} hands {rounds[-1:] }')
+
+
 def test_q_drinks_in_realtime():
     g = Game()
     time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
@@ -174,6 +189,7 @@ if __name__ == '__main__':
     test_city_is_built_up()
     test_player_starts_on_leninski()
     test_q_drinks_in_realtime()
+    test_front_starts_with_the_ak_up_and_held_space_fires_a_burst()
     test_arms_come_with_the_first_frame_and_only_on_change()
     test_captions_and_the_hands_intro()
     test_random_play_does_not_crash()

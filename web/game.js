@@ -691,5 +691,5 @@
         ui.menu.querySelector('h3').textContent = invMenu.throw ? 'HEITÄ MITÄ?' : 'ТОВАРЫ · TAVARAT';
     }
 
-    window.Game = { setup, handle, toggleMap: () => { mapOpen = !mapOpen; return mapOpen; }, isDriving: () => !!(frame && frame.drv) };
+    window.Game = { setup, handle, toggleMap: () => { mapOpen = !mapOpen; return mapOpen; }, isDriving: () => !!(frame && frame.drv), akUp: () => !!(frame && frame.ak) };
 })();

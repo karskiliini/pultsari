@@ -24,6 +24,7 @@
 #include "subtitles.hpp"
 #include "handsintro.hpp"
 #include "translate.hpp"
+#include "trigger.hpp"
 #include "vehicle.hpp"
 #include <dirent.h>
 #include <fstream>
@@ -4235,6 +4236,19 @@ TEST(front_refills_the_ak_you_already_carry_and_it_stays_after)
     CHECK(inv.back.what == Thing::Rynkky);
 }
 
+TEST(trigger_tells_a_held_space_from_a_new_pull)
+{
+    Trigger t;
+    CHECK(t.pull());                  // the first press
+    t.tick(50);
+    CHECK(!t.pull());                 // the key repeating: still held
+    t.tick(100);
+    CHECK(!t.pull());                 // repeats keep it held, however long
+    t.tick(Trigger::REPEAT_GAP_MS);
+    CHECK(t.pull());                  // let go and pressed again
+    CHECK(!t.pull());                 // two in the same frame: the second is the repeat
+}
+
 TEST(makarov_has_eight_rounds_and_reloads_from_pocket)
 {
     World w;
@@ -4721,6 +4735,21 @@ static std::vector<string> webFramesOf(World& w, PrinterWeb& web, int n)
     common::webCapture = nullptr;
     for (const auto& s : sent) if (contains(s, "\"t\":\"frame\"")) frames.push_back(s);
     return frames;
+}
+
+TEST(web_frame_says_when_the_ak_is_up)
+{
+    World w;
+    PrinterWeb web;
+    web.player = &w.player;
+    web.mask = &w.mask;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    w.player.inventory.back = loaded(Thing::Rynkky);
+    auto frames = webFramesOf(w, web, 1);
+    CHECK(frames.size() == 1 && !contains(frames[0], "\"ak\":1"));
+    CHECK(w.player.shoulderAk());
+    frames = webFramesOf(w, web, 1);
+    CHECK(frames.size() == 1 && contains(frames[0], "\"ak\":1"));
 }
 
 TEST(web_frame_sends_arms_once_per_change)

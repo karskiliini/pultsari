@@ -19,6 +19,7 @@
 #include "events.hpp"
 #include "gamestate.hpp"
 #include "metro.hpp"
+#include "trigger.hpp"
 #include <iostream>
 #include <exception>
 #include <cmath>
@@ -1169,6 +1170,15 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             Held* aimSlot = nullptr;
             uint32_t aimTick = 0;
             bool aimIsShooting = false;
+            // Space held down repeats: the rifle fires on every repeat, anything else only on a new pull
+            Trigger trigger;
+            // sent to the front: the rifle the sergeant handed over is already at the shoulder
+            if (player.inventory.akRaised) {
+                rifleRaised = true;
+                aimIsShooting = true;
+                aimAngle = facing;
+                mode = Mode::Aim;
+            }
 
             // the aim angle snapped to one of the four directions
             // the longer you hold a cocked pistol, the likelier it goes off by itself
@@ -1325,6 +1335,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         continue;
                     }
 
+                    const bool newPull = c == ' ' && trigger.pull();
                     switch (mode) {
                     case Mode::Normal: {
                         if (c != 0 && player.driving && driveKey(c)) break;
@@ -1371,6 +1382,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     }
                                     break;
                                 case ' ': { // Space raises the gun in hand (or the one that can fire); Space again fires
+                                    if (!newPull) break;   // the key still held from the last shot
                                     const Thing gun = player.readyWeapon();
                                     if (gun == Thing::None) printer->showMessage("Sinulla ei ole asetta.", &level, false);
                                     else useInventoryItem(gun);
@@ -1466,6 +1478,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         if (hit) printer->showMessage("Osuma: " + level.nameOf(hit) + "!", &level, false);
                                         break; // the rifle stays up
                                     }
+                                    // a pistol is self-loading single fire: one shot per pull, holding does nothing
+                                    if (!newPull) break;
                                     if (aimIsShooting) {
                                         player.shootAt(aimNow);
                                         aimIsShooting = false;
@@ -1535,6 +1549,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
 
                     msSinceShot += FRAME_MS;
+                    trigger.tick(FRAME_MS);
                     if (mode == Mode::Aim && aimIsShooting) {
                         aimHeldMs += FRAME_MS;
                         // about ten seconds to the top sober, much quicker drunk
