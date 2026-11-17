@@ -50,8 +50,16 @@ void Bradley::update()
 {
     if (wrecked || !level) return;
     if (coord.x > stopX) {
-        // tracks over no man's land, two cells a tick
-        coord.x = std::max(stopX, coord.x > 2 ? coord.x - 2 : 0);
+        // tracks over no man's land, two cells a tick; it halts short of a gun position in its way
+        for (int step = 0; step < 2 && coord.x > stopX && coord.x > 0; ++step) {
+            bool clear = true;
+            for (uint32_t dy = 0; dy < 2 && clear; ++dy) {
+                const Vehicle* v = level->getVehicleAt(Coord{ coord.x - 1, coord.y + dy });
+                clear = !v || v == this;
+            }
+            if (!clear) { stopX = coord.x; break; }
+            --coord.x;
+        }
         level->audio.addSound(coord, SoundType::Engine,
             "Bradleyn tela-ketjut kolisevat l\xC3\xA4hell\xC3\xA4!", "Panssariajoneuvon jyrin\xC3\xA4\xC3\xA4", "...telaketjujen kolinaa...", 45);
         return;

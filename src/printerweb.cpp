@@ -1,3 +1,4 @@
+#include "aagun.hpp"
 #include "printerweb.hpp"
 #include "vehicle.hpp"
 #include <cmath>
@@ -178,6 +179,7 @@ void PrinterWeb::print(Level* l)
     // speech bubbles: drawn by the page, translucent and fading, so people show through them
     bubblesAsOverlay = true;
     tracersAsOverlay = true;
+    gunsAsOverlay = true;
     if (common::animsEnabled && !scene) {
         j += ",\"bub\":[";
         bool firstBub = true;
@@ -190,6 +192,29 @@ void PrinterWeb::print(Level* l)
             firstBub = false;
         }
         j += "]";
+    }
+
+    // anti-aircraft guns on screen, in sight or not (a gun position stays where it is):
+    // [x, y, tenths of a degree, model, wrecked, manned, flashing barrels, [sandbags x,y,...], in sight]
+    if (!scene) {
+        string gj;
+        for (const auto v : l->vehicles) {
+            const AAGun* g = dynamic_cast<const AAGun*>(v);
+            if (!g) continue;
+            const Coord m = g->centre();
+            bool seen = !mask || mask->visible(m);
+            for (const auto& b : g->sandbags) seen = seen || mask->visible(b);
+            if ((int)m.x < l->cameraX - 12 || (int)m.y < l->cameraY - 8 ||
+                (int)m.x > l->cameraX + (int)viewW + 12 || (int)m.y > l->cameraY + (int)viewH + 8) continue;
+            int flash = 0;
+            for (uint32_t k = 0; k < 4; ++k) if (g->flashing(k)) flash |= 1 << k;
+            string bags;
+            for (const auto& b : g->sandbags) bags += string(bags.empty() ? "" : ",") + to_string(b.x) + "," + to_string(b.y);
+            gj += string(gj.empty() ? "" : ",") + "[" + to_string(m.x) + "," + to_string(m.y) + "," +
+                  to_string((int)std::lround(g->shown * 1800.0f / 3.14159265f)) + "," + to_string((int)g->model) + "," +
+                  (g->wrecked ? "1" : "0") + "," + (g->gunner ? "1" : "0") + "," + to_string(flash) + ",[" + bags + "]," + (seen ? "1" : "0") + "]";
+        }
+        if (!gj.empty()) j += ",\"guns\":[" + gj + "]";
     }
 
     // what the player can see: one hex digit per 4 cells, so blood and vomit stay hidden out of sight

@@ -265,6 +265,10 @@ public:
     // it, and NEST_ROUNDS of them silence the nest.
     Person* fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent,
                        const Vehicle** stoppedBy = nullptr);
+    // the same from a muzzle at (x, y) (cell centres) that is not where the shooter stands: a
+    // barrel of a gun he mans; the tracer waits `tracerDelayMs` so a burst's barrels take turns
+    Person* fireBulletFrom(Person* shooter, float x, float y, float angle, uint32_t range, uint32_t damage,
+                           uint32_t hitPercent, const Vehicle** stoppedBy = nullptr, uint32_t tracerDelayMs = 0);
     static constexpr uint32_t NEST_ROUNDS = 15;
     std::vector<std::pair<Coord, uint32_t>> nestHits;
     std::vector<uint8_t> gasGrid;   // per-cell gas kind, rebuilt every world tick

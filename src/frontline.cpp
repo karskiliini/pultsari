@@ -77,8 +77,9 @@ void Level::shellBurst(const Coord& at, uint32_t radius, uint32_t maxDamage, con
     for (auto v : vehicles) {
         AAGun* g = dynamic_cast<AAGun*>(v);
         if (!g || g->wrecked) continue;
+        // the sandbags take the rest: only a shell on the mount knocks it out
         bool near = false;
-        for (const auto& c : g->cells()) near = near || c.distance(at) <= radius;
+        for (const auto& c : g->cells()) near = near || (g->isCore(c) && c.distance(at) <= radius);
         if (!near) continue;
         const bool manned = g->gunner != nullptr;
         g->wrecked = true;

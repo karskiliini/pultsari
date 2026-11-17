@@ -121,6 +121,8 @@ public:
     bool bubblesAsOverlay = false;
     // the browser page draws the tracers itself, smaller than a cell
     bool tracersAsOverlay = false;
+    // ...and the anti-aircraft guns, twice the size of a letter and turning smoothly
+    bool gunsAsOverlay = false;
 
     PlayerNS::Player* player = nullptr;
     VisionNS::Mask* mask = nullptr;

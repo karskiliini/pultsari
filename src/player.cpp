@@ -1226,8 +1226,10 @@ bool Player::move(DirectionNS::Direction d, Level* level)
             printer->showMessage(msg, level, false);
             blocked = true;
         } else if (AAGun* gun = dynamic_cast<AAGun*>(level->getVehicleAt(check))) {
-            // bribe, sneak past a sleeping crew or take it over: see AAGun::approach
-            gun->approach(this, msg);
+            // bribe, sneak past a sleeping crew or take it over: see AAGun::approach. The
+            // sandbags are only in the way: the gun is reached through the gap in them.
+            if (gun->isCore(check)) gun->approach(this, msg);
+            else msg = "Hiekkas\xC3\xA4kit. Tykille p\xC3\xA4\xC3\xA4see aukosta.";
             printer->showMessage(msg, level, false);
             blocked = true;
         } else if (level->getVehicleAt(check) && level->getVehicleAt(check)->wrecked) {

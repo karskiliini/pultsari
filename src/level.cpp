@@ -709,12 +709,19 @@ void Level::robberyTick()
 Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent,
                           const Vehicle** stoppedBy)
 {
+    return fireBulletFrom(shooter, (float)shooter->coord.x, (float)shooter->coord.y, angle, range, damage, hitPercent, stoppedBy);
+}
+
+Person* Level::fireBulletFrom(Person* shooter, float sx, float sy, float angle, uint32_t range, uint32_t damage,
+                              uint32_t hitPercent, const Vehicle** stoppedBy, uint32_t tracerDelayMs)
+{
     const float dx = std::cos(angle), dy = std::sin(angle);
-    float x = shooter->coord.x + 0.5f, y = shooter->coord.y + 0.5f;
+    float x = sx + 0.5f, y = sy + 0.5f;
     // the round's streak of light, from the muzzle to wherever it stops
-    auto streak = [&]() { addTracer((float)shooter->coord.x, (float)shooter->coord.y, x - 0.5f, y - 0.5f); };
-    Coord last = shooter->coord;
-    const Vehicle* ownCar = getVehicleAt(shooter->coord);   // shooting out of a car window
+    auto streak = [&]() { addTracer(sx, sy, x - 0.5f, y - 0.5f, TracerKind::Bullet, tracerDelayMs); };
+    if (x < 0 || y < 0 || x >= common::SIZEX || y >= common::SIZEY) return nullptr;
+    Coord last { (uint32_t)x, (uint32_t)y };
+    const Vehicle* ownCar = getVehicleAt(last);   // shooting out of a car window, or from a gun's barrel
     const Vehicle* lastCar = ownCar;
     for (uint32_t step = 0; step < range * 2; ++step) {
         x += dx * 0.5f;

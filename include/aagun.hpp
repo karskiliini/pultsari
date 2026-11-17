@@ -22,9 +22,11 @@ struct ShellHit {
     bool drone = false;
 };
 
-// A twin-barrelled anti-aircraft gun (ZU-23-2) behind sandbags: "▒Ж▒". It never moves,
-// so it lives among the vehicles: drawn, blocking the way and blown up like them.
-// Whoever mans it can shoot at anything in the city until the shells run out.
+// An anti-aircraft gun in a ring of sandbags. It never moves, so it lives among the vehicles:
+// blocking the way and blown up like them. The mount (a 3x3 core) and its legs and barrels
+// turn as a whole with the aim, 12 degrees a frame; the ring has a gap to the west, where the
+// trench is. Whoever mans it can shoot at anything until the ammunition runs out, each barrel
+// firing in its turn.
 class AAGun : public Vehicle {
 public:
     // the makes found at the front: a single-barrel 23 mm, the twin "Sergei" (ZU-23-2, the
@@ -35,15 +37,43 @@ public:
     static constexpr uint32_t ARMING = 4;        // cells before the fuze arms: it flies over heads
     static constexpr uint32_t SHOT_MS = 350;     // between shells, Space held down
 
+    static constexpr float TURN_STEP = 0.20943951f;   // 12 degrees: the mount turns this much a frame
+    static constexpr uint32_t FLASH_MS = 90;          // a barrel's muzzle flash and recoil
+    static constexpr uint32_t VIERLING_GAP_MS = 35;   // between the four barrels of one burst
+    static constexpr float RING_X = 6.0f, RING_Y = 3.2f;  // the sandbag ring's radii (cells are tall)
+
     explicit AAGun(const Coord& left, Model model = Model::Sergei);
     virtual void update() { }
-    virtual void frame(uint32_t) { }
+    // the mount turns toward the aim; muzzle flashes come and go
+    virtual void frame(uint32_t ms);
+    // the 3x3 core and the sandbags
+    virtual std::vector<Coord> cells() const;
     virtual std::string name() const { return "IT-tykki"; }
     virtual std::string glyphAt(uint32_t index) const;
     virtual const char* colorAt(uint32_t index) const;
 
     // the gun itself, between the sandbags; shells leave from here
     Coord centre() const { return Coord{ coord.x + 1, coord.y }; }
+    // the mount (3x3 around the centre), not the sandbags round it
+    bool isCore(const Coord& c) const;
+    // a ring of sandbags some four cells out, with a gap to the west; cells that are blocked,
+    // a road or a trench get no bag
+    void laySandbags(const Level& level);
+    std::vector<Coord> sandbags;
+
+    // barrels: how many, how far each sits from the mount's axis, how long they are
+    uint32_t barrels() const;
+    float barrelOffset(uint32_t k) const;
+    float barrelLength() const;
+    // the muzzle of barrel k with the mount turned to `at` (world cell coordinates)
+    void barrelTip(uint32_t k, float& x, float& y, float at) const;
+    // a barrel fires: flash and recoil, after `delayMs`
+    void flashBarrel(uint32_t k, uint32_t delayMs = 0);
+    bool flashing(uint32_t k) const { return k < 4 && flashDelay[k] <= 0 && flashMs[k] > 0; }
+
+    // the mount drawn on the map's cells: legs, body, barrels at the shown angle in 12-degree steps
+    struct Glyph { int x, y; std::string g; const char* color; };
+    std::vector<Glyph> sprite() const;
     // crew still alive, and those of them awake
     std::vector<ITMies*> crew() const;
     std::vector<ITMies*> awakeCrew() const;
@@ -67,6 +97,10 @@ public:
     Model model;
     uint32_t ammo = AMMO;
     float angle = -1.5708f;                 // barrels pointing north
+    float shown = -1.5708f;                 // where the mount points on screen, turning toward `angle`
+    uint32_t nextBarrel = 0;                // the one that fires next
+    int32_t flashMs[4] = { 0, 0, 0, 0 };
+    int32_t flashDelay[4] = { 0, 0, 0, 0 };
     PlayerNS::Player* gunner = nullptr;
 };
 

@@ -611,6 +611,63 @@
             }
         }
 
+        // anti-aircraft guns: twice the letters' size with a drop shadow, the whole mount turned to
+        // its aim in the game's 12-degree steps, each barrel flashing and recoiling in its turn
+        if (frame && frame.guns && !frame.scene) {
+            const big = Math.max(8, Math.round(ch * 0.83 * 2));
+            const sh = 3 * scale, sv = 4 * scale;
+            const lineG = (a, dbl) => {
+                const d = ((Math.round(a / (Math.PI / 4)) % 4) + 4) % 4;
+                return dbl ? ['═', '╲', '║', '╱'][d] : ['─', '\\', '│', '/'][d];
+            };
+            const put = (wx, wy, g, col) => {
+                const [sx, sy] = toScreen(wx, wy);
+                ctx.fillStyle = 'rgba(0,0,0,0.85)';
+                ctx.fillText(g, sx + sh, sy + sv);
+                ctx.fillStyle = col;
+                ctx.fillText(g, sx, sy);
+            };
+            ctx.save();
+            ctx.textAlign = 'center';
+            ctx.textBaseline = 'middle';
+            ctx.font = `bold ${big}px ui-monospace, Menlo, Consolas, monospace`;
+            for (const [cx, cy, tenths, model, wrecked, manned, flashing, bags, inSight] of frame.guns) {
+                // out of sight it still stands there, dimly, like a remembered landmark
+                ctx.globalAlpha = inSight === 0 ? 0.4 : 1;
+                const flash = inSight === 0 ? 0 : flashing;
+                for (let i = 0; i + 1 < bags.length; i += 2) put(bags[i], bags[i + 1], '▒', wrecked ? '#8a7a5a' : '#d7af5f');
+                if (wrecked) { put(cx, cy, '#', '#6c6c6c'); put(cx - 1, cy, '▓', '#4e4e4e'); put(cx + 1, cy, '▓', '#4e4e4e'); continue; }
+                const a = tenths / 1800 * Math.PI;
+                const ca = Math.cos(a), sa = Math.sin(a);
+                for (const k of [0.8, 2.35, 3.95, 5.5])
+                    for (let r = 1.2; r <= 2.3; r += 1) put(cx + Math.cos(k + a) * r * 1.4, cy + Math.sin(k + a) * r * 0.7, lineG(k + a, false), '#afaf87');
+                put(cx - ca, cy - sa, '█', '#5f8700');
+                const offs = model === 0 ? [0] : model === 1 ? [-0.5, 0.5] : [-1.6, -1.0, 1.0, 1.6];
+                const length = model === 2 ? 3 : 4;
+                offs.forEach((o, k) => {
+                    const firing = (flash >> k) & 1, len = firing ? length - 0.5 : length;
+                    for (let r = 1; r < len; r += 0.5) put(cx + r * ca - o * sa, cy + r * sa + o * ca, lineG(a, model === 1), '#d7ff5f');
+                    const tx = cx + len * ca - o * sa, ty = cy + len * sa + o * ca;
+                    if (firing) {
+                        const [fx, fy] = toScreen(tx + ca * 0.6, ty + sa * 0.6);
+                        const r = cw * 2.2;
+                        const g = ctx.createRadialGradient(fx, fy, 0, fx, fy, r);
+                        g.addColorStop(0, 'rgba(255,255,230,0.95)');
+                        g.addColorStop(0.35, 'rgba(255,170,40,0.7)');
+                        g.addColorStop(1, 'rgba(255,60,0,0)');
+                        ctx.fillStyle = g;
+                        ctx.fillRect(fx - r, fy - r, r * 2, r * 2);
+                        put(tx, ty, '✱', '#ffffff');
+                    } else {
+                        put(tx, ty, '•', '#ffaf00');
+                    }
+                });
+                put(cx, cy, ['Г', 'Ж', 'Ш'][model] || 'Ж', manned ? '#ffff00' : '#ffff87');
+            }
+            ctx.globalAlpha = 1;
+            ctx.restore();
+        }
+
         // flying droplets and debris; blood that lands becomes a stain
         for (let i = particles.length - 1; i >= 0; i--) {
             const p = particles[i];
