@@ -608,6 +608,7 @@ TEST(stone_smashes_shop_window_and_alerts_police)
 {
     World w(Coord{ 23, 15 });
     auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20); // front windows at (23,20) and (31,20)
+    s->hasAlarm = true;
     auto* cop = w.spawn(new Cop(Coord{ 60, 15 }));
     w.player.inventory.left = Inventory::heldOf(Thing::Kivi);
     w.player.executeThrow(6, DirectionNS::down);
@@ -632,6 +633,7 @@ TEST(alarm_brings_a_patrol_when_burglar_stays)
 {
     World w(Coord{ 23, 26 });
     auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20);
+    s->hasAlarm = true;
     s->smashWindow(Coord{ 23, 20 }, &w.player);
     const size_t before = w.count(poliisi);
     for (int i = 0; i < 20; ++i) s->npcAct();
@@ -645,6 +647,7 @@ TEST(no_patrol_if_burglar_ran_away)
 {
     World w(Coord{ 23, 26 });
     auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20);
+    s->hasAlarm = true;
     s->smashWindow(Coord{ 23, 20 }, &w.player);
     w.player.coord = Coord{ 150, 150 };
     for (int i = 0; i < 40; ++i) s->npcAct();
@@ -659,10 +662,261 @@ TEST(break_in_loot_is_rare)
         World w(Coord{ 23, 26 });
         auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20);
         s->smashWindow(Coord{ 23, 20 }, nullptr);
-        if (!w.level.items.empty()) ++loot;
+        for (auto i : w.level.items) if (i->type != ESirpaleet) { ++loot; break; }
     }
     CHECK(loot > 20);
     CHECK(loot < 110); // usually there is nothing but dust
+}
+
+// defined with the coat tests further down
+static void feedKeysLater(const string& now, const string& later, int ms);
+
+static int glassSounds(World& w, const Coord& at)
+{
+    int n = 0;
+    for (const auto& h : w.level.audio.getHeardSounds(at)) if (h.type == SoundType::Glass) ++n;
+    return n;
+}
+
+static int shards(const Level& level)
+{
+    int n = 0;
+    for (auto i : level.items) if (i->type == ESirpaleet) ++n;
+    return n;
+}
+
+TEST(walking_into_a_shop_window_asks_and_then_breaks_in)
+{
+    World w(Coord{ 23, 19 });   // on the street, right above the front window at (23,20)
+    auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20);
+    s->hasAlarm = true;
+    feedKeysLater("k", "k", 80);   // a key already waiting (from walking) does not answer
+    w.player.move(DirectionNS::down, &w.level);
+    CHECK(s->smashed);
+    CHECK(s->isBreach(Coord{ 23, 20 }));
+    CHECK(w.player.coord == (Coord{ 23, 19 }));   // breaking the glass took the turn
+    CHECK(glassSounds(w, w.player.coord) == 1);
+    CHECK(s->alarmTicks > 0);
+    CHECK(w.printer.saw("Murtaudutko"));
+    CHECK(w.printer.saw("H\xC3\xA4lytin alkaa ulvoa"));
+    // glass on the hole and around it
+    CHECK(shards(w.level) >= 2);
+    bool onHole = false;
+    for (auto i : w.level.items) if (i->type == ESirpaleet && i->coord == (Coord{ 23, 20 })) onHole = true;
+    CHECK(onHole);
+    // the next step goes through the hole into the shop
+    Sirpaleet::cutOverride = 0;
+    w.player.move(DirectionNS::down, &w.level);
+    Sirpaleet::cutOverride = -1;
+    CHECK(w.player.coord == (Coord{ 23, 20 }));
+}
+
+TEST(saying_no_leaves_the_shop_window_whole)
+{
+    World w(Coord{ 23, 19 });
+    auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20);
+    feedKeysLater("k", "e", 80);
+    w.player.move(DirectionNS::down, &w.level);
+    CHECK(!s->smashed);
+    CHECK(shards(w.level) == 0);
+    CHECK(w.player.coord == (Coord{ 23, 19 }));
+}
+
+TEST(a_broken_window_does_not_break_twice)
+{
+    World w(Coord{ 23, 26 });
+    auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20);
+    s->hasAlarm = false;
+    s->smashWindow(Coord{ 23, 20 }, &w.player);
+    const size_t glass = shards(w.level);
+    s->smashWindow(Coord{ 23, 20 }, &w.player);
+    CHECK(glassSounds(w, Coord{ 23, 22 }) == 1);
+    CHECK((size_t)shards(w.level) == glass);
+    CHECK(s->breaches.size() == 1);
+}
+
+TEST(shop_without_alarm_breaks_quietly_and_sends_no_patrol)
+{
+    World w(Coord{ 23, 26 });
+    auto* s = w.add(new SuljettuLiike("ZARA", "sign"), 20, 20);
+    s->hasAlarm = false;
+    s->smashWindow(Coord{ 23, 20 }, &w.player);
+    CHECK(s->smashed);
+    CHECK(s->alarmTicks == 0);
+    for (int i = 0; i < 40; ++i) s->npcAct();
+    CHECK(w.count(poliisi) == 0);
+    for (const auto& h : w.level.audio.getHeardSounds(Coord{ 23, 22 })) CHECK(h.type != SoundType::Siren);
+}
+
+TEST(only_some_closed_shops_have_an_alarm)
+{
+    int alarms = 0;
+    for (int i = 0; i < 200; ++i) {
+        SuljettuLiike s("ZARA", "sign");
+        if (s.hasAlarm) ++alarms;
+    }
+    CHECK(alarms > 50);
+    CHECK(alarms < 150);
+}
+
+TEST(glass_on_the_ground_can_cut_you_and_stays_there)
+{
+    World w(Coord{ 40, 40 });
+    w.level.addItem(new Sirpaleet(Coord{ 41, 40 }));
+    CHECK(!w.level.hitItem(Coord{ 41, 40 }));   // people walk over it, not around it
+    w.player.stats.health = 10;
+    Sirpaleet::cutOverride = 1;
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.coord == (Coord{ 41, 40 }));
+    CHECK(w.player.stats.health == 9);
+    CHECK(w.printer.saw("haava") || w.printer.saw("Haava") || w.printer.saw("Veri"));
+    CHECK(w.player.lastHurtBy == "lasinsirpaleet");
+    CHECK(shards(w.level) == 1);
+    // careful steps: nothing happens
+    Sirpaleet::cutOverride = 0;
+    w.player.move(DirectionNS::left, &w.level);
+    w.player.move(DirectionNS::right, &w.level);
+    Sirpaleet::cutOverride = -1;
+    CHECK(w.player.stats.health == 9);
+}
+
+// ---- sliding doors at the grocery store ----
+
+TEST(jammed_sliding_door_mocks_you_then_gives_way_on_the_third_try)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    k->slidingDoor = true;
+    k->doorJammed = true;
+    CHECK(k->typeToChar(k->getDoor()) == "\xE2\x96\xA4");
+    string msg;
+    for (uint32_t i = 1; i < SLIDING_DOOR_FORCE_BUMPS; ++i) {
+        msg.clear();
+        CHECK(!k->getEnterMsg(&w.player, msg));
+        CHECK(!msg.empty());
+    }
+    msg.clear();
+    CHECK(k->getEnterMsg(&w.player, msg));
+    CHECK(contains(msg, "liukuoven auki"));
+    CHECK(!k->doorJammed);
+    CHECK(k->typeToChar(k->getDoor()) != "\xE2\x96\xA4");
+}
+
+TEST(jammed_sliding_door_blocks_the_player_at_the_doorway)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    k->slidingDoor = true;
+    k->doorJammed = true;
+    const Coord door = k->getDoor();
+    w.player.coord = Coord{ door.x, door.y + 1 };
+    w.player.move(DirectionNS::up, &w.level);
+    CHECK(w.player.coord == (Coord{ door.x, door.y + 1 }));
+    CHECK(!w.printer.log.empty());
+}
+
+TEST(working_sliding_door_lets_you_in)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    k->slidingDoor = true;
+    k->doorJammed = false;
+    string msg;
+    CHECK(k->getEnterMsg(&w.player, msg));
+}
+
+TEST(sliding_doors_break_down_and_come_back_now_and_then)
+{
+    World w;
+    auto* k = w.add(new Kauppa("TEST", Kauppa::Kind::Produkty), 10, 10);
+    k->slidingDoor = true;
+    int flips = 0;
+    bool was = k->doorJammed;
+    for (int i = 0; i < 20000; ++i) {
+        k->npcAct();
+        if (k->doorJammed != was) { ++flips; was = k->doorJammed; }
+    }
+    CHECK(flips > 10);
+    // a shop without sliding doors never jams
+    auto* kiosk = w.add(new Kauppa("KIOSK", Kauppa::Kind::Kioski), 40, 10);
+    for (int i = 0; i < 2000; ++i) kiosk->npcAct();
+    CHECK(!kiosk->doorJammed);
+}
+
+// ---- the militia the alarm sends ----
+
+static Cop* alarmCop(World& w, const Coord& at, bool radio)
+{
+    Cop* c = dynamic_cast<Cop*>(w.level.createPerson(at, poliisi));
+    if (!c) return nullptr;
+    c->chaseTarget = &w.player;
+    c->alerted = true;
+    c->lastKnownPos = w.player.coord;
+    c->alertCooldown = 40;
+    c->hasRadio = radio;
+    c->callsBackup = radio;
+    c->arrests = true;
+    return c;
+}
+
+TEST(radio_cop_calls_in_more_men_when_the_burglar_keeps_running)
+{
+    World w(Coord{ 60, 60 });
+    Cop* c = alarmCop(w, Coord{ 60, 52 }, true);
+    CHECK(c != nullptr);
+    if (!c) return;
+    const size_t before = w.count(poliisi);
+    for (uint32_t i = 0; i < COP_BACKUP_TURNS; ++i) {
+        w.player.coord = Coord{ 60, c->coord.y + 8 };   // always a step ahead
+        c->npcAct();
+    }
+    CHECK(c->backupCalled);
+    CHECK(w.count(poliisi) > before);
+    CHECK(w.said(c, "Lis\xC3\xA4\xC3\xA4 miehi\xC3\xA4"));
+    // only once
+    const size_t after = w.count(poliisi);
+    for (int i = 0; i < 10; ++i) { w.player.coord = Coord{ 60, c->coord.y + 8 }; c->npcAct(); }
+    CHECK(w.count(poliisi) == after);
+}
+
+TEST(cop_without_a_radio_has_to_manage_alone)
+{
+    World w(Coord{ 60, 60 });
+    Cop* c = alarmCop(w, Coord{ 60, 52 }, false);
+    CHECK(c != nullptr);
+    if (!c) return;
+    const size_t before = w.count(poliisi);
+    for (int i = 0; i < 12; ++i) { w.player.coord = Coord{ 60, c->coord.y + 8 }; c->npcAct(); }
+    CHECK(!c->backupCalled);
+    CHECK(w.count(poliisi) == before);
+}
+
+TEST(alarm_cop_next_to_the_burglar_arrests_him)
+{
+    World w(Coord{ 60, 60 });
+    Cop* c = alarmCop(w, Coord{ 60, 59 }, false);
+    CHECK(c != nullptr);
+    if (!c) return;
+    w.player.stats.health = 100;
+    for (int i = 0; i < 60 && !w.player.inJail; ++i) { c->coord = Coord{ 60, 59 }; c->npcAct(); }
+    CHECK(w.player.inJail);
+}
+
+TEST(alarm_patrol_cops_carry_radios_only_sometimes)
+{
+    int radios = 0, cops = 0;
+    for (int i = 0; i < 40; ++i) {
+        World w(Coord{ 100, 100 });
+        cops += w.level.sendPatrol(&w.player, 2, true);
+        for (auto p : w.level.persons) if (auto c = dynamic_cast<Cop*>(p)) {
+            CHECK(c->arrests);
+            CHECK(c->chaseTarget == &w.player);
+            if (c->hasRadio) { ++radios; CHECK(c->callsBackup); }
+        }
+    }
+    CHECK(cops > 40);
+    CHECK(radios > 5);
+    CHECK(radios < cops - 5);
 }
 
 // ---- drones ----

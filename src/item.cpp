@@ -373,6 +373,42 @@ bool Neula::interact(PlayerNS::Player* player)
     return true;
 }
 
+// broken shop window glass
+Sirpaleet::Sirpaleet(const Coord& c) : Item(c, ESirpaleet)
+{
+    static const char* glyphs[] = { "\xE2\x88\xB4", "\xE2\x88\xB5", "\xE2\x81\x96" }; // ∴ ∵ ⁖
+    glyph = glyphs[std::rand() % 3];
+}
+
+int Sirpaleet::cutOverride = -1;
+
+std::string Sirpaleet::getMsg() const
+{
+    static const char* msgs[] = {
+        "Lasinsirpaleet narskuvat kenk\xC3\xA4si alla.",
+        "Astut lasinsirpaleiden p\xC3\xA4\xC3\xA4lle. Krts, krts.",
+        "Sirpaleet rusahtavat. Varovasti nyt.",
+    };
+    return msgs[std::rand() % 3];
+}
+
+bool Sirpaleet::interact(PlayerNS::Player* player)
+{
+    const bool cut = cutOverride >= 0 ? cutOverride == 1 : common::random(SHARD_CUT_PERCENT);
+    if (!cut) return false;
+    static const char* cuts[] = {
+        "Sirpale menee kenk\xC3\xA4pohjan l\xC3\xA4pi. Saat haavan jalkaan!",
+        "Liukastut sirpaleissa ja viillt\xC3\xA4t k\xC3\xA4tesi auki. Haava vuotaa.",
+        "Lasinsiru uppoaa nilkkaan. Veri valuu kenk\xC3\xA4\xC3\xA4n.",
+    };
+    {
+        HurtBy who(player->level, "lasinsirpaleet");
+        player->damage(1);
+    }
+    if (player->printer) player->printer->showMessage(cuts[std::rand() % 3], player->level, false);
+    return false;
+}
+
 // roskis
 Roskis::Roskis(const Coord& c) : Item(c, ERoskis) { blocksLOS = true; }
 std::string Roskis::typeToChar() const { return "U"; }

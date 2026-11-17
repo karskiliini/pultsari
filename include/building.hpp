@@ -222,9 +222,14 @@ public:
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
     virtual void npcAct();
-    // a stone through the shop window: glass, alarm, maybe loot, police later
+    // walking into a front window: asked first, then you kick your way in
+    virtual bool bumpWall(PlayerNS::Player* player, const Coord& c, std::string& msg);
+    // a window broken (by a stone or a boot): glass on the ground, the alarm if there is one,
+    // maybe loot, police later. A window already broken does nothing.
     void smashWindow(const Coord& c, Person* source);
     bool smashed = false;
+    // only some shops still have a working burglar alarm (rolled when built)
+    bool hasAlarm = true;
     uint32_t alarmTicks = 0;
     Person* burglar = nullptr;
 private:
@@ -243,8 +248,18 @@ public:
     virtual bool getInteractMsg(PlayerNS::Player* player, std::string& msg) const;
     virtual void interact(PlayerNS::Player* player, std::string& msg);
     virtual std::string getWalkMsg() const;
+    virtual std::string typeToChar(const Coord& c) const;
+    virtual void npcAct();
     // the seller caught you stealing: no more sales here on this level
     bool sellerHostile = false;
+    // automatic sliding doors, Russian made: every now and then they jam shut
+    bool slidingDoor = false;
+    // changed when you walk into it (getEnterMsg), so mutable
+    mutable bool doorJammed = false;
+    // bumps into the jammed door; on the third you force it open by hand
+    mutable uint32_t jamBumps = 0;
+    // tests: -1 lets the door break down and get fixed by itself, 0 freezes it as it is
+    static int jamDriftOverride;
     Person* seller = nullptr;
     // tests: -1 rolls SHOPLIFT_NOTICE_PERCENT, 0 never notices, 1 always notices
     static int noticeOverride;
@@ -253,6 +268,13 @@ private:
     std::string name;
     Kind kind;
 };
+
+// how likely a closed Western shop still has a working burglar alarm (percent)
+constexpr int SHOP_ALARM_PERCENT = 50;
+// how likely a shop's sliding door is jammed when the level starts (percent)
+constexpr int SLIDING_DOOR_JAMMED_PERCENT = 35;
+// bumps into a jammed sliding door before you prise it open by hand
+constexpr uint32_t SLIDING_DOOR_FORCE_BUMPS = 3;
 
 // how likely a seller is to notice a shoplift (percent)
 constexpr int SHOPLIFT_NOTICE_PERCENT = 70;

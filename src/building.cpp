@@ -6,6 +6,7 @@
 #include "input.hpp"
 #include "common.hpp"
 #include "level.hpp"
+#include "item.hpp"
 #include <string>
 #include <iostream>
 #include <exception>
@@ -978,8 +979,57 @@ Kauppa::Kauppa(const std::string& name, Kind kind)
 
 int Kauppa::noticeOverride = -1;
 
+int Kauppa::jamDriftOverride = -1;
+
+std::string Kauppa::typeToChar(const Coord& c) const
+{
+    // a jammed sliding door: two glass panels stuck shut
+    if (slidingDoor && doorJammed && hitDoor(c)) return "\xE2\x96\xA4"; // ▤
+    return Building::typeToChar(c);
+}
+
+void Kauppa::npcAct()
+{
+    if (!slidingDoor || jamDriftOverride == 0) return;
+    // every now and then the door gives up; every now and then someone kicks it back to life
+    if (!doorJammed && std::rand() % 400 == 0) { doorJammed = true; jamBumps = 0; }
+    else if (doorJammed && std::rand() % 250 == 0) doorJammed = false;
+}
+
+// walking into a jammed sliding door: a word on Russian engineering
+static std::string jammedDoorQuip()
+{
+    static const char* quips[] = {
+        "Liukuovi nytk\xC3\xA4ht\xC3\xA4\xC3\xA4 kymmenen sentti\xC3\xA4 ja jumittuu. Toimii yht\xC3\xA4 hyvin kuin T-14 Armata paraatissa.",
+        "Liukuovi ei aukea. Moottorin kyljess\xC3\xA4 lukee 'Sdelano v Rossii'. Se selitt\xC3\xA4\xC3\xA4 kaiken.",
+        "Ovi aukeaa puoliksi ja sulkeutuu nen\xC3\xA4llesi. Kuin Ven\xC3\xA4j\xC3\xA4n talous: lupaa paljon, lopuksi puristaa.",
+        "Liukuovi on rikki. Varaosat tulevat Kiinasta. Joskus. Ehk\xC3\xA4.",
+        "Tunnistin ei huomaa sinua. Se on tehty samassa tehtaassa kuin Moskvit\xC5\xA1, eik\xC3\xA4 sekään koskaan k\xC3\xA4ynnistynyt.",
+        "Ovessa on lappu: 'Ei toimi. \xC3\x84l\xC3\xA4 valita. Ole isänmaallinen.'",
+        "Liukuovi on 'tuontikorvattu': puuta, ja liikkuu k\xC3\xA4sin. Ei liiku.",
+        "Ovi surisee kuin Lada pakkasaamuna. Sitten hiljaisuus. Ven\xC3\xA4l\xC3\xA4inen laatu kest\xC3\xA4\xC3\xA4 ikuisesti, kunhan sit\xC3\xA4 ei k\xC3\xA4ytet\xC3\xA4.",
+        "Liukuovi on jumissa. Sen piti olla valmis 2018. Kuten Krimin silta, ja katso miten sille k\xC3\xA4vi.",
+        "Ovi ei tottele. Ainoa venäläinen kone, joka toimii luotettavasti, on propaganda.",
+    };
+    return quips[std::rand() % (sizeof(quips) / sizeof(quips[0]))];
+}
+
 bool Kauppa::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
 {
+    if (slidingDoor && doorJammed) {
+        if (++jamBumps < SLIDING_DOOR_FORCE_BUMPS) {
+            msg = jammedDoorQuip();
+            return false;
+        }
+        // enough: you prise the panels apart by hand
+        doorJammed = false;
+        jamBumps = 0;
+        msg = "V\xC3\xA4\xC3\xA4nn\xC3\xA4t liukuoven auki paljain k\xC3\xA4sin. Ven\xC3\xA4l\xC3\xA4inen automatiikka: kaikki toimii, kun tarpeeksi riuhtoo. ";
+        std::string inside;
+        const bool open = getEnterMsg(player, inside);
+        msg += inside;
+        return open;
+    }
     if (sellerHostile) {
         msg = seller && seller->stats.health > 0 ? "Kauppa on kiinni. Myyj\xC3\xA4 jahtaa sinua jossain."
                                      : "Kauppa on hiljainen. Kukaan ei myy mit\xC3\xA4\xC3\xA4n.";
@@ -1153,6 +1203,7 @@ SuljettuLiike::SuljettuLiike(const std::string& name, const std::string& sign, b
     const uint32_t front = frontSouth ? wallBot : wallTop;
     windows.push_back({3, front});
     windows.push_back({11, front});
+    hasAlarm = common::random(SHOP_ALARM_PERCENT);
 }
 
 bool SuljettuLiike::getEnterMsg(PlayerNS::Player* player, std::string& msg) const
@@ -1215,22 +1266,50 @@ void SuljettuLiike::interact(PlayerNS::Player* player, std::string& msg)
 
 std::string SuljettuLiike::getWalkMsg() const
 {
-    if (smashed) return name + ": ikkuna on rikki. H\xC3\xA4lytin piippaa yh\xC3\xA4.";
+    if (smashed) return hasAlarm ? name + ": ikkuna on rikki. H\xC3\xA4lytin piippaa yh\xC3\xA4."
+                                 : name + ": ikkuna on rikki. Sis\xC3\xA4lt\xC3\xA4 tuoksuu p\xC3\xB6ly ja vuosi 2022.";
     return "Etuovi on lukossa. Lapussa: 'Suljettu toistaiseksi. 03/2022.' " + sign +
            " Takapihalta kuuluu musiikkia.";
 }
 
+// glass from a broken window: on the hole itself and scattered on both sides of it
+static void scatterGlass(Building* b, const Coord& c)
+{
+    Level* level = b->level;
+    level->addItem(new Sirpaleet(c));
+    const int out = c.y == b->wallTop ? -1 : 1;   // the street side of the window
+    const int spots[][2] = { {-1, out}, {0, out}, {1, out}, {0, 2 * out}, {-1, 2 * out}, {1, 2 * out},
+                             {-1, -out}, {0, -out}, {1, -out} };
+    int left = 3 + std::rand() % 3;
+    for (int tries = 0; tries < 20 && left > 0; ++tries) {
+        const auto& o = spots[std::rand() % 9];
+        const int x = (int)c.x + o[0], y = (int)c.y + o[1];
+        if (x < 0 || y < 0 || x >= (int)common::SIZEX || y >= (int)common::SIZEY) continue;
+        const Coord at { (uint32_t)x, (uint32_t)y };
+        if (level->hitWall(at) || level->getItem(at)) continue;
+        level->addItem(new Sirpaleet(at));
+        --left;
+    }
+}
+
 void SuljettuLiike::smashWindow(const Coord& c, Person* source)
 {
+    if (isBreach(c)) return;   // already broken: nothing left to break
     breaches.push_back(c);
     smashed = true;
     burglar = source;
-    alarmTicks = 40;
     level->audio.addSound(c, SoundType::Glass, "KILIN\xC3\x84! " + name + ":n ikkuna hajoaa!",
                           "Lasin s\xC3\xA4rkymist\xC3\xA4", "...lasin helin\xC3\xA4\xC3\xA4...", 30);
-    level->audio.addSound(c, SoundType::Siren, name + ":n h\xC3\xA4lytin ulvoo!",
-                          "Murtoh\xC3\xA4lytin", "...h\xC3\xA4lytin ulvoo jossain...", 40);
-    if (source) level->alertCops(source, 40);
+    scatterGlass(this, c);
+    if (hasAlarm) {
+        alarmTicks = 40;
+        level->audio.addSound(c, SoundType::Siren, name + ":n h\xC3\xA4lytin ulvoo!",
+                              "Murtoh\xC3\xA4lytin", "...h\xC3\xA4lytin ulvoo jossain...", 40);
+        if (source) level->alertCops(source, 40);
+    } else if (source) {
+        // no alarm, but breaking glass is loud: a cop round the corner still hears it
+        level->alertCops(source, 15);
+    }
 
     // usually there is nothing inside but dust
     if (!common::random(30)) return;
@@ -1245,6 +1324,27 @@ void SuljettuLiike::smashWindow(const Coord& c, Person* source)
     }
 }
 
+bool SuljettuLiike::bumpWall(PlayerNS::Player* player, const Coord& c, std::string& msg)
+{
+    if (!hitWindow(c) || isBreach(c)) return false;
+    // never by accident: walking along the street past the window must not break it
+    player->printer->showMessage(name + ": n\xC3\xA4yteikkuna. Murtaudutko sis\xC3\xA4\xC3\xA4n? (k/e)", level, false);
+    const char k = InputNS::Input::getFreshMenuKey();
+    if (k != 'k' && k != 'K') {
+        msg = "J\xC3\xA4t\xC3\xA4t ikkunan rauhaan. Toistaiseksi.";
+        return true;
+    }
+    smashWindow(c, player);
+    static const char* kicks[] = {
+        "Potkaiset n\xC3\xA4yteikkunan sis\xC3\xA4\xC3\xA4n. KILIN\xC3\x84! Lasia sataa kadulle.",
+        "Ly\xC3\xB6t kyyn\xC3\xA4rp\xC3\xA4\xC3\xA4ll\xC3\xA4 lasin rikki. L\xC3\xA4nsimainen laatulasi antaa periksi vasta toisella.",
+        "Rys\xC3\xA4ys! Ikkuna hajoaa. Mallinuket katsovat sinua tuomitsevasti.",
+    };
+    msg = kicks[std::rand() % 3];
+    msg += hasAlarm ? " H\xC3\xA4lytin alkaa ulvoa!" : " Hiljaista. H\xC3\xA4lytin on viety Dubaihin.";
+    return true;
+}
+
 void SuljettuLiike::npcAct()
 {
     if (alarmTicks == 0) return;
@@ -1254,27 +1354,10 @@ void SuljettuLiike::npcAct()
         level->audio.addSound(front, SoundType::Siren, name + ":n h\xC3\xA4lytin ulvoo!",
                               "Murtoh\xC3\xA4lytin", "...h\xC3\xA4lytin ulvoo jossain...", 40);
 
-    // the patrol turns up a while after the alarm, if the burglar is still around
-    if (alarmTicks == 22 && level->isAlive(burglar) && burglar->coord.distance(front) < 25) {
-        for (int k = 0; k < 2; ++k) {
-            for (int tries = 0; tries < 30; ++tries) {
-                const int dx = (std::rand() % 2 ? 1 : -1) * (14 + std::rand() % 6);
-                const int dy = (int)(std::rand() % 9) - 4;
-                const int x = (int)burglar->coord.x + dx, y = (int)burglar->coord.y + dy;
-                if (x < 1 || y < 1 || x >= (int)common::SIZEX - 1 || y >= (int)common::SIZEY - 1) continue;
-                const Coord at { (uint32_t)x, (uint32_t)y };
-                if (level->hit(at)) continue;
-                Person* cop = level->createPerson(at, poliisi);
-                if (!cop) break;
-                cop->chaseTarget = burglar;
-                cop->alerted = true;
-                cop->lastKnownPos = burglar->coord;
-                cop->alertCooldown = 40;
-                cop->say(k ? "Murtoh\xC3\xA4lytys! Seis!" : "Tuolla se on!");
-                break;
-            }
-        }
-    }
+    // the patrol turns up a while after the alarm, if the burglar is still around: some of
+    // them carry radios and call in more men if the burglar does not give up at once
+    if (alarmTicks == 22 && level->isAlive(burglar) && burglar->coord.distance(front) < 25)
+        level->sendPatrol(burglar, 2, true);
 }
 
 // METRO

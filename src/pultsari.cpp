@@ -232,7 +232,13 @@ static void populateBuildings(Level& level, const GameState& gs)
         };
         const PersonType crooks[] = { varas, jengi, diileri, skinhead, ryostaja };
         for (const auto& s : shops) {
-            b = new Kauppa(s.name, s.kind);
+            Kauppa* shop = new Kauppa(s.name, s.kind);
+            // the grocery stores got automatic sliding doors; they work when they feel like it
+            if (s.kind == Kauppa::Kind::Produkty) {
+                shop->slidingDoor = true;
+                shop->doorJammed = common::random(SLIDING_DOOR_JAMMED_PERCENT);
+            }
+            b = shop;
             b->setOffset(s.x, 104);
             level.addBuilding(b);
             spawnQueue(level, b, 3 + std::rand() % 3);
