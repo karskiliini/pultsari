@@ -2530,6 +2530,11 @@ Item* Sotilas::dropItem()
     return nullptr;
 }
 
+bool Sotilas::meleeTarget() const
+{
+    return !(level && level->isWarLevel);
+}
+
 bool Sotilas::interact(std::string& msg, Person* source)
 {
     if (source->type == pelaaja && level->isWarLevel) {

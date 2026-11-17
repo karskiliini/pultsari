@@ -6008,3 +6008,110 @@ TEST(tracer_left_to_the_browser_page_to_draw)
     for (const auto& cell : w.printer.rowCells(&w.level, 50 - (uint32_t)w.level.cameraY)) row += cell.first;
     CHECK(braille(row) == 0);
 }
+
+// ---- Melee: what is in the hand hits harder ----
+
+// one step into a rat with the given hands; returns the damage dealt
+static uint32_t bumpRat(World& w, Thing l, Thing r)
+{
+    hold(w.player.inventory, l, r);
+    w.player.stats.health = 20;   // the rat bites back
+    w.player.coord = Coord{ 50, 50 };
+    auto* rat = w.spawn(new Rotta(Coord{ 51, 50 }));
+    rat->stats.health = 100;
+    w.player.move(DirectionNS::right, &w.level);
+    const uint32_t dealt = 100 - rat->stats.health;
+    rat->stats.health = 0;
+    w.level.cleanDead();
+    return dealt;
+}
+
+TEST(melee_bare_fists_hit_as_before)
+{
+    World w;
+    common::realtimeEnabled = false;
+    CHECK(bumpRat(w, Thing::None, Thing::None) == 1);
+}
+
+TEST(melee_stone_baton_and_rifle_butt_hit_harder_in_that_order)
+{
+    World w;
+    common::realtimeEnabled = false;
+    const uint32_t fist = bumpRat(w, Thing::None, Thing::Lenkki);
+    const uint32_t stone = bumpRat(w, Thing::Kivi, Thing::None);
+    const uint32_t baton = bumpRat(w, Thing::None, Thing::Pamppu);
+    w.player.inventory.back = Inventory::fresh(Thing::Rynkky);
+    w.player.inventory.akRaised = true;
+    const uint32_t butt = bumpRat(w, Thing::None, Thing::None);
+    CHECK(fist == 1);
+    CHECK(stone > fist);
+    CHECK(baton >= stone);
+    CHECK(butt > stone);
+    CHECK(butt >= baton);
+    // the stone and the baton stay in the hand
+    w.player.inventory.akRaised = false;
+    bumpRat(w, Thing::Kivi, Thing::Pamppu);
+    CHECK(w.player.inventory.left.what == Thing::Kivi);
+    CHECK(w.player.inventory.right.what == Thing::Pamppu);
+}
+
+TEST(melee_the_best_thing_in_either_hand_is_used)
+{
+    World w;
+    common::realtimeEnabled = false;
+    const uint32_t right = bumpRat(w, Thing::Lenkki, Thing::Kivi);
+    const uint32_t left = bumpRat(w, Thing::Kivi, Thing::Lenkki);
+    CHECK(right == left);
+    CHECK(right > 1);
+}
+
+TEST(melee_a_bottle_often_breaks_spills_and_is_gone)
+{
+    World w;
+    common::realtimeEnabled = false;
+    int breaks = 0, whole = 0;
+    uint32_t brokenDmg = 0, wholeDmg = 0;
+    for (int i = 0; i < 60; ++i) {
+        w.printer.log.clear();
+        const uint32_t d = bumpRat(w, Thing::Kalja, Thing::None);
+        if (w.player.inventory.left.empty()) {
+            ++breaks;
+            brokenDmg = d;
+            CHECK(w.printer.saw("valuu"));
+        } else {
+            ++whole;
+            wholeDmg = d;
+            CHECK(w.player.inventory.left.what == Thing::Kalja);
+        }
+    }
+    CHECK(breaks > 15);   // often, not always
+    CHECK(whole > 5);
+    CHECK(brokenDmg > wholeDmg);
+    CHECK(brokenDmg > 3);
+    CHECK(itemAt(w.level, ESirpaleet));
+}
+
+TEST(melee_an_empty_bottle_breaks_without_spilling)
+{
+    World w;
+    common::realtimeEnabled = false;
+    bool broke = false;
+    for (int i = 0; i < 60 && !broke; ++i) {
+        w.printer.log.clear();
+        bumpRat(w, Thing::None, Thing::Tyhja);
+        broke = w.player.inventory.right.empty();
+        if (broke) CHECK(!w.printer.saw("valuu"));
+    }
+    CHECK(broke);
+}
+
+TEST(melee_no_weapon_swing_at_a_harmless_passer_by)
+{
+    World w;
+    common::realtimeEnabled = false;
+    hold(w.player.inventory, Thing::Kivi, Thing::Pamppu);
+    auto* k = w.spawn(new Kansalainen(Coord{ 51, 50 }));
+    const uint32_t before = k->stats.health;
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(k->stats.health == before);
+}
