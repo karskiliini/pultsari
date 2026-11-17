@@ -103,10 +103,11 @@ void Ukrainalainen::npcAct()
             }
             if (level->trenchAt(c) == Trench::Enemy && !level->hit(c)) coord = c;
         }
-        // the player first: the longer he has been up there, the readier the rifle
+        // the player first: a man who just popped up is gone before the rifle is on him; the
+        // longer he stays up there, the more of them have him in their sights
         Player* p = level->getPlayer();
         if (p && !level->playerDead && p->stats.health > 0 && !level->inCover(p->coord) &&
-            clearShot(*level, coord, p->coord, RIFLE_RANGE) && random(2 + p->exposure / 4)) {
+            clearShot(*level, coord, p->coord, RIFLE_RANGE) && random(p->exposure / 10)) {
             snipe(p, msg);
             // he never sees the rifleman, but he knows when a bullet comes for him
             if (!msg.empty() && level->printer) level->printer->showMessage(msg, level, false);

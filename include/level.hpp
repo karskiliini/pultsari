@@ -214,7 +214,6 @@ public:
     // --- the third level ---
     static constexpr uint32_t BARRAGE_TICK = 30;
     static constexpr uint32_t ASSAULT_TICK = 55;
-    static constexpr uint32_t DESERTER_GAP = 6;     // this far behind the officer is running away
     AssaultPhase assaultPhase = AssaultPhase::Quiet;
     // the officer who holds the line: nobody falls back while he lives
     Person* holdOfficer = nullptr;
@@ -231,6 +230,9 @@ public:
     bool reachedRear(const Coord& c) const;
     // the front's trench layer (empty everywhere but at the front)
     std::vector<uint8_t> trench;
+    std::vector<int> ownLineX;      // the centre column of our main line on each row
+    // west of our main line on this row: off down a communication trench towards the rear
+    bool behindTheLine(const Coord& c) const;
     Trench trenchAt(const Coord& c) const;
     void setTrench(const Coord& c, Trench t);
     bool inOwnTrench(const Coord& c) const { return trenchAt(c) == Trench::Own; }

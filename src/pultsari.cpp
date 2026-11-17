@@ -776,6 +776,7 @@ static bool restartedByZ = false;
 static bool startByCar = false;
 // --front: start at the front, for trying out the war levels
 static bool startAtFront = false;
+static uint32_t frontStartStage = 1;   // --front=2 / --front=3: straight to a later front level
 
 static void parkCarByPlayer(Level& level, const Coord& at)
 {
@@ -1058,7 +1059,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
     GameState gameState;
     gameState.moscowStage = stage;
-    if (startAtFront) gameState.sendToWar();
+    if (startAtFront) { gameState.sendToWar(); gameState.warStage = frontStartStage; }
 
     bool quit = false;
     bool skipWaitKey = false;
@@ -1091,7 +1092,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             level.warStage = gameState.warStage;
             generateTrenches(level);
             // a new man arrives down in the trench, not on the open ground beside it
-            player.coord = nearestTrench(level, player.coord, Trench::Own);
+            const uint32_t y = player.coord.y;
+            player.coord = nearestTrench(level, Coord{ (uint32_t)level.ownLineX[y], y }, Trench::Own);
         }
         if (gameState.getLandmark() == MoscowLandmark::Bolshoi) {
             level.isBolshoi = true;
@@ -1128,7 +1130,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             printer->showMessage(gameState.getLevelName(), &level, false);
         }
         // the first level of the front: a loaded rifle, every time; it comes home with you too
-        if (gameState.phase == GamePhase::War && gameState.warStage == 1) player.issueRifle();
+        if (gameState.phase == GamePhase::War && (gameState.warStage == 1 || (startAtFront && gameState.warStage == frontStartStage)))
+            player.issueRifle();
 
         level.updateCamera();
         mask.init();
@@ -1972,6 +1975,9 @@ int init(int argc, char *argv[], Printer* printer)
             startByCar = true;
         } else if (a == "--front") {
             startAtFront = true;
+        } else if (a.rfind("--front=", 0) == 0) {
+            startAtFront = true;
+            frontStartStage = std::max(1, std::min(3, std::atoi(a.c_str() + 8)));
         } else if (a == "--path") {
             pathFinding = true;
         } else if ((a == "--realtime") || (a == "--rt")) {

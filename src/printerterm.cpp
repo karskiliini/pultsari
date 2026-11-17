@@ -272,6 +272,7 @@ void PrinterTerm::printHelp()
     cout << "  --path             NPC:iden reitinhaku" << endl;
     cout << "  --car              auto avaimineen heti vieress\xC3\xA4 (ajamisen kokeiluun)" << endl;
     cout << "  --front            aloita suoraan rintamalta (FPV-droonien kokeiluun)" << endl;
+    cout << "  --front=N          aloita rintaman tasolta N (1-3; 3 = Bradley-hyökkäys)" << endl;
     cout << "  --version          pelin versio" << endl;
     cout << "  --all, -a          kaikki yll\xC3\xA4 olevat" << endl << endl;
     cout << "Reaaliaikatilan n\xC3\xA4pp\xC3\xA4imet:" << endl;

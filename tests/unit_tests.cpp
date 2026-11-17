@@ -5770,6 +5770,9 @@ TEST(own_machine_guns_fire_on_a_player_behind_the_officer)
     common::realtimeEnabled = false;    // no moment-to-react guard between hits (it is shared across tests)
     w->player.stats.health = 200;
     w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };    // well behind him, at the rear
+    for (int i = 0; i < 50; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health == 200);                           // before the barrage nobody is told to fire
+    w->level.assaultPhase = AssaultPhase::Assault;
     for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
     CHECK(w->player.stats.health < 200);
     CHECK(w->printer.saw("konekiv"));
@@ -5782,12 +5785,14 @@ TEST(no_barrier_fire_once_the_officer_is_dead)
     w->player.stats.health = 200;
     w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };
     w->level.holdOfficer->stats.health = 0;
+    w->level.assaultPhase = AssaultPhase::Assault;
     for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
     CHECK(w->player.stats.health == 200);
     // nor while the player stays up at the line beside him
     World* v = holdWorld();
     v->player.stats.health = 200;
     v->player.coord = Coord{ v->level.holdOfficer->coord.x - 3, v->level.holdOfficer->coord.y };
+    v->level.assaultPhase = AssaultPhase::Assault;
     for (int i = 0; i < 200; ++i) v->level.barrierFireTick();
     CHECK(v->player.stats.health == 200);
     delete w;
@@ -5801,4 +5806,18 @@ TEST(third_level_without_officer_opens_after_shift)
     while (w->level.warTicks < Level::WAR_SHIFT_TICKS + 1) w->level.warTick();
     CHECK(w->level.rearOpen);
     delete w;
+}
+
+TEST(a_new_man_starts_on_the_main_line_not_behind_it)
+{
+    for (int seed = 1; seed <= 6; ++seed) {
+        std::srand(seed);
+        World w(Coord{ 6, 153 });
+        w.level.isWarLevel = true;
+        generateTrenches(w.level);
+        const uint32_t y = common::PLAYER_START_Y;
+        const Coord start = nearestTrench(w.level, Coord{ (uint32_t)w.level.ownLineX[y], y }, Trench::Own);
+        CHECK(w.level.inOwnTrench(start));
+        CHECK(!w.level.behindTheLine(start));
+    }
 }

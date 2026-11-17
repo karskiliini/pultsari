@@ -62,9 +62,11 @@ void Level::shellBurst(const Coord& at, uint32_t radius, uint32_t maxDamage, con
         if (p->stats.health == 0) continue;
         const uint32_t d = p->coord.distance(at);
         if (d > radius) continue;
-        // the trench walls take the shrapnel unless it lands right on top of you
-        if (inCover(p->coord) && d > 1) continue;
-        p->damage(std::rand() % maxDamage + 1);
+        // the trench walls take the shrapnel unless it lands right on top of you, and even then the worst of it
+        const bool covered = inCover(p->coord);
+        if (covered && d > 1) continue;
+        const uint32_t dmg = std::rand() % maxDamage + 1;
+        p->damage(covered ? (dmg + 1) / 2 : dmg);
         if (p == player && printer) printer->showMessage("Kranaatin sirpale osuu!", this, false);
     }
     // the ground is torn up; a trench is a trench still, just a deeper one
@@ -85,7 +87,7 @@ void Level::fireSalvo(uint32_t shells)
     const PlayerNS::Player* player = getPlayer();
     const Coord around = player ? player->coord : Coord{ TrenchNS::OWN_X, common::PLAYER_START_Y };
     for (uint32_t i = 0; i < shells; ++i) {
-        const int y = std::max(0, std::min((int)common::SIZEY - 1, (int)around.y + std::rand() % 41 - 20));
+        const int y = std::max(0, std::min((int)common::SIZEY - 1, (int)around.y + std::rand() % 61 - 30));
         const int line = ownTrenchEastX(*this, (uint32_t)y);
         const int x = std::max(0, (line < 0 ? (int)TrenchNS::OWN_X : line - 1) + std::rand() % 9 - 4);
         shellBurst(Coord{ (uint32_t)x, (uint32_t)y }, 3, 8, "tykist\xC3\xB6");
@@ -94,7 +96,8 @@ void Level::fireSalvo(uint32_t shells)
 
 void Level::artilleryTick()
 {
-    if (!isWarLevel || warStage < 2 || playerDead) return;
+    // the second level's harassing fire; the third has its one great barrage instead (assaultTick)
+    if (!isWarLevel || warStage != 2 || playerDead) return;
     if (salvoIn) {
         if (--salvoIn == 0) fireSalvo(3 + std::rand() % 4);
         return;
@@ -144,15 +147,15 @@ bool Level::isMgNest(const Coord& c) const
 
 void Level::barrierFireTick()
 {
-    if (!holdOfficer || !isAlive(holdOfficer) || mgNests.empty()) return;
+    // the guns are told to fire once the barrage starts and the line has to hold
+    if (!holdOfficer || !isAlive(holdOfficer) || mgNests.empty() || assaultPhase == AssaultPhase::Quiet) return;
     if (barrierShoutCooldown) --barrierShoutCooldown;
     if (barrierCooldown && --barrierCooldown) return;
     barrierCooldown = 2;
-    const uint32_t line = holdOfficer->coord.x;
     const PlayerNS::Player* player = getPlayer();
     for (Person* p : persons) {
         if (p == holdOfficer || p->stats.health == 0 || !isRussianSoldier(*this, p)) continue;
-        if (p->coord.x + DESERTER_GAP >= line) continue;
+        if (!behindTheLine(p->coord)) continue;
         const bool isPlayer = p == player;
         if (isPlayer && !barrierShoutCooldown) {
             barrierShoutCooldown = 10;
@@ -184,7 +187,7 @@ void Level::assaultTick()
         Subtitles::say("[Maa j\xC3\xA4risee. Taivas on t\xC3\xA4ynn\xC3\xA4 ulvontaa.]", "barrage");
     }
     if (assaultPhase == AssaultPhase::Barrage) {
-        fireSalvo(2 + std::rand() % 3);
+        fireSalvo(1 + std::rand() % 2);
         if (warTicks + 1 >= ASSAULT_TICK) {
             assaultPhase = AssaultPhase::Assault;
             if (printer) printer->showMessage("Keskitys taukoaa... TELAKETJUJEN KOLINAA! Bradleyt tulevat!", this, false);

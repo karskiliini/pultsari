@@ -83,10 +83,12 @@ void Level::setTrench(const Coord& c, Trench t)
 
 void generateTrenches(Level& l)
 {
+    l.ownLineX.clear();
     l.trench.assign(common::SIZEX * common::SIZEY, (uint8_t)Trench::None);
 
     // our main line
     const std::vector<int> own = digLine(l, OWN_X, 3, Trench::Own);
+    l.ownLineX = own;
 
     // firing bays out to the east every so often
     for (int y = rnd(3, 10); y < (int)common::SIZEY - 2; y += rnd(10, 20))
@@ -148,6 +150,12 @@ Coord randomTrenchCell(const Level& l, Trench kind, const Coord& near, uint32_t 
         if (l.trenchAt(c) == kind && !l.hit(c)) return c;
     }
     return nearestTrench(l, near, kind);
+}
+
+bool Level::behindTheLine(const Coord& c) const
+{
+    if (c.y >= ownLineX.size()) return false;
+    return (int)c.x < ownLineX[c.y] - 3;
 }
 
 int ownTrenchEastX(const Level& l, uint32_t y)

@@ -106,9 +106,9 @@ void fpvTick(Level& level)
     }
     // the whine overhead gets a caption now and then, like the hum of a film's soundtrack
     if (flying > 0) Subtitles::say("[FPV-droonien p\xC3\xB6rin\xC3\xA4\xC3\xA4 taivaalla. Joku niist\xC3\xA4 etsii sinua.]", "drones", 25000);
-    // a new one every couple of seconds over the trenches, more once he has been seen up top
+    // a new one every few seconds over the trenches, more once he has been seen up top
     const PlayerNS::Player* seen = level.getPlayer();
-    if (flying >= fpvMax(level) || !random(25 + (seen ? seen->exposure / 4 : 0))) return;
+    if (flying >= fpvMax(level) || !random(12 + (seen ? seen->exposure / 4 : 0))) return;
 
     // the pilots go for whoever is out in the open, the drunk new recruit as much as anyone
     std::vector<Person*> open;
