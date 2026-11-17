@@ -781,7 +781,7 @@ static const char* useLabel(Thing t)
     switch (t) {
         case Thing::Lenkki: case Thing::Kala: case Thing::Omppo: case Thing::Bansku: return "[E] sy\xC3\xB6  ";
         case Thing::Pistooli: return "[E] ammu ";
-        case Thing::Rynkky: return "[E] t\xC3\xA4ht\xC3\xA4\xC3\xA4";
+        case Thing::Rynkky: return "[E] k\xC3\xA4siin";
         default: return "         ";
     }
 }
@@ -809,8 +809,8 @@ ArmPictures playerArms(const PlayerNS::Player* player)
 {
     ArmPictures a;
     const Inventory& inv = player->inventory;
-    const Held& l = inv.akRaised ? inv.back : inv.left;
-    const Held& r = inv.akRaised ? inv.back : inv.right;
+    const Held& l = inv.akInHands() ? inv.back : inv.left;
+    const Held& r = inv.akInHands() ? inv.back : inv.right;
     const int stage = sleeveStage(player->stats.health, player->usedCoat);
     const Coat coat = player->coat;
     a.left = armPicture(true, l, stage, coat);

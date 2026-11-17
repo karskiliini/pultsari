@@ -1445,6 +1445,11 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     invSelection = (invSelection + 1) % invItems();
                                     break;
                                 case 'e': case '\r':
+                                    if (rowThing(invSelection) == Thing::Rynkky) {   // into the hands, lowered: no Aim, no shot
+                                        player.takeAkInHands();
+                                        mode = Mode::Normal;
+                                        break;
+                                    }
                                     if (throwMenu && c == '\r') {
                                         startThrowAim(rowSlot(invSelection));
                                         break;
@@ -1512,7 +1517,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                     if (aimIsShooting && rifleRaised) {
                                         player.lowerAk();
                                         rifleRaised = false;
-                                        printer->showMessage("Lasket rynkyn takaisin selk\xC3\xA4\xC3\xA4n.", &level, false);
+                                        printer->showMessage("Lasket rynkyn. Se pysyy k\xC3\xA4siss\xC3\xA4.", &level, false);
                                     } else if (aimIsShooting) {
                                         printer->showMessage(player.inventory.hasBelt
                                             ? "Lasket aseen. Se on yh\xC3\xA4 k\xC3\xA4""dess\xC3\xA4 (Esc laittaa vy\xC3\xB6lle)."

@@ -224,7 +224,7 @@ bool Player::interact(std::string& msg, Person* source)
 
 Held* Player::meleeHand()
 {
-    if (inventory.akRaised && inventory.back.what == Thing::Rynkky) return &inventory.back;
+    if (inventory.akInHands()) return &inventory.back;
     // a free hand makes a fist (0): a soft thing is swung only when both hands are full
     auto power = [](const Held* h) { return h->empty() ? 0 : meleePower(h->what); };
     Held* best = power(&inventory.left) >= power(&inventory.right) ? &inventory.left : &inventory.right;
@@ -910,6 +910,40 @@ void Player::lowerAk()
     inventory.akRaised = false;
 }
 
+bool Player::takeAkInHands()
+{
+    if (inventory.back.what != Thing::Rynkky) {
+        if (printer) printer->showMessage("Ei rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri\xC3\xA4.", level, false);
+        return false;
+    }
+    if (inventory.left.empty() && inventory.right.empty()) {
+        inventory.akRaised = false;
+        if (printer) printer->showMessage("Rynkky on jo k\xC3\xA4siss\xC3\xA4.", level, false);
+        return true;
+    }
+    // say what went where: the belt, the pocket, the ground
+    std::string belted, pocketed, dropped;
+    for (Held* h : { &inventory.left, &inventory.right }) {
+        if (h->empty()) continue;
+        if (h->what == Thing::Pistooli && inventory.hasBelt && inventory.belt.empty()) {
+            inventory.belt = *h;
+            belted = " Pistooli vy\xC3\xB6lle.";
+        } else if (isSmall(h->what) && inventory.pocket.empty()) {
+            inventory.pocket = *h;
+            pocketed = std::string(" ") + thingName(h->what) + " taskuun.";
+        } else {
+            dropped += std::string(dropped.empty() ? " " : ", ") + thingName(h->what);
+            dropNear(heldItem(*h, coord));
+        }
+        *h = Held();
+    }
+    inventory.akRaised = false;
+    std::string msg = "Otat rynkyn k\xC3\xA4siin." + belted + pocketed;
+    if (!dropped.empty()) msg += dropped + " maahan.";
+    if (printer) printer->showMessage(msg, level, false);
+    return true;
+}
+
 void Player::issueRifle()
 {
     const bool hadSomething = !inventory.left.empty() || !inventory.right.empty();
@@ -922,7 +956,7 @@ void Player::issueRifle()
     else inventory.back = Inventory::fresh(Thing::Rynkky);
     inventory.akRaised = true;
     Subtitles::say("Rintama. Olalle ladattu AK, taivaalle FPV-droonit.", "", 0, 4000);
-    if (printer) printer->showMessage(hadSomething ? AK_ISSUED_MSG + " KÃ¤sistÃ¤ putosi kaikki muu." : AK_ISSUED_MSG, level, false);
+    if (printer) printer->showMessage(hadSomething ? AK_ISSUED_MSG + " K\xC3\xA4sist\xC3\xA4 putosi kaikki muu." : AK_ISSUED_MSG, level, false);
 }
 
 bool Player::reload(Thing gun)

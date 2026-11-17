@@ -136,6 +136,9 @@ public:
     // the rifle off the back to the shoulder: both hands must be empty (false + a hint otherwise)
     bool shoulderAk();
     void lowerAk();
+    // the rifle into the hands lowered, no shot: the hands are emptied first (pistol to the belt, a small
+    // thing to the pocket, the rest put down). False + a hint if there is no rifle on the back.
+    bool takeAkInHands();
     // sent to the front: a loaded AK at the shoulder (the one on the back refilled, if any);
     // whatever was in the hands is put down next to you. Nothing takes it away on the way back.
     void issueRifle();

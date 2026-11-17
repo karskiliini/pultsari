@@ -123,6 +123,20 @@ def test_front_starts_with_the_ak_up_and_held_space_fires_a_burst():
           f'ak frames {len(up)} shot frames {shots} hands {rounds[-1:] }')
 
 
+def test_ak_into_the_hands_from_the_menu_does_not_aim():
+    g = Game(['--front'])
+    time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
+    g.keys('\x1b'); time.sleep(0.5)
+    n = len(g.frames())
+    g.keys('\twe'); time.sleep(1)
+    after = g.frames()[n:]
+    g.close()
+    msgs = [f.get('msg', '') for f in after]
+    check('ak_into_the_hands_from_the_menu_does_not_aim',
+          not any(f.get('ak') for f in after) and any('Rynkky on jo k' in m for m in msgs),
+          f'ak frames {sum(1 for f in after if f.get("ak"))} msgs {msgs[-1:]}')
+
+
 def test_q_drinks_in_realtime():
     g = Game()
     time.sleep(1); g.keys(' ', 0); time.sleep(1.5)
@@ -215,6 +229,7 @@ if __name__ == '__main__':
     test_player_starts_on_leninski()
     test_q_drinks_in_realtime()
     test_front_starts_with_the_ak_up_and_held_space_fires_a_burst()
+    test_ak_into_the_hands_from_the_menu_does_not_aim()
     test_arms_come_with_the_first_frame_and_only_on_change()
     test_captions_and_the_hands_intro()
     test_random_play_does_not_crash()
