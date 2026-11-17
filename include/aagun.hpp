@@ -27,12 +27,15 @@ struct ShellHit {
 // Whoever mans it can shoot at anything in the city until the shells run out.
 class AAGun : public Vehicle {
 public:
+    // the makes found at the front: a single-barrel 23 mm, the twin "Sergei" (ZU-23-2, the
+    // Kremlin's), and a quad of 7.62 mm machine guns on a Flakvierling mount
+    enum class Model { Zu23, Sergei, Vierling };
     static constexpr uint32_t AMMO = 100;
     static constexpr uint32_t RANGE = 45;        // cells; the shell bursts in the air beyond
     static constexpr uint32_t ARMING = 4;        // cells before the fuze arms: it flies over heads
     static constexpr uint32_t SHOT_MS = 350;     // between shells, Space held down
 
-    explicit AAGun(const Coord& left);
+    explicit AAGun(const Coord& left, Model model = Model::Sergei);
     virtual void update() { }
     virtual void frame(uint32_t) { }
     virtual std::string name() const { return "IT-tykki"; }
@@ -53,9 +56,15 @@ public:
     bool aimAtDrone();
     // a shell along `a`, no ammo counted (the crew has crates of it); `boom` says what it did
     ShellHit shoot(float a, Person* source, std::string& boom);
-    // one shell along `angle`; false (and a click) when the shells have run out
+    // one shell along `angle` (the Flakvierling: four rounds); false (and a click) when the
+    // ammunition has run out
     bool fire(std::string& msg);
+    // between shots, Space held down: the Sergei's two barrels take turns, twice the ZU-23's rate
+    uint32_t shotMs() const;
+    uint32_t maxAmmo() const;
+    const char* modelName() const;
 
+    Model model;
     uint32_t ammo = AMMO;
     float angle = -1.5708f;                 // barrels pointing north
     PlayerNS::Player* gunner = nullptr;

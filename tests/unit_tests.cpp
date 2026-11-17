@@ -6213,15 +6213,13 @@ TEST(a_manned_gun_leaves_the_gunner_out_in_the_open)
     delete w;
 }
 
-TEST(a_bradley_takes_three_aa_shells)
+TEST(a_bradley_takes_twenty_aa_shells)
 {
     World* w = frontWorld(3);
     const uint32_t y = w->player.coord.y;
     auto* b = new Bradley(Coord{ 40, y }, 40);
     w->level.addVehicle(b);
-    aaExplosion(w->level, b->coord, &w->player);
-    CHECK(!b->wrecked);
-    aaExplosion(w->level, b->coord, &w->player);
+    for (int i = 0; i < 19; ++i) aaExplosion(w->level, b->coord, &w->player);
     CHECK(!b->wrecked);
     const string boom = aaExplosion(w->level, b->coord, &w->player);
     CHECK(b->wrecked);
@@ -6365,4 +6363,132 @@ TEST(melee_a_broken_sausage_is_eaten_for_a_little_strength)
     CHECK(w.printer.saw("Sy\xC3\xB6t loput"));
     CHECK(w.player.stats.hunger > 50);
     CHECK(w.player.stats.health == 10);   // the rat's bite (-1) and the sausage (+1)
+}
+
+// ---------- aiming in 45-degree steps, and the three guns ----------
+
+static bool near(float a, float b) { return std::fabs(std::remainder(a - b, 6.2831853f)) < 0.01f; }
+
+TEST(aim_turns_45_degrees_toward_the_key_by_the_shortest_way)
+{
+    const float Q = 0.7853982f;
+    CHECK(near(common::aimStep(-2 * Q, 'a'), -3 * Q));      // up -> up-left
+    CHECK(near(common::aimStep(4 * Q, 'a'), 4 * Q));        // already left: stays
+    CHECK(near(common::aimStep(0.3f, 'd'), 0.0f));          // off the eight: snaps to the nearest
+    CHECK(near(common::aimStep(0.0f, 'w'), -Q));            // right -> up-right
+    CHECK(near(common::aimStep(Q, 's'), 2 * Q));            // down-right -> down
+    CHECK(near(common::aimStep(2 * Q, 'w'), 3 * Q));        // straight opposite: clockwise
+    CHECK(near(common::aimStep(0.0f, 'x'), 0.0f));          // any other key leaves it be
+    float a = 0.0f;
+    for (int i = 0; i < 4; ++i) a = common::aimStep(a, 'a');
+    CHECK(near(a, 4 * Q));
+}
+
+TEST(gun_turns_45_degrees_per_key_too)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    string msg;
+    CHECK(g->approach(&w->player, msg));
+    uint32_t ms = 0;
+    gunnerKey('w', w->player, w->level, w->printer, ms);
+    CHECK(near(g->angle, -0.7853982f));
+    gunnerKey('w', w->player, w->level, w->printer, ms);
+    CHECK(near(g->angle, -1.5707963f));
+    delete w;
+}
+
+static AAGun* lone(World& w, AAGun::Model m)
+{
+    AAGun* g = new AAGun(Coord{ 60, 50 }, m);
+    w.level.addVehicle(g);
+    g->gunner = &w.player;
+    w.player.manning = g;
+    g->angle = 0.0f;
+    return g;
+}
+
+TEST(the_three_guns_look_and_load_differently)
+{
+    World w;
+    AAGun* zu = lone(w, AAGun::Model::Zu23);
+    CHECK(zu->glyphAt(1) == "\xD0\x93" && zu->ammo == 100 && zu->shotMs() == 400);
+    AAGun* sergei = new AAGun(Coord{ 60, 60 }, AAGun::Model::Sergei);
+    CHECK(sergei->glyphAt(1) == "\xD0\x96" && sergei->ammo == 100 && sergei->shotMs() == 200);
+    AAGun* flak = new AAGun(Coord{ 60, 70 }, AAGun::Model::Vierling);
+    CHECK(flak->glyphAt(1) == "\xD0\xA8" && flak->ammo == 400 && flak->shotMs() == 150);
+    AAGun* moscow = new AAGun(Coord{ 60, 80 });     // the Kremlin's guns: always a Sergei
+    CHECK(moscow->model == AAGun::Model::Sergei);
+    delete moscow;
+    delete sergei;
+    delete flak;
+}
+
+TEST(sergei_fires_twice_as_often_as_the_single_barrel)
+{
+    World w;
+    AAGun* zu = lone(w, AAGun::Model::Zu23);
+    zu->angle = -1.5707963f;            // up into the empty sky
+    uint32_t ms = 250;
+    gunnerKey(' ', w.player, w.level, w.printer, ms);
+    CHECK(zu->ammo == 100);             // too soon for the single barrel
+    ms = 400;
+    gunnerKey(' ', w.player, w.level, w.printer, ms);
+    CHECK(zu->ammo == 99);
+    zu->leave();
+    World v;
+    AAGun* sergei = lone(v, AAGun::Model::Sergei);
+    sergei->angle = -1.5707963f;
+    ms = 250;
+    gunnerKey(' ', v.player, v.level, v.printer, ms);
+    CHECK(sergei->ammo == 99);
+}
+
+TEST(flakvierling_sprays_four_rounds_that_bounce_off_a_bradley)
+{
+    World w;
+    common::realtimeEnabled = false;
+    AAGun* flak = lone(w, AAGun::Model::Vierling);
+    Ukrainalainen* u = w.spawn(new Ukrainalainen(Coord{ 67, 50 }, Ukrainalainen::Mode::Assault));
+    string msg;
+    for (int i = 0; i < 6 && u->stats.health > 0; ++i) flak->fire(msg);
+    CHECK(u->stats.health < 12);
+    CHECK(flak->ammo <= 400 - 4 && (400 - flak->ammo) % 4 == 0);
+    // the armour shrugs the rifle rounds off
+    World v;
+    common::realtimeEnabled = false;
+    AAGun* f2 = lone(v, AAGun::Model::Vierling);
+    auto* b = new Bradley(Coord{ 68, 50 }, 68);
+    v.level.addVehicle(b);
+    Ukrainalainen* behind = v.spawn(new Ukrainalainen(Coord{ 75, 50 }, Ukrainalainen::Mode::Assault));
+    for (int i = 0; i < 10; ++i) f2->fire(msg);
+    CHECK(!b->wrecked && b->hits == 0);
+    CHECK(behind->stats.health == 12);
+    CHECK(contains(msg, "kilpisty"));
+}
+
+TEST(fifteen_rounds_silence_a_barrier_nest)
+{
+    World* w = frontWorld(3);
+    const Coord nest = w->level.mgNests.front();
+    Sotilas* s = w->spawn(new Sotilas(Coord{ nest.x + 6, nest.y }));
+    const size_t before = w->level.mgNests.size();
+    for (int i = 0; i < 14; ++i) w->level.fireBullet(s, 3.1415927f, 10, 1, 100);
+    CHECK(w->level.mgNests.size() == before);
+    w->level.fireBullet(s, 3.1415927f, 10, 1, 100);
+    CHECK(w->level.mgNests.size() == before - 1);
+    delete w;
+}
+
+TEST(front_guns_come_in_all_three_kinds)
+{
+    bool seen[3] = { false, false, false };
+    for (unsigned seed = 1; seed < 40; ++seed) {
+        World* w = holdWorld();          // (it sets its own dice for the trenches)
+        std::srand(seed);
+        populateAAGuns(w->level, 1);
+        for (auto g : guns(w->level)) seen[(int)g->model] = true;
+        delete w;
+    }
+    CHECK(seen[0] && seen[1] && seen[2]);
 }

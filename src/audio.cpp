@@ -26,6 +26,9 @@ static const char* effectFor(const AudioEvent& e)
         case SoundType::Gunshot:
             if (e.textClose.rfind("PAM", 0) == 0) return "pistol";
             if (e.textClose.rfind("PAKPAK", 0) == 0) return "mg";
+            if (e.textClose.rfind("BUUM!", 0) == 0) return "aa1";        // the single-barrel ZU-23
+            if (e.textClose.rfind("BADABUM", 0) == 0) return "aa2";      // Sergei, barrels taking turns
+            if (e.textClose.rfind("TAKATAKA", 0) == 0) return "vierling"; // four rifle-calibre barrels
             if (e.textClose.rfind("BUUM", 0) == 0) return "aa";
             return "rifle";
         case SoundType::Explosion:    return "explosion";

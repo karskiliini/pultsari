@@ -706,7 +706,8 @@ void Level::robberyTick()
     }
 }
 
-Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent)
+Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent,
+                          const Vehicle** stoppedBy)
 {
     const float dx = std::cos(angle), dy = std::sin(angle);
     float x = shooter->coord.x + 0.5f, y = shooter->coord.y + 0.5f;
@@ -723,7 +724,26 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
         if (c == last) continue;
         last = c;
         if (hitWall(c)) { streak(); return nullptr; }
+        // a barrier machine gun nest: the sandbags take it, the crew behind them now and then
+        if (isWarLevel && isMgNest(c)) {
+            for (const auto& n : mgNests) {
+                if (n.y != c.y) continue;
+                const Coord nest = n;
+                auto it = std::find_if(nestHits.begin(), nestHits.end(), [&](const std::pair<Coord, uint32_t>& h) { return h.first == nest; });
+                if (it == nestHits.end()) { nestHits.push_back({ nest, 0 }); it = nestHits.end() - 1; }
+                if (++it->second >= NEST_ROUNDS) silenceMgNests(nest, 0.6f);
+                break;
+            }
+            streak();
+            return nullptr;
+        }
         if (Vehicle* v = getVehicleAt(c)) {
+            // armour: rifle rounds bounce off a Bradley
+            if (dynamic_cast<Bradley*>(v)) {
+                if (stoppedBy) *stoppedBy = v;
+                streak();
+                return nullptr;
+            }
             if (v != lastCar) {
                 lastCar = v;
                 // a car under fire: the driver dies, runs or comes at the shooter; the body often stops the bullet

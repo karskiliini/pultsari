@@ -16,8 +16,9 @@ using std::string;
 
 // ============ the gun ============
 
-AAGun::AAGun(const Coord& left) : Vehicle(left, left.y)
+AAGun::AAGun(const Coord& left, Model m) : Vehicle(left, left.y), model(m)
 {
+    ammo = maxAmmo();
     length = 3;
     horizontal = true;
     direction = -1;     // the body trails to the right: sandbag, gun, sandbag
@@ -25,7 +26,14 @@ AAGun::AAGun(const Coord& left) : Vehicle(left, left.y)
 
 std::string AAGun::glyphAt(uint32_t index) const
 {
-    if (index == 1) return wrecked ? "#" : "\xD0\x96";      // Ж: twin barrels on the mount
+    if (index == 1) {
+        if (wrecked) return "#";
+        switch (model) {
+            case Model::Zu23:     return "\xD0\x93";   // Г: one barrel
+            case Model::Vierling: return "\xD0\xA8";   // Ш: four barrels
+            default:              return "\xD0\x96";   // Ж: twin barrels on the mount
+        }
+    }
     return "\xE2\x96\x92";                                  // ▒ sandbags
 }
 
@@ -100,7 +108,7 @@ bool AAGun::approach(Player* player, string& msg)
     }
     gunner = player;
     player->manning = this;
-    msg += " (A/D k\xC3\xA4\xC3\xA4nt\xC3\xA4\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti ampuu, Esc poistuu. Ammuksia " + std::to_string(ammo) + ".)";
+    msg += string(" ") + modelName() + ". (WASD k\xC3\xA4\xC3\xA4nt\xC3\xA4\xC3\xA4 45\xC2\xB0, v\xC3\xA4lily\xC3\xB6nti ampuu, Esc poistuu. Ammuksia " + std::to_string(ammo) + ".)";
     return true;
 }
 
@@ -110,11 +118,38 @@ void AAGun::leave()
     gunner = nullptr;
 }
 
+uint32_t AAGun::shotMs() const
+{
+    switch (model) {
+        case Model::Zu23:     return 400;
+        case Model::Vierling: return 150;
+        default:              return 200;
+    }
+}
+
+uint32_t AAGun::maxAmmo() const
+{
+    return model == Model::Vierling ? 400 : AMMO;
+}
+
+const char* AAGun::modelName() const
+{
+    switch (model) {
+        case Model::Zu23:     return "ZU-23";
+        case Model::Vierling: return "FLAKVIERLING 7,62";
+        default:              return "SERGEI ZU-23-2";
+    }
+}
+
 ShellHit AAGun::shoot(float a, Person* source, string& boom)
 {
     const Coord from = centre();
-    level->audio.addSound(from, SoundType::Gunshot,
-        "BUUM-BUUM! IT-tykki jyr\xC3\xA4ht\xC3\xA4\xC3\xA4!", "Ilmatorjuntatulta!", "...tykin jyrin\xC3\xA4\xC3\xA4 kaukaa...", 60);
+    if (model == Model::Zu23)
+        level->audio.addSound(from, SoundType::Gunshot,
+            "BUUM! Yksiputkinen IT-tykki jyr\xC3\xA4ht\xC3\xA4\xC3\xA4!", "Tykin laukaus!", "...tykin jyrin\xC3\xA4\xC3\xA4 kaukaa...", 60);
+    else
+        level->audio.addSound(from, SoundType::Gunshot,
+            "BADABUM! Sergein putket vuorotellen!", "Ilmatorjuntatulta!", "...tykin jyrin\xC3\xA4\xC3\xA4 kaukaa...", 60);
     const ShellHit hit = traceShell(*level, from, a, this);
     common::shellEvent(from, hit.at);
     boom = aaExplosion(*level, hit.at, source);
@@ -128,6 +163,28 @@ bool AAGun::fire(string& msg)
         msg = "*KLIK* Ammukset loppuivat. IT-tykki on nyt pelkk\xC3\xA4\xC3\xA4 rautaa.";
         return false;
     }
+    if (model == Model::Vierling) {
+        // four barrels of rifle rounds: they mow men down and bounce off armour
+        Person* shooter = gunner ? (Person*)gunner : nullptr;
+        if (!shooter) return false;
+        level->audio.addSound(centre(), SoundType::Gunshot,
+            "TAKATAKATAKA! Flakvierling sylkee luoteja!", "Konekiv\xC3\xA4\xC3\xA4rien sarjatulta!", "...sarjatulta kaukaa...", 50);
+        uint32_t hits = 0;
+        bool bounced = false;
+        for (int k = 0; k < 4 && ammo > 0; ++k) {
+            --ammo;
+            const float spread = ((std::rand() % 13) - 6) / 100.0f;
+            const Vehicle* stopped = nullptr;
+            if (level->fireBullet(shooter, angle + spread, 30, 3 + std::rand() % 3, 70, &stopped)) ++hits;
+            if (stopped) bounced = true;
+        }
+        level->alertCops(shooter, 30);
+        msg = "TAKATAKATAKA! ";
+        if (bounced) msg += "Luodit kilpistyv\xC3\xA4t Bradleyn panssarista! ";
+        else if (hits) msg += hits == 1 ? "Osuma! " : std::to_string(hits) + " osumaa! ";
+        msg += "[" + std::to_string(ammo) + "/" + std::to_string(maxAmmo()) + "]";
+        return true;
+    }
     --ammo;
     string boom;
     const ShellHit hit = shoot(angle, gunner, boom);
@@ -136,7 +193,7 @@ bool AAGun::fire(string& msg)
     else if (!hit.what.empty()) msg += "Osuma: " + hit.what + "! ";
     else msg += "Ammus r\xC3\xA4j\xC3\xA4ht\xC3\xA4\xC3\xA4 ilmassa. ";
     if (!boom.empty()) msg += boom + " ";
-    msg += "[" + std::to_string(ammo) + "/" + std::to_string(AMMO) + "]";
+    msg += "[" + std::to_string(ammo) + "/" + std::to_string(maxAmmo()) + "]";
     return true;
 }
 
@@ -281,8 +338,10 @@ std::string aaExplosion(Level& level, const Coord& at, Person* source)
         if (!near) continue;
         if (Bradley* br = dynamic_cast<Bradley*>(v)) {
             if (++br->hits < Bradley::ARMOUR) {
-                worst = std::string(br->hits == 1 ? "Osuma Bradleyyn! Panssari kest\xC3\xA4\xC3\xA4 viel\xC3\xA4. "
-                                                  : "Toinen osuma Bradleyyn! Se savuaa jo. ") + worst;
+                const uint32_t left = Bradley::ARMOUR - br->hits;
+                worst = std::string(left > 10 ? "Osuma Bradleyyn! Panssari kest\xC3\xA4\xC3\xA4. "
+                                  : left > 3 ? "Osuma Bradleyyn! Se savuaa jo. "
+                                             : "Osuma! Bradley liekehtii, viel\xC3\xA4 vähän! ") + worst;
                 level.addSmoke(br->coord);
                 continue;
             }
@@ -413,6 +472,9 @@ static AAGun* placeGun(Level& level, uint32_t x, uint32_t y)
 // trench's lip, barrels to the east. Its crew lies dead; whoever gets to it can have it.
 static AAGun* placeFrontGun(Level& level, uint32_t y)
 {
+    // whatever was left here: a single barrel, a Sergei or a quad of machine guns
+    const int roll = std::rand() % 100;
+    const AAGun::Model model = roll < 40 ? AAGun::Model::Zu23 : roll < 75 ? AAGun::Model::Sergei : AAGun::Model::Vierling;
     if (level.ownLineX.size() < common::SIZEY) return nullptr;
     for (int dy = 0; dy < 14; ++dy) {
         for (int sign = 1; sign >= -1; sign -= 2) {
@@ -426,7 +488,7 @@ static AAGun* placeFrontGun(Level& level, uint32_t y)
                     free = !level.hit(c) && !level.getVehicleAt(c) && t != Trench::Own && t != Trench::Wire;
                 }
                 if (!free) continue;
-                AAGun* gun = new AAGun(Coord{ (uint32_t)left, (uint32_t)row });
+                AAGun* gun = new AAGun(Coord{ (uint32_t)left, (uint32_t)row }, model);
                 gun->angle = 0.0f;
                 level.addVehicle(gun);
                 return gun;
@@ -473,12 +535,13 @@ void gunnerKey(char c, Player& player, Level& level, Printer& printer, uint32_t&
     AAGun* gun = player.manning;
     if (!gun) return;
     switch (c) {
-        case 'a': case 'j': gun->angle -= 0.12f; break;
-        case 'd': case 'l': gun->angle += 0.12f; break;
-        case 'w': case 'i': gun->angle -= 0.04f; break;     // fine adjustment
-        case 's': case 'k': gun->angle += 0.04f; break;
+        // 45 degrees a press, like every other weapon
+        case 'a': case 'j': case 'd': case 'l':
+        case 'w': case 'i': case 's': case 'k':
+            gun->angle = common::aimStep(gun->angle, c);
+            break;
         case ' ': {
-            if (msSinceShot < AAGun::SHOT_MS) break;
+            if (msSinceShot < gun->shotMs()) break;
             msSinceShot = 0;
             string msg;
             gun->fire(msg);

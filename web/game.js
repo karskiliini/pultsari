@@ -722,7 +722,7 @@
             }
             if (aim.gun !== undefined) {
                 // the anti-aircraft gunner's shells left
-                const w = 260, h = 12, x0 = (COLS * CW - w) / 2, y0 = 10, MAX = 100;
+                const w = 260, h = 12, x0 = (COLS * CW - w) / 2, y0 = 10, MAX = aim.gmax || 100;
                 ctx.fillStyle = 'rgba(0,0,0,0.75)';
                 ctx.fillRect(x0 - 8, y0 - 6, w + 16, h + 26);
                 ctx.strokeStyle = '#888';
@@ -736,7 +736,7 @@
                 ctx.fillStyle = '#eee';
                 ctx.font = 'bold 12px ui-monospace, Menlo, monospace';
                 ctx.textAlign = 'left';
-                ctx.fillText('IT-TYKKI · ЗУ-23-2', x0, y0 + 5);
+                ctx.fillText(aim.gname || 'IT-TYKKI · ЗУ-23-2', x0, y0 + 5);
                 ctx.textAlign = 'right';
                 ctx.fillText(aim.gun ? `AMMUKSET ${aim.gun}/${MAX}` : 'AMMUKSET LOPPU', x0 + w, y0 + 5);
                 ctx.textAlign = 'center';

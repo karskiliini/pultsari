@@ -47,6 +47,11 @@ void hitEvent(const Coord& at, uint32_t damage);
 void boomEvent(const Coord& at, uint32_t radius);
 // an anti-aircraft shell streaks from `from` to where it bursts
 void shellEvent(const Coord& from, const Coord& to);
+// Aiming, for every weapon and the anti-aircraft guns: the aim is always one of eight
+// directions. A (left), D (right), W (up) and S (down; also j l i k) turn it 45 degrees
+// toward that direction by the shortest way, clockwise when it points straight away; any
+// other key leaves it. An aim between the eight snaps to the nearest first.
+float aimStep(float angle, char key);
 // a tracer for the browser page: world cell centres, kind 0 bullet / 1 cannon, delay in ms
 void tracerEvent(float x0, float y0, float x1, float y1, int kind, uint32_t delayMs);
 // someone throws up at `at`, spraying towards (dx, dy) (0, 0 = all around)

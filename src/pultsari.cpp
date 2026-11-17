@@ -1256,7 +1256,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     aimAngle = -M_PI / 2.0f;
                     aimTick = 0;
                     mode = Mode::Aim;
-                    printer->showMessage("A/D t\xC3\xA4ht\xC3\xA4\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti heitt\xC3\xA4\xC3\xA4, Esc peruu", &level, false);
+                    printer->showMessage("WASD t\xC3\xA4ht\xC3\xA4\xC3\xA4 45\xC2\xB0, v\xC3\xA4lily\xC3\xB6nti heitt\xC3\xA4\xC3\xA4, Esc peruu", &level, false);
                 } else {
                     printer->showMessage("Ei tavaraa heitett\xC3\xA4v\xC3\xA4ksi.", &level, false);
                 }
@@ -1314,7 +1314,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                             aimAngle = facing;
                             aimTick = 0;
                             mode = Mode::Aim;
-                            printer->showMessage("T\xC3\xA4ht\xC3\xA4\xC3\xA4t. A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti ampuu, Esc laskee aseen.", &level, false);
+                            printer->showMessage("T\xC3\xA4ht\xC3\xA4\xC3\xA4t. WASD k\xC3\xA4\xC3\xA4nn\xC3\xA4 45\xC2\xB0, v\xC3\xA4lily\xC3\xB6nti ampuu, Esc laskee aseen.", &level, false);
                         }
                         break;
                     }
@@ -1467,11 +1467,10 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                         if (c != 0) {
                             switch(c) {
-                                case 'a': case 'j':
-                                    aimAngle -= 0.15f;
-                                    break;
-                                case 'd': case 'l':
-                                    aimAngle += 0.15f;
+                                // 45 degrees a press: the sway is wider than any finer aim
+                                case 'a': case 'j': case 'd': case 'l':
+                                case 'w': case 'i': case 's': case 'k':
+                                    aimAngle = common::aimStep(aimAngle, c);
                                     break;
                                 case ' ': // fire/throw/shoot
                                     if (aimIsShooting && rifleRaised) {
@@ -1700,6 +1699,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         printer->aimRisk = -1.0f;
                         printer->aimLength = AAGun::RANGE;
                         printer->gunAmmo = (int)player.manning->ammo;
+                        printer->gunMax = (int)player.manning->maxAmmo();
+                        printer->gunName = player.manning->modelName();
                         printer->printAimLine(&level, g.x, g.y, player.manning->angle);
                         printer->gunAmmo = -1;
                     } else if (mode == Mode::Inventory) {

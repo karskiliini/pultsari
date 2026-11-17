@@ -169,8 +169,10 @@ def test_front_trenches_and_the_assault():
     time.sleep(1); g.keys(' ', 0)
     random.seed(11)
     end = time.time() + 30
+    # never westward (behind the line the barrier machine guns would end the run before the
+    # barrage), and no Space: a raised rifle in a crowded trench shoots comrades, who shoot back
     while time.time() < end and g.p.poll() is None:
-        g.keys(random.choice('wwssad '), 0.1)
+        g.keys(random.choice('wwssd'), 0.1)
     code = g.p.poll()
     frames = g.frames()
     text = g.buf.decode('utf-8', 'replace')
@@ -179,7 +181,7 @@ def test_front_trenches_and_the_assault():
     msgs = ' '.join(f.get('msg', '') for f in frames)
     tracers = [e for e in g.events() if e.get('t') == 'tracer']
     check('front_trenches_are_drawn', '\u2592' in rows)
-    check('front_aa_gun_stands_by_the_line', '\u0416' in rows)
+    check('front_aa_gun_stands_by_the_line', any(g in rows for g in '\u0413\u0416\u0428'))
     check('front_shots_send_tracers_to_the_page',
           len(tracers) > 0 and all(isinstance(e['x1'], (int, float)) for e in tracers), f'{len(tracers)} tracers')
     check('front_level_three_brings_the_barrage', 'TYKISTÖKESKITYS' in msgs or 'Bradley' in msgs, msgs[-200:])

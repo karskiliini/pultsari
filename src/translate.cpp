@@ -70,6 +70,8 @@ static const std::map<string, string>& dictionary()
         { "ГРУЗ 200", "lasti 200, eli kaatuneen ruumis" },
         { "ИМПОРТОЗАМЕЩЕНИЕ", "tuonnin korvaaminen" },
         { "Ж", "Ž" },
+        { "Г", "G" },
+        { "Ш", "Š" },
 
         // things people say
         { "ВСЁ ИДЁТ ПО ПЛАНУ", "kaikki menee suunnitelman mukaan" },

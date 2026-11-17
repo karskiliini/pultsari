@@ -260,7 +260,13 @@ public:
     FSBAgent* fsbHolder() const;
     // A bullet from `shooter` along `angle` (radians): walls stop it; each person in
     // the way is hit with `hitPercent` chance, else it flies on. Returns who was hit.
-    Person* fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent);
+    // a bullet along `angle`: the first person it finds may be hit. Walls and armour stop it
+    // (`stoppedBy` says which vehicle, if one did); at the front a barrier nest in the way takes
+    // it, and NEST_ROUNDS of them silence the nest.
+    Person* fireBullet(Person* shooter, float angle, uint32_t range, uint32_t damage, uint32_t hitPercent,
+                       const Vehicle** stoppedBy = nullptr);
+    static constexpr uint32_t NEST_ROUNDS = 15;
+    std::vector<std::pair<Coord, uint32_t>> nestHits;
     std::vector<uint8_t> gasGrid;   // per-cell gas kind, rebuilt every world tick
     // the horizontal and vertical road at a cell (either may be null)
     void roadsAt(const Coord& c, const Road*& h, const Road*& v) const;

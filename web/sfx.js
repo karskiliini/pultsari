@@ -198,6 +198,23 @@
                 burst(t + i * 0.35, v * 0.7, { type: 'lowpass', freq: 500, decay: 0.45, dur: 0.5 });
             }
         },
+        // the single-barrel ZU-23: one deep, long boom
+        aa1(t, v) {
+            thump(t, v, 60, 0.6);
+            burst(t, v * 0.75, { type: 'lowpass', freq: 420, decay: 0.55, dur: 0.6 });
+        },
+        // the Sergei: the two barrels taking turns, a sharper, quicker crack each
+        aa2(t, v) {
+            thump(t, v * 0.9, 85, 0.3);
+            burst(t, v * 0.7, { type: 'lowpass', freq: 750, decay: 0.25, dur: 0.3 });
+        },
+        // the Flakvierling: four rifle-calibre barrels at once, a fast dry rattle
+        vierling(t, v) {
+            for (let i = 0; i < 6; i++) {
+                burst(t + i * 0.028, v * 0.8, { freq: 1800, decay: 0.03, dur: 0.035 });
+                thump(t + i * 0.028, v * 0.5, 130, 0.04);
+            }
+        },
         explosion(t, v) {
             burst(t, v, { type: 'lowpass', freq: 400, decay: 1.3, dur: 1.4, peak: 1.2 });
             thump(t, v, 80, 0.8);

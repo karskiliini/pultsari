@@ -1,3 +1,4 @@
+#include <cmath>
 #include "common.hpp"
 #include <thread>
 #include <chrono>
@@ -125,6 +126,25 @@ void tracerEvent(float x0, float y0, float x1, float y1, int kind, uint32_t dela
     snprintf(buf, sizeof(buf), "{\"t\":\"tracer\",\"x0\":%.2f,\"y0\":%.2f,\"x1\":%.2f,\"y1\":%.2f,\"k\":%d,\"d\":%u}",
              x0, y0, x1, y1, kind, delayMs);
     webSend(buf);
+}
+
+float aimStep(float angle, char key)
+{
+    constexpr float Q = 0.78539816f;     // 45 degrees; the angle grows clockwise on screen
+    int target;
+    switch (key) {
+        case 'd': case 'l': target = 0; break;
+        case 's': case 'k': target = 2; break;
+        case 'a': case 'j': target = 4; break;
+        case 'w': case 'i': target = 6; break;
+        default: return angle;
+    }
+    int cur = (((int)std::lround(angle / Q)) % 8 + 8) % 8;
+    const int diff = ((target - cur) % 8 + 8) % 8;
+    if (diff != 0) cur = (cur + (diff <= 4 ? 1 : 7)) % 8;
+    float a = cur * Q;
+    if (a > 3.1416f) a -= 8 * Q;
+    return a;
 }
 
 void boomEvent(const Coord& at, uint32_t radius)

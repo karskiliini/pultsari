@@ -19,8 +19,8 @@ public:
     uint32_t stopX;             // where it halts: a few cells east of our trench
     bool unloaded = false;
     uint32_t gunCooldown = 3;
-    // 23 mm shells: the armour shrugs off two, the third goes through
-    static constexpr uint32_t ARMOUR = 3;
+    // 23 mm shells: the armour shrugs off nineteen, the twentieth goes through
+    static constexpr uint32_t ARMOUR = 20;
     uint32_t hits = 0;
 };
 

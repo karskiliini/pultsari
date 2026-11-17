@@ -934,12 +934,13 @@ void Printer::printAimLine(Level* level, uint32_t px, uint32_t py, float angle)
     }
     if (gunAmmo >= 0) {
         // the gunner's shells left, on the title bar
-        const int filled = (gunAmmo * 20 + (int)AAGun::AMMO - 1) / (int)AAGun::AMMO;
+        const int full = std::max(1, gunMax);
+        const int filled = (gunAmmo * 20 + full - 1) / full;
         std::string bar(filled, '#');
         bar += std::string(20 - filled, '.');
-        char buf[128];
-        snprintf(buf, sizeof(buf), "\033[2;20H\033[1;%dm IT-TYKKI  AMMUKSET %3d/%u [%s] \033[0m",
-                 gunAmmo > 30 ? 92 : gunAmmo > 0 ? 93 : 91, gunAmmo, AAGun::AMMO, bar.c_str());
+        char buf[192];
+        snprintf(buf, sizeof(buf), "\033[2;20H\033[1;%dm %s  AMMUKSET %3d/%d [%s] \033[0m",
+                 gunAmmo > full * 3 / 10 ? 92 : gunAmmo > 0 ? 93 : 91, gunName.c_str(), gunAmmo, full, bar.c_str());
         cout << buf;
     }
     cout.flush();

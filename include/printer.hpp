@@ -107,7 +107,9 @@ public:
     // the aim is for a throw, not a gun: the browser marks it with tiny x's instead of a laser
     bool aimThrow = false;
     // shells left in the anti-aircraft gun the player mans, or negative when not on a gun
-    int gunAmmo = -1;     // a lowered pistol's laser only reaches a few steps
+    int gunAmmo = -1;
+    int gunMax = 100;             // the gun's full load, and its make, for the ammo bar
+    std::string gunName = "ZU-23-2";     // a lowered pistol's laser only reaches a few steps
 
     // a mini-game's own picture (the metro) drawn where the map usually is: rows of
     // (glyph, SGR colour) cells, with its own title; null for the city

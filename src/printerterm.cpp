@@ -280,7 +280,7 @@ void PrinterTerm::printHelp()
     cout << "  Q                  juo (huikka tai pullo kerralla)" << endl;
     cout << "  E                  sy\xC3\xB6 k\xC3\xA4""dest\xC3\xA4 (kysyy kumpi, jos molemmissa ruokaa)" << endl;
     cout << "  Tab / F            tavarat / heit\xC3\xA4: W/S valitse, E k\xC3\xA4yt\xC3\xA4, F heit\xC3\xA4 (ase tai lipas lasketaan maahan)" << endl;
-    cout << "  T\xC3\xA4ht\xC3\xA4ys            A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti heit\xC3\xA4/ammu, Esc peru" << endl;
+    cout << "  T\xC3\xA4ht\xC3\xA4ys            WASD k\xC3\xA4\xC3\xA4nn\xC3\xA4 45\xC2\xB0, v\xC3\xA4lily\xC3\xB6nti heit\xC3\xA4/ammu, Esc peru" << endl;
     cout << "  H                  k\xC3\xA4sien esittely: k\xC3\xA4""det inventaariona, hiha terveyten\xC3\xA4, tekstitykset" << endl;
     cout << "  Z                  restart" << endl << endl;
     cout << "Tavoite: p\xC3\xA4\xC3\xA4se Vovan viinakellariin Kremliss\xC3\xA4." << endl;
