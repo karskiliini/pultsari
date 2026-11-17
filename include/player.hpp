@@ -76,10 +76,12 @@ public:
     void eatHeld(Held& h, Level* level);
     // the hand lets go of what it holds, to be thrown: its throw number (0 and untouched if it cannot fly)
     uint32_t takeThrowable(Held& h);
-    // walking into someone with something in hand: it is swung too (the best of the hands, or the
-    // raised rifle's butt). A bottle may break on the head for more, spilling what was in it.
-    // Appends to msg; returns the extra damage dealt.
-    uint32_t meleeStrike(Person* p, Level* level, std::string& msg);
+    // walking into someone: their own reaction (interact), and whatever is in hand is swung too.
+    // Hard things add to the blow, soft ones take the sting out of it, and everything wears out
+    // and breaks in the end (a bottle by chance, spilling what was in it). Returns interact's answer.
+    bool strike(Person* p, Level* level, std::string& msg);
+    // what a blow is struck with: the raised rifle's butt, the better hand, or null for a bare fist
+    Held* meleeHand();
     virtual bool eat(Level* level);
     virtual bool puke(DirectionNS::Direction d, Level* level);
     virtual bool throwItem();

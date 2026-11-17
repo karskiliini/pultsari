@@ -53,6 +53,11 @@ void Person::damage(uint32_t damage)  {
         say("*TUNK*");
         report("Luotiliivi pys\xC3\xA4ytti luodin!");
     }
+    if (softBlow > 0) {
+        const bool lethal = damage >= stats.health;
+        damage = damage > softBlow ? damage - softBlow : 0;
+        if (lethal && damage < stats.health) softSaved = true;
+    }
     common::hitEvent(coord, damage);
     if (type == pelaaja && damage > 0 && level) {
         lastHurtBy = level->hurtBy;

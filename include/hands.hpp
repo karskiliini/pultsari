@@ -14,6 +14,7 @@ struct Held {
     uint8_t fill = 0;
     uint8_t rounds = 0;
     std::string pissSeller;
+    uint8_t wear = 0;   // blows struck with it; at meleeDurability() it breaks
     bool empty() const { return what == Thing::None; }
 };
 
@@ -24,8 +25,11 @@ bool isFood(Thing t);   // Lenkki, Kala, Omppo, Bansku
 const char* thingName(Thing t);
 // a glass bottle, full or empty (a Jaguar is a can)
 bool isBottle(Thing t);
-// what it adds to a punch when you walk into someone with it in hand: 0 for nothing useful
-uint32_t meleeDamage(Thing t);
+// what it adds to a punch when you walk into someone with it in hand; a soft thing (a sausage,
+// a banana) takes the sting out of the blow instead and is below zero. Nothing in hand is 0.
+int meleePower(Thing t);
+// how many blows it takes before it breaks; a glass bottle breaks by chance instead
+uint32_t meleeDurability(Thing t);
 // a bottle swung at a head breaks this often (percent), for this much more on top
 constexpr uint32_t BOTTLE_BREAK_PERCENT = 60, BOTTLE_BREAK_DAMAGE = 3;
 

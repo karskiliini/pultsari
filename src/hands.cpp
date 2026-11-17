@@ -25,17 +25,35 @@ bool isBottle(Thing t)
     return t == Thing::Kalja || t == Thing::Vodka || t == Thing::Tyhja;
 }
 
-uint32_t meleeDamage(Thing t)
+int meleePower(Thing t)
 {
     switch (t) {
         case Thing::Rynkky: return 4;   // the rifle butt
-        case Thing::Pamppu: return 3;
-        case Thing::Veitsi: return 3;
-        case Thing::Kivi: return 2;
-        case Thing::Ketjut: return 2;
+        case Thing::Pamppu: case Thing::Veitsi: return 3;
+        case Thing::Kivi: case Thing::Ketjut: case Thing::Granata: return 2;
         case Thing::Pistooli: return 2; // pistol grip to the temple
         case Thing::Kalja: case Thing::Vodka: case Thing::Tyhja: return 1;
-        default: return 0;
+        case Thing::Lonkka: case Thing::Lipas: case Thing::Kala: case Thing::Omppo: return 1;
+        case Thing::Lenkki: case Thing::Bansku: case Thing::Bootsit: return -1;   // soft
+        case Thing::None: break;
+    }
+    return 0;
+}
+
+uint32_t meleeDurability(Thing t)
+{
+    switch (t) {
+        case Thing::Rynkky: case Thing::Kivi: return 30;
+        case Thing::Pamppu: return 25;
+        case Thing::Ketjut: return 20;
+        case Thing::Pistooli: return 15;
+        case Thing::Veitsi: case Thing::Lipas: return 12;
+        case Thing::Granata: return 10;
+        case Thing::Bootsit: return 6;
+        case Thing::Kala: return 5;
+        case Thing::Lenkki: case Thing::Omppo: return 3;
+        case Thing::Lonkka: case Thing::Bansku: return 2;
+        default: return 0;   // bottles: by chance
     }
 }
 

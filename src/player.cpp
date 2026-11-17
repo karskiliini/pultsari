@@ -222,29 +222,74 @@ bool Player::interact(std::string& msg, Person* source)
     return false;
 }
 
-uint32_t Player::meleeStrike(Person* p, Level* level, std::string& msg)
+Held* Player::meleeHand()
 {
-    if (!p || p == this || p->stats.health == 0 || !p->meleeTarget()) return 0;
-    Held* hand = nullptr;
-    if (inventory.akRaised && inventory.back.what == Thing::Rynkky) {
-        hand = &inventory.back;
-    } else {
-        for (Held* h : { &inventory.left, &inventory.right })
-            if (meleeDamage(h->what) > (hand ? meleeDamage(hand->what) : 0)) hand = h;
+    if (inventory.akRaised && inventory.back.what == Thing::Rynkky) return &inventory.back;
+    // a free hand makes a fist (0): a soft thing is swung only when both hands are full
+    auto power = [](const Held* h) { return h->empty() ? 0 : meleePower(h->what); };
+    Held* best = power(&inventory.left) >= power(&inventory.right) ? &inventory.left : &inventory.right;
+    return best->empty() || power(best) == 0 ? nullptr : best;
+}
+
+// the blow, as the thing tells it
+static const char* blowText(Thing t)
+{
+    switch (t) {
+        case Thing::Rynkky:   return " Isket kiv\xC3\xA4\xC3\xA4rinper\xC3\xA4ll\xC3\xA4 t\xC3\xA4ysill\xC3\xA4!";
+        case Thing::Pamppu:   return " Pamppu heilahtaa: TUMPS!";
+        case Thing::Veitsi:   return " Veitsi viilt\xC3\xA4\xC3\xA4!";
+        case Thing::Kivi:     return " Kivi kopsahtaa kalloon!";
+        case Thing::Ketjut:   return " Ketjut l\xC3\xA4isk\xC3\xA4ht\xC3\xA4v\xC3\xA4t!";
+        case Thing::Pistooli: return " Pistoolinper\xC3\xA4 iskee ohimoon!";
+        case Thing::Granata:  return " Kranaatti kumahtaa kalloon. Sokka pysyy onneksi paikallaan.";
+        case Thing::Lipas:    return " Lipas kolahtaa leukaan.";
+        case Thing::Lonkka:   return " Jaguar-t\xC3\xB6lkki kolahtaa otsaan.";
+        case Thing::Kala:     return " Kuivattu vobla l\xC3\xA4im\xC3\xA4ht\xC3\xA4\xC3\xA4 poskeen kuin lauta.";
+        case Thing::Omppo:    return " Antonovka kopsahtaa otsaan.";
+        case Thing::Lenkki:   return " Makkara l\xC3\xA4ps\xC3\xA4ht\xC3\xA4\xC3\xA4 naamaan pehme\xC3\xA4sti.";
+        case Thing::Bansku:   return " Banaani litsahtaa.";
+        case Thing::Bootsit:  return " Huitaiset verkkareilla. Ei tunnu miss\xC3\xA4\xC3\xA4n.";
+        default: return "";
     }
-    if (!hand) return 0;
+}
+
+// worn out: what is left of it
+static const char* breakText(Thing t)
+{
+    switch (t) {
+        case Thing::Rynkky:   return " Rynkyn per\xC3\xA4 halkeaa! Ase on romu, heit\xC3\xA4t sen pois.";
+        case Thing::Pistooli: return " Makarovin runko v\xC3\xA4\xC3\xA4ntyy eik\xC3\xA4 se en\xC3\xA4\xC3\xA4 laukea. Heit\xC3\xA4t sen pois.";
+        case Thing::Pamppu:   return " Pamppu katkeaa kahtia!";
+        case Thing::Veitsi:   return " Veitsen ter\xC3\xA4 katkeaa!";
+        case Thing::Kivi:     return " Kivi halkeaa murusiksi!";
+        case Thing::Ketjut:   return " Ketjun lenkki aukeaa ja ketjut kirpoavat k\xC3\xA4\xC3\xA4""dest\xC3\xA4!";
+        case Thing::Granata:  return " Kranaatin kuori lommoutuu. Heit\xC3\xA4t sen varmuuden vuoksi pois.";
+        case Thing::Lipas:    return " Lipas v\xC3\xA4\xC3\xA4ntyy kieroon ja patruunat sinkoilevat kadulle.";
+        case Thing::Lonkka:   return " Jaguar-t\xC3\xB6lkki rytisee kasaan ja energiajuoma valuu maahan.";
+        case Thing::Bootsit:  return " Verkkarit repe\xC3\xA4v\xC3\xA4t riekaleiksi.";
+        case Thing::Lenkki:   return " Makkara katkeaa. Sy\xC3\xB6t loput: mamamakkaraa.";
+        case Thing::Kala:     return " Vobla murenee. Napostelet loput suolaiset palat.";
+        case Thing::Omppo:    return " Antonovka halkeaa. Sy\xC3\xB6t loput.";
+        case Thing::Bansku:   return " Banaani muussautuu. Nuolet loput sormista.";
+        default: return "";
+    }
+}
+
+bool Player::strike(Person* p, Level* level, std::string& msg)
+{
+    Held* hand = (p != this && p->meleeTarget()) ? meleeHand() : nullptr;
+    const int power = hand ? meleePower(hand->what) : 0;
+    p->softBlow = power < 0 ? (uint32_t)-power : 0;
+    p->softSaved = false;
+    const bool blocked = p->interact(msg, this);
+    p->softBlow = 0;
+    if (!hand) return blocked;
 
     const Thing what = hand->what;
-    uint32_t dmg = meleeDamage(what);
-    switch (what) {
-        case Thing::Rynkky:   msg += " Isket kiv\xC3\xA4\xC3\xA4rinper\xC3\xA4ll\xC3\xA4 t\xC3\xA4ysill\xC3\xA4!"; break;
-        case Thing::Pamppu:   msg += " Pamppu heilahtaa: TUMPS!"; break;
-        case Thing::Veitsi:   msg += " Veitsi viilt\xC3\xA4\xC3\xA4!"; break;
-        case Thing::Kivi:     msg += " Kivi kopsahtaa kalloon!"; break;
-        case Thing::Ketjut:   msg += " Ketjut l\xC3\xA4isk\xC3\xA4ht\xC3\xA4v\xC3\xA4t!"; break;
-        case Thing::Pistooli: msg += " Pistoolinper\xC3\xA4 iskee ohimoon!"; break;
-        default: break;
-    }
+    msg += blowText(what);
+    if (p->softSaved) msg += " Isku vaimenee, ja " + (level ? level->nameOf(p) : string("h\xC3\xA4n")) + " pysyy pystyss\xC3\xA4.";
+    uint32_t dmg = power > 0 ? (uint32_t)power : 0;
+
     if (isBottle(what)) {
         if (common::random(BOTTLE_BREAK_PERCENT)) {
             dmg += BOTTLE_BREAK_DAMAGE;
@@ -261,15 +306,22 @@ uint32_t Player::meleeStrike(Person* p, Level* level, std::string& msg)
         } else {
             msg += " Pullo kumahtaa p\xC3\xA4\xC3\xA4h\xC3\xA4n, mutta kest\xC3\xA4\xC3\xA4.";
         }
+    } else if (++hand->wear >= meleeDurability(what)) {
+        msg += breakText(what);
+        if (hand == &inventory.back) inventory.akRaised = false;
+        *hand = Held();
+        // a broken sausage is not wasted: the rest goes down and gives a little strength
+        if (isFood(what)) { powerup(1); feedHunger(10); }
     }
 
-    const uint32_t before = p->stats.health;
-    p->damage(dmg);
-    if (before > 0 && p->stats.health == 0) {
-        ++scoreBoard.kaikki;
-        if (level) msg += " " + level->nameOf(p) + " kaatuu.";
+    if (dmg > 0 && p->stats.health > 0) {
+        p->damage(dmg);
+        if (p->stats.health == 0) {
+            ++scoreBoard.kaikki;
+            if (level) msg += " " + level->nameOf(p) + " kaatuu.";
+        }
     }
-    return before - p->stats.health;
+    return blocked;
 }
 
 bool Player::interactThrow(Item* item, Person* source, std::string& msg)
@@ -1218,8 +1270,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
         if (p)
         {
             const uint32_t before = p->stats.health;
-            blocked = p->interact(msg, this);
-            meleeStrike(p, level, msg);
+            blocked = strike(p, level, msg);
             printer->showMessage(msg, level);
             // a punch landed: the caption says who got it
             if (p->stats.health < before) {

@@ -6039,9 +6039,8 @@ TEST(tracer_left_to_the_browser_page_to_draw)
 // ---- Melee: what is in the hand hits harder ----
 
 // one step into a rat with the given hands; returns the damage dealt
-static uint32_t bumpRat(World& w, Thing l, Thing r)
+static uint32_t bumpRatAgain(World& w)
 {
-    hold(w.player.inventory, l, r);
     w.player.stats.health = 20;   // the rat bites back
     w.player.coord = Coord{ 50, 50 };
     auto* rat = w.spawn(new Rotta(Coord{ 51, 50 }));
@@ -6051,6 +6050,12 @@ static uint32_t bumpRat(World& w, Thing l, Thing r)
     rat->stats.health = 0;
     w.level.cleanDead();
     return dealt;
+}
+
+static uint32_t bumpRat(World& w, Thing l, Thing r)
+{
+    hold(w.player.inventory, l, r);
+    return bumpRatAgain(w);
 }
 
 TEST(melee_bare_fists_hit_as_before)
@@ -6280,4 +6285,84 @@ TEST(a_shell_landing_on_the_gun_wrecks_it)
     CHECK(g->wrecked);
     CHECK(w->player.manning == nullptr);
     delete w;
+}
+
+TEST(melee_every_thing_has_a_hitting_power_and_wears_out)
+{
+    const Thing all[] = { Thing::Kalja, Thing::Lonkka, Thing::Vodka, Thing::Tyhja, Thing::Lenkki, Thing::Kala,
+                          Thing::Omppo, Thing::Bansku, Thing::Ketjut, Thing::Veitsi, Thing::Kivi, Thing::Pamppu,
+                          Thing::Bootsit, Thing::Granata, Thing::Pistooli, Thing::Rynkky, Thing::Lipas };
+    for (Thing t : all) {
+        CHECK(meleePower(t) != 0);
+        CHECK(isBottle(t) || meleeDurability(t) > 0);
+    }
+    CHECK(meleePower(Thing::Lenkki) < 0);   // soft
+    CHECK(meleePower(Thing::None) == 0);
+}
+
+TEST(melee_a_sausage_softens_the_blow_but_a_free_fist_does_not)
+{
+    World w;
+    common::realtimeEnabled = false;
+    CHECK(bumpRat(w, Thing::Lenkki, Thing::None) == 1);       // the free hand punches
+    w.printer.log.clear();
+    CHECK(bumpRat(w, Thing::Lenkki, Thing::Bansku) == 0);     // both full of soft stuff
+    CHECK(w.printer.saw("pehme"));
+}
+
+TEST(melee_a_sausage_keeps_a_weak_one_on_his_feet)
+{
+    World w;
+    common::realtimeEnabled = false;
+    hold(w.player.inventory, Thing::Lenkki, Thing::Lenkki);
+    auto* rat = w.spawn(new Rotta(Coord{ 51, 50 }));
+    rat->stats.health = 1;
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(rat->stats.health == 1);
+    CHECK(w.printer.saw("pystyss"));
+}
+
+TEST(melee_things_break_after_enough_blows)
+{
+    World w;
+    common::realtimeEnabled = false;
+    hold(w.player.inventory, Thing::None, Thing::Pamppu);
+    for (uint32_t i = 1; i < meleeDurability(Thing::Pamppu); ++i) bumpRatAgain(w);
+    CHECK(w.player.inventory.right.what == Thing::Pamppu);
+    w.printer.log.clear();
+    bumpRatAgain(w);
+    CHECK(w.player.inventory.right.empty());
+    CHECK(w.printer.saw("katkeaa"));
+}
+
+TEST(melee_the_rifle_butt_breaks_and_the_rifle_is_gone)
+{
+    World w;
+    common::realtimeEnabled = false;
+    hold(w.player.inventory, Thing::None, Thing::None);
+    w.player.inventory.back = Inventory::fresh(Thing::Rynkky);
+    w.player.inventory.akRaised = true;
+    for (uint32_t i = 0; i < meleeDurability(Thing::Rynkky); ++i) bumpRatAgain(w);
+    CHECK(w.player.inventory.back.empty());
+    CHECK(!w.player.inventory.akRaised);
+}
+
+TEST(melee_a_broken_sausage_is_eaten_for_a_little_strength)
+{
+    World w;
+    common::realtimeEnabled = false;
+    hold(w.player.inventory, Thing::Lenkki, Thing::Lenkki);
+    for (uint32_t i = 1; i < meleeDurability(Thing::Lenkki); ++i) bumpRatAgain(w);
+    w.player.stats.hunger = 50;
+    w.player.stats.health = 10;
+    w.player.inventory.left.wear = meleeDurability(Thing::Lenkki) - 1;
+    auto* rat = w.spawn(new Rotta(Coord{ 51, 50 }));
+    rat->stats.health = 100;
+    w.printer.log.clear();
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(w.player.inventory.left.empty());
+    CHECK(w.player.inventory.right.what == Thing::Lenkki);
+    CHECK(w.printer.saw("Sy\xC3\xB6t loput"));
+    CHECK(w.player.stats.hunger > 50);
+    CHECK(w.player.stats.health == 10);   // the rat's bite (-1) and the sausage (+1)
 }
