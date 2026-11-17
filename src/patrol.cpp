@@ -86,7 +86,68 @@ Coord alleySpot(const Level& level)
 
 uint32_t wantedCops(uint32_t moscowStage)
 {
-    return 30 + 4 * std::min<uint32_t>(moscowStage, 8);
+    return 70 + 8 * std::min<uint32_t>(moscowStage, 8);
+}
+
+static bool step(const Coord& at, DirectionNS::Direction d, Coord& out)
+{
+    out = at;
+    switch (d) {
+        case DirectionNS::up:    if (at.y == 0) return false; --out.y; break;
+        case DirectionNS::down:  ++out.y; break;
+        case DirectionNS::left:  if (at.x == 0) return false; --out.x; break;
+        case DirectionNS::right: ++out.x; break;
+        default: return false;
+    }
+    return out.x < common::SIZEX && out.y < common::SIZEY;
+}
+
+static DirectionNS::Direction opposite(DirectionNS::Direction d)
+{
+    switch (d) {
+        case DirectionNS::up:    return DirectionNS::down;
+        case DirectionNS::down:  return DirectionNS::up;
+        case DirectionNS::left:  return DirectionNS::right;
+        case DirectionNS::right: return DirectionNS::left;
+        default: return DirectionNS::none;
+    }
+}
+
+static bool onStreet(const Level& level, const Coord& c)
+{
+    return onPavement(level, c) || inAlley(level, c);
+}
+
+DirectionNS::Direction beatStep(const Level& level, const Coord& at, DirectionNS::Direction& heading)
+{
+    using namespace DirectionNS;
+    if (heading == none) {
+        // set off along the kerb we are standing beside
+        for (const auto& r : level.roads) {
+            const uint32_t across = r.horizontal ? at.y : at.x;
+            if (across + 1 == r.pos || across == r.pos + 3) {
+                heading = r.horizontal ? (std::rand() % 2 ? left : right) : (std::rand() % 2 ? up : down);
+                break;
+            }
+        }
+        if (heading == none) heading = static_cast<Direction>(1 + std::rand() % 4);
+    }
+    const bool streetNow = onStreet(level, at);
+    Direction best = none;
+    int bestScore = -1;
+    for (Direction d : { up, down, left, right }) {
+        Coord n;
+        if (!step(at, d, n) || !openGround(level, n) || !free(level, n)) continue;
+        const bool street = onStreet(level, n);
+        int score;
+        if (d == heading)                score = street ? 100 : (streetNow ? 20 : 60);
+        else if (d == opposite(heading)) score = street ? 10 : 1;
+        else                             score = street ? (common::random(8) ? 120 : 30) : 5;  // now and then round the corner
+        score += std::rand() % 5;
+        if (score > bestScore) { bestScore = score; best = d; }
+    }
+    if (best != none) heading = best;
+    return best;
 }
 
 static Person* spawnCop(Level& level, const Coord& c)

@@ -3536,6 +3536,26 @@ TEST(streets_are_full_of_cops)
     CHECK(street * 10 >= cops * 9);                             // nearly all on the streets and in the alleys
 }
 
+TEST(cops_on_the_beat_stroll_along_the_pavement)
+{
+    World w(Coord{ 20, 20 });
+    buildStreet(w);
+    auto* cop = w.spawn(new Cop(Coord{ 300, 103 }));            // on the pavement south of TESTSKAJA
+    cop->level = &w.level;
+    uint32_t minX = cop->coord.x, maxX = cop->coord.x, onStreet = 0;
+    for (int i = 0; i < 200; ++i) {
+        cop->npcAct();
+        minX = std::min(minX, cop->coord.x);
+        maxX = std::max(maxX, cop->coord.x);
+        if (Patrol::onPavement(w.level, cop->coord) || Patrol::inAlley(w.level, cop->coord)) ++onStreet;
+        const Road* h = nullptr; const Road* v = nullptr;
+        w.level.roadsAt(cop->coord, h, v);
+        CHECK(!h && !v);                                        // never strolls out into the traffic
+    }
+    CHECK(maxX - minX >= 30);                                   // walks the beat, no shuffling on the spot
+    CHECK(onStreet >= 180);                                     // and keeps to the pavement
+}
+
 TEST(new_patrols_walk_in_out_of_sight)
 {
     World w(Coord{ 100, 104 });

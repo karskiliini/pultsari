@@ -120,6 +120,8 @@ public:
     bool callsBackup = false;
     bool backupCalled = false;
     uint32_t chaseTurns = 0;
+    // which way he is walking his beat
+    DirectionNS::Direction beat = DirectionNS::none;
 };
 
 // turns a radio cop chases without laying hands on the target before calling for backup

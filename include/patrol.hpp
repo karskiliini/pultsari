@@ -2,6 +2,7 @@
 #define PATROL_HPP
 
 #include "coord.hpp"
+#include "direction.hpp"
 #include <cstdint>
 
 class Level;
@@ -19,11 +20,15 @@ bool onPavement(const Level& level, const Coord& c);
 bool inAlley(const Level& level, const Coord& c);
 
 // cops kept just beyond the edges of the drunk's screen
-constexpr uint32_t LOCAL_COPS = 8;
+constexpr uint32_t LOCAL_COPS = 16;
 // how many cops a Moscow level keeps on its streets (more towards the Kremlin)
 uint32_t wantedCops(uint32_t moscowStage);
 // the level's first patrols: half on the pavements, half in the alleys
 void populateCops(Level& level, uint32_t moscowStage);
+// a cop on the beat: the next step along the pavement or alley, keeping on in `heading`
+// (none picks one along the kerb), turning a corner now and then, never into the traffic;
+// none if boxed in
+DirectionNS::Direction beatStep(const Level& level, const Coord& at, DirectionNS::Direction& heading);
 // world tick: when cops have been killed or gone, a new patrol walks in out of sight
 void patrolTick(Level& level);
 

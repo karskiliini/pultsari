@@ -9,6 +9,7 @@
 #include "pathmask.hpp"
 #include "vehicle.hpp"
 #include "translate.hpp"
+#include "patrol.hpp"
 #include <string>
 #include <iostream>
 #include <chrono>
@@ -441,10 +442,10 @@ void Cop::npcAct()
             Direction d = getMoveDirection(p->coord);
             move(d, msg);
         } else {
-            // patrol - cops wander actively looking for trouble
-            if (random(60)) {
-                Direction d = randomDirection();
-                move(d, msg);
+            // patrol - cops walk their beat along the pavements, looking for trouble
+            if (random(75)) {
+                const Direction d = Patrol::beatStep(*level, coord, beat);
+                if (d != DirectionNS::none) move(d, msg);
             }
         }
     } else {
