@@ -64,6 +64,8 @@ public:
     // what goes right of the map's right border on map row y (the terminal's arm pictures)
     virtual void printRightColumn(uint32_t /* y */) { }
     virtual void printStats(Level* l, Stats* stats) = 0;
+    // the film-style caption (subtitles.hpp) over the bottom of the map; nothing by default
+    virtual void printSubtitle() { }
     virtual void printChar(std::string c) = 0;
     virtual void printScore(const ScoreBoard* scoreBoard) = 0;
     virtual void printHelp() = 0;

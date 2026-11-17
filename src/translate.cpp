@@ -58,6 +58,7 @@ static const std::map<string, string>& dictionary()
         { "ФСБ", "FSB, turvallisuuspalvelu" },
         { "МОСКВА", "Moskova" },
         { "ТОВАРЫ", "tavarat" },
+        { "РУКИ", "kädet" },
         { "ПРОТОКОЛ", "pöytäkirja" },
         { "НЕ КУРИТЬ", "tupakointi kielletty" },
         { "БЕЛАЯ ГОРЯЧКА", "juoppohulluus" },

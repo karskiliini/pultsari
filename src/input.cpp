@@ -66,6 +66,7 @@ InputType Input::getInputNonBlocking()
         case 'q': return drinking;
         case 'e': return eating;
         case '\t': return inventory;
+        case HANDS_INTRO_KEY: return handsIntro;
         case ' ': return InputType::throwing;
         default:  return inputpending;
     }
@@ -97,6 +98,7 @@ InputType Input::getInput()
             case 't': sel = throwing; break;
             case 'q': sel = drinking; break;
             case 'e': sel = eating; break;
+            case HANDS_INTRO_KEY: sel = handsIntro; break;
             default:
                 break;
         }

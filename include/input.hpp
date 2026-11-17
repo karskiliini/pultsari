@@ -5,6 +5,9 @@
 
 namespace InputNS {
 
+// opens the hands walk-through (handsintro.hpp); 'i' already walks up
+constexpr char HANDS_INTRO_KEY = 'h';
+
 enum InputType {
     inputpending,
     right,
@@ -17,7 +20,8 @@ enum InputType {
     stagger,
     throwup,
     quit,
-    inventory
+    inventory,
+    handsIntro
 };
 
 enum DrinkType {

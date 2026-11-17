@@ -271,6 +271,12 @@
 
     function updateUi(m) {
         ui.msg.textContent = m.msg ? '» ' + m.msg : '';
+        if (ui.caption) {
+            // the caption stays while the game sends it and fades out over its last moments
+            const on = !!m.sub && (m.subMs === undefined || m.subMs > 400);
+            if (m.sub && ui.caption.textContent !== m.sub) ui.caption.textContent = m.sub;
+            ui.caption.classList.toggle('on', on);
+        }
         ui.level.textContent = m.lvl || '';
         if (m.hud) {
             const [money, hp, prom, belly, kop, sick] = m.hud;

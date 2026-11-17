@@ -1,3 +1,4 @@
+#include "subtitles.hpp"
 #include "fpv.hpp"
 #include "animation.hpp"
 #include "building.hpp"
@@ -90,6 +91,8 @@ void fpvTick(Level& level)
         level.audio.addSound(Coord{ (uint32_t)std::max(0.0f, d.x), (uint32_t)std::max(0.0f, d.y) }, SoundType::Drone,
             "Ziiiiiing! FPV-drooni ulisee aivan vieress\xC3\xA4!", "FPV-droonin ulinaa", "...kaukaista ininää...", 30);
     }
+    // the whine overhead gets a caption now and then, like the hum of a film's soundtrack
+    if (flying > 0) Subtitles::say("[FPV-droonien p\xC3\xB6rin\xC3\xA4\xC3\xA4 taivaalla. Joku niist\xC3\xA4 etsii sinua.]", "drones", 25000);
     if (flying >= FPV_MAX || !random(12)) return;   // a new one every few seconds
 
     // the pilots go for whoever is out in the open, the drunk new recruit as much as anyone
@@ -123,6 +126,7 @@ bool fpvFrame(Level& level, Drone& d, float dt, Coord& blastAt)
                 d.diveY = ty;
                 if (d.prey == level.getPlayer()) {
                     if (level.printer) level.printer->showMessage("IIIIIIIIII! FPV-drooni sy\xC3\xB6ksyy suoraan kohti sinua!", &level, false);
+                    Subtitles::say("[Drooni sy\xC3\xB6ksyy kohti sinua. V\xC3\xA4ist\xC3\xA4!]", "dive", 2000);
                 } else if (random(50)) {
                     static const char* cries[] = { "FPV! Maahan!", "Drooni! Ei, ei, ei...", "Mamochka!", "Ampukaa se!" };
                     d.prey->say(cries[std::rand() % 4]);

@@ -671,6 +671,7 @@ void Printer::print(Level* level)
 
     printBorder(level, false);
     printStats(level, &player->stats);
+    printSubtitle();
 
     if (!common::realtimeEnabled) showMessage(msg, level, false);
 

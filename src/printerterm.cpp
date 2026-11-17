@@ -1,4 +1,5 @@
 #include "printerterm.hpp"
+#include "subtitles.hpp"
 #include "vehicle.hpp"
 #include "level.hpp"
 #include "player.hpp"
@@ -223,6 +224,19 @@ void PrinterTerm::printStats(Level* l, Stats* stats)
     cout << "\033[K" << endl;
 }
 
+void PrinterTerm::printSubtitle()
+{
+    const string& line = Subtitles::current();
+    if (line.empty()) return;
+    // centred on the map's second-to-last row, like a film's subtitle; it dims as it goes
+    const string text = "  " + truncateColumns(line, common::VIEWPORT_W - 6) + "  ";
+    const uint32_t w = columns(text);
+    const uint32_t col = SIDE_W + 2 + (common::VIEWPORT_W - w) / 2;
+    const uint32_t row = common::VIEWPORT_H + 1;   // map row y is screen row y + 3
+    const char* style = Subtitles::leftMs() < 600 ? "\033[0;2;37;40m" : "\033[0;1;93;40m";
+    cout << "\0337\033[" << row << ";" << col << "H" << style << text << RESET << "\0338";
+}
+
 void PrinterTerm::printChar(string c)
 {
     std::cout << c;
@@ -259,6 +273,7 @@ void PrinterTerm::printHelp()
     cout << "  E                  sy\xC3\xB6 k\xC3\xA4""dest\xC3\xA4 (kysyy kumpi, jos molemmissa ruokaa)" << endl;
     cout << "  Tab / F            tavarat / heit\xC3\xA4: W/S valitse, E k\xC3\xA4yt\xC3\xA4, F heit\xC3\xA4 (ase tai lipas lasketaan maahan)" << endl;
     cout << "  T\xC3\xA4ht\xC3\xA4ys            A/D k\xC3\xA4\xC3\xA4nn\xC3\xA4, v\xC3\xA4lily\xC3\xB6nti heit\xC3\xA4/ammu, Esc peru" << endl;
+    cout << "  H                  k\xC3\xA4sien esittely: k\xC3\xA4""det inventaariona, hiha terveyten\xC3\xA4, tekstitykset" << endl;
     cout << "  Z                  restart" << endl << endl;
     cout << "Tavoite: p\xC3\xA4\xC3\xA4se Vovan viinakellariin Kremliss\xC3\xA4." << endl;
 }

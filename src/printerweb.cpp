@@ -11,6 +11,7 @@
 #include "armart.hpp"
 #include "common.hpp"
 #include "version.hpp"
+#include "subtitles.hpp"
 #include <string>
 
 using std::string;
@@ -70,6 +71,9 @@ void PrinterWeb::print(Level* l)
                ",\"cols\":" + to_string(viewW) + (l->playerDead ? ",\"dead\":1" : "") +
                ",\"ver\":" + jsonString(gameVersion()) +
                (scene ? ",\"scene\":1,\"shake\":" + to_string(sceneShake) : "");
+    // the film-style caption: the page shows it at the bottom of the map and fades it out
+    if (!Subtitles::current().empty())
+        j += ",\"sub\":" + jsonString(Subtitles::current()) + ",\"subMs\":" + to_string(Subtitles::leftMs());
 
     if (player) {
         const auto& s = player->stats;

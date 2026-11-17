@@ -1,4 +1,5 @@
 
+#include "subtitles.hpp"
 #include "quips.hpp"
 #include "player.hpp"
 #include "level.hpp"
@@ -652,13 +653,28 @@ bool Player::throwItem()
     return executeThrow(number, dir);
 }
 
+// the caption for a throw, or for the bottle that slipped out of the hand
+static void throwCaption(uint32_t itemNum, bool fumbled)
+{
+    if (fumbled) {
+        Subtitles::say("Heitto lipsahtaa k\xC3\xA4sist\xC3\xA4. Rintamalla mik\xC3\xA4\xC3\xA4n ei onnistu.");
+        return;
+    }
+    const Thing t = throwNumToThing(itemNum);
+    Subtitles::say(t == Thing::Granata ? "Kranaatti lent\xC3\xA4\xC3\xA4. Kaikki maahan!"
+                 : isDrink(t) || t == Thing::Tyhja ? "Pullo lent\xC3\xA4\xC3\xA4. Pantti meni, kunnia j\xC3\xA4i."
+                 : string("Heit\xC3\xA4t: ") + thingName(t) + ".");
+}
+
 bool Player::executeThrow(uint32_t itemNum, DirectionNS::Direction dir)
 {
     if (level->isWarLevel && std::rand() % 100 < 15) {
         printer->showMessage("Heitto ep\xC3\xA4""onnistuu! Liukkaat k\xC3\xA4""det!", level, false);
         damage(1);
+        throwCaption(itemNum, true);   // after the hurt caption, so this one shows
         return true;
     }
+    throwCaption(itemNum, false);
 
     Coordinate<int> c { static_cast<int>(coord.x), static_cast<int>(coord.y) };
     auto d = dirToCoord(dir);
@@ -687,8 +703,10 @@ bool Player::executeThrowAt(uint32_t itemNum, float angle)
     if (level->isWarLevel && std::rand() % 100 < 15) {
         printer->showMessage("Heitto ep\xC3\xA4""onnistuu! Liukkaat k\xC3\xA4""det!", level, false);
         damage(1);
+        throwCaption(itemNum, true);   // after the hurt caption, so this one shows
         return true;
     }
+    throwCaption(itemNum, false);
     Item* i = Item::createItem(itemNum, coord);
     i->thrown = true;
     i->angled = true;
@@ -797,6 +815,7 @@ void Player::issueRifle()
     if (inventory.back.what == Thing::Rynkky) inventory.back.rounds = AK_ROUNDS;
     else inventory.back = Inventory::fresh(Thing::Rynkky);
     inventory.akRaised = true;
+    Subtitles::say("Rintama. Olalle ladattu AK, taivaalle FPV-droonit.", "", 0, 4000);
     if (printer) printer->showMessage(hadSomething ? AK_ISSUED_MSG + " KÃ¤sistÃ¤ putosi kaikki muu." : AK_ISSUED_MSG, level, false);
 }
 
@@ -1144,8 +1163,15 @@ bool Player::move(DirectionNS::Direction d, Level* level)
         }
         if (p)
         {
+            const uint32_t before = p->stats.health;
             blocked = p->interact(msg, this);
             printer->showMessage(msg, level);
+            // a punch landed: the caption says who got it
+            if (p->stats.health < before) {
+                const string who = level->nameOf(p);
+                Subtitles::say(p->stats.health == 0 ? who + " kaatuu. Vova kiitt\xC3\xA4\xC3\xA4."
+                                                    : "Ly\xC3\xB6t: " + who + ". Nyrkki on Ven\xC3\xA4j\xC3\xA4n diplomatiaa.", "punch", 1500);
+            }
 
             if (p->stats.health == 0) {
                 Item* i = p->dropItem();

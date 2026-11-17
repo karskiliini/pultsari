@@ -22,6 +22,7 @@ public:
     virtual void printInventory(uint32_t y, Inventory* inventory);
     virtual void printRightColumn(uint32_t y);
     virtual void printStats(Level* l, Stats* stats);
+    virtual void printSubtitle();
     virtual void printChar(std::string c);
     virtual void printScore(const ScoreBoard* scoreBoard);
     virtual void printHelp();

@@ -21,6 +21,8 @@
 #include "persons.hpp"
 #include "player.hpp"
 #include "printerweb.hpp"
+#include "subtitles.hpp"
+#include "handsintro.hpp"
 #include "translate.hpp"
 #include "vehicle.hpp"
 #include <dirent.h>
@@ -5156,4 +5158,225 @@ TEST(empty_hands_throw_from_the_pocket)
     feedKeys("s");                                    // down
     CHECK(w.player.throwItem());
     CHECK(inv.pocket.empty());
+}
+
+// ---- film-style captions ----
+
+static bool captioned(const string& part)
+{
+    for (const auto& line : Subtitles::history()) if (contains(line, part)) return true;
+    return false;
+}
+
+TEST(caption_shows_for_a_moment_and_goes)
+{
+    Subtitles::reset();
+    CHECK(Subtitles::say("Testi."));
+    CHECK(Subtitles::current() == "Testi.");
+    Subtitles::tick(Subtitles::SHOW_MS - 50);
+    CHECK(Subtitles::current() == "Testi.");
+    Subtitles::tick(100);
+    CHECK(Subtitles::current().empty());
+}
+
+TEST(caption_of_the_same_kind_waits_for_its_cooldown)
+{
+    Subtitles::reset();
+    CHECK(Subtitles::say("Yksi", "punch", 1500));
+    CHECK(!Subtitles::say("Kaksi", "punch", 1500));
+    Subtitles::tick(1600);
+    CHECK(Subtitles::say("Kolme", "punch", 1500));
+    CHECK(Subtitles::current() == "Kolme");
+}
+
+TEST(caption_when_throwing)
+{
+    World w;
+    Subtitles::reset();
+    w.player.executeThrowAt(6, 0.0f);   // a stone
+    CHECK(captioned("KIVI"));
+    Subtitles::reset();
+    w.player.executeThrowAt(1, 0.0f);   // a beer bottle
+    CHECK(captioned("Pullo lent"));
+}
+
+TEST(caption_when_punching_and_when_hit)
+{
+    World w;
+    common::realtimeEnabled = false;
+    Subtitles::reset();
+    auto* m = w.spawn(new Myyja(Coord{ 51, 50 }, SellerWeapon::Veitsi));
+    m->stats.health = 1;
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(m->stats.health == 0);
+    CHECK(captioned("Myyj") && captioned("kaatuu"));
+
+    Subtitles::reset();
+    {
+        HurtBy who(&w.level, "Politsija");
+        w.player.damage(2);
+    }
+    CHECK(captioned("Saat osuman: Politsija"));
+    common::realtimeEnabled = true;
+}
+
+TEST(caption_when_meeting_the_militia_once_a_minute)
+{
+    World w;
+    Subtitles::reset();
+    w.spawn(new Cop(Coord{ 53, 50 }));
+    Subtitles::noticePeople(w.level, w.player, nullptr);
+    CHECK(contains(Subtitles::current(), "Miliisi"));
+    Subtitles::tick(Subtitles::SHOW_MS + 10);
+    const size_t shown = Subtitles::history().size();
+    Subtitles::noticePeople(w.level, w.player, nullptr);
+    CHECK(Subtitles::history().size() == shown);       // not again so soon
+    Subtitles::tick(61000);
+    Subtitles::noticePeople(w.level, w.player, nullptr);
+    CHECK(Subtitles::history().size() == shown + 1);
+
+    // a soldier far away gets no caption
+    World far;
+    Subtitles::reset();
+    far.spawn(new Sotilas(Coord{ 70, 50 }));
+    Subtitles::noticePeople(far.level, far.player, nullptr);
+    CHECK(Subtitles::history().empty());
+    CHECK(!Subtitles::meetingLine(PersonType::sotilas).empty());
+    CHECK(!Subtitles::meetingLine(PersonType::fsb).empty());
+    CHECK(!Subtitles::meetingLine(PersonType::myyja).empty());
+    CHECK(!Subtitles::meetingLine(PersonType::varas).empty());
+}
+
+TEST(caption_on_the_way_to_the_front_and_the_rifle)
+{
+    Subtitles::reset();
+    Subtitles::toTheFront(Subtitles::WarRoute::Draft);
+    CHECK(contains(Subtitles::current(), "Kutsunta"));
+    Subtitles::toTheFront(Subtitles::WarRoute::Court);
+    CHECK(contains(Subtitles::current(), "Oikeuden tuomio"));
+    Subtitles::toTheFront(Subtitles::WarRoute::Fsb);
+    CHECK(contains(Subtitles::current(), "FSB"));
+
+    World w;
+    w.level.isWarLevel = true;
+    Subtitles::reset();
+    w.player.issueRifle();
+    CHECK(contains(Subtitles::current(), "AK"));
+}
+
+TEST(caption_for_drones_buzzing_at_the_front)
+{
+    World w(Coord{ 100, 100 });
+    w.level.isWarLevel = true;
+    w.spawn(new Sotilas(Coord{ 130, 110 }));
+    Subtitles::reset();
+    for (int i = 0; i < 200; ++i) fpvTick(w.level);
+    CHECK(captioned("FPV-droonien"));
+    size_t buzz = 0;
+    for (const auto& line : Subtitles::history()) if (contains(line, "FPV-droonien")) ++buzz;
+    CHECK(buzz == 1);                                   // the clock did not move: once
+}
+
+TEST(caption_queue_explains_the_hands_one_line_after_another)
+{
+    Subtitles::reset();
+    const auto lines = Subtitles::handsTutorial(InputNS::HANDS_INTRO_KEY);
+    CHECK(lines.size() >= 4);
+    for (const auto& l : lines) Subtitles::queue(l, 1000);
+    CHECK(Subtitles::current() == lines[0]);
+    Subtitles::say("Heit\xC3\xA4t: KIVI.");                     // an action goes first
+    Subtitles::tick(Subtitles::SHOW_MS);
+    CHECK(Subtitles::current() == lines[1]);
+    for (size_t i = 0; i < lines.size(); ++i) Subtitles::tick(1000);
+    CHECK(Subtitles::history().size() == lines.size() + 1);
+    CHECK(captioned("k\xC3\xA4tesi") && captioned("Hihan kunto on terveytesi") && captioned("Paina H"));
+}
+
+// ---- the hands walk-through ----
+
+TEST(hands_intro_key_is_free_and_opens_the_intro)
+{
+    CHECK(InputNS::HANDS_INTRO_KEY == 'h');
+    feedKeys(string(1, InputNS::HANDS_INTRO_KEY));
+    CHECK(InputNS::Input::getInput() == InputNS::handsIntro);
+    feedKeys("i");
+    CHECK(InputNS::Input::getInput() == InputNS::up);   // i still walks up
+}
+
+TEST(hands_intro_shows_inventory_pickup_damage_captions_and_rifle)
+{
+    Subtitles::reset();
+    HandsIntroNS::Show show;
+    CHECK(show.chapter() == HandsIntroNS::Chapter::Inventory);
+    CHECK(show.render().size() == common::VIEWPORT_H);
+    bool slotsFilled = false, picked = false, torn = false, bloody = false, ak = false;
+    int lastStage = 0;
+    bool stagesOnlyWorsen = true;
+    while (!show.over()) {
+        show.tick(50);
+        Subtitles::tick(50);
+        const auto& inv = show.demo.inventory;
+        const auto ch = show.chapter();
+        if (ch == HandsIntroNS::Chapter::Inventory && !inv.left.empty() && !inv.right.empty() && !inv.pocket.empty() && inv.back.what == Thing::Rynkky) slotsFilled = true;
+        if (ch == HandsIntroNS::Chapter::Pickup && inv.right.what == Thing::Kalja && inv.left.what == Thing::Kivi) picked = true;
+        if (ch == HandsIntroNS::Chapter::Damage) {
+            const int stage = sleeveStage(show.demo.stats.health, show.demo.usedCoat);
+            if (stage < lastStage) stagesOnlyWorsen = false;
+            lastStage = stage;
+            if (stage == 1) torn = true;
+            if (stage == 3) bloody = true;
+        }
+        if (ch == HandsIntroNS::Chapter::Rifle && inv.akRaised && inv.left.empty() && inv.right.empty() && inv.back.what == Thing::Rynkky) ak = true;
+    }
+    CHECK(slotsFilled && picked && torn && bloody && stagesOnlyWorsen && ak);
+    CHECK(captioned("inventaariosi") && captioned("Kalja oikeaan") && captioned("Hiha") && captioned("tekstitys") && captioned("AK"));
+}
+
+// remembers what the show looked like on each frame
+class IntroPrinter : public RecordingPrinter {
+public:
+    std::vector<string> titles;
+    std::vector<Thing> rightHands;
+    std::vector<bool> raised;
+    std::vector<string> captions;
+    void print(Level*) override {
+        titles.push_back(scene && !scene->empty() ? (*scene)[1][0].first + sceneTitle : "");
+        rightHands.push_back(player->inventory.right.what);
+        raised.push_back(player->inventory.akRaised);
+        captions.push_back(Subtitles::current());
+    }
+};
+
+TEST(hands_intro_runs_over_the_map_and_gives_the_game_back)
+{
+    World w;
+    IntroPrinter printer;
+    printer.player = &w.player;
+    w.level.printer = &printer;
+    Subtitles::reset();
+    hold(w.player.inventory, Thing::Lenkki, Thing::None);
+    // one key a frame: each key skips to the next part, the last one ends the show
+    feedKeys("xxxxxx");
+    HandsIntroNS::run(&printer, &w.level);
+    CHECK(printer.titles.size() == 5);                 // the five parts after the first, drawn once each
+    CHECK(!printer.titles.empty() && contains(printer.titles[0], "K\xC3\x84""DET"));
+    CHECK(std::find(printer.raised.begin(), printer.raised.end(), true) != printer.raised.end());
+    CHECK(std::find(printer.rightHands.begin(), printer.rightHands.end(), Thing::Kalja) != printer.rightHands.end());
+    bool anyCaption = false;
+    for (const auto& c : printer.captions) if (!c.empty()) anyCaption = true;
+    CHECK(anyCaption);
+    // the game's own drunk, map and message are back
+    CHECK(printer.player == &w.player);
+    CHECK(printer.scene == nullptr);
+    CHECK(printer.msg.empty());
+    CHECK(w.player.inventory.left.what == Thing::Lenkki);
+    CHECK(!w.player.inventory.akRaised);
+
+    // Esc closes it at once
+    IntroPrinter quick;
+    quick.player = &w.player;
+    feedKeys("\x1b");
+    HandsIntroNS::run(&quick, &w.level);
+    CHECK(quick.titles.empty());
+    CHECK(quick.player == &w.player && quick.scene == nullptr);
 }

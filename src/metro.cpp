@@ -1,3 +1,4 @@
+#include "subtitles.hpp"
 #include "metro.hpp"
 #include "player.hpp"
 #include "level.hpp"
@@ -1427,6 +1428,7 @@ Result runMetroMinigame(PlayerNS::Player* player, Level* level, const string& fr
     while (!game.over()) {
         for (char k; (k = InputNS::Input::getRawCharNonBlocking()) != 0;) game.key(k);
         game.tick(FRAME_MS);
+        Subtitles::tick(FRAME_MS);
         draw();
         common::frameSleep(FRAME_MS);
     }
@@ -1438,6 +1440,7 @@ Result runMetroMinigame(PlayerNS::Player* player, Level* level, const string& fr
         for (char k; (k = InputNS::Input::getRawCharNonBlocking()) != 0;) key = true;
         if (key && ms > 800) break;
         game.tick(FRAME_MS);
+        Subtitles::tick(FRAME_MS);
         game.msg.clear();
         draw();
         common::frameSleep(FRAME_MS);

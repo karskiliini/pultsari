@@ -1,3 +1,4 @@
+#include "subtitles.hpp"
 #include "quips.hpp"
 #include "persons.hpp"
 #include "player.hpp"
@@ -53,7 +54,11 @@ void Person::damage(uint32_t damage)  {
         report("Luotiliivi pys\xC3\xA4ytti luodin!");
     }
     common::hitEvent(coord, damage);
-    if (type == pelaaja && damage > 0 && level) lastHurtBy = level->hurtBy;
+    if (type == pelaaja && damage > 0 && level) {
+        lastHurtBy = level->hurtBy;
+        Subtitles::say(level->hurtBy.empty() ? std::string("Saat turpaan. Moskova ei kysy syyt\xC3\xA4.")
+                                             : "Saat osuman: " + level->hurtBy + ".", "hurt", 1500);
+    }
     if (damage >= stats.health) {
         stats.health = 0;
     } else {

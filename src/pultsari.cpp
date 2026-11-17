@@ -2,6 +2,8 @@
 #include "pultsari.hpp"
 #include "common.hpp"
 #include "intro.hpp"
+#include "subtitles.hpp"
+#include "handsintro.hpp"
 #include "input.hpp"
 #include "building.hpp"
 #include "level.hpp"
@@ -976,6 +978,7 @@ static void mourn(Level& level, VisionNS::Mask& mask, PlayerNS::Player& player, 
         level.cleanDead();
         level.cleanDiscardedItems();
         level.stepAnimations();
+        Subtitles::tick(FRAME_MS);
         printer->msgTtl = 0;
         printer->removeMessage();
 
@@ -1029,6 +1032,7 @@ static bool rideMetro(Level& level, VisionNS::Mask& mask, PlayerNS::Player& play
         case MetroNS::Outcome::Recruited:
             if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
                 printer->setMessage("FSB:n mies saattaa sinut suoraan kutsuntatoimistoon. Rintamalle!");
+                Subtitles::toTheFront(Subtitles::WarRoute::Draft);
                 printer->print(&level);
                 common::sleep(2000);
                 gameState.sendToWar();
@@ -1059,6 +1063,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
     PlayerNS::Player player;
     player.printer = printer;
+    Subtitles::reset();
 
     GameState gameState;
     gameState.moscowStage = stage;
@@ -1117,6 +1122,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             welcome = false;
             std::string welcomeMsg = restartedByZ ? "Uusi pultsari her\xC3\xA4\xC3\xA4 penkilt\xC3\xA4. Edellisest\xC3\xA4 ei kukaan kysy."
                 : "Tervetuloa Grand Tyr Moscow'hun! \xD0\xA0\xD1\x83\xD1\x81\xD1\x81\xD0\xBA\xD0\xB8\xD0\xB9 \xD0\x9C\xD0\xB8\xD1\x80";
+            // the hands beside the map, explained in captions one after another
+            if (!restartedByZ)
+                for (const auto& line : Subtitles::handsTutorial(InputNS::HANDS_INTRO_KEY)) Subtitles::queue(line, 4200);
             restartedByZ = false;
             printer->showMessage(welcomeMsg, &level, false);
         } else {
@@ -1327,6 +1335,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 'a': case 'j': queuedMove = InputNS::left; break;
                                 case 'd': case 'l': queuedMove = InputNS::right; break;
                                 case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
+                                case InputNS::HANDS_INTRO_KEY: HandsIntroNS::run(printer, &level); break;
                                 case 'q': player.drink(&level); break;   // a sip or the beer in one go
                                 case 'e': {  // the food in a hand; asks which when both hold some
                                     Held* h = player.foodHand(&level);
@@ -1552,6 +1561,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
 
                     msSinceMove += FRAME_MS;
+                    Subtitles::tick(FRAME_MS);
                     if (Car* car = player.driving) {
                         car->controls.brake = brakeMs > 0;
                         car->controls.clutch = clutchLatched || clutchHoldMs > 0;
@@ -1575,6 +1585,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         level.fsbTick();
                         level.warTick();
                         if (level.events) level.events->update();
+                        Subtitles::noticePeople(level, player, &mask);
 
                         // ambient audio sources
                         for (auto& v : level.vehicles) {
@@ -1696,6 +1707,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     player.conscripted = false;
                     if (conscriptionGoesToWar(gameState)) {
                         printer->setMessage(CONSCRIPTED_TO_WAR);
+                        Subtitles::toTheFront(Subtitles::WarRoute::Fsb);
                         printer->print(&level);
                         common::sleep(3000);
                         gameState.sendToWar();
@@ -1710,6 +1722,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     player.inJail = false;
                     if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
                         printer->setMessage("Politsijat vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
+                        Subtitles::toTheFront(Subtitles::WarRoute::Court);
                         printer->print(&level);
                         common::sleep(2000);
                         gameState.sendToWar();
@@ -1748,6 +1761,11 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
                 try {
                     InputNS::InputType input = InputNS::Input::getInput();
+                    if (input == InputNS::handsIntro) {
+                        HandsIntroNS::run(printer, &level);
+                        printer->print(&level);
+                        continue;
+                    }
                     input = applyDrunkEffects(input, player, &level, *printer);
                     bool turn = processInput(input, player, &level, *printer);
                     if (player.metroTrip) {
@@ -1818,6 +1836,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     if (turn) {
                         player.updateTurn();
                     }
+                    Subtitles::tick(Subtitles::TURN_MS);
+                    Subtitles::noticePeople(level, player, &mask);
                 } catch (const RestartGame&) {
                     throw;
                 } catch(...) {
@@ -1840,6 +1860,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 if (player.conscripted) {
                     player.conscripted = false;
                     printer->setMessage(conscriptionGoesToWar(gameState) ? CONSCRIPTED_TO_WAR : CONSCRIPTED_DEATH);
+                    if (conscriptionGoesToWar(gameState)) Subtitles::toTheFront(Subtitles::WarRoute::Fsb);
                     printer->print(&level);
                     if (conscriptionGoesToWar(gameState)) {
                         InputNS::Input::waitKey();
@@ -1854,6 +1875,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     player.inJail = false;
                     if (gameState.phase == GamePhase::Moscow || gameState.phase == GamePhase::ReturnMoscow) {
                         printer->setMessage("Politsijat vievät sinut oikeuteen...\nTuomari: 'Rintamalle!'");
+                        Subtitles::toTheFront(Subtitles::WarRoute::Court);
                         printer->print(&level);
                         InputNS::Input::waitKey();
                         gameState.sendToWar();

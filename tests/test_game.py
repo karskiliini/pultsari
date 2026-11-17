@@ -148,6 +148,23 @@ def test_random_play_does_not_crash():
           f'exit {code}')
 
 
+def test_captions_and_the_hands_intro():
+    g = Game()
+    time.sleep(1); g.keys(' ', 0); time.sleep(2)
+    first = g.frames()
+    # the hands are explained in captions at the bottom of the screen from the start
+    caption = any('kätesi' in f.get('sub', '') for f in first)
+    g.keys('h', 0); time.sleep(1.5)
+    during = g.frames()[len(first):]
+    opened = any(f.get('scene') and 'KÄDET' in f.get('lvl', '') for f in during)
+    g.keys('h', 0); time.sleep(1)
+    last = g.frames()[-1] if g.frames() else {}
+    g.close()
+    check('captions_explain_the_hands_at_the_start', caption)
+    check('h_opens_the_hands_intro_and_closes_it', opened and not last.get('scene'),
+          f'opened={opened} scene_after={last.get("scene")}')
+
+
 if __name__ == '__main__':
     if not os.path.exists(BIN):
         sys.exit('build the game first: make')
@@ -158,6 +175,7 @@ if __name__ == '__main__':
     test_player_starts_on_leninski()
     test_q_drinks_in_realtime()
     test_arms_come_with_the_first_frame_and_only_on_change()
+    test_captions_and_the_hands_intro()
     test_random_play_does_not_crash()
     print(f'{len(checked) - len(failures)}/{len(checked)} game tests passed')
     sys.exit(1 if failures else 0)
