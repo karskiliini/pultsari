@@ -519,6 +519,45 @@
                 if (s.round) { ctx.beginPath(); ctx.arc(px, py, size, 0, Math.PI * 2); ctx.fill(); }
                 else ctx.fillRect(Math.round(px), Math.round(py), size, size);
             }
+            // shop signs: the name drawn up to twice the size across the inside of the shop, so shops
+            // stand out as buildings. Only where the map really shows the name's letters (not fog, not
+            // someone standing on it); those cells are then left out of the normal glyphs below.
+            const signCells = new Set();
+            if (frame.signs && !tiny) {
+                const rowCellsAt = y => {
+                    const out = [];
+                    for (const [text, sgr] of (frame.rows[y] || [])) for (const g of text) out.push([g, sgr]);
+                    return out;
+                };
+                for (const [sx, sy, name, ix0, iy0, ix1, iy1] of frame.signs) {
+                    const letters = Array.from(name), len = letters.length;
+                    const k = Math.min(2, (ix1 - ix0 + 1) / len, iy1 - iy0 + 1);
+                    if (k < 1.2) continue;         // no room to grow: the plain letters stay
+                    const cells = rowCellsAt(sy);
+                    let shown = 0, onScreen = 0, sgr = null;
+                    for (let i = 0; i < len; i++) {
+                        const c = cells[sx + i];
+                        if (!c) continue;
+                        onScreen++;
+                        if (c[0] === letters[i]) { shown++; sgr = sgr || c[1]; }
+                    }
+                    if (!onScreen || shown * 2 < onScreen) continue;
+                    for (let i = 0; i < len; i++) {
+                        const c = cells[sx + i];
+                        if (c && c[0] === letters[i]) signCells.add(sy * 10000 + sx + i);
+                    }
+                    const st = parseSgr(sgr);
+                    const px = Math.round((cw === CW ? 15 : Math.max(4, Math.round(ch * 0.83))) * k);
+                    ctx.font = `${st.bold ? 'bold ' : ''}${px}px ui-monospace, "Cascadia Code", Menlo, Consolas, monospace`;
+                    ctx.fillStyle = st.fg;
+                    ctx.globalAlpha = st.dim ? 0.55 : 1;
+                    const step = cw * k, cx = (ix0 + ix1 + 1) / 2 * cw, cy = (iy0 + iy1 + 1) / 2 * ch + k;
+                    letters.forEach((g, i) => {
+                        if (g !== ' ') ctx.fillText(g, cx + (i - (len - 1) / 2) * step, cy);
+                    });
+                }
+                ctx.globalAlpha = 1;
+            }
             // glyphs
             frame.rows.forEach((runs, y) => {
                 let x = 0;
@@ -528,7 +567,7 @@
                     ctx.fillStyle = st.fg;
                     ctx.globalAlpha = st.dim ? 0.55 : 1;
                     for (const g of text) {
-                        if (g !== ' ') {
+                        if (g !== ' ' && !signCells.has(y * 10000 + x)) {
                             if (tiny) {
                                 if (g !== '.') ctx.fillRect(x * cw, y * ch + ch * 0.2, Math.max(1, cw), Math.max(1, ch * 0.6));
                             } else {
@@ -615,7 +654,18 @@
         if (aim && now - aimAt < 250) {
             // a laser from the player's hand along the aim, as far as the line of fire reaches
             const steps = aim.cells.length;
-            if (aim.p) {
+            if (aim.p && aim.throw) {
+                // a throw is marked with tiny x's, a quarter of the map font, one per cell along the arc
+                const x0 = aim.p[0] * CW + CW / 2, y0 = aim.p[1] * CH + CH / 2;
+                ctx.save();
+                ctx.font = '3.75px ui-monospace, Menlo, monospace';
+                ctx.textAlign = 'center';
+                ctx.textBaseline = 'middle';
+                ctx.fillStyle = 'rgba(255,70,70,0.95)';
+                for (let i = 1; i <= steps; i++)
+                    ctx.fillText('x', x0 + Math.cos(aim.a) * i * CW, y0 + Math.sin(aim.a) * i * CH);
+                ctx.restore();
+            } else if (aim.p) {
                 const x0 = aim.p[0] * CW + CW / 2, y0 = aim.p[1] * CH + CH / 2;
                 const len = steps + 0.5;
                 const x1 = x0 + Math.cos(aim.a) * len * CW, y1 = y0 + Math.sin(aim.a) * len * CH;

@@ -1681,7 +1681,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     } else if (mode == Mode::Aim) {
                         printer->aimRisk = aimIsShooting ? aimRisk : -1.0f;
                         printer->aimLength = 20;
+                        printer->aimThrow = !aimIsShooting;
                         printer->printAimLine(&level, player.coord.x, player.coord.y, aimNow);
+                        printer->aimThrow = false;
                     } else if (gunDrawn) {
                         // laser from the lowered pistol, a few steps ahead on the ground
                         printer->aimRisk = -1.0f;
