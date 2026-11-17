@@ -3644,7 +3644,7 @@ TEST(fpv_drones_swarm_the_front_but_not_moscow)
     front.spawn(new Sotilas(Coord{ 130, 110 }));
     for (int i = 0; i < 200; ++i) fpvTick(front.level);
     CHECK(fpvCount(front.level) >= 3);
-    CHECK(fpvCount(front.level) <= FPV_MAX);
+    CHECK(fpvCount(front.level) <= fpvMax(front.level));
 
     World moscow(Coord{ 100, 100 });
     moscow.spawn(new Sotilas(Coord{ 130, 110 }));
@@ -5591,4 +5591,34 @@ TEST(soldiers_at_the_front_stay_down_in_the_trench)
     for (int i = 0; i < 400; ++i) s->npcAct();
     CHECK(w->level.inOwnTrench(s->coord));
     delete w;
+}
+
+// ---- the drones' see-saw: the trench swarms with them, the open ground has the riflemen ----
+
+TEST(fpv_player_share_is_high_in_the_trench_low_when_just_out)
+{
+    World* w = trenchStrip(11, 30);
+    CHECK(fpvPlayerShare(w->level) == 50);
+    w->player.trenchPressure = 80;
+    CHECK(fpvPlayerShare(w->level) == 90);
+    w->player.coord = Coord{ 30, 30 };
+    w->player.exposure = 0;
+    CHECK(fpvPlayerShare(w->level) == 10);  // the pilots are watching the trenches
+    w->player.exposure = 100;
+    CHECK(fpvPlayerShare(w->level) == 90);
+    CHECK(fpvMax(w->level) == 7);
+    World moscow;
+    CHECK(fpvMax(moscow.level) == FPV_MAX);
+    delete w;
+}
+
+TEST(fpv_drones_come_from_the_east)
+{
+    World w(Coord{ 100, 100 });
+    w.level.isWarLevel = true;
+    for (int i = 0; i < 300 && w.level.drones.empty(); ++i) fpvTick(w.level);
+    CHECK(!w.level.drones.empty());
+    bool east = true;
+    for (const auto& d : w.level.drones) if (d.fpv) east = east && d.x > 100.0f;
+    CHECK(east);
 }
