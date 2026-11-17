@@ -325,6 +325,8 @@ static bool checkBonas(Level* level)
 Pistooli::Pistooli(const Coord& c) : Item(c, EPistooli) { }
 std::string Pistooli::typeToChar() const { return "T"; }
 std::string Pistooli::getMsg() const {
+    if (held.what == Thing::Pistooli && held.origin == Origin::Poliisi)
+        return "Politsijan Makarov! Kollegat tuntevat sen, \xC3\xA4l\xC3\xA4 heiluttele sit\xC3\xA4 niiden n\xC3\xA4hden.";
     return "Löysit pistoolin! Vaarallinen kapistus.";
 }
 bool Pistooli::interact(PlayerNS::Player* player) {

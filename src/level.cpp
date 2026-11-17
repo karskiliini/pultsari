@@ -1060,6 +1060,9 @@ void Level::cleanDead()
                     witnessPutinDeath(p->coord);
                 }
                 if (p->type == pankkirosvo && common::random(70)) items.push_back(new Rynkky(p->coord));
+                if (Cop* cop = dynamic_cast<Cop*>(p)) {
+                    if (Item* gun = cop->dropGun()) items.push_back(gun);
+                }
                 if (p->type == sotilas || p->type == myyja) {
                     if (Item* loot = p->dropItem()) items.push_back(loot);
                 }

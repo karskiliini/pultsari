@@ -310,6 +310,14 @@ Cop::Cop(const Coord& pos) : Person(poliisi, pos)
 {
     visionRange = 10;
     hasRadio = true;
+    gun = random(COP_AK_PERCENT) ? Thing::Rynkky : Thing::Pistooli;
+    ammo = gun == Thing::Rynkky ? AK_ROUNDS * 2 : MAKAROV_ROUNDS * 2;
+}
+
+bool showsPoliceGun(const Inventory& inv)
+{
+    auto police = [](const Held& h) { return isWeapon(h.what) && h.origin == Origin::Poliisi; };
+    return police(inv.left) || police(inv.right) || (inv.akRaised && police(inv.back));
 }
 
 bool Cop::move(Direction d, std::string& msg)
@@ -373,6 +381,28 @@ void Cop::npcAct()
             "Humalainen politsija laulaa", "Laulua jostain", "...laulua...", 18);
         report(msg);
         return;
+    }
+
+    // a colleague's Makarov in the player's hand: whoever holds it beat a cop for it
+    if (seesPlayer && !level->playerDead && showsPoliceGun(p->inventory)) {
+        // the first sighting is shouted out; after that he just keeps his eyes (and gun) on him
+        if (!shoots) {
+            static const char* spotted[] = {
+                "Tuo on kollegan Makarov! Ase maahan!",
+                "Poliisitappaja! Ampukaa!",
+                "Mist\xC3\xA4 sait tuon aseen?! SEIS!",
+            };
+            say(spotted[std::rand() % 3]);
+            level->callForHelp(this, p, true);
+        }
+        shoots = true;
+        chaseTarget = p;
+        alerted = true;
+        lastKnownPos = p->coord;
+        alertCooldown = 20;
+    } else if (shoots && currentTarget() != p) {
+        // sent after someone else (or the chase is over): only a new sighting of the gun starts it again
+        shoots = false;
     }
 
     Person* target = currentTarget();
@@ -470,8 +500,13 @@ void Cop::npcAct()
 
         if (alerted) {
             Coord chasePos = seesTarget ? target->coord : lastKnownPos;
+            const uint32_t dist = coord.distance(target->coord);
 
-            if (seesTarget && coord.distance(target->coord) == 1)
+            if (shoots && target == p && seesTarget && ammo > 0 && dist <= COP_FIRE_RANGE &&
+                (dist <= 1 || random(gun == Thing::Rynkky ? 50 : 40))) {
+                chaseTurns = 0;
+                fire(target, msg);
+            } else if (seesTarget && dist == 1)
             {
                 chaseTurns = 0;
                 Player* burglar = target == p ? p : nullptr;
@@ -503,6 +538,7 @@ void Cop::npcAct()
                     --alertCooldown;
                 } else {
                     alerted = false;
+                    shoots = false;   // lost him: the next sighting of the gun starts it again
                 }
             }
         } else {
@@ -583,6 +619,43 @@ bool Cop::interactpuke(Person* source)
 Item* Cop::dropItem()
 {
     return new Pamppu(coord);
+}
+
+// his Makarov, or a short burst from the rifle; one sum of damage, like a soldier's burst
+void Cop::fire(Person* target, std::string& msg)
+{
+    const bool ak = gun == Thing::Rynkky;
+    const uint32_t rounds = std::min<uint32_t>(ammo, ak ? 2 + std::rand() % 2 : 1);
+    uint32_t hurt = 0;
+    for (uint32_t i = 0; i < rounds; ++i) {
+        --ammo;
+        const bool hit = random(ak ? 35 : 50);
+        if (hit) hurt += std::rand() % 3 + 2;
+        level->addTracer(coord, target->coord, hit, TracerKind::Bullet, i * 90);
+    }
+    if (!rounds) return;
+    if (hurt) {
+        HurtBy who(level, "Politsija (ampui sinua)");
+        target->damage(hurt);
+    }
+    if (target->type == pelaaja) {
+        if (ak) msg = hurt ? "Politsija ampuu sarjan rynkyll\xC3\xA4, osuu sinuun!" : "Politsija ampuu sarjan ohi!";
+        else msg = hurt ? "Politsija ampuu sinua pistoolilla!" : "Politsija ampuu mutta menee ohi!";
+    }
+    level->audio.addSound(coord, SoundType::Gunshot,
+        ak ? "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Rynn\xC3\xA4kk\xC3\xB6kiv\xC3\xA4\xC3\xA4ri!" : "PAM! Pistooli pamahtaa!",
+        ak ? "Sarjatulta!" : "Pistoolinlaukaus", "...laukauksia kaukaa...", 30);
+}
+
+Item* Cop::dropGun()
+{
+    if (gun != Thing::Pistooli || !random(COP_PISTOL_DROP_PERCENT)) return nullptr;
+    Item* i = new Pistooli(coord);
+    i->held = Inventory::fresh(Thing::Pistooli);
+    i->held.rounds = (uint8_t)std::min<uint32_t>(ammo, MAKAROV_ROUNDS);
+    i->held.origin = Origin::Poliisi;
+    gun = Thing::None;
+    return i;
 }
 
 

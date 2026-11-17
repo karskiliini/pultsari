@@ -4,6 +4,7 @@
 #include "persontype.hpp"
 #include "coord.hpp"
 #include "direction.hpp"
+#include "inventory.hpp"
 #include "item.hpp"
 #include "printer.hpp"
 #include "stats.hpp"
@@ -130,7 +131,23 @@ public:
     uint32_t chaseTurns = 0;
     // which way he is walking his beat
     DirectionNS::Direction beat = DirectionNS::none;
+    // what he carries besides the baton (a Makarov, now and then a rifle) and the rounds for it
+    Thing gun = Thing::Pistooli;
+    uint32_t ammo = 0;
+    // has seen the player with a police gun: shoots instead of only swinging the baton
+    bool shoots = false;
+    void fire(Person* target, std::string& msg);
+    // a beaten cop now and then leaves his Makarov behind: still a police gun (nullptr if not)
+    Item* dropGun();
 };
+
+// police rifles among the cops, and how often a fallen cop's Makarov is left lying (percent)
+constexpr int COP_AK_PERCENT = 20, COP_PISTOL_DROP_PERCENT = 35;
+// how far a cop opens fire on someone holding a police gun
+constexpr uint32_t COP_FIRE_RANGE = 8;
+// the police reaction rule: a gun taken from the police, in either hand or up at the shoulder.
+// A rifle from the front, or any other gun, is not their business.
+bool showsPoliceGun(const Inventory& inv);
 
 // turns a radio cop chases without laying hands on the target before calling for backup
 constexpr uint32_t COP_BACKUP_TURNS = 6;

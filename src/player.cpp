@@ -920,6 +920,7 @@ void Player::issueRifle()
     }
     if (inventory.back.what == Thing::Rynkky) inventory.back.rounds = AK_ROUNDS;
     else inventory.back = Inventory::fresh(Thing::Rynkky);
+    inventory.back.origin = Origin::Rintama;   // the militia leave a front rifle alone
     inventory.akRaised = true;
     Subtitles::say("Rintama. Olalle ladattu AK, taivaalle FPV-droonit.", "", 0, 4000);
     if (printer) printer->showMessage(hadSomething ? AK_ISSUED_MSG + " KÃ¤sistÃ¤ putosi kaikki muu." : AK_ISSUED_MSG, level, false);
