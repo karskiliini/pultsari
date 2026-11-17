@@ -153,7 +153,7 @@ void Ukrainalainen::npcAct()
             default: break;
         }
         if (!level->hit(c)) coord = c;
-        else if (c.x > 0 && !level->hit(Coord{ coord.x - 1, coord.y })) --coord.x;
+        else if (coord.x > 0 && !level->hit(Coord{ coord.x - 1, coord.y })) --coord.x;
         if (random(8)) say(random(50) ? "Slava Ukraini!" : "Vpered!");
     }
     report(msg);

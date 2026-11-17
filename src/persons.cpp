@@ -989,7 +989,7 @@ void Skinhead::frontAct()
             case DirectionNS::right: ++c.x; break;
             default: break;
         }
-        if (level->inOwnTrench(c) && !level->hit(c)) coord = c;
+        if (level->inOwnTrench(c) && !level->behindTheLine(c) && !level->hit(c)) coord = c;
     } else if (random(3)) {
         static const char* lines[] = { "Milloin meid\xC3\xA4t l\xC3\xA4hetet\xC3\xA4\xC3\xA4n?", "Onko sulla tupakkaa?", "Lupasivat armahduksen kuudessa kuussa." };
         say(lines[std::rand() % 3]);
@@ -2180,6 +2180,8 @@ bool Sotilas::move(Direction d, std::string& msg)
 
     // at the front a soldier keeps his head down: he moves along the trench, never out of it
     if (level->isWarLevel && level->inOwnTrench(coord) && !level->inOwnTrench(check)) return false;
+    // nor back down a communication trench, where our own machine guns wait for deserters
+    if (level->isWarLevel && !level->behindTheLine(coord) && level->behindTheLine(check)) return false;
 
     if (!level->hit(check))
     {

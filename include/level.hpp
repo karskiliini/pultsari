@@ -198,6 +198,7 @@ public:
     static constexpr uint32_t WAR_SHIFT_TICKS = 120;
     static constexpr uint32_t REAR_X = 1;
     uint32_t warTicks = 0;
+    uint32_t rearOpenedAt = 0;  // the tick the rear opened, for its reminders
     uint32_t warStage = 0;      // 1..3 at the front: what the enemy throws at you grows with it
     bool rearOpen = false;
     // world tick: counts the shift down and opens the rear when it is over

@@ -413,11 +413,16 @@ static void spawnVeteran(Level& level)
 static void populatePersons(Level& level, const GameState& gs)
 {
     if (gs.phase == GamePhase::War) {
-        // war levels: skinheads as enemy soldiers, vankis as POWs
-        const Coord start { common::PLAYER_START_X, common::PLAYER_START_Y };
+        // war levels: our soldiers and the meat-assault conscripts in our trench, their riflemen in theirs
+        const Coord start { level.ownLineX.empty() ? common::PLAYER_START_X : (uint32_t)level.ownLineX[common::PLAYER_START_Y], common::PLAYER_START_Y };
+        // our men sit on the main line, never back in a communication trench
+        auto onLine = [&](uint32_t rx, uint32_t ry) {
+            const Coord c = randomTrenchCell(level, Trench::Own, start, rx, ry);
+            return level.behindTheLine(c) && c.y < level.ownLineX.size() ? nearestTrench(level, Coord{ (uint32_t)level.ownLineX[c.y], c.y }, Trench::Own) : c;
+        };
         // the conscripts of the meat assaults wait their turn down in our trench
         for (int i = 0; i < 3 + (int)gs.warStage * 2; ++i) {
-            level.createPerson(randomTrenchCell(level, Trench::Own, start, 8, 40), skinhead);
+            level.createPerson(onLine(5, 40), skinhead);
         }
         if (random(40)) level.createPerson(level.freePosition(), vanki);
         // their riflemen, lying low across no man's land, most of them facing our stretch
@@ -428,7 +433,7 @@ static void populatePersons(Level& level, const GameState& gs)
         }
         // comrades in the trenches around the player: they shoot at the FPV drones, and the drones hunt them
         for (int i = 0; i < 4 + (int)gs.warStage * 2; ++i) {
-            level.createPerson(randomTrenchCell(level, Trench::Own, start, 8, 12), sotilas);
+            level.createPerson(onLine(5, 12), sotilas);
         }
         return;
     }

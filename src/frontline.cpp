@@ -224,7 +224,7 @@ void Level::warTick()
         if (officerFell) {
             if (printer) printer->showMessage("Radio: 'Upseeri kaatui! Vet\xC3\xA4ytyk\xC3\xA4\xC3\xA4! Kaikki selustaan!'", this, false);
             rearOpen = true;
-            if (warTicks < WAR_SHIFT_TICKS) warTicks = WAR_SHIFT_TICKS;
+            rearOpenedAt = warTicks - 1;    // the shift cue goes out with the next line below
         }
     }
 
@@ -234,7 +234,8 @@ void Level::warTick()
         }
         if (warTicks < WAR_SHIFT_TICKS) return;
         rearOpen = true;
-    } else if ((warTicks - WAR_SHIFT_TICKS) % REAR_REMINDER != 0) {
+        rearOpenedAt = warTicks;
+    } else if ((warTicks - rearOpenedAt) % REAR_REMINDER != 0) {
         return;
     }
 

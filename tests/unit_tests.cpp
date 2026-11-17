@@ -5821,3 +5821,50 @@ TEST(a_new_man_starts_on_the_main_line_not_behind_it)
         CHECK(!w.level.behindTheLine(start));
     }
 }
+
+// ---- review fixes ----
+
+TEST(officer_dies_before_the_barrage_and_the_assault_still_comes)
+{
+    World* w = holdWorld();
+    while (w->level.warTicks < 5) w->level.warTick();
+    w->level.holdOfficer->stats.health = 0;      // a drone found him in the trench
+    w->level.cleanDead();
+    while (w->level.warTicks < 60) w->level.warTick();
+    CHECK(w->level.rearOpen);
+    CHECK(w->level.assaultPhase == AssaultPhase::Assault);
+    CHECK(bradleys(w->level) >= 2);
+    delete w;
+}
+
+TEST(assault_man_at_the_west_edge_never_wraps_off_the_map)
+{
+    World w(Coord{ 50, 50 });
+    w.level.isWarLevel = true;
+    auto* s = w.spawn(new Sotilas(Coord{ 1, 20 }));
+    s->stats.health = 100000;
+    s->firstMove = false;
+    auto* u = w.spawn(new Ukrainalainen(Coord{ 0, 20 }, Ukrainalainen::Mode::Assault));
+    u->firstMove = false;
+    bool onMap = true;
+    for (int i = 0; i < 300 && onMap; ++i) { u->npcAct(); onMap = u->coord.x < common::SIZEX; s->coord = Coord{ u->coord.x + 1, u->coord.y }; }
+    CHECK(onMap);
+}
+
+TEST(comrades_never_wander_behind_the_line)
+{
+    World* w = holdWorld();
+    std::vector<Person*> men;
+    for (int i = 0; i < 6; ++i) {
+        const uint32_t y = 140 + i * 4;
+        const Coord at = nearestTrench(w->level, Coord{ (uint32_t)w->level.ownLineX[y], y }, Trench::Own);
+        Person* p = i % 2 ? (Person*)w->spawn(new Sotilas(at)) : (Person*)w->spawn(new Skinhead(at));
+        if (i % 2) static_cast<Sotilas*>(p)->firstMove = false; else static_cast<Skinhead*>(p)->firstMove = false;
+        men.push_back(p);
+    }
+    bool behind = false;
+    for (int t = 0; t < 1500; ++t)
+        for (auto p : men) { p->npcAct(); behind = behind || w->level.behindTheLine(p->coord); }
+    CHECK(!behind);
+    delete w;
+}
