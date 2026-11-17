@@ -5380,3 +5380,87 @@ TEST(hands_intro_runs_over_the_map_and_gives_the_game_back)
     CHECK(quick.titles.empty());
     CHECK(quick.player == &w.player && quick.scene == nullptr);
 }
+
+// ---- trenches at the front ----
+
+static bool ownTrenchReachesRear(const Level& l, const Coord& from)
+{
+    // flood through our own trench cells from `from` and see whether x = 0 is reached
+    std::vector<uint8_t> seen(common::SIZEX * common::SIZEY, 0);
+    std::vector<Coord> todo { from };
+    while (!todo.empty()) {
+        const Coord c = todo.back(); todo.pop_back();
+        if (c.x >= common::SIZEX || c.y >= common::SIZEY || seen[c.y * common::SIZEX + c.x]) continue;
+        if (!l.inOwnTrench(c)) continue;
+        seen[c.y * common::SIZEX + c.x] = 1;
+        if (c.x == 0) return true;
+        todo.push_back(Coord{ c.x + 1, c.y });
+        todo.push_back(Coord{ c.x - 1, c.y });
+        todo.push_back(Coord{ c.x, c.y + 1 });
+        todo.push_back(Coord{ c.x, c.y - 1 });
+    }
+    return false;
+}
+
+TEST(trenches_main_line_runs_the_whole_height)
+{
+    for (int seed = 1; seed <= 6; ++seed) {
+        std::srand(seed);
+        World w(Coord{ 6, 153 });
+        w.level.isWarLevel = true;
+        generateTrenches(w.level);
+        bool everyRow = true;
+        for (uint32_t y = 0; y < common::SIZEY; ++y) {
+            bool row = false;
+            for (uint32_t x = 6; x <= 22; ++x) row = row || w.level.inOwnTrench(Coord{ x, y });
+            everyRow = everyRow && row;
+        }
+        CHECK(everyRow);
+    }
+}
+
+TEST(trenches_a_communication_trench_reaches_the_rear)
+{
+    for (int seed = 1; seed <= 6; ++seed) {
+        std::srand(seed);
+        World w(Coord{ 6, 153 });
+        w.level.isWarLevel = true;
+        generateTrenches(w.level);
+        const Coord start = nearestTrench(w.level, Coord{ common::PLAYER_START_X, common::PLAYER_START_Y }, Trench::Own);
+        CHECK(w.level.inOwnTrench(start));
+        CHECK(start.distance(Coord{ common::PLAYER_START_X, common::PLAYER_START_Y }) <= 10);
+        CHECK(ownTrenchReachesRear(w.level, start));
+    }
+}
+
+TEST(trenches_enemy_line_is_east)
+{
+    std::srand(7);
+    World w(Coord{ 6, 153 });
+    w.level.isWarLevel = true;
+    generateTrenches(w.level);
+    uint32_t enemy = 0, misplaced = 0;
+    for (uint32_t y = 0; y < common::SIZEY; ++y)
+        for (uint32_t x = 0; x < common::SIZEX; ++x)
+            if (w.level.trenchAt(Coord{ x, y }) == Trench::Enemy) { ++enemy; if (x < 60 || x > 80) ++misplaced; }
+    CHECK(enemy > common::SIZEY * 2);
+    CHECK(misplaced == 0);
+    // no man's land between them: craters and wire, but no trench of either side
+    uint32_t craters = 0;
+    for (uint32_t y = 0; y < common::SIZEY; ++y)
+        for (uint32_t x = 30; x < 55; ++x) if (w.level.trenchAt(Coord{ x, y }) == Trench::Crater) ++craters;
+    CHECK(craters > 0);
+}
+
+TEST(trenches_lookup_off_the_map_is_none)
+{
+    World w(Coord{ 6, 153 });
+    CHECK(w.level.trenchAt(Coord{ 10, 10 }) == Trench::None);     // no layer outside the front
+    w.level.isWarLevel = true;
+    generateTrenches(w.level);
+    CHECK(w.level.trenchAt(Coord{ common::SIZEX, 5 }) == Trench::None);
+    CHECK(w.level.trenchAt(Coord{ 5, common::SIZEY + 3 }) == Trench::None);
+    CHECK(!w.level.inCover(Coord{ 99999, 99999 }));
+    CHECK(ownTrenchEastX(w.level, common::SIZEY + 1) == -1);
+    CHECK(ownTrenchEastX(w.level, 100) >= 8);
+}

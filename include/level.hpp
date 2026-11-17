@@ -7,6 +7,7 @@
 #include "common.hpp"
 #include "persontype.hpp"
 #include "audio.hpp"
+#include "trenches.hpp"
 #include <cstdint>
 #include <vector>
 
@@ -194,10 +195,18 @@ public:
     static constexpr uint32_t WAR_SHIFT_TICKS = 120;
     static constexpr uint32_t REAR_X = 1;
     uint32_t warTicks = 0;
+    uint32_t warStage = 0;      // 1..3 at the front: what the enemy throws at you grows with it
     bool rearOpen = false;
     // world tick: counts the shift down and opens the rear when it is over
     void warTick();
     bool reachedRear(const Coord& c) const;
+    // the front's trench layer (empty everywhere but at the front)
+    std::vector<uint8_t> trench;
+    Trench trenchAt(const Coord& c) const;
+    void setTrench(const Coord& c, Trench t);
+    bool inOwnTrench(const Coord& c) const { return trenchAt(c) == Trench::Own; }
+    // down in a trench, ours or theirs: out of a rifleman's sight
+    bool inCover(const Coord& c) const { const Trench t = trenchAt(c); return t == Trench::Own || t == Trench::Enemy; }
     bool hasVehicle(const Vehicle* v) const;
     // the FSB man who has the player by the collar, if any
     FSBAgent* fsbHolder() const;

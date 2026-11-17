@@ -162,17 +162,8 @@ static void spawnQueue(Level& level, Building* b, int count)
 
 static void populateBuildings(Level& level, const GameState& gs)
 {
-    if (gs.phase == GamePhase::War) {
-        Building* b = new Seina();
-        b->setOffset(30, 80);
-        level.addBuilding(b);
-        if (random(50)) {
-            b = new Seina();
-            b->setOffset(100, 60);
-            level.addBuilding(b);
-        }
-        return;
-    }
+    // the front is open ground and trenches (dug in generateTrenches), no buildings
+    if (gs.phase == GamePhase::War) return;
 
     Building* b = nullptr;
 
@@ -423,8 +414,10 @@ static void populatePersons(Level& level, const GameState& gs)
 {
     if (gs.phase == GamePhase::War) {
         // war levels: skinheads as enemy soldiers, vankis as POWs
+        const Coord start { common::PLAYER_START_X, common::PLAYER_START_Y };
+        // the conscripts of the meat assaults wait their turn down in our trench
         for (int i = 0; i < 3 + (int)gs.warStage * 2; ++i) {
-            level.createPerson(level.freePosition(), skinhead);
+            level.createPerson(randomTrenchCell(level, Trench::Own, start, 8, 40), skinhead);
         }
         if (random(40)) level.createPerson(level.freePosition(), vanki);
         for (int i = 0; i < (int)gs.warStage; ++i) {
@@ -432,12 +425,7 @@ static void populatePersons(Level& level, const GameState& gs)
         }
         // comrades in the trenches around the player: they shoot at the FPV drones, and the drones hunt them
         for (int i = 0; i < 4 + (int)gs.warStage * 2; ++i) {
-            Coord c = level.freePosition();
-            for (int tries = 0; tries < 30; ++tries) {
-                const Coord near { common::PLAYER_START_X + std::rand() % 41 - 20, common::PLAYER_START_Y + std::rand() % 17 - 8 };
-                if (near.x < common::SIZEX && near.y < common::SIZEY && !level.hit(near)) { c = near; break; }
-            }
-            level.createPerson(c, sotilas);
+            level.createPerson(randomTrenchCell(level, Trench::Own, start, 8, 12), sotilas);
         }
         return;
     }
@@ -1097,6 +1085,10 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
 
         if (gameState.phase == GamePhase::War) {
             level.isWarLevel = true;
+            level.warStage = gameState.warStage;
+            generateTrenches(level);
+            // a new man arrives down in the trench, not on the open ground beside it
+            player.coord = nearestTrench(level, player.coord, Trench::Own);
         }
         if (gameState.getLandmark() == MoscowLandmark::Bolshoi) {
             level.isBolshoi = true;
