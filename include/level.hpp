@@ -201,6 +201,13 @@ public:
     void warTick();
     // world tick at the front: the player's exposure on the open ground and pressure in the trench
     void exposureTick();
+    // the second and third levels: a howl from the east, then the shells come down on our line
+    uint32_t artilleryCooldown = 20;
+    uint32_t salvoIn = 0;           // world ticks until a warned salvo lands, 0 if none coming
+    void artilleryTick();
+    void fireSalvo(uint32_t shells);
+    // a shell bursting: down in a trench only a hit right beside you does harm; a crater is left
+    void shellBurst(const Coord& at, uint32_t radius, uint32_t maxDamage, const char* who);
     bool reachedRear(const Coord& c) const;
     // the front's trench layer (empty everywhere but at the front)
     std::vector<uint8_t> trench;

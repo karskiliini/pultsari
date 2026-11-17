@@ -969,6 +969,34 @@ bool Skinhead::move(Direction d, std::string& msg)
     return true;
 }
 
+// At the front the skinheads are the conscripts of the meat assaults: they wait in our trench,
+// a comrade of sorts, until the order comes to go over the top.
+void Skinhead::frontAct()
+{
+    string msg;
+    if (charging) {
+        Coord c { coord.x + 1, coord.y };
+        if (level->hit(c)) c = Coord{ coord.x, coord.y + (random(50) ? 1 : (coord.y ? -1 : 1)) };
+        if (!level->hit(c) && c.x < common::SIZEX && c.y < common::SIZEY) coord = c;
+        if (random(6)) say(random(50) ? "Uraaa!" : "Za Rodinu!");
+    } else if (random(25)) {
+        const Direction d = randomDirection();
+        Coord c = coord;
+        switch (d) {
+            case DirectionNS::up:    --c.y; break;
+            case DirectionNS::down:  ++c.y; break;
+            case DirectionNS::left:  --c.x; break;
+            case DirectionNS::right: ++c.x; break;
+            default: break;
+        }
+        if (level->inOwnTrench(c) && !level->hit(c)) coord = c;
+    } else if (random(3)) {
+        static const char* lines[] = { "Milloin meid\xC3\xA4t l\xC3\xA4hetet\xC3\xA4\xC3\xA4n?", "Onko sulla tupakkaa?", "Lupasivat armahduksen kuudessa kuussa." };
+        say(lines[std::rand() % 3]);
+    }
+    report(msg);
+}
+
 void Skinhead::npcAct()
 {
     if (firstMove)
@@ -976,6 +1004,7 @@ void Skinhead::npcAct()
         firstMove = false;
         return;
     }
+    if (level->isWarLevel) { frontAct(); return; }
 
     string msg = "";
     Player* p = level->getPlayer();

@@ -172,6 +172,10 @@ public:
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "O"; };
     bool firstMove = true;
+    // at the front: sent over the top in a meat assault, running east until he drops
+    bool charging = false;
+private:
+    void frontAct();
 };
 
 class Yka : public Person {

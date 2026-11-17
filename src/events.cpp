@@ -359,11 +359,8 @@ void EnvironmentEvents::randomEvent()
 
     // war-specific events
     if (level->isWarLevel) {
-        if (roll >= 20 && roll < 50) {
-            artilleryBarrage();
-        } else if (roll >= 50 && roll < 65) {
-            meatAssault();
-        }
+        // the shells have their own clock at the front now (Level::artilleryTick)
+        if (roll >= 50 && roll < 65) meatAssault();
     }
 
     // Moscow parade event
@@ -414,14 +411,23 @@ void EnvironmentEvents::meatAssault()
     HurtBy who(level, "lihamyllyrynn\xC3\xA4kk\xC3\xB6");
     level->printer->showMessage("LIHAHYÖKKÄYS! Pakkovärvätyt rynnäköivät!", level, false);
 
-    // spawn 3-5 skinheads from the right edge rushing left
+    // 3-5 of the conscripts waiting in our trench go over the top, east into the rifles;
+    // more are brought up if there are not enough
     int count = 3 + std::rand()%3;
-    for (int i = 0; i < count; ++i) {
-        uint32_t sy = std::rand() % common::SIZEY;
-        Coord spawnCoord { common::SIZEX - 2, sy };
-        if (!level->hit(spawnCoord)) {
-            level->createPerson(spawnCoord, skinhead);
-        }
+    for (auto p : level->persons) {
+        if (count == 0) break;
+        if (p->type != skinhead || p->stats.health == 0) continue;
+        Skinhead* s = static_cast<Skinhead*>(p);
+        if (s->charging) continue;
+        s->charging = true;
+        s->say(random(50) ? "Uraaa!" : "Mamaaa...");
+        --count;
+    }
+    const PlayerNS::Player* player = level->getPlayer();
+    const Coord near = player ? player->coord : Coord{ TrenchNS::OWN_X, common::PLAYER_START_Y };
+    for (; count > 0; --count) {
+        Person* p = level->createPerson(randomTrenchCell(*level, Trench::Own, near, 6, 30), skinhead);
+        if (p) static_cast<Skinhead*>(p)->charging = true;
     }
 }
 

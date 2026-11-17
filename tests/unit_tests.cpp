@@ -5622,3 +5622,71 @@ TEST(fpv_drones_come_from_the_east)
     for (const auto& d : w.level.drones) if (d.fpv) east = east && d.x > 100.0f;
     CHECK(east);
 }
+
+// ---- artillery (second and third front levels) and the meat assault ----
+
+static bool animated(const Level& l, const string& text)
+{
+    for (auto a : l.animations) if (contains(a->text, text)) return true;
+    return false;
+}
+
+TEST(no_artillery_on_the_first_front_level)
+{
+    World* w = trenchStrip(11, 30);
+    w->player.stats.health = 1000;
+    w->level.events = new EnvironmentEvents(&w->level, false);
+    for (int i = 0; i < 300; ++i) { w->level.warTick(); w->level.events->update(); }
+    CHECK(!w->printer.saw("TYKIST"));
+    CHECK(!w->printer.saw("Ulvontaa"));
+    delete w;
+}
+
+TEST(artillery_warns_before_it_lands)
+{
+    World* w = trenchStrip(11, 30);
+    w->player.stats.health = 1000;
+    w->level.warStage = 2;
+    w->level.artilleryCooldown = 1;
+    w->level.artilleryTick();
+    CHECK(w->printer.saw("Ulvontaa"));
+    CHECK(!animated(w->level, "KRUMP"));
+    w->level.artilleryTick();
+    CHECK(!animated(w->level, "KRUMP"));
+    w->level.artilleryTick();
+    CHECK(animated(w->level, "KRUMP"));
+    delete w;
+}
+
+TEST(shell_burst_spares_the_trench_beyond_one_cell)
+{
+    World* w = trenchStrip(40, 60);
+    auto* deep = w->spawn(new Sotilas(Coord{ 11, 30 }));     // in the trench, two cells off
+    auto* close = w->spawn(new Sotilas(Coord{ 11, 31 }));    // in the trench, right beside it
+    auto* open = w->spawn(new Sotilas(Coord{ 14, 32 }));     // up on the open ground
+    w->level.shellBurst(Coord{ 11, 32 }, 3, 6, "tykist\xC3\xB6");
+    CHECK(deep->stats.health == 15);
+    CHECK(close->stats.health < 15);
+    CHECK(open->stats.health < 15);
+    // a hit leaves a crater in the open, but a trench stays a trench
+    w->level.shellBurst(Coord{ 30, 30 }, 1, 1, "tykist\xC3\xB6");
+    CHECK(w->level.trenchAt(Coord{ 30, 30 }) == Trench::Crater);
+    CHECK(w->level.inOwnTrench(Coord{ 11, 32 }));
+    delete w;
+}
+
+TEST(meat_assault_goes_over_the_top_to_the_east)
+{
+    World* w = trenchStrip(40, 60);
+    auto* waiting = w->spawn(new Skinhead(Coord{ 11, 20 }));
+    auto* charging = w->spawn(new Skinhead(Coord{ 11, 25 }));
+    waiting->firstMove = charging->firstMove = false;
+    charging->charging = true;
+    w->player.coord = Coord{ 12, 20 };                      // right beside a comrade: no beating
+    w->player.stats.health = 30;
+    for (int i = 0; i < 40; ++i) { waiting->npcAct(); charging->npcAct(); }
+    CHECK(w->level.inOwnTrench(waiting->coord));
+    CHECK(charging->coord.x > 30);
+    CHECK(w->player.stats.health == 30);
+    delete w;
+}
