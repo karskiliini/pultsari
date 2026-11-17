@@ -121,4 +121,9 @@ public:
     PathNS::PathMask* pathmask = nullptr;
 };
 
+template <class T> class Coordinate;
+// the front's ground: a trench (sandbags on its lips), a shell crater or a coil of wire;
+// false where there is none
+bool trenchCell(const Level* l, const Coordinate<uint32_t>& c, std::string& glyph, const char*& color);
+
 #endif

@@ -5464,3 +5464,21 @@ TEST(trenches_lookup_off_the_map_is_none)
     CHECK(ownTrenchEastX(w.level, common::SIZEY + 1) == -1);
     CHECK(ownTrenchEastX(w.level, 100) >= 8);
 }
+
+TEST(trench_cell_draws_sandbags_and_dark_ground)
+{
+    World w(Coord{ 6, 153 });
+    w.level.isWarLevel = true;
+    for (uint32_t x = 10; x <= 12; ++x)
+        for (uint32_t y = 20; y <= 30; ++y) w.level.setTrench(Coord{ x, y }, Trench::Own);
+    w.level.setTrench(Coord{ 40, 40 }, Trench::Crater);
+    w.level.setTrench(Coord{ 41, 41 }, Trench::Wire);
+    string g; const char* col = "";
+    CHECK(trenchCell(&w.level, Coord{ 11, 25 }, g, col));
+    CHECK(contains(col, "48;5;"));                        // dug-out ground underneath
+    CHECK(trenchCell(&w.level, Coord{ 10, 25 }, g, col));
+    CHECK(g == "\xE2\x96\x92");                           // the edge: a row of sandbags
+    CHECK(trenchCell(&w.level, Coord{ 40, 40 }, g, col) && g == "o");
+    CHECK(trenchCell(&w.level, Coord{ 41, 41 }, g, col) && (g == "#" || g == "x"));
+    CHECK(!trenchCell(&w.level, Coord{ 60, 60 }, g, col));
+}
