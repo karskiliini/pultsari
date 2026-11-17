@@ -20,6 +20,25 @@ bool isFood(Thing t)
     return t == Thing::Lenkki || t == Thing::Kala || t == Thing::Omppo || t == Thing::Bansku;
 }
 
+bool isBottle(Thing t)
+{
+    return t == Thing::Kalja || t == Thing::Vodka || t == Thing::Tyhja;
+}
+
+uint32_t meleeDamage(Thing t)
+{
+    switch (t) {
+        case Thing::Rynkky: return 4;   // the rifle butt
+        case Thing::Pamppu: return 3;
+        case Thing::Veitsi: return 3;
+        case Thing::Kivi: return 2;
+        case Thing::Ketjut: return 2;
+        case Thing::Pistooli: return 2; // pistol grip to the temple
+        case Thing::Kalja: case Thing::Vodka: case Thing::Tyhja: return 1;
+        default: return 0;
+    }
+}
+
 const char* thingName(Thing t)
 {
     switch (t) {

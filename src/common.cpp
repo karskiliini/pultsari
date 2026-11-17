@@ -118,6 +118,15 @@ void shellEvent(const Coord& from, const Coord& to)
     webSend(buf);
 }
 
+void tracerEvent(float x0, float y0, float x1, float y1, int kind, uint32_t delayMs)
+{
+    if (!webMode()) return;
+    char buf[160];
+    snprintf(buf, sizeof(buf), "{\"t\":\"tracer\",\"x0\":%.2f,\"y0\":%.2f,\"x1\":%.2f,\"y1\":%.2f,\"k\":%d,\"d\":%u}",
+             x0, y0, x1, y1, kind, delayMs);
+    webSend(buf);
+}
+
 void boomEvent(const Coord& at, uint32_t radius)
 {
     if (!webMode()) return;

@@ -8,6 +8,7 @@
 #include "persontype.hpp"
 #include "audio.hpp"
 #include "trenches.hpp"
+#include "tracer.hpp"
 #include <cstdint>
 #include <vector>
 
@@ -173,6 +174,14 @@ public:
     std::vector<Vehicle*> vehicles;
     std::vector<Road> roads;
     std::vector<Drone> drones;
+    // streaks of light from the shots in the air (see tracer.hpp)
+    std::vector<Tracer> tracers;
+    // a shot from `from` at `to`: it stops there on a hit, a miss flies on 6-10 cells past it.
+    // Only in real time with animations on; also sent to the browser page to draw.
+    void addTracer(const Coord& from, const Coord& to, bool hit, TracerKind kind = TracerKind::Bullet, uint32_t delayMs = 0);
+    void addTracer(float x0, float y0, float x1, float y1, TracerKind kind = TracerKind::Bullet, uint32_t delayMs = 0);
+    // fly them on by `ms`; the ones whose tail has arrived are gone
+    void tracerFrame(uint32_t ms);
     std::vector<GasPuff> gas;
     // the wind: never shown, but it carries the smoke; it veers slowly and now and then swings round
     float windAngle = 0.3f;
@@ -229,6 +238,13 @@ public:
     void barrierFireTick();
     bool isMgNest(const Coord& c) const;
     bool reachedRear(const Coord& c) const;
+    // at the map's rear edge on the third level while the officer still holds: a deserter
+    // who got through a gap in the barrier
+    bool deserting(const Coord& c) const;
+    // a barrier gun nest within `radius` of a blast is silenced for good; the count of them
+    uint32_t silenceMgNests(const Coord& at, float radius);
+    // how far a barrier machine gun reaches: knock out the nearest ones and there is a gap
+    static constexpr uint32_t MG_RANGE = 20;
     // the front's trench layer (empty everywhere but at the front)
     std::vector<uint8_t> trench;
     std::vector<int> ownLineX;      // the centre column of our main line on each row

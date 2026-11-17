@@ -8,6 +8,7 @@
 #include "armart.hpp"
 #include "building.hpp"
 #include "bradley.hpp"
+#include "tracer.hpp"
 #include "input.hpp"
 #include "common.hpp"
 #include "events.hpp"
@@ -5799,9 +5800,7 @@ TEST(own_machine_guns_fire_on_a_player_behind_the_officer)
     common::realtimeEnabled = false;    // no moment-to-react guard between hits (it is shared across tests)
     w->player.stats.health = 200;
     w->player.coord = Coord{ 2, w->level.holdOfficer->coord.y };    // well behind him, at the rear
-    for (int i = 0; i < 50; ++i) w->level.barrierFireTick();
-    CHECK(w->player.stats.health == 200);                           // before the barrage nobody is told to fire
-    w->level.assaultPhase = AssaultPhase::Assault;
+    // the barrier stands from the start: otherwise the new man could just walk out before the barrage
     for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
     CHECK(w->player.stats.health < 200);
     CHECK(w->printer.saw("konekiv"));
@@ -5895,5 +5894,390 @@ TEST(comrades_never_wander_behind_the_line)
     for (int t = 0; t < 1500; ++t)
         for (auto p : men) { p->npcAct(); behind = behind || w->level.behindTheLine(p->coord); }
     CHECK(!behind);
+    delete w;
+}
+
+// ---------- tracers: a streak of light for every shot ----------
+
+static size_t braille(const string& s)
+{
+    // U+2800..U+28FF: E2 A0..A3 xx
+    size_t n = 0;
+    for (size_t i = 0; i + 2 < s.size(); ++i)
+        if ((unsigned char)s[i] == 0xE2 && ((unsigned char)s[i + 1] & 0xFC) == 0xA0) ++n;
+    return n;
+}
+
+TEST(tracer_flies_fast_and_stops_at_a_hit)
+{
+    World w;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true);
+    CHECK(w.level.tracers.size() == 1);
+    w.level.tracerFrame(50);
+    float x = 0, y = 0;
+    CHECK(tracerDot(w.level.tracers[0], 0, x, y));
+    CHECK(x > 12.5f && x < 13.5f);             // 60 cells a second: three cells a frame
+    CHECK(std::fabs(y - 10.0f) < 0.01f);
+    float maxX = 0;
+    for (int f = 0; f < 20 && !w.level.tracers.empty(); ++f) {
+        for (uint32_t k = 0; k < TRACER_DOTS; ++k)
+            if (tracerDot(w.level.tracers[0], k, x, y)) maxX = std::max(maxX, x);
+        w.level.tracerFrame(50);
+    }
+    CHECK(maxX <= 30.01f);                      // never through the man it hit
+    CHECK(maxX > 28.0f);
+    CHECK(w.level.tracers.empty());             // and gone once the tail arrives
+}
+
+TEST(tracer_miss_flies_on_past_the_target)
+{
+    World w;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, false);
+    CHECK(w.level.tracers.size() == 1);
+    CHECK(w.level.tracers[0].x1 >= 35.5f);
+    CHECK(w.level.tracers[0].x1 <= 40.5f);
+}
+
+TEST(tracer_later_rounds_of_a_burst_wait_their_turn)
+{
+    World w;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true, TracerKind::Bullet, 120);
+    w.level.tracerFrame(50);
+    float x, y;
+    CHECK(!tracerDot(w.level.tracers[0], 0, x, y));
+    w.level.tracerFrame(50);
+    w.level.tracerFrame(50);
+    CHECK(tracerDot(w.level.tracers[0], 0, x, y));
+}
+
+TEST(tracer_none_without_animations_or_in_turns)
+{
+    World w;
+    common::animsEnabled = false;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true);
+    CHECK(w.level.tracers.empty());
+    common::animsEnabled = true;
+    common::realtimeEnabled = false;
+    w.level.addTracer(Coord{ 10, 10 }, Coord{ 30, 10 }, true);
+    CHECK(w.level.tracers.empty());
+    common::realtimeEnabled = true;
+}
+
+TEST(tracer_colours_run_from_white_hot_to_dark_red)
+{
+    CHECK(tracerColour(0, TracerKind::Bullet) == 231);
+    CHECK(tracerColour(TRACER_DOTS - 1, TracerKind::Bullet) == 88);
+    for (uint32_t k = 0; k < TRACER_DOTS; ++k) CHECK(tracerColour(k, TracerKind::Bullet) != tracerColour(k + 1, TracerKind::Bullet));
+}
+
+TEST(tracer_from_every_fired_bullet)
+{
+    World w;
+    Sotilas* s = w.spawn(new Sotilas(Coord{ 60, 50 }));
+    w.level.fireBullet(s, 0.0f, 10, 1, 0);       // east, nobody there: flies its full range
+    CHECK(w.level.tracers.size() == 1);
+    CHECK(w.level.tracers[0].x0 > 59.5f && w.level.tracers[0].x0 < 60.5f);
+    CHECK(w.level.tracers[0].x1 > 68.0f);
+}
+
+TEST(tracer_for_each_round_of_a_soldiers_burst)
+{
+    World w;
+    Sotilas* s = w.spawn(new Sotilas(Coord{ 60, 50 }));
+    string msg;
+    const uint32_t before = s->ammo;
+    s->fire(&w.player, msg);
+    CHECK(w.level.tracers.size() == before - s->ammo);
+    CHECK(w.level.tracers.size() >= 2);
+}
+
+TEST(tracer_from_ukrainian_rifles_and_bradley_cannon)
+{
+    World w;
+    w.level.isWarLevel = true;
+    Ukrainalainen* u = w.spawn(new Ukrainalainen(Coord{ 70, 50 }));
+    string msg;
+    u->snipe(&w.player, msg);
+    CHECK(w.level.tracers.size() == 1);
+    u->burst(&w.player, msg);
+    CHECK(w.level.tracers.size() >= 3);
+    w.level.tracers.clear();
+    Bradley* b = new Bradley(Coord{ 58, 50 }, 58);
+    b->level = &w.level;
+    b->unloaded = true;
+    b->gunCooldown = 1;
+    w.level.vehicles.push_back(b);
+    b->update();
+    CHECK(!w.level.tracers.empty());
+    CHECK(w.level.tracers.back().kind == TracerKind::Cannon);
+}
+
+TEST(tracer_drawn_as_tiny_dots_in_the_terminal)
+{
+    World w;
+    w.level.updateCamera();
+    w.level.addTracer(Coord{ 40, 50 }, Coord{ 49, 50 }, true);
+    w.level.tracerFrame(50);
+    string row;
+    for (const auto& cell : w.printer.rowCells(&w.level, 50 - (uint32_t)w.level.cameraY)) row += cell.first + cell.second;
+    CHECK(braille(row) >= 1);
+    CHECK(contains(row, "38;5;231"));             // the white-hot head
+}
+
+TEST(tracer_left_to_the_browser_page_to_draw)
+{
+    World w;
+    w.level.updateCamera();
+    w.printer.tracersAsOverlay = true;
+    w.level.addTracer(Coord{ 40, 50 }, Coord{ 49, 50 }, true);
+    w.level.tracerFrame(50);
+    string row;
+    for (const auto& cell : w.printer.rowCells(&w.level, 50 - (uint32_t)w.level.cameraY)) row += cell.first;
+    CHECK(braille(row) == 0);
+}
+
+// ---- Melee: what is in the hand hits harder ----
+
+// one step into a rat with the given hands; returns the damage dealt
+static uint32_t bumpRat(World& w, Thing l, Thing r)
+{
+    hold(w.player.inventory, l, r);
+    w.player.stats.health = 20;   // the rat bites back
+    w.player.coord = Coord{ 50, 50 };
+    auto* rat = w.spawn(new Rotta(Coord{ 51, 50 }));
+    rat->stats.health = 100;
+    w.player.move(DirectionNS::right, &w.level);
+    const uint32_t dealt = 100 - rat->stats.health;
+    rat->stats.health = 0;
+    w.level.cleanDead();
+    return dealt;
+}
+
+TEST(melee_bare_fists_hit_as_before)
+{
+    World w;
+    common::realtimeEnabled = false;
+    CHECK(bumpRat(w, Thing::None, Thing::None) == 1);
+}
+
+TEST(melee_stone_baton_and_rifle_butt_hit_harder_in_that_order)
+{
+    World w;
+    common::realtimeEnabled = false;
+    const uint32_t fist = bumpRat(w, Thing::None, Thing::Lenkki);
+    const uint32_t stone = bumpRat(w, Thing::Kivi, Thing::None);
+    const uint32_t baton = bumpRat(w, Thing::None, Thing::Pamppu);
+    w.player.inventory.back = Inventory::fresh(Thing::Rynkky);
+    w.player.inventory.akRaised = true;
+    const uint32_t butt = bumpRat(w, Thing::None, Thing::None);
+    CHECK(fist == 1);
+    CHECK(stone > fist);
+    CHECK(baton >= stone);
+    CHECK(butt > stone);
+    CHECK(butt >= baton);
+    // the stone and the baton stay in the hand
+    w.player.inventory.akRaised = false;
+    bumpRat(w, Thing::Kivi, Thing::Pamppu);
+    CHECK(w.player.inventory.left.what == Thing::Kivi);
+    CHECK(w.player.inventory.right.what == Thing::Pamppu);
+}
+
+TEST(melee_the_best_thing_in_either_hand_is_used)
+{
+    World w;
+    common::realtimeEnabled = false;
+    const uint32_t right = bumpRat(w, Thing::Lenkki, Thing::Kivi);
+    const uint32_t left = bumpRat(w, Thing::Kivi, Thing::Lenkki);
+    CHECK(right == left);
+    CHECK(right > 1);
+}
+
+TEST(melee_a_bottle_often_breaks_spills_and_is_gone)
+{
+    World w;
+    common::realtimeEnabled = false;
+    int breaks = 0, whole = 0;
+    uint32_t brokenDmg = 0, wholeDmg = 0;
+    for (int i = 0; i < 60; ++i) {
+        w.printer.log.clear();
+        const uint32_t d = bumpRat(w, Thing::Kalja, Thing::None);
+        if (w.player.inventory.left.empty()) {
+            ++breaks;
+            brokenDmg = d;
+            CHECK(w.printer.saw("valuu"));
+        } else {
+            ++whole;
+            wholeDmg = d;
+            CHECK(w.player.inventory.left.what == Thing::Kalja);
+        }
+    }
+    CHECK(breaks > 15);   // often, not always
+    CHECK(whole > 5);
+    CHECK(brokenDmg > wholeDmg);
+    CHECK(brokenDmg > 3);
+    CHECK(itemAt(w.level, ESirpaleet));
+}
+
+TEST(melee_an_empty_bottle_breaks_without_spilling)
+{
+    World w;
+    common::realtimeEnabled = false;
+    bool broke = false;
+    for (int i = 0; i < 60 && !broke; ++i) {
+        w.printer.log.clear();
+        bumpRat(w, Thing::None, Thing::Tyhja);
+        broke = w.player.inventory.right.empty();
+        if (broke) CHECK(!w.printer.saw("valuu"));
+    }
+    CHECK(broke);
+}
+
+TEST(melee_no_weapon_swing_at_a_harmless_passer_by)
+{
+    World w;
+    common::realtimeEnabled = false;
+    hold(w.player.inventory, Thing::Kivi, Thing::Pamppu);
+    auto* k = w.spawn(new Kansalainen(Coord{ 51, 50 }));
+    const uint32_t before = k->stats.health;
+    w.player.move(DirectionNS::right, &w.level);
+    CHECK(k->stats.health == before);
+}
+
+// ---------- anti-aircraft guns at the front ----------
+
+static World* frontWorld(uint32_t stage)
+{
+    World* w = holdWorld();
+    w->level.warStage = stage;
+    populateAAGuns(w->level, 1);
+    return w;
+}
+
+static std::vector<AAGun*> guns(const Level& l)
+{
+    std::vector<AAGun*> out;
+    for (auto v : l.vehicles) if (AAGun* g = dynamic_cast<AAGun*>(v)) out.push_back(g);
+    return out;
+}
+
+TEST(front_guns_stand_just_before_our_line_from_the_second_level)
+{
+    World* w = frontWorld(2);
+    const auto gs = guns(w->level);
+    CHECK(gs.size() >= 1 && gs.size() <= 2);
+    bool nearStart = false;
+    for (auto g : gs) {
+        const Coord c = g->centre();
+        const int line = w->level.ownLineX[c.y];
+        CHECK((int)c.x >= line + 2 && (int)c.x <= line + 7);
+        CHECK(!w->level.behindTheLine(c));
+        if (std::abs((int)c.y - (int)w->player.coord.y) <= 12) nearStart = true;
+        CHECK(g->crew().empty());                       // the crew lies dead behind the sandbags
+        CHECK(std::fabs(g->angle) < 0.01f);             // barrels pointing east, at them
+    }
+    CHECK(nearStart);
+    delete w;
+    World* v = frontWorld(1);
+    CHECK(guns(v->level).empty());
+    delete v;
+}
+
+TEST(front_gun_is_taken_without_raising_any_alarm)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    string msg;
+    CHECK(g->approach(&w->player, msg));
+    CHECK(w->player.manning == g);
+    CHECK(contains(msg, "kaatun"));
+    CHECK(!contains(msg, "eiv\xC3\xA4t ilahdu"));
+    delete w;
+}
+
+TEST(a_manned_gun_leaves_the_gunner_out_in_the_open)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    string msg;
+    w->player.coord = nearestTrench(w->level, g->centre(), Trench::Own);   // even down in a trench beside it
+    CHECK(g->approach(&w->player, msg));
+    w->player.exposure = 10;
+    w->level.exposureTick();
+    CHECK(w->player.exposure > 10);
+    CHECK(fpvPlayerShare(w->level) >= 10 + 11 * 8 / 10);
+    delete w;
+}
+
+TEST(a_bradley_takes_three_aa_shells)
+{
+    World* w = frontWorld(3);
+    const uint32_t y = w->player.coord.y;
+    auto* b = new Bradley(Coord{ 40, y }, 40);
+    w->level.addVehicle(b);
+    aaExplosion(w->level, b->coord, &w->player);
+    CHECK(!b->wrecked);
+    aaExplosion(w->level, b->coord, &w->player);
+    CHECK(!b->wrecked);
+    const string boom = aaExplosion(w->level, b->coord, &w->player);
+    CHECK(b->wrecked);
+    CHECK(contains(boom, "Bradley"));
+    delete w;
+}
+
+TEST(an_aa_shell_or_grenade_silences_a_barrier_nest)
+{
+    World* w = frontWorld(3);
+    const size_t before = w->level.mgNests.size();
+    const Coord nest = w->level.mgNests.front();
+    aaExplosion(w->level, Coord{ nest.x + 1, nest.y }, &w->player);
+    CHECK(w->level.mgNests.size() == before - 1);
+    CHECK(!w->level.isMgNest(nest));
+    const Coord other = w->level.mgNests.front();
+    w->level.explode(Coord{ other.x + 2, other.y }, 2, 3, &w->player);
+    CHECK(w->level.mgNests.size() == before - 2);
+    CHECK(w->printer.saw("pes\xC3\xA4ke"));
+    delete w;
+}
+
+TEST(barrier_nests_reach_only_twenty_cells)
+{
+    World* w = frontWorld(3);
+    common::realtimeEnabled = false;    // no moment-to-react guard between hits
+    w->level.mgNests = { Coord{ 0, 60 } };
+    w->player.stats.health = 200;
+    w->player.coord = Coord{ 2, 90 };   // behind the line, but out of that gun's reach
+    CHECK(w->level.behindTheLine(w->player.coord));
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health == 200);
+    w->player.coord = Coord{ 2, 70 };
+    for (int i = 0; i < 200; ++i) w->level.barrierFireTick();
+    CHECK(w->player.stats.health < 200);
+    delete w;
+}
+
+TEST(a_deserter_through_the_gap_reaches_the_rear)
+{
+    World* w = frontWorld(3);
+    CHECK(w->level.holdOfficer != nullptr);
+    CHECK(!w->level.rearOpen);
+    CHECK(w->level.reachedRear(Coord{ Level::REAR_X, 100 }));
+    CHECK(w->level.deserting(Coord{ Level::REAR_X, 100 }));
+    CHECK(!w->level.reachedRear(Coord{ 6, 100 }));
+    // the first two levels have no barrier to slip through: the rear waits for the shift
+    World* v = frontWorld(2);
+    CHECK(!v->level.reachedRear(Coord{ Level::REAR_X, 100 }));
+    delete w;
+    delete v;
+}
+
+TEST(a_shell_landing_on_the_gun_wrecks_it)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    string msg;
+    CHECK(g->approach(&w->player, msg));
+    w->level.shellBurst(g->centre(), 1, 5, "Bradleyn konetykki");
+    CHECK(g->wrecked);
+    CHECK(w->player.manning == nullptr);
     delete w;
 }

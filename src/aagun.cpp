@@ -1,5 +1,6 @@
 #include "aagun.hpp"
 #include "animation.hpp"
+#include "bradley.hpp"
 #include "building.hpp"
 #include "common.hpp"
 #include "events.hpp"
@@ -89,8 +90,13 @@ bool AAGun::approach(Player* player, string& msg)
     } else if (!all.empty()) {
         msg = "Ampuja kuorsaa hiekkas\xC3\xA4kkien v\xC3\xA4liss\xC3\xA4. Istut tykin taakse, eik\xC3\xA4 kukaan est\xC3\xA4!";
     } else {
-        msg = "Miehist\xC3\xB6 on poissa. Kaappaat IT-tykin! Sotilaat eiv\xC3\xA4t ilahdu.";
-        if (level) level->alertCops(player, 20);
+        if (level && level->isWarLevel) {
+            // at the front nobody asks: the crew lies where the last drone found them
+            msg = "Miehist\xC3\xB6 on kaatunut hiekkas\xC3\xA4kkien taakse. Otat IT-tykin haltuusi!";
+        } else {
+            msg = "Miehist\xC3\xB6 on poissa. Kaappaat IT-tykin! Sotilaat eiv\xC3\xA4t ilahdu.";
+            if (level) level->alertCops(player, 20);
+        }
     }
     gunner = player;
     player->manning = this;
@@ -273,6 +279,14 @@ std::string aaExplosion(Level& level, const Coord& at, Person* source)
         bool near = false;
         for (const auto& c : v->cells()) near = near || dist(c.x, c.y) <= 2.0f;
         if (!near) continue;
+        if (Bradley* br = dynamic_cast<Bradley*>(v)) {
+            if (++br->hits < Bradley::ARMOUR) {
+                worst = std::string(br->hits == 1 ? "Osuma Bradleyyn! Panssari kest\xC3\xA4\xC3\xA4 viel\xC3\xA4. "
+                                                  : "Toinen osuma Bradleyyn! Se savuaa jo. ") + worst;
+                level.addSmoke(br->coord);
+                continue;
+            }
+        }
         v->wrecked = true;
         if (AAGun* g = dynamic_cast<AAGun*>(v)) g->leave();
         for (const auto& c : v->cells()) {
@@ -308,6 +322,9 @@ std::string aaExplosion(Level& level, const Coord& at, Person* source)
     }
     if (level.events) level.events->addFiresAround(at);
     for (int i = 0; i < 4; ++i) level.addSmoke(at);
+
+    // at the front: a barrier machine gun nest in the burst is silenced
+    if (level.isWarLevel && level.silenceMgNests(at, 2.5f)) worst = "Sulkuosaston pes\xC3\xA4ke vaikeni! " + worst;
 
     // drones caught in the burst fall out of the sky
     for (size_t i = 0; i < level.drones.size();) {
@@ -392,9 +409,47 @@ static AAGun* placeGun(Level& level, uint32_t x, uint32_t y)
     return nullptr;
 }
 
+// a gun just before our line on row y or near it: sandbags on the open ground east of the
+// trench's lip, barrels to the east. Its crew lies dead; whoever gets to it can have it.
+static AAGun* placeFrontGun(Level& level, uint32_t y)
+{
+    if (level.ownLineX.size() < common::SIZEY) return nullptr;
+    for (int dy = 0; dy < 14; ++dy) {
+        for (int sign = 1; sign >= -1; sign -= 2) {
+            const int row = (int)y + dy * sign;
+            if (row < 2 || row >= (int)common::SIZEY - 2) continue;
+            for (int left = level.ownLineX[row] + 3; left <= level.ownLineX[row] + 5; ++left) {
+                bool free = true;
+                for (int x = left; x <= left + 2 && free; ++x) {
+                    const Coord c { (uint32_t)x, (uint32_t)row };
+                    const Trench t = level.trenchAt(c);
+                    free = !level.hit(c) && !level.getVehicleAt(c) && t != Trench::Own && t != Trench::Wire;
+                }
+                if (!free) continue;
+                AAGun* gun = new AAGun(Coord{ (uint32_t)left, (uint32_t)row });
+                gun->angle = 0.0f;
+                level.addVehicle(gun);
+                return gun;
+            }
+        }
+    }
+    return nullptr;
+}
+
 void populateAAGuns(Level& level, uint32_t moscowStage)
 {
-    if (level.isWarLevel) return;
+    if (level.isWarLevel) {
+        // from the second level on: one by where a new man arrives, sometimes another further along
+        if (level.warStage < 2) return;
+        const PlayerNS::Player* p = level.getPlayer();
+        const uint32_t y = p ? p->coord.y : common::PLAYER_START_Y;
+        placeFrontGun(level, y);
+        if (common::random(60)) {
+            const int off = (30 + std::rand() % 31) * (common::random(50) ? 1 : -1);
+            placeFrontGun(level, (uint32_t)std::max(10, std::min((int)common::SIZEY - 10, (int)y + off)));
+        }
+        return;
+    }
     for (auto b : level.buildings) {
         if (b->type == EKremlin) {
             // west and east of the walls, and both sides of the gate
@@ -491,6 +546,7 @@ void antiDroneFire(Level& level)
         level.audio.addSound(p->coord, SoundType::Gunshot,
             "R\xC3\x84K\xC3\x84K\xC3\x84K\xC3\x84! Sotilaat ampuvat droonia!", "Sarjatulta!", "...sarjatulta kaukaa...", 35);
         if (common::random(d.fpv ? 10 : 15)) {   // a small, darting FPV is harder to hit
+            level.addTracer((float)p->coord.x, (float)p->coord.y, d.x, d.y);
             downDrone(level, target);
             continue;
         }

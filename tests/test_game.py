@@ -177,7 +177,11 @@ def test_front_trenches_and_the_assault():
     g.close()
     rows = ''.join(run[0] for f in frames for row in f.get('rows', []) for run in row)
     msgs = ' '.join(f.get('msg', '') for f in frames)
+    tracers = [e for e in g.events() if e.get('t') == 'tracer']
     check('front_trenches_are_drawn', '\u2592' in rows)
+    check('front_aa_gun_stands_by_the_line', '\u0416' in rows)
+    check('front_shots_send_tracers_to_the_page',
+          len(tracers) > 0 and all(isinstance(e['x1'], (int, float)) for e in tracers), f'{len(tracers)} tracers')
     check('front_level_three_brings_the_barrage', 'TYKISTÖKESKITYS' in msgs or 'Bradley' in msgs, msgs[-200:])
     check('front_play_does_not_crash', code is None and 'Segmentation' not in text, f'exit {code}')
 

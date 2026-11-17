@@ -40,6 +40,8 @@ public:
     virtual bool interact(std::string& msg, Person* source) { return false; };
     virtual bool interactThrow(Item* item, Person* source, std::string& msg) = 0;
     virtual bool interactpuke(Person* source) { return false; };
+    // walking into them is a blow, so whatever is in the player's hand is swung too
+    virtual bool meleeTarget() const { return true; }
     virtual std::string typeToChar() const { return "x"; };
     virtual Item* dropItem() { return nullptr; };
     virtual bool throwItem() { return false; };
@@ -265,6 +267,8 @@ public:
     Avustaja(const Coord& pos);
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
+    // a bump is a word or a nudge, not a blow: nothing in the hand is swung
+    virtual bool meleeTarget() const { return false; }
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return collapsed ? "_" : "a"; };
     virtual uint32_t height() const { return collapsed ? HEIGHT_FLAT : Person::height(); }
@@ -279,6 +283,8 @@ public:
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
+    // a bump is a word or a nudge, not a blow: nothing in the hand is swung
+    virtual bool meleeTarget() const { return false; }
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "J"; };
     uint32_t stumbleCount = 0;
@@ -324,6 +330,8 @@ public:
     bool move(DirectionNS::Direction d, std::string& msg);
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
+    // at the front a comrade is shoved aside, not hit
+    virtual bool meleeTarget() const;
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return officer ? "S" : "s"; };
     std::string who() const { return officer ? "Upseeri" : "Sotilas"; }
@@ -493,6 +501,8 @@ public:
     Kotiaiti(const Coord& pos);
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
+    // a bump is a word or a nudge, not a blow: nothing in the hand is swung
+    virtual bool meleeTarget() const { return false; }
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "K"; };
 };
@@ -502,6 +512,8 @@ public:
     Lapsi(const Coord& pos);
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
+    // a bump is a word or a nudge, not a blow: nothing in the hand is swung
+    virtual bool meleeTarget() const { return false; }
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return "c"; };
     Kotiaiti* mother = nullptr;
@@ -515,6 +527,8 @@ public:
     Kansalainen(const Coord& pos);
     virtual void npcAct();
     virtual bool interact(std::string& msg, Person* source);
+    // a bump is a word or a nudge, not a blow: nothing in the hand is swung
+    virtual bool meleeTarget() const { return false; }
     virtual bool interactThrow(Item* item, Person* source, std::string& msg);
     virtual std::string typeToChar() const { return glyph; };
     // run away from `danger` for a while, panic or not

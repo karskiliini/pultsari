@@ -117,6 +117,8 @@ public:
 
     // the browser draws speech bubbles itself, translucent, over the map
     bool bubblesAsOverlay = false;
+    // the browser page draws the tracers itself, smaller than a cell
+    bool tracersAsOverlay = false;
 
     PlayerNS::Player* player = nullptr;
     VisionNS::Mask* mask = nullptr;

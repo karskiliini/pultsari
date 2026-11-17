@@ -222,6 +222,56 @@ bool Player::interact(std::string& msg, Person* source)
     return false;
 }
 
+uint32_t Player::meleeStrike(Person* p, Level* level, std::string& msg)
+{
+    if (!p || p == this || p->stats.health == 0 || !p->meleeTarget()) return 0;
+    Held* hand = nullptr;
+    if (inventory.akRaised && inventory.back.what == Thing::Rynkky) {
+        hand = &inventory.back;
+    } else {
+        for (Held* h : { &inventory.left, &inventory.right })
+            if (meleeDamage(h->what) > (hand ? meleeDamage(hand->what) : 0)) hand = h;
+    }
+    if (!hand) return 0;
+
+    const Thing what = hand->what;
+    uint32_t dmg = meleeDamage(what);
+    switch (what) {
+        case Thing::Rynkky:   msg += " Isket kiv\xC3\xA4\xC3\xA4rinper\xC3\xA4ll\xC3\xA4 t\xC3\xA4ysill\xC3\xA4!"; break;
+        case Thing::Pamppu:   msg += " Pamppu heilahtaa: TUMPS!"; break;
+        case Thing::Veitsi:   msg += " Veitsi viilt\xC3\xA4\xC3\xA4!"; break;
+        case Thing::Kivi:     msg += " Kivi kopsahtaa kalloon!"; break;
+        case Thing::Ketjut:   msg += " Ketjut l\xC3\xA4isk\xC3\xA4ht\xC3\xA4v\xC3\xA4t!"; break;
+        case Thing::Pistooli: msg += " Pistoolinper\xC3\xA4 iskee ohimoon!"; break;
+        default: break;
+    }
+    if (isBottle(what)) {
+        if (common::random(BOTTLE_BREAK_PERCENT)) {
+            dmg += BOTTLE_BREAK_DAMAGE;
+            msg += " KLIRR! Pullo hajoaa p\xC3\xA4\xC3\xA4h\xC3\xA4n";
+            if (what == Thing::Tyhja) msg += ".";
+            else if (!hand->pissSeller.empty()) msg += " ja kusi valuu maahan.";
+            else msg += what == Thing::Vodka ? " ja vodka valuu maahan. Sielu itkee." : " ja Baltika valuu maahan.";
+            *hand = Held();
+            if (level) {
+                if (!level->getItem(p->coord)) level->addItem(new Sirpaleet(p->coord));
+                level->audio.addSound(p->coord, SoundType::Glass, "KLIRR! Pullo hajoaa p\xC3\xA4\xC3\xA4h\xC3\xA4n!",
+                                      "Lasin s\xC3\xA4rkymist\xC3\xA4", "...lasin helin\xC3\xA4\xC3\xA4...", 15);
+            }
+        } else {
+            msg += " Pullo kumahtaa p\xC3\xA4\xC3\xA4h\xC3\xA4n, mutta kest\xC3\xA4\xC3\xA4.";
+        }
+    }
+
+    const uint32_t before = p->stats.health;
+    p->damage(dmg);
+    if (before > 0 && p->stats.health == 0) {
+        ++scoreBoard.kaikki;
+        if (level) msg += " " + level->nameOf(p) + " kaatuu.";
+    }
+    return before - p->stats.health;
+}
+
 bool Player::interactThrow(Item* item, Person* source, std::string& msg)
 {
     if ((item->type == EKivi) && (source->type == vanki))
@@ -1169,6 +1219,7 @@ bool Player::move(DirectionNS::Direction d, Level* level)
         {
             const uint32_t before = p->stats.health;
             blocked = p->interact(msg, this);
+            meleeStrike(p, level, msg);
             printer->showMessage(msg, level);
             // a punch landed: the caption says who got it
             if (p->stats.health < before) {

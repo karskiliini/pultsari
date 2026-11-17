@@ -88,5 +88,7 @@ void Bradley::update()
     level->addAnimation(new Animation(coord.x > 2 ? Coord{ coord.x - 2, coord.y } : coord, "==*", 3));
     level->audio.addSound(coord, SoundType::Gunshot,
         "TUK-TUK-TUK! Bradleyn konetykki!", "Konetykin tulta!", "...konetykin tykytyst\xC3\xA4...", 60);
+    // three rounds of 25 mm, the burst comes down where the last one lands
+    for (uint32_t k = 0; k < 3; ++k) level->addTracer(coord, target->coord, true, TracerKind::Cannon, k * 120);
     level->shellBurst(target->coord, 1, 5, "Bradleyn konetykki");
 }

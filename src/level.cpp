@@ -172,6 +172,8 @@ void Level::actThrow(Person* source)
 
 void Level::stepAnimations()
 {
+    // one real-time frame of flight for the tracers
+    if (common::realtimeEnabled) tracerFrame(50);
     for (auto it = animations.begin(); it != animations.end();) {
         // real-time frames are 50 ms: floating texts move every 4th frame (~1 s in all)
         const uint32_t every = (common::realtimeEnabled && !(*it)->isBubble) ? 4 : 1;
@@ -207,6 +209,8 @@ void Level::explode(const Coord& c, uint32_t radius, uint32_t maxDamage, Person*
             p->damage(std::rand() % maxDamage + 1);
         }
     }
+    // a barrier machine gun nest caught in it is silenced
+    if (isWarLevel) silenceMgNests(c, radius + 0.5f);
     // armour close enough to the blast is knocked out
     for (auto v : vehicles) {
         Bradley* b = dynamic_cast<Bradley*>(v);
@@ -706,23 +710,25 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
 {
     const float dx = std::cos(angle), dy = std::sin(angle);
     float x = shooter->coord.x + 0.5f, y = shooter->coord.y + 0.5f;
+    // the round's streak of light, from the muzzle to wherever it stops
+    auto streak = [&]() { addTracer((float)shooter->coord.x, (float)shooter->coord.y, x - 0.5f, y - 0.5f); };
     Coord last = shooter->coord;
     const Vehicle* ownCar = getVehicleAt(shooter->coord);   // shooting out of a car window
     const Vehicle* lastCar = ownCar;
     for (uint32_t step = 0; step < range * 2; ++step) {
         x += dx * 0.5f;
         y += dy * 0.5f;
-        if (x < 0 || y < 0 || x >= common::SIZEX || y >= common::SIZEY) return nullptr;
+        if (x < 0 || y < 0 || x >= common::SIZEX || y >= common::SIZEY) { streak(); return nullptr; }
         const Coord c { (uint32_t)x, (uint32_t)y };
         if (c == last) continue;
         last = c;
-        if (hitWall(c)) return nullptr;
+        if (hitWall(c)) { streak(); return nullptr; }
         if (Vehicle* v = getVehicleAt(c)) {
             if (v != lastCar) {
                 lastCar = v;
                 // a car under fire: the driver dies, runs or comes at the shooter; the body often stops the bullet
                 if (Car* car = dynamic_cast<Car*>(v)) {
-                    if (car->takeShot(shooter, c)) return nullptr;
+                    if (car->takeShot(shooter, c)) { streak(); return nullptr; }
                 }
             }
         }
@@ -730,10 +736,12 @@ Person* Level::fireBullet(Person* shooter, float angle, uint32_t range, uint32_t
         if (p && p != shooter && p->stats.health > 0 && common::random(hitPercent)) {
             common::setHitDirection(dx > 0.4f ? 1 : dx < -0.4f ? -1 : 0, dy > 0.4f ? 1 : dy < -0.4f ? -1 : 0);
             HurtBy who(this, shooter->type == pelaaja ? "oma luotisi" : nameOf(shooter) + " (ampui sinua)");
+            streak();
             p->damage(damage);
             return p;
         }
     }
+    streak();
     return nullptr;
 }
 

@@ -22,6 +22,12 @@ bool isDrink(Thing t);  // Kalja, Lonkka, Vodka
 bool isWeapon(Thing t); // Pistooli, Rynkky
 bool isFood(Thing t);   // Lenkki, Kala, Omppo, Bansku
 const char* thingName(Thing t);
+// a glass bottle, full or empty (a Jaguar is a can)
+bool isBottle(Thing t);
+// what it adds to a punch when you walk into someone with it in hand: 0 for nothing useful
+uint32_t meleeDamage(Thing t);
+// a bottle swung at a head breaks this often (percent), for this much more on top
+constexpr uint32_t BOTTLE_BREAK_PERCENT = 60, BOTTLE_BREAK_DAMAGE = 3;
 
 // whose coat the player wears; it colours the sleeves of the arm pictures. Oma is the poster's
 // own ragged work jacket; the others come off corpses, the ground or the pawnshop and start whole.
