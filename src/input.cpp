@@ -57,12 +57,11 @@ InputType Input::getInputNonBlocking()
 
     switch(c)
     {
-        case 'l': case 'd': return right;
-        case 'j': case 'a': return left;
-        case 'k': case 's': return down;
-        case 'i': case 'w': return up;
-        case 'z': return InputType::quit;
-        case 't': return throwing;
+        case 'd': return right;
+        case 'a': return left;
+        case 's': return down;
+        case 'w': return up;
+        case 27: return InputType::quit;
         case 'q': return drinking;
         case 'e': return eating;
         case '\t': return inventory;
@@ -90,12 +89,11 @@ InputType Input::getInput()
         auto c = getchar();
         switch(c)
         {
-            case 'l': case 'd': sel = right; break;
-            case 'j': case 'a': sel = left; break;
-            case 'k': case 's': sel = down; break;
-            case 'i': case 'w': sel = up; break;
-            case 'z': sel = InputType::quit; break;
-            case 't': sel = throwing; break;
+            case 'd': sel = right; break;
+            case 'a': sel = left; break;
+            case 's': sel = down; break;
+            case 'w': sel = up; break;
+            case 27: sel = InputType::quit; break;
             case 'q': sel = drinking; break;
             case 'e': sel = eating; break;
             case HANDS_INTRO_KEY: sel = handsIntro; break;
@@ -285,9 +283,12 @@ char Input::inputYka()
         switch(c)
         {
             case 'k':
-            case 'K': sel = 'k'; break;
+            case 'K':
+            case '\r':
+            case '\n': sel = 'k'; break;
             case 'e':
-            case 'E': sel = 'e'; break;
+            case 'E':
+            case 27: sel = 'e'; break;
             default: sel = '1'; break;
         }
     }

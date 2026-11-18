@@ -194,13 +194,13 @@ BusGameResult runBusMinigame(PlayerNS::Player* player, Level* level)
         if (ticks % TICKS_PER_STOP == 0) {
             ++stopsReached;
             char buf[80];
-            snprintf(buf, sizeof(buf), "Pysäkki %d/%d. A/D=tasapaino, Z=poistu", stopsReached, MAX_STOPS);
+            snprintf(buf, sizeof(buf), "Pysäkki %d/%d. A/D=tasapaino, Esc=poistu", stopsReached, MAX_STOPS);
             printer->showMessage(string(buf), level, false);
             printer->print(level);
 
             for (int wait = 0; wait < 15; ++wait) {
                 char ch = InputNS::Input::getRawCharNonBlocking();
-                if (ch == 'z') {
+                if (ch == 27) {
                     riding = false;
                     break;
                 }

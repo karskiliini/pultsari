@@ -240,7 +240,10 @@
         // at the wheel W A S D are pedals and the steering wheel: they act for as long as they are
         // held, so the page repeats them itself (the browser stops repeating a key once another
         // is pressed). Shift is the clutch: 0x0E when pressed, 0x0F when let go.
-        const DRIVE_KEYS = 'wasdijkl';
+        const DRIVE_KEYS = 'wasd';
+        // the arrow keys are W A S D
+        const ARROWS = { ArrowUp: 'w', ArrowLeft: 'a', ArrowDown: 's', ArrowRight: 'd' };
+        const keyOf = (e) => ARROWS[e.key] || e.key;
         const held = new Set();
         setInterval(() => {
             if (!transport || !Game.isDriving()) return;
@@ -249,7 +252,8 @@
         // Shift goes to the game only at the wheel: in a shop menu any key would close it
         window.addEventListener('keyup', (e) => {
             if (e.key === 'Shift') { if (transport && Game.isDriving()) send('\x0f'); return; }
-            if (e.key.length === 1) held.delete(e.key.toLowerCase());
+            const key = keyOf(e);
+            if (key.length === 1) held.delete(key.toLowerCase());
         });
         window.addEventListener('blur', () => { held.clear(); spaceHeld = false; if (transport && Game.isDriving()) send('\x0f'); });
 
@@ -266,8 +270,9 @@
         function onGameKey(e) {
             if (!transport || introPlaying || e.ctrlKey || e.metaKey || e.altKey) return;
             if (e.key === 'Shift') { if (!e.repeat && Game.isDriving()) send('\x0e'); return; }
-            if (e.key.length === 1 && DRIVE_KEYS.includes(e.key.toLowerCase())) {
-                const k = e.key.toLowerCase();
+            const key = keyOf(e);
+            if (key.length === 1 && DRIVE_KEYS.includes(key.toLowerCase())) {
+                const k = key.toLowerCase();
                 if (Game.isDriving()) {
                     e.preventDefault();
                     if (!held.has(k)) { held.add(k); send(k); }
@@ -287,7 +292,7 @@
             if (e.key === 'Tab') ch = '\t';
             else if (e.key === 'Escape') ch = '\x1b';
             else if (e.key === 'Enter') ch = '\r';
-            else if (e.key.length === 1) ch = e.key.toLowerCase();
+            else if (key.length === 1) ch = key.toLowerCase();
             if (ch === null) return;
             e.preventDefault();
             send(ch);

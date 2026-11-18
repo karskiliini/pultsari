@@ -846,10 +846,15 @@ static bool processInput(InputNS::InputType input, PlayerNS::Player& player, Lev
                 ret = player.puke(d, level);
             }
             break;
-        default:
         case InputNS::quit:
+            // Esc: nothing irreversible on a single key
+            printer.showMessage("Lopetetaanko peli? (k/e)", level);
+            if (InputNS::Input::inputYka() == 'k') throw RestartGame();
             ret = false;
-            throw RestartGame();
+            break;
+        default:
+            ret = false;
+            break;
     }
     return ret;
 }
@@ -1206,7 +1211,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
             uint32_t clutchHoldMs = 0;
             bool clutchLatched = false;
             uint32_t brakeMs = 0;
-            uint32_t brakeRecentMs = 0;  // S pressed just now: Space shifts down instead of up
+            bool quitAsk = false;
             player.driving = nullptr;
             // the keys that drive the car; anything else falls through to the usual keys
             auto driveKey = [&](char c) -> bool {
@@ -1216,14 +1221,15 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                 const bool upper = c >= 'A' && c <= 'Z';
                 if (upper) clutchHoldMs = 450;
                 switch (c) {
-                    case 'w': case 'i': case 'W': case 'I': ++car->controls.throttle; return true;
-                    case 's': case 'k': case 'S': case 'K': brakeMs = 400; brakeRecentMs = 450; return true;
-                    case 'a': case 'j': case 'A': case 'J': --car->controls.steer; return true;
-                    case 'd': case 'l': case 'D': case 'L': ++car->controls.steer; return true;
-                    case ' ': car->controls.shift = brakeRecentMs > 0 ? -1 : 1; return true;
+                    case 'w': case 'W': ++car->controls.throttle; return true;
+                    case 's': case 'S': brakeMs = 400; return true;
+                    case 'a': case 'A': --car->controls.steer; return true;
+                    case 'd': case 'D': ++car->controls.steer; return true;
+                    case 'c': case 'C': car->controls.shift = -1; return true;
+                    case ' ': car->controls.shift = 1; return true;
                     case 0x0e: clutchLatched = true; return true;
                     case 0x0f: clutchLatched = false; return true;
-                    case 'e': case 'E': leaveCar(&player, &level); return true;
+                    case 'f': case 'F': leaveCar(&player, &level); return true;
                     default: return upper;
                 }
             };
@@ -1343,7 +1349,12 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
 
                     for (const char c : keys) {
-                    if (c == 'z') throw RestartGame();
+                    if (quitAsk && c != 0) {
+                        if (c == '\r' || c == '\n' || c == 'k') throw RestartGame();
+                        quitAsk = false;
+                        printer->showMessage("Jatketaan.", &level, false);
+                        continue;
+                    }
                     // behind an anti-aircraft gun every key works the gun
                     if (player.manning) {
                         if (c != 0) gunnerKey(c, player, level, *printer, msSinceShot);
@@ -1357,18 +1368,24 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         if (c != 0 && player.driving && driveKey(c)) break;
                         if (c != 0) {
                             switch(c) {
-                                case 'w': case 'i': queuedMove = InputNS::up; break;
-                                case 's': case 'k': queuedMove = InputNS::down; break;
-                                case 'a': case 'j': queuedMove = InputNS::left; break;
-                                case 'd': case 'l': queuedMove = InputNS::right; break;
+                                case 'w': queuedMove = InputNS::up; break;
+                                case 's': queuedMove = InputNS::down; break;
+                                case 'a': queuedMove = InputNS::left; break;
+                                case 'd': queuedMove = InputNS::right; break;
                                 case '\t': mode = Mode::Inventory; throwMenu = false; invSelection = 0; break;
                                 case InputNS::HANDS_INTRO_KEY: HandsIntroNS::run(printer, &level); break;
-                                case 'q': player.drink(&level); break;   // a sip or the beer in one go
-                                case 'e': {  // the food in a hand; asks which when both hold some
-                                    Held* h = player.foodHand(&level);
-                                    if (h) player.eatHeld(*h, &level);
-                                    else if (!isFood(player.inventory.left.what) && !isFood(player.inventory.right.what))
-                                        printer->showMessage("Ei sy\xC3\xB6t\xC3\xA4v\xC3\xA4\xC3\xA4 k\xC3\xA4""dess\xC3\xA4.", &level, false);
+                                case 'q': {
+                                    if (player.inventory.left.empty())
+                                        printer->showMessage("Vasen k\xC3\xA4si on tyhj\xC3\xA4.", &level, false);
+                                    else
+                                        useInventoryItem(player.inventory.left.what, &player.inventory.left);
+                                    break;
+                                }
+                                case 'e': {
+                                    if (player.inventory.right.empty())
+                                        printer->showMessage("Oikea k\xC3\xA4si on tyhj\xC3\xA4.", &level, false);
+                                    else
+                                        useInventoryItem(player.inventory.right.what, &player.inventory.right);
                                     break;
                                 }
                                 case 'f': {
@@ -1395,6 +1412,9 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                         printer->showMessage(player.inventory.inHand(Thing::Pistooli)
                                             ? "Lasket aseen. Ilman vy\xC3\xB6t\xC3\xA4 se pysyy k\xC3\xA4""dess\xC3\xA4."
                                             : "Laitat aseen vy\xC3\xB6lle.", &level, false);
+                                    } else {
+                                        quitAsk = true;
+                                        printer->showMessage("Lopetetaanko peli? Enter = kyll\xC3\xA4, Esc = ei", &level, false);
                                     }
                                     break;
                                 case ' ': { // Space raises the gun in hand (or the one that can fire); Space again fires
@@ -1438,10 +1458,10 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     case Mode::Inventory: {
                         if (c != 0) {
                             switch(c) {
-                                case 'w': case 'i':
+                                case 'w':
                                     invSelection = (invSelection - 1 + invItems()) % invItems();
                                     break;
-                                case 's': case 'k':
+                                case 's':
                                     invSelection = (invSelection + 1) % invItems();
                                     break;
                                 case 'e': case '\r':
@@ -1460,7 +1480,7 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                                 case 'f': // throw -> aim mode
                                     startThrowAim(rowSlot(invSelection));
                                     break;
-                                case 'q': case '\t': case 27: // Q, Tab or ESC closes
+                                case '\t': case 27: // Tab or ESC closes
                                     mode = Mode::Normal;
                                     break;
                             }
@@ -1473,8 +1493,8 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                         if (c != 0) {
                             switch(c) {
                                 // 45 degrees a press: the sway is wider than any finer aim
-                                case 'a': case 'j': case 'd': case 'l':
-                                case 'w': case 'i': case 's': case 'k':
+                                case 'a': case 'd':
+                                case 'w': case 's':
                                     aimAngle = common::aimStep(aimAngle, c);
                                     break;
                                 case ' ': // fire/throw/shoot
@@ -1603,7 +1623,6 @@ bool mainloop(Printer* printer, uint32_t stage, bool losEnabled, bool animsEnabl
                     }
                     clutchHoldMs = clutchHoldMs > FRAME_MS ? clutchHoldMs - FRAME_MS : 0;
                     brakeMs = brakeMs > FRAME_MS ? brakeMs - FRAME_MS : 0;
-                    brakeRecentMs = brakeRecentMs > FRAME_MS ? brakeRecentMs - FRAME_MS : 0;
                     level.npcFrame(FRAME_MS);
                     level.vehicleFrame(FRAME_MS);
                     updateDriverGaze(&player, FRAME_MS);

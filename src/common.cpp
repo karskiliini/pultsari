@@ -133,10 +133,10 @@ float aimStep(float angle, char key)
     constexpr float Q = 0.78539816f;     // 45 degrees; the angle grows clockwise on screen
     int target;
     switch (key) {
-        case 'd': case 'l': target = 0; break;
-        case 's': case 'k': target = 2; break;
-        case 'a': case 'j': target = 4; break;
-        case 'w': case 'i': target = 6; break;
+        case 'd': target = 0; break;
+        case 's': target = 2; break;
+        case 'a': target = 4; break;
+        case 'w': target = 6; break;
         default: return angle;
     }
     int cur = (((int)std::lround(angle / Q)) % 8 + 8) % 8;

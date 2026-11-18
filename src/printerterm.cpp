@@ -276,13 +276,15 @@ void PrinterTerm::printHelp()
     cout << "  --version          pelin versio" << endl;
     cout << "  --all, -a          kaikki yll\xC3\xA4 olevat" << endl << endl;
     cout << "Reaaliaikatilan n\xC3\xA4pp\xC3\xA4imet:" << endl;
-    cout << "  W A S D / I J K L  liiku (k\xC3\xA4vele p\xC3\xA4in = ly\xC3\xB6 / poimi / avaa)" << endl;
-    cout << "  Q                  juo (huikka tai pullo kerralla)" << endl;
-    cout << "  E                  sy\xC3\xB6 k\xC3\xA4""dest\xC3\xA4 (kysyy kumpi, jos molemmissa ruokaa)" << endl;
-    cout << "  Tab / F            tavarat / heit\xC3\xA4: W/S valitse, E k\xC3\xA4yt\xC3\xA4, F heit\xC3\xA4 (ase tai lipas lasketaan maahan)" << endl;
+    cout << "  W A S D            liiku (k\xC3\xA4vele p\xC3\xA4in = ly\xC3\xB6 / poimi / avaa)" << endl;
+    cout << "  Q / E              k\xC3\xA4yt\xC3\xA4 vasemman / oikean k\xC3\xA4""den tavaraa (juo, sy\xC3\xB6, ase esiin)" << endl;
+    cout << "  F                  heit\xC3\xA4 tai laske maahan (ase tai lipas lasketaan maahan)" << endl;
+    cout << "  V\xC3\xA4lily\xC3\xB6nti         t\xC3\xA4ht\xC3\xA4\xC3\xA4 aseella, uudestaan ampuu" << endl;
+    cout << "  Tab                tavarat: W/S valitse, E k\xC3\xA4yt\xC3\xA4, F heit\xC3\xA4, Tab/Esc sulje" << endl;
     cout << "  T\xC3\xA4ht\xC3\xA4ys            WASD k\xC3\xA4\xC3\xA4nn\xC3\xA4 45\xC2\xB0, v\xC3\xA4lily\xC3\xB6nti heit\xC3\xA4/ammu, Esc peru" << endl;
-    cout << "  H                  k\xC3\xA4sien esittely: k\xC3\xA4""det inventaariona, hiha terveyten\xC3\xA4, tekstitykset" << endl;
-    cout << "  Z                  restart" << endl << endl;
+    cout << "  Autossa            W kaasu, S jarru, A/D ohjaa, Shift kytkin, v\xC3\xA4lily\xC3\xB6nti/C vaihde yl\xC3\xB6s/alas, F ulos" << endl;
+    cout << "  H                  ohje: k\xC3\xA4""det inventaariona, hiha terveyten\xC3\xA4, tekstitykset" << endl;
+    cout << "  Esc                lopeta (kysyy varmistuksen)" << endl << endl;
     cout << "Tavoite: p\xC3\xA4\xC3\xA4se Vovan viinakellariin Kremliss\xC3\xA4." << endl;
 }
 

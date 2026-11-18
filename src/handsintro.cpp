@@ -233,7 +233,7 @@ Rows Show::render() const
                 if (shown > 10) c.put(22, y, Canvas::first("\xE2\x94\x80\xE2\x94\x80\xE2\x96\xBA  " + string(slots[i][1]), shown - 10), white);
             }
             if (t >= 3600) c.centre(18, "Muuta ei mahdu. Kaikki muu j\xC3\xA4\xC3\xA4 maahan.", dim);
-            if (t >= 4600) c.centre(20, "Tab avaa tavarat, F heitt\xC3\xA4\xC3\xA4, E sy\xC3\xB6, Q juo.", text);
+            if (t >= 4600) c.centre(20, "Q vasen k\xC3\xA4si, E oikea k\xC3\xA4si, F heitt\xC3\xA4\xC3\xA4, Tab avaa tavarat.", text);
             break;
         }
         case Chapter::Pickup: {
