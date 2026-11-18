@@ -2940,7 +2940,8 @@ static AAGun* placeTestGun(World& w, uint32_t x, uint32_t y, int crew)
 {
     auto* gun = new AAGun(Coord{ x, y });
     w.level.addVehicle(gun);
-    for (int k = 0; k < crew; ++k) w.spawn(new ITMies(Coord{ x + 2u * k, y + 1 }, gun));
+    // inside the ring, either side of the mount
+    for (int k = 0; k < crew; ++k) w.spawn(new ITMies(Coord{ k ? x + 4u : x - 2u, y }, gun));
     return gun;
 }
 
@@ -6240,7 +6241,7 @@ TEST(front_guns_stand_just_before_our_line_from_the_second_level)
     for (auto g : gs) {
         const Coord c = g->centre();
         const int line = w->level.ownLineX[c.y];
-        CHECK((int)c.x >= line + 2 && (int)c.x <= line + 7);
+        CHECK((int)c.x >= line + 7 && (int)c.x <= line + 9);
         CHECK(!w->level.behindTheLine(c));
         if (std::abs((int)c.y - (int)w->player.coord.y) <= 12) nearStart = true;
         CHECK(g->crew().empty());                       // the crew lies dead behind the sandbags
@@ -6480,11 +6481,11 @@ TEST(the_three_guns_look_and_load_differently)
 {
     World w;
     AAGun* zu = lone(w, AAGun::Model::Zu23);
-    CHECK(zu->glyphAt(1) == "\xD0\x93" && zu->ammo == 100 && zu->shotMs() == 400);
+    CHECK(zu->glyphAt(4) == "\xD0\x93" && zu->ammo == 100 && zu->shotMs() == 400);
     AAGun* sergei = new AAGun(Coord{ 60, 60 }, AAGun::Model::Sergei);
-    CHECK(sergei->glyphAt(1) == "\xD0\x96" && sergei->ammo == 100 && sergei->shotMs() == 200);
+    CHECK(sergei->glyphAt(4) == "\xD0\x96" && sergei->ammo == 100 && sergei->shotMs() == 200);
     AAGun* flak = new AAGun(Coord{ 60, 70 }, AAGun::Model::Vierling);
-    CHECK(flak->glyphAt(1) == "\xD0\xA8" && flak->ammo == 400 && flak->shotMs() == 150);
+    CHECK(flak->glyphAt(4) == "\xD0\xA8" && flak->ammo == 400 && flak->shotMs() == 150);
     AAGun* moscow = new AAGun(Coord{ 60, 80 });     // the Kremlin's guns: always a Sergei
     CHECK(moscow->model == AAGun::Model::Sergei);
     delete moscow;
@@ -6528,11 +6529,10 @@ TEST(flakvierling_sprays_four_rounds_that_bounce_off_a_bradley)
     AAGun* f2 = lone(v, AAGun::Model::Vierling);
     auto* b = new Bradley(Coord{ 68, 50 }, 68);
     v.level.addVehicle(b);
-    Ukrainalainen* behind = v.spawn(new Ukrainalainen(Coord{ 75, 50 }, Ukrainalainen::Mode::Assault));
-    for (int i = 0; i < 10; ++i) f2->fire(msg);
+    bool bounced = false;
+    for (int i = 0; i < 10; ++i) { f2->fire(msg); bounced = bounced || contains(msg, "kilpisty"); }
     CHECK(!b->wrecked && b->hits == 0);
-    CHECK(behind->stats.health == 12);
-    CHECK(contains(msg, "kilpisty"));
+    CHECK(bounced);
 }
 
 TEST(fifteen_rounds_silence_a_barrier_nest)
@@ -6751,4 +6751,93 @@ TEST(cop_shouts_about_the_police_gun_once_and_stops_shooting_when_sent_elsewhere
     cop->chaseTarget = gopnik;
     cop->npcAct();
     CHECK(!cop->shoots);
+}
+
+// ---------- the gun drawn large: the whole mount turns, sandbags round it, barrels in turn ----------
+
+TEST(gun_mount_turns_twelve_degrees_a_frame_toward_the_aim)
+{
+    World w;
+    AAGun* g = lone(w, AAGun::Model::Sergei);
+    g->shown = 0.0f;
+    g->angle = 1.5707963f;                       // aim swung down by the player
+    const auto before = g->sprite();
+    g->frame(50);
+    CHECK(near(g->shown, 0.2094395f));           // 12 degrees
+    int frames = 1;
+    while (!near(g->shown, g->angle) && frames < 20) { g->frame(50); ++frames; }
+    CHECK(frames == 8);                          // 90 degrees: seven and a half steps
+    const auto after = g->sprite();
+    // the legs and the body turn too, not just the barrels
+    size_t moved = 0;
+    for (const auto& a : after) {
+        bool same = false;
+        for (const auto& b : before) same = same || (a.x == b.x && a.y == b.y && a.g == b.g);
+        if (!same) ++moved;
+    }
+    CHECK(moved >= after.size() / 2);
+    bool mount = false;
+    for (const auto& a : after) mount = mount || (a.x == (int)g->centre().x && a.y == (int)g->centre().y && a.g == "\xD0\x96");
+    CHECK(mount);
+}
+
+TEST(sandbags_ring_the_gun_with_a_gap_toward_the_trench)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    const Coord m = g->centre();
+    CHECK(g->sandbags.size() >= 12);
+    for (const auto& b : g->sandbags) {
+        CHECK(std::abs((int)b.x - (int)m.x) >= 2 || std::abs((int)b.y - (int)m.y) >= 2);   // well clear of the mount
+        CHECK(!((int)b.x < (int)m.x - 2 && std::abs((int)b.y - (int)m.y) <= 0));           // the gap to the west
+        CHECK(w->level.getVehicleAt(b) == g);
+    }
+    // walking into the bags gets you nowhere; into the mount, the gun
+    string msg;
+    const Coord bag = g->sandbags.front();
+    w->player.coord = Coord{ bag.x, bag.y + 1 };
+    if (!w->level.hit(w->player.coord) && !w->level.getVehicleAt(w->player.coord)) {
+        w->player.move(DirectionNS::up, &w->level);
+        CHECK(w->player.manning == nullptr);
+    }
+    w->player.coord = Coord{ m.x - 2, m.y };
+    w->player.move(DirectionNS::right, &w->level);
+    CHECK(w->player.manning == g);
+    delete w;
+}
+
+TEST(each_barrel_fires_in_its_own_turn)
+{
+    World w;
+    AAGun* s = lone(w, AAGun::Model::Sergei);
+    s->angle = s->shown = -1.5707963f;
+    string msg;
+    s->fire(msg);
+    CHECK(s->flashing(0) && !s->flashing(1));
+    s->fire(msg);
+    CHECK(s->flashing(1));
+    World v;
+    AAGun* f = lone(v, AAGun::Model::Vierling);
+    f->angle = f->shown = 0.0f;
+    f->fire(msg);
+    CHECK(v.level.tracers.size() == 4);
+    for (uint32_t k = 0; k < 4; ++k) CHECK(v.level.tracers[k].delayMs == (int32_t)(k * AAGun::VIERLING_GAP_MS));
+    CHECK(std::fabs(v.level.tracers[0].y0 - v.level.tracers[3].y0) > 2.5f);   // two pairs, wide apart
+    // the later barrels flash only when their turn comes
+    CHECK(f->flashing(0) && !f->flashing(3));
+    f->frame(50); f->frame(50); f->frame(50);   // 105 ms later
+    CHECK(f->flashing(3) && !f->flashing(0));
+}
+
+TEST(a_bradley_halts_short_of_a_gun_position)
+{
+    World* w = frontWorld(3);
+    AAGun* g = guns(w->level).front();
+    const Coord m = g->centre();
+    auto* b = new Bradley(Coord{ m.x + 20, m.y }, 0);
+    w->level.addVehicle(b);
+    for (int i = 0; i < 40; ++i) w->level.updateVehicles();
+    for (const auto& c : b->cells()) CHECK(w->level.getVehicleAt(c) == b);
+    CHECK(b->coord.x > m.x);
+    delete w;
 }

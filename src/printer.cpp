@@ -531,6 +531,21 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
     }
     string tracerColor;
 
+    // anti-aircraft guns: the whole mount turned to its aim, drawn over the ground under people
+    // (and, for out of sight, the sandbags and mount cells of this row)
+    vector<AAGun::Glyph> rowGuns, rowGunCells;
+    if (!gunsAsOverlay) {
+        for (const auto v : l->vehicles) {
+            const AAGun* g = dynamic_cast<const AAGun*>(v);
+            if (!g) continue;
+            const auto body = g->cells();
+            for (size_t i = 0; i < body.size(); ++i)
+                if (body[i].y == worldY) rowGunCells.push_back(AAGun::Glyph{ (int)body[i].x, (int)worldY, g->glyphAt((uint32_t)i), "2;37" });
+            if (g->wrecked) continue;
+            for (const auto& gl : g->sprite()) if (gl.y == (int)worldY) rowGuns.push_back(gl);
+        }
+    }
+
     for (uint32_t vx = 0; vx < viewW; ++vx) {
         uint32_t x = vx + (uint32_t)l->cameraX;
         Coord coord { x, worldY };
@@ -596,6 +611,17 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
             }
         }
         if (!found && !mask->visible(coord)) {
+            // a gun position stays where it is: out of sight it shows dimly, like a landmark
+            for (const auto* list : { &rowGuns, &rowGunCells }) {
+                for (const auto& gl : *list) {
+                    if (found || gl.x != (int)x) continue;
+                    c = gl.g;
+                    color = "2;37";
+                    found = true;
+                }
+            }
+        }
+        if (!found && !mask->visible(coord)) {
             // out of sight the streets still show faintly, so you can tell where you are
             const Road* h = nullptr;
             const Road* v = nullptr;
@@ -652,7 +678,18 @@ vector<std::pair<string, string>> Printer::rowCells(Level* l, uint32_t y)
         }
 
         if (!found) {
+            for (const auto& gl : rowGuns) {
+                if (gl.x != (int)x) continue;
+                c = gl.g;
+                color = gl.color;
+                found = true;
+                break;
+            }
+        }
+
+        if (!found) {
             for (const auto& v : l->vehicles) {
+                if (gunsAsOverlay && dynamic_cast<const AAGun*>(v)) continue;   // the page draws it
                 const int part = v->cellIndex(coord);
                 if (part >= 0) {
                     // a blown-up car is a burnt-out shell; the gun draws its own wreck
